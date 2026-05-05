@@ -18,6 +18,13 @@
 
 ## Tests Run
 
+## Environment Setup
+
+- Python venv:
+- Python dependencies:
+- Frontend dependencies:
+- Runtime blockers:
+
 ## Results
 
 ## Risks / Follow-ups
