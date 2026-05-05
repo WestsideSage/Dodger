@@ -14,13 +14,18 @@ Treat local SQLite files such as `demo.db`, `dodgeball_sim.db`, and `dodgeball_m
 
 ## Commands
 
-- Install dev environment: `python -m pip install -e .[dev]`
+- Install Python dev environment in the current worktree:
+  - `python3 -m venv .venv`
+  - `source .venv/bin/activate`
+  - `python -m pip install -U pip`
+  - `python -m pip install -e '.[dev]'`
 - Run Python tests: `python -m pytest -q`
 - Run focused tests: `python -m pytest tests/test_invariants.py -q`
 - Launch the web app: `python -m dodgeball_sim` or `dodgeball-manager`
 - Launch sandbox CLI: `python -m dodgeball_sim.cli` or `dodgeball-sim`
 - Launch the web app explicitly: `python -m dodgeball_sim.web_cli` or `dodgeball-manager-web`
-- Build frontend from `frontend/`: `npm install` once, then `npm run build`
+- Install frontend dependencies from `frontend/`: `npm install`
+- Build frontend from `frontend/`: `npm run build`
 - Lint frontend from `frontend/`: `npm run lint`
 
 ## Architecture Snapshot
@@ -122,6 +127,7 @@ Rules:
 
 - Do not implement major work directly in the main repo folder.
 - Before editing, confirm the worktree path, branch, baseline status, and intended files.
+- Agents are responsible for bootstrapping their own assigned worktree dependencies when missing: create/use `.venv`, install Python dev deps, run `npm install` in `frontend/`, then verify.
 - Inspect `git status --short` before and after work. Do not overwrite or revert someone else's changes.
 - Keep generated files, local SQLite saves, logs, dependency folders, screenshots, videos, and cache output out of commits.
 - Commit small, coherent changes with a handoff note when another agent will continue.

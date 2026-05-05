@@ -24,6 +24,42 @@ Dodgeball Manager uses Git worktrees so Codex, Claude, Gemini, and review work c
 - Gemini research/spec: `audit/gemini-research`
 - Review/integration: `review/integration`
 
+## Per-Worktree Dependency Bootstrap
+
+Each agent owns dependency setup inside its assigned worktree. Maurice should not need to visit every branch or folder to prepare dependencies.
+
+Run this from the agent's worktree when `.venv` is missing, Python tests cannot find project dependencies, or pytest is unavailable:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -U pip
+python -m pip install -e '.[dev]'
+```
+
+Run this from the frontend folder when `frontend/node_modules/` is missing or frontend checks cannot find packages:
+
+```bash
+cd frontend
+npm install
+```
+
+Then verify:
+
+```bash
+python -m pytest -q
+cd frontend
+npm run lint
+npm run build
+```
+
+The expected model is shared system runtimes, separate dependencies per worktree:
+
+- Shared: Python executable, `python3-venv`, `python3-pip`, Node 20.19+ or 22.12+.
+- Per worktree: `.venv/`, editable Python install, `frontend/node_modules/`.
+
+Agents may install per-worktree dependencies by default. They should not use `sudo`, upgrade system runtimes, or change global Node/Python configuration unless Maurice explicitly authorizes it.
+
 ## Start A New Task Branch
 
 From the main repo or review worktree:

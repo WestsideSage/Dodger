@@ -156,10 +156,12 @@ No failures were caused by the workflow/documentation/tooling edits.
 - Start new implementation branches from `develop`.
 - Keep audit branches read-only unless implementation is explicitly authorized.
 - Require each agent to read `AGENTS.md` and leave a handoff for nontrivial work.
+- Expect each agent to bootstrap missing dependencies inside its own worktree by creating `.venv`, installing Python dev deps, and running `npm install` in `frontend/`.
+- Do system-level runtime setup only once. Agents can use shared Python/Node runtimes but should keep `.venv/` and `node_modules/` per worktree.
 
 ## Recommended Next Step
 
-Use the Codex worktree for the next implementation task:
+Use the Codex worktree for the next implementation task. The agent assigned to that folder should handle any missing per-worktree dependencies:
 
 ```bash
 cd "C:\GPT5-Projects\Dodgeball Simulator.worktrees\codex"
