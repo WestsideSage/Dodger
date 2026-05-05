@@ -96,3 +96,37 @@ Role routing, when useful:
 - Implementation: Codex
 
 Do not force the full squad ceremony for small fixes or routine documentation cleanup.
+
+## Git / Worktree / Multi-Agent Workflow
+
+Every agent starts by reading this file before touching the repo. For milestone work, also read `docs/specs/MILESTONES.md` and the relevant spec or retrospective handoff.
+
+Branch model:
+
+- `main`: stable baseline. Only tested, reviewed work should land here.
+- `develop`: integration branch for upcoming milestone work. New task branches normally start here.
+- `feature/<scope>`: implementation work.
+- `fix/<bug-or-system>`: defect or system repair.
+- `audit/<role>-<scope>`: read-only review, planning, or research unless Maurice explicitly authorizes implementation.
+- `review/<scope>`: integration and review work.
+- `chore/<repo-or-tooling>` or `docs/<scope>`: repo hygiene and documentation.
+
+Preferred local worktrees live outside the main repo:
+
+- `../Dodgeball Simulator.worktrees/codex` on `feature/codex-next-task`
+- `../Dodgeball Simulator.worktrees/claude` on `audit/claude-planning`
+- `../Dodgeball Simulator.worktrees/gemini` on `audit/gemini-research`
+- `../Dodgeball Simulator.worktrees/review` on `review/integration`
+
+Rules:
+
+- Do not implement major work directly in the main repo folder.
+- Before editing, confirm the worktree path, branch, baseline status, and intended files.
+- Inspect `git status --short` before and after work. Do not overwrite or revert someone else's changes.
+- Keep generated files, local SQLite saves, logs, dependency folders, screenshots, videos, and cache output out of commits.
+- Commit small, coherent changes with a handoff note when another agent will continue.
+- The event log is canon for match outcomes. Renderers may display outcomes but must not decide them.
+- No hidden boosts, rubber-banding, user aura, animation-driven outcomes, or unlogged outcome randomness.
+- If outcomes intentionally change, update golden logs in the same branch and document why in the spec, learning, or handoff.
+
+Use `docs/workflows/git-worktree-playbook.md` for the full branch/worktree process and `docs/workflows/agent-handoff-template.md` for cross-agent handoffs.
