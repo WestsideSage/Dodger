@@ -53,6 +53,7 @@ Current commits:
 - `be5fbcc chore(repo): baseline existing Dodgeball Manager work`
 - `fa29871 chore(workflow): add multi-agent git worktree process`
 - `b4d41fa chore(tooling): add repository hygiene defaults`
+- `0940431 docs(repo): add gitification report`
 
 Current tracked file count: 223.
 
@@ -132,7 +133,7 @@ No push was attempted. `gh` is not installed in this shell, so no remote creatio
 
 - `python3 -m pytest -q`: failed to start before repo hygiene edits because `/usr/bin/python3` has no `pytest` installed.
 - `pytest -q`: failed to start because `pytest` is not on PATH.
-- `cd frontend && npm run lint`: passed before repo hygiene edits.
+- `cd frontend && npm run lint`: passed before repo hygiene edits and again after final worktree/report setup.
 - `cd frontend && npm run build`: failed before repo hygiene edits because Node is `v18.19.1`; installed Vite requires Node `20.19+` or `22.12+` and then errored on missing `CustomEvent`.
 
 No failures were caused by the workflow/documentation/tooling edits.
