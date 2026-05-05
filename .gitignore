@@ -3,6 +3,11 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.tox/
+.nox/
 
 # Virtual environments
 .venv/
@@ -20,6 +25,10 @@ env/
 output/
 qa_v3_results.json
 *.log
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
 
 # Local assistant/editor state
 .claude/settings.local.json
@@ -32,6 +41,7 @@ frontend/node_modules/
 frontend/dist/
 frontend/dist-ssr/
 frontend/*.local
+.vite/
 
 # OS files
 .DS_Store
@@ -44,3 +54,12 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Local worktree folders if someone creates them inside the repo by mistake.
+.worktrees/
+worktrees/
+
+# Local environment files
+.env
+.env.*
+!.env.example
