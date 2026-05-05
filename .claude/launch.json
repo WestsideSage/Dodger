@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Dev Server",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "dodgeball_sim.web_cli"],
+      "port": 5173,
+      "env": { "DODGEBALL_DEV": "1" }
+    }
+  ]
+}

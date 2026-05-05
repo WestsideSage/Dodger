@@ -1,0 +1,11 @@
+# V3 Experience Rebuild Learnings
+
+- The active-roster contract has to live at the dynasty-to-engine boundary, not in the engine. `LineupResolver` can keep returning full ordered rosters for UI and diagnostics, but every match-facing path needs a single `active_starters()` cut before a `Team` reaches `MatchEngine`.
+- `build_match_team_snapshot()` must be defensive even if callers already sliced the lineup. Tests that only exercise `simulate_match()` can pass while the lower-level bridge still accepts a full roster. Boundary helpers should enforce their own invariants.
+- Reports are part of simulation integrity. It is not enough for the engine, replay court, and stats to use six active players if the post-match leverage explanation still uses the full roster. Retrospective probability inputs need to match the same active participants as the event log.
+- Roster snapshots need explicit match roles. A saved player list is not enough to audit V3 behavior once clubs have bench depth. Adding `match_role: active|bench` to snapshot payloads makes replay and stat disputes inspectable without changing the player schema.
+- Pacing controls are most useful when the digest is a first-read surface, not just a confirmation popup. At minimum it needs match count, weeks covered, user-club result, standings context, notable performances, scouting/recruitment status, and next action.
+- Pure pacing helpers are worth keeping even when the GUI still performs most orchestration. `sim_pacing.py` gives tests a stable way to verify stop-before-user-match and milestone behavior without constructing Tkinter state.
+- Name/copy quality needs small automated checks. `copy_quality.py` is intentionally narrow, but it catches the most visible failures: unresolved placeholders, raw player IDs, and inconsistent labels.
+- The visible V3 changes are state-dependent. `python -m dodgeball_sim` launches Manager Mode, but the new controls only show after a career reaches the hub, roster screen, replay, or bulk-sim flow. Entry-point confusion is easy because `dodgeball-sim-gui` still launches the older sandbox.
+- Full test success does not equal visual QA. Tkinter screenshot review remains the best way to verify that V3 feels like a game rather than just meeting functional requirements.

@@ -1,0 +1,1133 @@
+{
+  "events": [
+    {
+      "event_id": 0,
+      "tick": 0,
+      "seed": 31415,
+      "event_type": "match_start",
+      "phase": "init",
+      "actors": {
+        "team_a": "aurora",
+        "team_b": "lunar"
+      },
+      "context": {
+        "config_version": "phase1.v1",
+        "difficulty": "pro",
+        "meta_patch": null,
+        "team_policies": {
+          "aurora": {
+            "target_stars": 0.75,
+            "target_ball_holder": 0.5,
+            "risk_tolerance": 0.55,
+            "sync_throws": 0.3,
+            "rush_frequency": 0.4,
+            "rush_proximity": 0.5,
+            "tempo": 0.45,
+            "catch_bias": 0.5
+          },
+          "lunar": {
+            "target_stars": 0.65,
+            "target_ball_holder": 0.5,
+            "risk_tolerance": 0.5,
+            "sync_throws": 0.25,
+            "rush_frequency": 0.5,
+            "rush_proximity": 0.5,
+            "tempo": 0.5,
+            "catch_bias": 0.5
+          }
+        }
+      },
+      "probabilities": {},
+      "rolls": {},
+      "outcome": {
+        "message": "Match initialized"
+      },
+      "state_diff": {}
+    },
+    {
+      "event_id": 1,
+      "tick": 1,
+      "seed": 31415,
+      "event_type": "throw",
+      "phase": "live",
+      "actors": {
+        "offense_team": "aurora",
+        "defense_team": "lunar",
+        "thrower": "aurora_captain",
+        "target": "lunar_captain"
+      },
+      "context": {
+        "tick": 0,
+        "thrower_selection": {
+          "scores": [
+            {
+              "player_id": "aurora_captain",
+              "score": 0.7087,
+              "fatigue": 0.0
+            },
+            {
+              "player_id": "aurora_scout",
+              "score": 0.577,
+              "fatigue": 0.0
+            },
+            {
+              "player_id": "aurora_rookie",
+              "score": 0.537,
+              "fatigue": 0.0
+            }
+          ],
+          "noise_roll": 0.491878
+        },
+        "target_selection": {
+          "scores": [
+            {
+              "player_id": "lunar_captain",
+              "score": 0.5157,
+              "normalized_overall": 0.604,
+              "vulnerability": 0.43,
+              "ball_holder_pressure": 0.0,
+              "fatigue": 0.0
+            },
+            {
+              "player_id": "lunar_anchor",
+              "score": 0.5113,
+              "normalized_overall": 0.614,
+              "vulnerability": 0.38,
+              "ball_holder_pressure": 0.0,
+              "fatigue": 0.0
+            },
+            {
+              "player_id": "lunar_spotter",
+              "score": 0.4722,
+              "normalized_overall": 0.542,
+              "vulnerability": 0.42,
+              "ball_holder_pressure": 0.0,
+              "fatigue": 0.0
+            }
+          ],
+          "recent_pressure_player_id": null,
+          "noise_roll": 0.162459
+        },
+        "difficulty": "pro",
+        "policy_snapshot": {
+          "target_stars": 0.75,
+          "target_ball_holder": 0.5,
+          "risk_tolerance": 0.55,
+          "sync_throws": 0.3,
+          "rush_frequency": 0.4,
+          "rush_proximity": 0.5,
+          "tempo": 0.45,
+          "catch_bias": 0.5
+        },
+        "chemistry_delta": 0.06,
+        "meta_patch": null,
+        "rush_context": {
+          "active": false,
+          "rush_frequency": 0.4,
+          "rush_proximity": 0.5,
+          "proximity_modifier": 0.0,
+          "fatigue_delta": 0.0,
+          "rng_namespace": null
+        },
+        "sync_context": {
+          "is_synced": false,
+          "sync_modifier": 0.0
+        },
+        "calc": {
+          "accuracy_eff": 78.0,
+          "dodge_eff": 57.0,
+          "catch_eff": 50.0,
+          "power_eff": 72.0,
+          "context_terms": {
+            "chemistry": 0.12,
+            "pressure": 0.0,
+            "rush": 0.0,
+            "sync": 0.0,
+            "dodge_penalty_modifier": 0.0
+          }
+        },
+        "fatigue": {
+          "thrower_fatigue": 0.0,
+          "target_fatigue": 0.0,
+          "thrower_consistency_modifier": 1.0,
+          "target_consistency_modifier": 1.0
+        },
+        "pressure_active": false,
+        "catch_decision": {
+          "threshold": 0.5,
+          "base_threshold": 0.5,
+          "catch_bias": 0.5,
+          "catch_bias_adjustment": 0.0,
+          "dodge_guard": 0.42,
+          "normalized_catch": 0.5,
+          "normalized_dodge": 0.57,
+          "attempt": true
+        }
+      },
+      "probabilities": {
+        "p_on_target": 0.866458,
+        "p_catch": 0.381394
+      },
+      "rolls": {
+        "on_target": 0.086344,
+        "catch": 0.592513
+      },
+      "outcome": {
+        "resolution": "failed_catch",
+        "player_out": "lunar_captain",
+        "tick_advance": 1,
+        "possession_change": true
+      },
+      "state_diff": {
+        "player_out": {
+          "team": "lunar",
+          "player_id": "lunar_captain"
+        }
+      }
+    },
+    {
+      "event_id": 2,
+      "tick": 3,
+      "seed": 31415,
+      "event_type": "throw",
+      "phase": "live",
+      "actors": {
+        "offense_team": "lunar",
+        "defense_team": "aurora",
+        "thrower": "lunar_anchor",
+        "target": "aurora_captain"
+      },
+      "context": {
+        "tick": 1,
+        "thrower_selection": {
+          "scores": [
+            {
+              "player_id": "lunar_anchor",
+              "score": 0.6673,
+              "fatigue": 0.0
+            },
+            {
+              "player_id": "lunar_spotter",
+              "score": 0.5738,
+              "fatigue": 0.0
+            }
+          ],
+          "noise_roll": 0.906785
+        },
+        "target_selection": {
+          "scores": [
+            {
+              "player_id": "aurora_captain",
+              "score": 0.5924,
+              "normalized_overall": 0.63,
+              "vulnerability": 0.4,
+              "ball_holder_pressure": 0.0,
+              "fatigue": 1.0
+            },
+            {
+              "player_id": "aurora_rookie",
+              "score": 0.5734,
+              "normalized_overall": 0.554,
+              "vulnerability": 0.48,
+              "ball_holder_pressure": 0.0,
+              "fatigue": 0.0
+            },
+            {
+              "player_id": "aurora_scout",
+              "score": 0.5535,
+              "normalized_overall": 0.584,
+              "vulnerability": 0.36,
+              "ball_holder_pressure": 0.0,
+              "fatigue": 0.0
+            }
+          ],
+          "recent_pressure_player_id": "aurora_captain",
+          "noise_roll": 0.930946
+        },
+        "difficulty": "pro",
+        "policy_snapshot": {
+          "target_stars": 0.65,
+          "target_ball_holder": 0.5,
+          "risk_tolerance": 0.5,
+          "sync_throws": 0.25,
+          "rush_frequency": 0.5,
+          "rush_proximity": 0.5,
+          "tempo": 0.5,
+          "catch_bias": 0.5
+        },
+        "chemistry_delta": -0.06,
+        "meta_patch": null,
+        "rush_context": {
+          "active": false,
+          "rush_frequency": 0.5,
+          "rush_proximity": 0.5,
+          "proximity_modifier": 0.0,
+          "fatigue_delta": 0.0,
+          "rng_namespace": null
+        },
+        "sync_context": {
+          "is_synced": false,
+          "sync_modifier": 0.0
+        },
+        "calc": {
+          "accuracy_eff": 65.0,
+          "dodge_eff": 59.9,
+          "catch_eff": 54.93,
+          "power_eff": 60.0,
+          "context_terms": {
+            "chemistry": -0.12,
+            "pressure": 0.0,
+            "rush": 0.0,
+            "sync": 0.0,
+            "dodge_penalty_modifier": 0.0
+          }
+        },
+        "fatigue": {
+          "thrower_fatigue": 0.0,
+          "target_fatigue": 1.0,
+          "thrower_consistency_modifier": 1.0,
+          "target_consistency_modifier": 1.0
+        },
+        "pressure_active": true,
+        "pressure_reason": "last_player_alive",
+        "pressure_modifier": 0.0,
+        "catch_decision": {
+          "threshold": 0.48,
+          "base_threshold": 0.48,
+          "catch_bias": 0.5,
+          "catch_bias_adjustment": 0.0,
+          "dodge_guard": 0.45,
+          "normalized_catch": 0.55,
+          "normalized_dodge": 0.6,
+          "attempt": true
+        }
+      },
+      "probabilities": {
+        "p_on_target": 0.575664,
+        "p_catch": 0.735503
+      },
+      "rolls": {
+        "on_target": 0.221517,
+        "catch": 0.298071
+      },
+      "outcome": {
+        "resolution": "catch",
+        "player_out": "lunar_anchor",
+        "tick_advance": 2,
+        "possession_change": true
+      },
+      "state_diff": {
+        "player_out": {
+          "team": "lunar",
+          "player_id": "lunar_anchor"
+        }
+      }
+    },
+    {
+      "event_id": 3,
+      "tick": 4,
+      "seed": 31415,
+      "event_type": "throw",
+      "phase": "live",
+      "actors": {
+        "offense_team": "aurora",
+        "defense_team": "lunar",
+        "thrower": "aurora_captain",
+        "target": "lunar_spotter"
+      },
+      "context": {
+        "tick": 3,
+        "thrower_selection": {
+          "scores": [
+            {
+              "player_id": "aurora_captain",
+              "score": 0.7655,
+              "fatigue": 1.5
+            },
+            {
+              "player_id": "aurora_scout",
+              "score": 0.6401,
+              "fatigue": 0.0
+            },
+            {
+              "player_id": "aurora_rookie",
+              "score": 0.6002,
+              "fatigue": 0.0
+            }
+          ],
+          "noise_roll": 0.912806
+        },
+        "target_selection": {
+          "scores": [
+            {
+              "player_id": "lunar_spotter",
+              "score": 0.554,
+              "normalized_overall": 0.542,
+              "vulnerability": 0.42,
+              "ball_holder_pressure": 0.0,
+              "fatigue": 0.0
+            }
+          ],
+          "recent_pressure_player_id": "lunar_anchor",
+          "noise_roll": 0.888884
+        },
+        "difficulty": "pro",
+        "policy_snapshot": {
+          "target_stars": 0.75,
+          "target_ball_holder": 0.5,
+          "risk_tolerance": 0.55,
+          "sync_throws": 0.3,
+          "rush_frequency": 0.4,
+          "rush_proximity": 0.5,
+          "tempo": 0.45,
+          "catch_bias": 0.5
+        },
+        "chemistry_delta": 0.06,
+        "meta_patch": null,
+        "rush_context": {
+          "active": true,
+          "rush_frequency": 0.4,
+          "rush_proximity": 0.5,
+          "proximity_modifier": 0.0,
+          "fatigue_delta": 0.0,
+          "rng_namespace": null
+        },
+        "sync_context": {
+          "is_synced": false,
+          "sync_modifier": 0.0
+        },
+        "calc": {
+          "accuracy_eff": 77.85,
+          "dodge_eff": 58.0,
+          "catch_eff": 60.0,
+          "power_eff": 71.85,
+          "context_terms": {
+            "chemistry": 0.12,
+            "pressure": 0.0,
+            "rush": 0.0,
+            "sync": 0.0,
+            "dodge_penalty_modifier": 0.0
+          }
+        },
+        "fatigue": {
+          "thrower_fatigue": 1.5,
+          "target_fatigue": 0.0,
+          "thrower_consistency_modifier": 1.0,
+          "target_consistency_modifier": 1.0
+        },
+        "pressure_active": true,
+        "pressure_reason": "final_elimination_opportunity",
+        "pressure_modifier": 0.0
+      },
+      "probabilities": {
+        "p_on_target": 0.854975,
+        "p_catch": 0.60723
+      },
+      "rolls": {
+        "on_target": 0.904177
+      },
+      "outcome": {
+        "resolution": "dodged",
+        "tick_advance": 1,
+        "possession_change": true
+      },
+      "state_diff": {}
+    },
+    {
+      "event_id": 4,
+      "tick": 6,
+      "seed": 31415,
+      "event_type": "throw",
+      "phase": "live",
+      "actors": {
+        "offense_team": "lunar",
+        "defense_team": "aurora",
+        "thrower": "lunar_spotter",
+        "target": "aurora_captain"
+      },
+      "context": {
+        "tick": 4,
+        "thrower_selection": {
+          "scores": [
+            {
+              "player_id": "lunar_spotter",
+              "score": 0.4793,
+              "fatigue": 0.5
+            }
+          ],
+          "noise_roll": 0.291037
+        },
+        "target_selection": {
+          "scores": [
+            {
+              "player_id": "aurora_captain",
+              "score": 0.5154,
+              "normalized_overall": 0.63,
+              "vulnerability": 0.4,
+              "ball_holder_pressure": 0.0,
+              "fatigue": 2.5
+            },
+            {
+              "player_id": "aurora_rookie",
+              "score": 0.4964,
+              "normalized_overall": 0.554,
+              "vulnerability": 0.48,
+              "ball_holder_pressure": 0.0,
+              "fatigue": 0.0
+            },
+            {
+              "player_id": "aurora_scout",
+              "score": 0.4764,
+              "normalized_overall": 0.584,
+              "vulnerability": 0.36,
+              "ball_holder_pressure": 0.0,
+              "fatigue": 0.0
+            }
+          ],
+          "recent_pressure_player_id": "aurora_captain",
+          "noise_roll": 0.246422
+        },
+        "difficulty": "pro",
+        "policy_snapshot": {
+          "target_stars": 0.65,
+          "target_ball_holder": 0.5,
+          "risk_tolerance": 0.5,
+          "sync_throws": 0.25,
+          "rush_frequency": 0.5,
+          "rush_proximity": 0.5,
+          "tempo": 0.5,
+          "catch_bias": 0.5
+        },
+        "chemistry_delta": -0.06,
+        "meta_patch": null,
+        "rush_context": {
+          "active": false,
+          "rush_frequency": 0.5,
+          "rush_proximity": 0.5,
+          "proximity_modifier": 0.0,
+          "fatigue_delta": 0.0,
+          "rng_namespace": null
+        },
+        "sync_context": {
+          "is_synced": false,
+          "sync_modifier": 0.0
+        },
+        "calc": {
+          "accuracy_eff": 54.95,
+          "dodge_eff": 59.75,
+          "catch_eff": 54.825,
+          "power_eff": 47.95,
+          "context_terms": {
+            "chemistry": -0.12,
+            "pressure": 0.0,
+            "rush": 0.0,
+            "sync": 0.0,
+            "dodge_penalty_modifier": 0.0
+          }
+        },
+        "fatigue": {
+          "thrower_fatigue": 0.5,
+          "target_fatigue": 2.5,
+          "thrower_consistency_modifier": 1.0,
+          "target_consistency_modifier": 1.0
+        },
+        "pressure_active": true,
+        "pressure_reason": "last_player_alive",
+        "pressure_modifier": 0.0
+      },
+      "probabilities": {
+        "p_on_target": 0.372852,
+        "p_catch": 0.862329
+      },
+      "rolls": {
+        "on_target": 0.442085
+      },
+      "outcome": {
+        "resolution": "dodged",
+        "tick_advance": 2,
+        "possession_change": true
+      },
+      "state_diff": {}
+    },
+    {
+      "event_id": 5,
+      "tick": 8,
+      "seed": 31415,
+      "event_type": "throw",
+      "phase": "live",
+      "actors": {
+        "offense_team": "aurora",
+        "defense_team": "lunar",
+        "thrower": "aurora_captain",
+        "target": "lunar_spotter"
+      },
+      "context": {
+        "tick": 6,
+        "thrower_selection": {
+          "scores": [
+            {
+              "player_id": "aurora_captain",
+              "score": 0.6926,
+              "fatigue": 3.0
+            },
+            {
+              "player_id": "aurora_scout",
+              "score": 0.5736,
+              "fatigue": 0.0
+            },
+            {
+              "player_id": "aurora_rookie",
+              "score": 0.5336,
+              "fatigue": 0.0
+            }
+          ],
+          "noise_roll": 0.469057
+        },
+        "target_selection": {
+          "scores": [
+            {
+              "player_id": "lunar_spotter",
+              "score": 0.4667,
+              "normalized_overall": 0.542,
+              "vulnerability": 0.42,
+              "ball_holder_pressure": 0.0,
+              "fatigue": 1.5
+            }
+          ],
+          "recent_pressure_player_id": "lunar_spotter",
+          "noise_roll": 0.113131
+        },
+        "difficulty": "pro",
+        "policy_snapshot": {
+          "target_stars": 0.75,
+          "target_ball_holder": 0.5,
+          "risk_tolerance": 0.55,
+          "sync_throws": 0.3,
+          "rush_frequency": 0.4,
+          "rush_proximity": 0.5,
+          "tempo": 0.45,
+          "catch_bias": 0.5
+        },
+        "chemistry_delta": 0.06,
+        "meta_patch": null,
+        "rush_context": {
+          "active": false,
+          "rush_frequency": 0.4,
+          "rush_proximity": 0.5,
+          "proximity_modifier": 0.0,
+          "fatigue_delta": 0.0,
+          "rng_namespace": null
+        },
+        "sync_context": {
+          "is_synced": true,
+          "sync_modifier": 0.05
+        },
+        "calc": {
+          "accuracy_eff": 77.7,
+          "dodge_eff": 57.85,
+          "catch_eff": 59.895,
+          "power_eff": 71.7,
+          "context_terms": {
+            "chemistry": 0.12,
+            "pressure": 0.0,
+            "rush": 0.0,
+            "sync": 0.05,
+            "dodge_penalty_modifier": 0.0
+          }
+        },
+        "fatigue": {
+          "thrower_fatigue": 3.0,
+          "target_fatigue": 1.5,
+          "thrower_consistency_modifier": 1.0,
+          "target_consistency_modifier": 1.0
+        },
+        "pressure_active": true,
+        "pressure_reason": "final_elimination_opportunity",
+        "pressure_modifier": 0.0,
+        "catch_decision": {
+          "threshold": 0.5,
+          "base_threshold": 0.5,
+          "catch_bias": 0.5,
+          "catch_bias_adjustment": 0.0,
+          "dodge_guard": 0.43,
+          "normalized_catch": 0.6,
+          "normalized_dodge": 0.58,
+          "attempt": true
+        }
+      },
+      "probabilities": {
+        "p_on_target": 0.861065,
+        "p_catch": 0.607392
+      },
+      "rolls": {
+        "on_target": 0.185637,
+        "catch": 0.583255
+      },
+      "outcome": {
+        "resolution": "catch",
+        "player_out": "aurora_captain",
+        "tick_advance": 2,
+        "possession_change": true
+      },
+      "state_diff": {
+        "player_out": {
+          "team": "aurora",
+          "player_id": "aurora_captain"
+        }
+      }
+    },
+    {
+      "event_id": 6,
+      "tick": 10,
+      "seed": 31415,
+      "event_type": "throw",
+      "phase": "live",
+      "actors": {
+        "offense_team": "lunar",
+        "defense_team": "aurora",
+        "thrower": "lunar_spotter",
+        "target": "aurora_rookie"
+      },
+      "context": {
+        "tick": 8,
+        "thrower_selection": {
+          "scores": [
+            {
+              "player_id": "lunar_spotter",
+              "score": 0.4902,
+              "fatigue": 2.0
+            }
+          ],
+          "noise_roll": 0.406441
+        },
+        "target_selection": {
+          "scores": [
+            {
+              "player_id": "aurora_rookie",
+              "score": 0.5345,
+              "normalized_overall": 0.554,
+              "vulnerability": 0.48,
+              "ball_holder_pressure": 0.0,
+              "fatigue": 0.0
+            },
+            {
+              "player_id": "aurora_scout",
+              "score": 0.5146,
+              "normalized_overall": 0.584,
+              "vulnerability": 0.36,
+              "ball_holder_pressure": 0.0,
+              "fatigue": 0.0
+            }
+          ],
+          "recent_pressure_player_id": "aurora_captain",
+          "noise_roll": 0.585335
+        },
+        "difficulty": "pro",
+        "policy_snapshot": {
+          "target_stars": 0.65,
+          "target_ball_holder": 0.5,
+          "risk_tolerance": 0.5,
+          "sync_throws": 0.25,
+          "rush_frequency": 0.5,
+          "rush_proximity": 0.5,
+          "tempo": 0.5,
+          "catch_bias": 0.5
+        },
+        "chemistry_delta": -0.06,
+        "meta_patch": null,
+        "rush_context": {
+          "active": false,
+          "rush_frequency": 0.5,
+          "rush_proximity": 0.5,
+          "proximity_modifier": 0.0,
+          "fatigue_delta": 0.0,
+          "rng_namespace": null
+        },
+        "sync_context": {
+          "is_synced": false,
+          "sync_modifier": 0.0
+        },
+        "calc": {
+          "accuracy_eff": 54.8,
+          "dodge_eff": 52.0,
+          "catch_eff": 65.0,
+          "power_eff": 47.8,
+          "context_terms": {
+            "chemistry": -0.12,
+            "pressure": 0.0,
+            "rush": 0.0,
+            "sync": 0.0,
+            "dodge_penalty_modifier": 0.0
+          }
+        },
+        "fatigue": {
+          "thrower_fatigue": 2.0,
+          "target_fatigue": 0.0,
+          "thrower_consistency_modifier": 1.0,
+          "target_consistency_modifier": 1.0
+        },
+        "pressure_active": true,
+        "pressure_reason": "last_player_alive",
+        "pressure_modifier": 0.0
+      },
+      "probabilities": {
+        "p_on_target": 0.528303,
+        "p_catch": 0.941033
+      },
+      "rolls": {
+        "on_target": 0.935583
+      },
+      "outcome": {
+        "resolution": "dodged",
+        "tick_advance": 2,
+        "possession_change": true
+      },
+      "state_diff": {}
+    },
+    {
+      "event_id": 7,
+      "tick": 11,
+      "seed": 31415,
+      "event_type": "throw",
+      "phase": "live",
+      "actors": {
+        "offense_team": "aurora",
+        "defense_team": "lunar",
+        "thrower": "aurora_scout",
+        "target": "lunar_spotter"
+      },
+      "context": {
+        "tick": 10,
+        "thrower_selection": {
+          "scores": [
+            {
+              "player_id": "aurora_scout",
+              "score": 0.5971,
+              "fatigue": 0.0
+            },
+            {
+              "player_id": "aurora_rookie",
+              "score": 0.555,
+              "fatigue": 0.5
+            }
+          ],
+          "noise_roll": 0.626163
+        },
+        "target_selection": {
+          "scores": [
+            {
+              "player_id": "lunar_spotter",
+              "score": 0.4836,
+              "normalized_overall": 0.542,
+              "vulnerability": 0.42,
+              "ball_holder_pressure": 0.0,
+              "fatigue": 3.0
+            }
+          ],
+          "recent_pressure_player_id": "lunar_spotter",
+          "noise_roll": 0.263585
+        },
+        "difficulty": "pro",
+        "policy_snapshot": {
+          "target_stars": 0.75,
+          "target_ball_holder": 0.5,
+          "risk_tolerance": 0.55,
+          "sync_throws": 0.3,
+          "rush_frequency": 0.4,
+          "rush_proximity": 0.5,
+          "tempo": 0.45,
+          "catch_bias": 0.5
+        },
+        "chemistry_delta": 0.06,
+        "meta_patch": null,
+        "rush_context": {
+          "active": false,
+          "rush_frequency": 0.4,
+          "rush_proximity": 0.5,
+          "proximity_modifier": 0.0,
+          "fatigue_delta": 0.0,
+          "rng_namespace": null
+        },
+        "sync_context": {
+          "is_synced": false,
+          "sync_modifier": 0.0
+        },
+        "calc": {
+          "accuracy_eff": 68.0,
+          "dodge_eff": 57.7,
+          "catch_eff": 59.79,
+          "power_eff": 52.0,
+          "context_terms": {
+            "chemistry": 0.12,
+            "pressure": 0.0,
+            "rush": 0.0,
+            "sync": 0.0,
+            "dodge_penalty_modifier": 0.0
+          }
+        },
+        "fatigue": {
+          "thrower_fatigue": 0.0,
+          "target_fatigue": 3.0,
+          "thrower_consistency_modifier": 1.0,
+          "target_consistency_modifier": 1.0
+        },
+        "pressure_active": true,
+        "pressure_reason": "last_player_alive",
+        "pressure_modifier": 0.0,
+        "catch_decision": {
+          "threshold": 0.5,
+          "base_threshold": 0.5,
+          "catch_bias": 0.5,
+          "catch_bias_adjustment": 0.0,
+          "dodge_guard": 0.43,
+          "normalized_catch": 0.6,
+          "normalized_dodge": 0.58,
+          "attempt": true
+        }
+      },
+      "probabilities": {
+        "p_on_target": 0.726777,
+        "p_catch": 0.854458
+      },
+      "rolls": {
+        "on_target": 0.217778,
+        "catch": 0.337164
+      },
+      "outcome": {
+        "resolution": "catch",
+        "player_out": "aurora_scout",
+        "tick_advance": 1,
+        "possession_change": true
+      },
+      "state_diff": {
+        "player_out": {
+          "team": "aurora",
+          "player_id": "aurora_scout"
+        }
+      }
+    },
+    {
+      "event_id": 8,
+      "tick": 14,
+      "seed": 31415,
+      "event_type": "throw",
+      "phase": "live",
+      "actors": {
+        "offense_team": "lunar",
+        "defense_team": "aurora",
+        "thrower": "lunar_spotter",
+        "target": "aurora_rookie"
+      },
+      "context": {
+        "tick": 11,
+        "thrower_selection": {
+          "scores": [
+            {
+              "player_id": "lunar_spotter",
+              "score": 0.4722,
+              "fatigue": 3.5
+            }
+          ],
+          "noise_roll": 0.32862
+        },
+        "target_selection": {
+          "scores": [
+            {
+              "player_id": "aurora_rookie",
+              "score": 0.4888,
+              "normalized_overall": 0.554,
+              "vulnerability": 0.48,
+              "ball_holder_pressure": 0.0,
+              "fatigue": 0.5
+            }
+          ],
+          "recent_pressure_player_id": "aurora_scout",
+          "noise_roll": 0.179056
+        },
+        "difficulty": "pro",
+        "policy_snapshot": {
+          "target_stars": 0.65,
+          "target_ball_holder": 0.5,
+          "risk_tolerance": 0.5,
+          "sync_throws": 0.25,
+          "rush_frequency": 0.5,
+          "rush_proximity": 0.5,
+          "tempo": 0.5,
+          "catch_bias": 0.5
+        },
+        "chemistry_delta": -0.06,
+        "meta_patch": null,
+        "rush_context": {
+          "active": false,
+          "rush_frequency": 0.5,
+          "rush_proximity": 0.5,
+          "proximity_modifier": 0.0,
+          "fatigue_delta": 0.0,
+          "rng_namespace": null
+        },
+        "sync_context": {
+          "is_synced": true,
+          "sync_modifier": 0.05
+        },
+        "calc": {
+          "accuracy_eff": 54.65,
+          "dodge_eff": 51.95,
+          "catch_eff": 64.965,
+          "power_eff": 47.65,
+          "context_terms": {
+            "chemistry": -0.12,
+            "pressure": 0.0,
+            "rush": 0.0,
+            "sync": 0.05,
+            "dodge_penalty_modifier": 0.0
+          }
+        },
+        "fatigue": {
+          "thrower_fatigue": 3.5,
+          "target_fatigue": 0.5,
+          "thrower_consistency_modifier": 1.0,
+          "target_consistency_modifier": 1.0
+        },
+        "pressure_active": true,
+        "pressure_reason": "last_player_alive",
+        "pressure_modifier": 0.0,
+        "catch_decision": {
+          "threshold": 0.48,
+          "base_threshold": 0.48,
+          "catch_bias": 0.5,
+          "catch_bias_adjustment": 0.0,
+          "dodge_guard": 0.37,
+          "normalized_catch": 0.65,
+          "normalized_dodge": 0.52,
+          "attempt": true
+        }
+      },
+      "probabilities": {
+        "p_on_target": 0.538673,
+        "p_catch": 0.941423
+      },
+      "rolls": {
+        "on_target": 0.145901,
+        "catch": 0.293154
+      },
+      "outcome": {
+        "resolution": "catch",
+        "player_out": "lunar_spotter",
+        "tick_advance": 3,
+        "possession_change": true
+      },
+      "state_diff": {
+        "player_out": {
+          "team": "lunar",
+          "player_id": "lunar_spotter"
+        }
+      }
+    },
+    {
+      "event_id": 9,
+      "tick": 14,
+      "seed": 31415,
+      "event_type": "match_end",
+      "phase": "complete",
+      "actors": {
+        "winner": "aurora"
+      },
+      "context": {
+        "reason": "all_opponents_out"
+      },
+      "probabilities": {},
+      "rolls": {},
+      "outcome": {
+        "winner": "aurora"
+      },
+      "state_diff": {}
+    }
+  ],
+  "winner_team_id": "aurora",
+  "box_score": {
+    "teams": {
+      "aurora": {
+        "name": "Aurora Pilots",
+        "totals": {
+          "outs_recorded": 3,
+          "hits": 1,
+          "catches": 2,
+          "dodges": 2,
+          "living": 1
+        },
+        "players": {
+          "aurora_captain": {
+            "name": "Aurora_Captain",
+            "throws": 3,
+            "hits": 1,
+            "catches": 1,
+            "dodges": 1,
+            "caught": 1,
+            "is_out": true
+          },
+          "aurora_scout": {
+            "name": "Aurora_Scout",
+            "throws": 1,
+            "hits": 0,
+            "catches": 0,
+            "dodges": 0,
+            "caught": 1,
+            "is_out": true
+          },
+          "aurora_rookie": {
+            "name": "Aurora_Rookie",
+            "throws": 0,
+            "hits": 0,
+            "catches": 1,
+            "dodges": 1,
+            "caught": 0,
+            "is_out": false
+          }
+        }
+      },
+      "lunar": {
+        "name": "Lunar Arcs",
+        "totals": {
+          "outs_recorded": 2,
+          "hits": 0,
+          "catches": 2,
+          "dodges": 1,
+          "living": 0
+        },
+        "players": {
+          "lunar_captain": {
+            "name": "Lunar_Captain",
+            "throws": 0,
+            "hits": 0,
+            "catches": 0,
+            "dodges": 0,
+            "caught": 0,
+            "is_out": true
+          },
+          "lunar_anchor": {
+            "name": "Lunar_Anchor",
+            "throws": 1,
+            "hits": 0,
+            "catches": 0,
+            "dodges": 0,
+            "caught": 1,
+            "is_out": true
+          },
+          "lunar_spotter": {
+            "name": "Lunar_Spotter",
+            "throws": 3,
+            "hits": 0,
+            "catches": 2,
+            "dodges": 1,
+            "caught": 1,
+            "is_out": true
+          }
+        }
+      }
+    },
+    "winner": "aurora"
+  },
+  "final_tick": 14,
+  "seed": 31415,
+  "config_version": "phase1.v1"
+}
