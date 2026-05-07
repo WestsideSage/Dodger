@@ -11,7 +11,7 @@ def test_has_unresolved_token_detects_raw_ids_and_template_blanks():
 
 def test_has_unresolved_token_allows_normal_sports_copy():
     assert not has_unresolved_token("MVP: Mara Voss")
-    assert not has_unresolved_token("Aurora Pilots Win The Final")
+    assert not has_unresolved_token("Aurora Sentinels Win The Final")
 
 
 def test_title_label_normalizes_common_ui_labels():

@@ -1047,7 +1047,7 @@
   "box_score": {
     "teams": {
       "aurora": {
-        "name": "Aurora Pilots",
+        "name": "Aurora Sentinels",
         "totals": {
           "outs_recorded": 3,
           "hits": 1,
@@ -1086,7 +1086,7 @@
         }
       },
       "lunar": {
-        "name": "Lunar Arcs",
+        "name": "Lunar Syndicate",
         "totals": {
           "outs_recorded": 2,
           "hits": 0,

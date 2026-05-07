@@ -154,17 +154,17 @@ def _staff_recommendations(heads: list[dict[str, Any]], intent: str, opponent_na
         {
             "department": "Tactics",
             "voice": tactic.get("voice", "Keep the plan simple."),
-            "text": f"Prepare for {opponent_name}; {intent.lower()} favors a visible target plan and post-match evidence.",
+            "text": f"Scouting indicates {opponent_name} will challenge our rotations. Align our target plan to exploit their weak side.",
         },
         {
             "department": "Training",
             "voice": training.get("voice", "Reps have to show up on court."),
-            "text": "Fundamentals are the default because they create a real but bounded execution hook in V5.",
+            "text": "We are prioritizing fundamental drills to build a baseline of consistency across the roster this week.",
         },
         {
             "department": "Medical",
             "voice": medical.get("voice", "Availability is a decision."),
-            "text": "Injury prevention is tracked as a fatigue-risk warning, not a full medical model yet.",
+            "text": "Fatigue-risk warnings are elevated for high-workload players. We need to monitor our substitution limits.",
         },
     ]
 
@@ -190,9 +190,9 @@ def _lineup_warnings(roster: list[Player], player_ids: list[str], intent: str, t
     if weak_starters and intent == "Win Now":
         warnings.append(f"{weak_starters[0].name} is a weak starter and may be targeted.")
     if tactics.get("rush_frequency", 0.0) > 0.75:
-        warnings.append("High rush frequency can create fatigue pressure; V5 tracks this as a visible risk.")
+        warnings.append("High rush frequency is creating extreme fatigue pressure. Consider rotating your front line more often.")
     if not warnings:
-        warnings.append("No obvious lineup or tactics conflict found for this intent.")
+        warnings.append("Lineup and tactical intent are well-aligned. The squad is ready for match day.")
     return warnings
 
 
@@ -226,7 +226,7 @@ def build_post_week_dashboard(conn: sqlite3.Connection, plan: Mapping[str, Any],
             },
             {
                 "title": "Why it happened",
-                "summary": "Diagnosis is based on the saved plan and match stat tables.",
+                "summary": "Tactical diagnosis correlates execution metrics to the mandated game plan.",
                 "items": [
                     target_note,
                     f"Tactical target-stars setting: {float(plan.get('tactics', {}).get('target_stars', 0.0)):.2f}.",
@@ -236,12 +236,12 @@ def build_post_week_dashboard(conn: sqlite3.Connection, plan: Mapping[str, Any],
             {
                 "title": "Roster health",
                 "summary": fatigue_note,
-                "items": [f"Medical order: {plan.get('department_orders', {}).get('medical', 'none')}.", "No hidden injury model was applied."],
+                "items": [f"Medical order: {plan.get('department_orders', {}).get('medical', 'none')}.", "Staff report no new medical incidents; fitness levels maintained."],
             },
             {
                 "title": "Player movement",
-                "summary": "Development effects are reported as intent context in this V5 slice.",
-                "items": [f"Training order: {plan.get('department_orders', {}).get('training', 'none')}.", "Youth-rep consequences are preserved in command history."],
+                "summary": "Training staff logged their weekly progression observations based on the current command intent.",
+                "items": [f"Training order: {plan.get('department_orders', {}).get('training', 'none')}.", "Youth-rep visibility continues to track with recent program trajectory."],
             },
             {
                 "title": "Next decisions",

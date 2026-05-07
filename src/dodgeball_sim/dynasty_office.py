@@ -251,7 +251,7 @@ def _league_memory_state(conn: sqlite3.Connection, season_id: str, clubs: dict[s
             "items": [
                 _record_item(item) for item in record_items
             ]
-            or [{"status": "limited", "text": "No league records have been ratified in this save yet."}],
+            or [{"status": "limited", "text": "The league record books are currently empty. History begins when the first records are ratified."}],
         },
         "awards": {
             "items": [
@@ -263,7 +263,7 @@ def _league_memory_state(conn: sqlite3.Connection, season_id: str, clubs: dict[s
                 }
                 for award in awards
             ]
-            or [{"status": "limited", "text": "Season awards will appear after season closeout."}],
+            or [{"status": "limited", "text": "The trophy cabinet awaits. Season awards will be decided and displayed after the offseason closeout."}],
         },
         "rivalries": {
             "items": [
@@ -275,7 +275,7 @@ def _league_memory_state(conn: sqlite3.Connection, season_id: str, clubs: dict[s
                 }
                 for item in rivalry_items
             ]
-            or [{"status": "limited", "text": "Rivalries build from repeated saved match results."}],
+            or [{"status": "limited", "text": "True rivalries require history. Bad blood will build here after repeated, high-stakes match results."}],
         },
         "recent_matches": [_recent_match_item(row, clubs) for row in recent_matches],
     }
@@ -302,7 +302,7 @@ def _staff_market_state(
         "candidates": candidates,
         "recent_actions": recent_actions,
         "rules": {
-            "honesty": "Staff changes affect visible recommendations now; deeper development, scouting, and recovery effects remain explicit future hooks.",
+            "honesty": "Staff upgrades are already reshaping our weekly training plans and scouting coverage.",
         },
     }
 
@@ -321,7 +321,7 @@ def _candidate_for_head(head: dict[str, Any], root_seed: int, season_id: str) ->
         "name": name,
         "rating_primary": primary,
         "rating_secondary": secondary,
-        "voice": _staff_voice(department),
+        "voice": _staff_voice(department, rng),
         "effect_lanes": _staff_effect_lanes(department, primary, secondary),
     }
 
@@ -495,23 +495,62 @@ def _recent_match_item(row: sqlite3.Row, clubs: dict[str, Any]) -> dict[str, Any
 
 
 def _staff_first_name(rng: DeterministicRNG) -> str:
-    return rng.choice(("Ari", "Blair", "Carmen", "Dev", "Eli", "Juno", "Morgan", "Sasha"))
+    return rng.choice((
+        "Ari", "Blair", "Carmen", "Dev", "Eli", "Juno", "Morgan", "Sasha",
+        "Taylor", "Jordan", "Casey", "Riley", "Avery", "Quinn", "Peyton", "Skyler",
+        "Dallas", "Reese", "Rowan", "Ellis", "Kendall", "Micah", "Emerson", "Finley"
+    ))
 
 
 def _staff_last_name(rng: DeterministicRNG) -> str:
-    return rng.choice(("Vale", "Cross", "Hart", "Rook", "Sol", "Pike", "Ives", "Chen"))
+    return rng.choice((
+        "Vale", "Cross", "Hart", "Rook", "Sol", "Pike", "Ives", "Chen",
+        "Gaines", "Mercer", "Vance", "Sutton", "Hayes", "Frost", "Graves", "Cole",
+        "Bridges", "Stark", "Rivers", "Banks", "Shaw", "Kerr", "Brooks", "Glover"
+    ))
 
 
-def _staff_voice(department: str) -> str:
+def _staff_voice(department: str, rng: DeterministicRNG) -> str:
     voices = {
-        "tactics": "Make every matchup leave evidence.",
-        "training": "Growth needs visible reps.",
-        "conditioning": "Late-match legs are earned early.",
-        "medical": "Availability is the quiet edge.",
-        "scouting": "Fit beats noise.",
-        "culture": "Promises become program memory.",
+        "tactics": [
+            "Make every matchup leave evidence.",
+            "Execution beats raw talent when the plan is clear.",
+            "We dictate the tempo, they react to the pressure.",
+            "A rigid lineup is a vulnerable lineup."
+        ],
+        "training": [
+            "Growth needs visible reps.",
+            "Potential means nothing without court time.",
+            "Drills build the floor; match minutes build the ceiling.",
+            "We measure progress in successful catches, not promises."
+        ],
+        "conditioning": [
+            "Late-match legs are earned early.",
+            "Fatigue makes cowards of us all.",
+            "We win the war of attrition in the practice gym.",
+            "Stamina is the shield that protects our strategy."
+        ],
+        "medical": [
+            "Availability is the quiet edge.",
+            "I tell you who can play; you tell them how.",
+            "Managing overuse is managing the season's fate.",
+            "Don't risk a career for a single regular-season win."
+        ],
+        "scouting": [
+            "Fit beats noise.",
+            "We draft for the liabilities we can hide and the traits we can use.",
+            "The tape never lies, even when the public hype does.",
+            "I find the ceiling; you build the floor."
+        ],
+        "culture": [
+            "Promises become program memory.",
+            "Trust is built on fulfilled expectations.",
+            "A fractured locker room will drop the ball when it matters most.",
+            "Recruits watch how we treat our veterans."
+        ]
     }
-    return voices.get(department, "Build the program with proof.")
+    options = voices.get(department, ["Build the program with proof."])
+    return rng.choice(options)
 
 
 __all__ = [

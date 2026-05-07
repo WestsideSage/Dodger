@@ -40,7 +40,7 @@ def _team(
 
 _AURORA = Club(
     club_id="aurora",
-    name="Aurora Pilots",
+    name="Aurora Sentinels",
     colors="teal/charcoal",
     home_region="Northwest",
     founded_year=1998,
@@ -48,12 +48,12 @@ _AURORA = Club(
     primary_color="#2E5E5C",
     secondary_color="#1F2933",
     venue_name="Aurora Field House",
-    tagline="Power-arm aggression, deep scouting tradition",
+    tagline="Calculated aggression and deep scouting tradition",
 )
 
 _LUNAR = Club(
     club_id="lunar",
-    name="Lunar Arcs",
+    name="Lunar Syndicate",
     colors="silver/navy",
     home_region="Northeast",
     founded_year=2002,
@@ -61,12 +61,12 @@ _LUNAR = Club(
     primary_color="#5C6F8A",
     secondary_color="#0F1A2E",
     venue_name="Arc Pavilion",
-    tagline="Catch-heavy attrition, patient defensive system",
+    tagline="Patience, attrition, and an ironclad defensive system",
 )
 
 _NORTHWOOD = Club(
     club_id="northwood",
-    name="Northwood Wreckers",
+    name="Northwood Ironclads",
     colors="brick/cream",
     home_region="Midwest",
     founded_year=1985,
@@ -74,12 +74,12 @@ _NORTHWOOD = Club(
     primary_color="#B75A3A",
     secondary_color="#F4F1EA",
     venue_name="Wrecker Yard",
-    tagline="High-tempo power throwing, target the stars",
+    tagline="Relentless tempo and unapologetic power throwing",
 )
 
 _HARBOR = Club(
     club_id="harbor",
-    name="Harbor Anchors",
+    name="Harbor Tidebreakers",
     colors="navy/gold",
     home_region="Coastal",
     founded_year=1990,
@@ -87,12 +87,12 @@ _HARBOR = Club(
     primary_color="#1F3A5F",
     secondary_color="#D6A23A",
     venue_name="Anchorage Hall",
-    tagline="Defensive grind, league's best catchers",
+    tagline="A punishing defensive grind built on league-best catchers",
 )
 
 _GRANITE = Club(
     club_id="granite",
-    name="Granite Foxes",
+    name="Granite Specters",
     colors="sage/charcoal",
     home_region="Mountain",
     founded_year=2010,
@@ -100,12 +100,12 @@ _GRANITE = Club(
     primary_color="#8FA87E",
     secondary_color="#242428",
     venue_name="Granite Arena",
-    tagline="Swarm and overload, balanced rotation depth",
+    tagline="Swarm tactics and deep rotation pressure",
 )
 
 _SOLSTICE = Club(
     club_id="solstice",
-    name="Solstice Embers",
+    name="Solstice Flare",
     colors="mustard/black",
     home_region="South",
     founded_year=2005,
@@ -113,7 +113,7 @@ _SOLSTICE = Club(
     primary_color="#D6A23A",
     secondary_color="#242428",
     venue_name="Ember Court",
-    tagline="Sniper control, accuracy-focused recruiting",
+    tagline="Surgical sniper control and accuracy-focused recruitment",
 )
 
 
@@ -124,11 +124,11 @@ def curated_clubs() -> List[Club]:
 
 _TEAM_A = _team(
     "aurora",
-    "Aurora Pilots",
+    "Aurora Sentinels",
     [
-        _player("aurora_captain", "Aurora Captain", accuracy=78, power=72, dodge=60, catch=55),
-        _player("aurora_scout", "Aurora Scout", accuracy=68, power=52, dodge=64, catch=58),
-        _player("aurora_rookie", "Aurora Rookie", accuracy=60, power=50, dodge=52, catch=65),
+        _player("aurora_captain", "Marcus Vance", accuracy=78, power=72, dodge=60, catch=55),
+        _player("aurora_scout", "Elena Cross", accuracy=68, power=52, dodge=64, catch=58),
+        _player("aurora_rookie", "Jamal Hayes", accuracy=60, power=50, dodge=52, catch=65),
     ],
     policy=_AURORA.coach_policy,
     chemistry=0.58,
@@ -136,11 +136,11 @@ _TEAM_A = _team(
 
 _TEAM_B = _team(
     "lunar",
-    "Lunar Arcs",
+    "Lunar Syndicate",
     [
-        _player("lunar_captain", "Lunar Captain", accuracy=75, power=70, dodge=57, catch=50),
-        _player("lunar_anchor", "Lunar Anchor", accuracy=65, power=60, dodge=62, catch=70),
-        _player("lunar_spotter", "Lunar Spotter", accuracy=55, power=48, dodge=58, catch=60),
+        _player("lunar_captain", "Sarah Ives", accuracy=75, power=70, dodge=57, catch=50),
+        _player("lunar_anchor", "David Mercer", accuracy=65, power=60, dodge=62, catch=70),
+        _player("lunar_spotter", "Chloe Bridges", accuracy=55, power=48, dodge=58, catch=60),
     ],
     policy=_LUNAR.coach_policy,
     chemistry=0.52,

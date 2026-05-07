@@ -24,7 +24,7 @@ def _baseline_setup():
         ],
         policy=aurora_policy,
         chemistry=0.58,
-        name="Aurora Pilots",
+        name="Aurora Sentinels",
     )
 
     lunar = make_team(
@@ -36,7 +36,7 @@ def _baseline_setup():
         ],
         policy=lunar_policy,
         chemistry=0.52,
-        name="Lunar Arcs",
+        name="Lunar Syndicate",
     )
 
     return make_match_setup(aurora, lunar)

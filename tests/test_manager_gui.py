@@ -852,7 +852,7 @@ def test_build_player_profile_details_includes_bio_ratings_and_stats():
 
     details = build_player_profile_details(
         player,
-        "Aurora Pilots",
+        "Aurora Sentinels",
         season_stats=PlayerMatchStats(
             throws_attempted=10,
             eliminations_by_throw=4,
@@ -873,7 +873,7 @@ def test_build_player_profile_details_includes_bio_ratings_and_stats():
     )
 
     assert details.title == "Casey Cannon"
-    assert "Club: Aurora Pilots" in details.text
+    assert "Club: Aurora Sentinels" in details.text
     assert "Role:" in details.text
     assert "Accuracy: 72.0" in details.text
     assert "Matches: 2" in details.text
@@ -888,7 +888,7 @@ def test_build_player_profile_details_handles_missing_persisted_stats():
         ratings=PlayerRatings(accuracy=60, power=61, dodge=62, catch=63),
     )
 
-    details = build_player_profile_details(player, "Aurora Pilots")
+    details = build_player_profile_details(player, "Aurora Sentinels")
 
     assert "Status: Rookie" in details.text
     assert "No persisted season stats yet." in details.text
@@ -936,7 +936,7 @@ def test_build_wire_items_uses_match_results():
 
     assert items[0].tag == "RESULT"
     assert items[0].match_id == "m1"
-    assert "Aurora Pilots beat Lunar Arcs" in items[0].text
+    assert "Aurora Sentinels beat Lunar Syndicate" in items[0].text
 
 
 def test_build_wire_items_resolves_award_player_names():
@@ -1048,7 +1048,7 @@ def test_build_offseason_ceremony_uses_expected_beats_and_real_rows():
         "schedule_reveal",
     )
     assert champion.title == "Champion"
-    assert "Aurora Pilots" in champion.body
+    assert "Aurora Sentinels" in champion.body
     assert "Development applied to 1 active players" in development.body
     assert "+1.2" in development.body
     assert "Retirements processed: 1" in retirements.body
@@ -1088,9 +1088,9 @@ def test_offseason_champion_beat_prefers_playoff_outcome():
         ),
     )
 
-    assert "Champion: Lunar Arcs" in beat.body
+    assert "Champion: Lunar Syndicate" in beat.body
     assert "Champion source: Playoff final" in beat.body
-    assert "Runner-up: Aurora Pilots" in beat.body
+    assert "Runner-up: Aurora Sentinels" in beat.body
 
 
 def test_create_next_manager_season_uses_existing_clubs_and_next_id():
@@ -1480,8 +1480,8 @@ def test_clamp_offseason_beat_index_bounds_forged_values():
 def test_friendly_preview_text_describes_both_sample_teams():
     preview = friendly_preview_text(sample_match_setup())
 
-    assert "Aurora Pilots" in preview
-    assert "Lunar Arcs" in preview
+    assert "Aurora Sentinels" in preview
+    assert "Lunar Syndicate" in preview
     assert "Top Rotation" in preview
 
 
@@ -1544,7 +1544,7 @@ def test_format_bulk_sim_digest_includes_standings_notables_and_recruitment_cont
         first_week=2,
         last_week=3,
         user_record="2-1-0",
-        standings_note="Aurora Pilots moved into second.",
+        standings_note="Aurora Sentinels moved into second.",
         notable_lines=["Mara Voss posted 5 eliminations."],
         scouting_note="Scout reveal pending.",
         recruitment_note="Recruitment day is next.",
@@ -1552,7 +1552,7 @@ def test_format_bulk_sim_digest_includes_standings_notables_and_recruitment_cont
     )
 
     assert "4 Matches Simmed" in text
-    assert "Aurora Pilots moved into second." in text
+    assert "Aurora Sentinels moved into second." in text
     assert "Mara Voss posted 5 eliminations." in text
     assert "Scout reveal pending." in text
     assert "Recruitment day is next." in text

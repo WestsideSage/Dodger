@@ -49,7 +49,7 @@ def _make_setup():
 def test_club_has_identity_fields():
     club = Club(
         club_id="aurora",
-        name="Aurora Pilots",
+        name="Aurora Sentinels",
         colors="teal/charcoal",
         home_region="Northwest",
         founded_year=1998,
@@ -93,7 +93,7 @@ def test_save_load_club_roundtrip_includes_identity_fields():
 
     club = Club(
         club_id="aurora",
-        name="Aurora Pilots",
+        name="Aurora Sentinels",
         colors="teal/charcoal",
         home_region="Northwest",
         founded_year=1998,
@@ -116,7 +116,7 @@ def test_load_club_roster_raises_corrupt_save_error_for_bad_json():
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     create_schema(conn)
-    club = Club("aurora", "Aurora Pilots", "teal/charcoal", "Northwest", 1998, CoachPolicy())
+    club = Club("aurora", "Aurora Sentinels", "teal/charcoal", "Northwest", 1998, CoachPolicy())
     save_club(conn, club, roster=[])
     conn.execute(
         "UPDATE club_rosters SET players_json = ? WHERE club_id = ?",
