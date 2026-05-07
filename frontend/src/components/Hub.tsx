@@ -1,11 +1,30 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { MatchReplayResponse, StatusResponse, SimResponse } from '../types';
-import { MatchReplay } from './MatchReplay';
-import { ActionButton, Badge, Card, KeyValueRow, PageHeader, StatChip, StatusMessage } from './ui';
+import MatchReplay from './MatchReplay';
+import { ActionButton, KeyValueRow, Badge, PageHeader, StatChip, StatusMessage } from './ui';
 
 function formatState(value: string) {
   return value.replaceAll('_', ' ');
 }
+
+// War-room variant styles for sim action tiles
+const simTileVariantStyle: Record<'primary' | 'accent' | 'secondary', React.CSSProperties> = {
+  primary: {
+    background: 'rgba(249,115,22,0.08)',
+    border: '1px solid rgba(249,115,22,0.35)',
+    color: '#f97316',
+  },
+  accent: {
+    background: 'rgba(34,211,238,0.07)',
+    border: '1px solid rgba(34,211,238,0.3)',
+    color: '#22d3ee',
+  },
+  secondary: {
+    background: '#0f172a',
+    border: '1px solid #1e293b',
+    color: '#94a3b8',
+  },
+};
 
 function SimAction({
   title,
@@ -22,20 +41,40 @@ function SimAction({
   variant: 'primary' | 'accent' | 'secondary';
   onClick: () => void;
 }) {
+  const varStyle = simTileVariantStyle[variant];
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`group rounded-md border border-[var(--color-border)] p-4 text-left shadow-[var(--shadow-button)] transition-all duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-45 ${
-        variant === 'primary'
-          ? 'bg-[var(--color-gym)] text-[var(--color-paper)] hover:-translate-y-0.5 hover:bg-[var(--color-teal)]'
-          : variant === 'accent'
-            ? 'bg-[var(--color-brick)] text-[var(--color-paper)] hover:-translate-y-0.5 hover:bg-[var(--color-orange)]'
-            : 'bg-[var(--color-paper)] text-[var(--color-charcoal)] hover:-translate-y-0.5 hover:bg-[var(--color-cream)]'
-      }`}
+      style={{
+        ...varStyle,
+        borderRadius: '4px',
+        padding: '0.875rem 1rem',
+        textAlign: 'left',
+        cursor: 'pointer',
+        transition: 'all 0.15s',
+        opacity: disabled ? 0.45 : 1,
+        width: '100%',
+      }}
     >
-      <span className="block font-display uppercase tracking-widest text-sm">{loading ? 'Simulating...' : title}</span>
-      <span className={`mt-1 block text-xs ${variant === 'secondary' ? 'text-[var(--color-muted)]' : 'text-[color-mix(in_srgb,var(--color-paper)_82%,transparent)]'}`}>
+      <span style={{
+        display: 'block',
+        fontFamily: 'var(--font-display)',
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        fontSize: '0.8125rem',
+        fontWeight: 700,
+        color: varStyle.color,
+      }}>
+        {loading ? 'Simulating...' : title}
+      </span>
+      <span style={{
+        display: 'block',
+        marginTop: '0.25rem',
+        fontSize: '0.75rem',
+        color: '#475569',
+        fontFamily: 'var(--font-body)',
+      }}>
         {detail}
       </span>
     </button>
@@ -46,7 +85,7 @@ export function Hub() {
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [simulating, setSimulating] = useState(false);
-  const [acknowledging, setAcknowledging] = useState(false);
+  const [, setAcknowledging] = useState(false);
   const [simResult, setSimResult] = useState<SimResponse | null>(null);
   const [replay, setReplay] = useState<MatchReplayResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -149,14 +188,16 @@ export function Hub() {
   if (loading && !status) return <StatusMessage title="Loading hub">Opening the manager desk.</StatusMessage>;
   if (error) return <StatusMessage title="Hub unavailable" tone="danger">{error}</StatusMessage>;
   if (!status) return null;
-  if (replay) return <MatchReplay replay={replay} acknowledging={acknowledging} onAcknowledge={handleAcknowledge} />;
+  if (replay) return <MatchReplay data={replay} onContinue={handleAcknowledge} />;
 
   const canSimulate = status.state.state === 'season_active_pre_match';
 
   return (
-    <div className="flex flex-col gap-5">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+      {/* Page header */}
       <PageHeader
-        eyebrow="Manager desk"
+        eyebrow="War Room"
         title="Season Hub"
         description="Advance the schedule from the same workspace, with single-match play separated from bulk simulation."
         stats={
@@ -168,93 +209,111 @@ export function Hub() {
         }
       />
 
+      {/* Pre-match state alert */}
       {!canSimulate && (
         <StatusMessage title="No playable match" tone="warning">
           The backend reports {formatState(status.state.state)}. Simulation actions are held until a pre-match state is available.
         </StatusMessage>
       )}
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.15fr_0.85fr]">
-        <Card className="overflow-hidden">
-          <div className="border-b border-[var(--color-border)] bg-[var(--color-charcoal)] p-4 text-[var(--color-paper)]">
-            <div className="flex items-center justify-between gap-3">
+      {/* Match Controls + Club Status row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}
+        className="lg-two-col-hub">
+
+        {/* Match Controls */}
+        <div className="dm-panel">
+          <div className="dm-panel-header" style={{ borderBottom: '1px solid #1e293b' }}>
+            <p className="dm-kicker">Simulation Console</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
               <div>
-                <h3 className="font-display uppercase tracking-widest text-lg">Match Controls</h3>
-                <p className="text-sm text-[color-mix(in_srgb,var(--color-paper)_75%,transparent)]">
-                  Choose how aggressively to move time forward.
-                </p>
+                <h2 className="dm-panel-title">Match Controls</h2>
+                <p className="dm-panel-subtitle">Choose how aggressively to move time forward.</p>
               </div>
               <Badge tone={canSimulate ? 'success' : 'warning'}>{canSimulate ? 'Ready' : 'Waiting'}</Badge>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2">
-            <SimAction
-              title="Play Next Match"
-              detail={`Stops at the Week ${status.state.week} report.`}
-              variant="primary"
-              loading={simulating}
-              disabled={simulating || !canSimulate}
-              onClick={() => handleSimulate('user_match')}
-            />
-            <SimAction
-              title="Sim Week"
-              detail="Advances the current league week."
-              variant="accent"
-              disabled={simulating || !canSimulate}
-              onClick={() => handleSimulate('week')}
-            />
-            <SimAction
-              title="Sim To User Match"
-              detail="Runs neutral fixtures until your club is due."
-              variant="secondary"
-              disabled={simulating || !canSimulate}
-              onClick={() => handleSimulate('next_user_match')}
-            />
-            <SimAction
-              title="Sim 2 Weeks"
-              detail="Bulk advance, stopping for required reports."
-              variant="secondary"
-              disabled={simulating || !canSimulate}
-              onClick={() => handleSimulate('multiple_weeks', { weeks: 2 })}
-            />
-            <div className="md:col-span-2">
+          <div className="dm-section">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.75rem' }}>
               <SimAction
-                title="Sim To Playoffs"
-                detail="Fastest option; may skip quiet weeks until a milestone blocks progress."
+                title="Play Next Match"
+                detail={`Stops at the Week ${status.state.week} report.`}
+                variant="primary"
+                loading={simulating}
+                disabled={simulating || !canSimulate}
+                onClick={() => handleSimulate('user_match')}
+              />
+              <SimAction
+                title="Sim Week"
+                detail="Advances the current league week."
+                variant="accent"
+                disabled={simulating || !canSimulate}
+                onClick={() => handleSimulate('week')}
+              />
+              <SimAction
+                title="Sim To User Match"
+                detail="Runs neutral fixtures until your club is due."
                 variant="secondary"
                 disabled={simulating || !canSimulate}
-                onClick={() => handleSimulate('milestone', { milestone: 'playoffs' })}
+                onClick={() => handleSimulate('next_user_match')}
               />
+              <SimAction
+                title="Sim 2 Weeks"
+                detail="Bulk advance, stopping for required reports."
+                variant="secondary"
+                disabled={simulating || !canSimulate}
+                onClick={() => handleSimulate('multiple_weeks', { weeks: 2 })}
+              />
+              <div style={{ gridColumn: '1 / -1' }}>
+                <SimAction
+                  title="Sim To Playoffs"
+                  detail="Fastest option; may skip quiet weeks until a milestone blocks progress."
+                  variant="secondary"
+                  disabled={simulating || !canSimulate}
+                  onClick={() => handleSimulate('milestone', { milestone: 'playoffs' })}
+                />
+              </div>
+            </div>
+
+            {simResult && (
+              <div style={{ marginTop: '0.75rem' }}>
+                <StatusMessage title="Simulation complete" tone="success">
+                  {simResult.message || `Simulated ${simResult.simulated_count} matches.`}
+                </StatusMessage>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Club Status */}
+        <div className="dm-panel">
+          <div className="dm-panel-header">
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+              <div>
+                <p className="dm-kicker">Save Cursor</p>
+                <h2 className="dm-panel-title">Club Status</h2>
+                <p className="dm-panel-subtitle">Current save cursor and club context.</p>
+              </div>
+              <ActionButton variant="ghost" onClick={() => refreshStatus(true)} disabled={loading}>
+                Refresh
+              </ActionButton>
             </div>
           </div>
-
-          {simResult && (
-            <div className="border-t border-[var(--color-border)] bg-[var(--color-cream)] p-4">
-              <StatusMessage title="Simulation complete" tone="success">
-                {simResult.message || `Simulated ${simResult.simulated_count} matches.`}
-              </StatusMessage>
-            </div>
-          )}
-        </Card>
-
-        <Card className="p-4">
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <h3 className="font-display uppercase tracking-widest text-lg">Club Status</h3>
-              <p className="text-sm text-[var(--color-muted)]">Current save cursor and club context.</p>
-            </div>
-            <ActionButton variant="ghost" onClick={() => refreshStatus(true)} disabled={loading}>
-              Refresh
-            </ActionButton>
-          </div>
-          <div>
-            <KeyValueRow label="Active Season" value={status.context.season_id ? (status.context.season_id.split('-')[0] || status.context.season_id) : 'None'} />
-            <KeyValueRow label="Your Club" value={status.context.player_club_name || status.context.player_club_id || 'None'} />
+          <div className="dm-section">
+            <KeyValueRow
+              label="Active Season"
+              value={status.context.season_id ? (status.context.season_id.split('-')[0] || status.context.season_id) : 'None'}
+            />
+            <KeyValueRow
+              label="Your Club"
+              value={status.context.player_club_name || status.context.player_club_id || 'None'}
+            />
             <KeyValueRow label="Cursor" value={formatState(status.state.state)} />
-            {status.state.match_id && <KeyValueRow label="Last Match" value={`${status.state.match_id.substring(0, 8)}...`} />}
+            {status.state.match_id && (
+              <KeyValueRow label="Last Match" value={`${status.state.match_id.substring(0, 8)}...`} />
+            )}
           </div>
-        </Card>
+        </div>
       </div>
     </div>
   );

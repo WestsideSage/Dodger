@@ -24,6 +24,7 @@ env/
 # Local run artifacts
 output/
 qa_v3_results.json
+.dodgeball-web.json
 *.log
 .coverage
 .coverage.*

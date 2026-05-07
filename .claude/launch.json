@@ -5,7 +5,7 @@
       "name": "Dev Server",
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "dodgeball_sim.web_cli"],
-      "port": 5173,
+      "port": 8000,
       "env": { "DODGEBALL_DEV": "1" }
     }
   ]

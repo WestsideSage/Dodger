@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { CommandCenterResponse, CommandCenterSimResponse } from '../types';
-import { ActionButton, Badge, Card, KeyValueRow, PageHeader, StatChip, StatusMessage } from './ui';
+import { ActionButton, Badge, KeyValueRow, PageHeader, StatChip, StatusMessage } from './ui';
 
 const devFocusOptions = ['BALANCED', 'YOUTH_ACCELERATION', 'TACTICAL_DRILLS', 'STRENGTH_AND_CONDITIONING'];
 
@@ -116,9 +116,11 @@ export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: strin
   const dashboard = result?.dashboard || data.latest_dashboard;
 
   return (
-    <div className="flex flex-col gap-5" data-testid="weekly-command-center">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }} data-testid="weekly-command-center">
+
+      {/* Page header */}
       <PageHeader
-        eyebrow="Weekly command center"
+        eyebrow="War Room"
         title="Command Center"
         description={data.current_objective}
         stats={
@@ -130,176 +132,307 @@ export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: strin
         }
       />
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-        <Card className="p-4">
-          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h3 className="font-display uppercase tracking-widest text-lg">Weekly Plan</h3>
-              <p className="text-sm text-[var(--color-muted)]">Set the program intent, then accept the staff plan or adjust supporting tabs.</p>
-            </div>
-            <Badge tone="success">Playable</Badge>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="font-display uppercase tracking-wider text-[11px] text-[var(--color-muted)]">Intent</span>
-              <select
-                aria-label="Weekly intent"
-                value={selectedIntent}
-                onChange={(event) => {
-                  setSelectedIntent(event.target.value);
-                  savePlan(event.target.value, selectedDevFocus);
-                }}
-                className="mt-1 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-paper)] px-3 py-2 font-bold text-[var(--color-charcoal)]"
-              >
-                {plan.available_intents.map(intent => <option key={intent}>{intent}</option>)}
-              </select>
-            </label>
-
-            <label className="block">
-              <span className="font-display uppercase tracking-wider text-[11px] text-[var(--color-muted)]">Dev Focus</span>
-              <select
-                aria-label="Development Focus"
-                value={selectedDevFocus}
-                onChange={(event) => {
-                  setSelectedDevFocus(event.target.value);
-                  savePlan(selectedIntent, event.target.value);
-                }}
-                className="mt-1 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-paper)] px-3 py-2 font-bold text-[var(--color-charcoal)]"
-              >
-                {devFocusOptions.map(focus => <option key={focus} value={focus}>{focus.replace(/_/g, ' ')}</option>)}
-              </select>
-            </label>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-            {Object.entries(plan.department_orders).filter(([key]) => key !== 'dev_focus').map(([key, value]) => (
-              <div key={key} className="rounded-md border border-[var(--color-border)] bg-[var(--color-cream)] p-3">
-                <div className="font-display uppercase tracking-wider text-[11px] text-[var(--color-muted)]">{departmentLabels[key] || key}</div>
-                <div className="mt-1 font-bold capitalize">{value}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <ActionButton variant="primary" onClick={() => savePlan()} disabled={saving || simulating}>
-              {saving ? 'Saving...' : 'Accept Recommended Plan'}
-            </ActionButton>
-            <ActionButton variant="accent" onClick={simulate} disabled={simulating || saving} data-testid="simulate-command-week">
-              {simulating ? 'Simulating...' : 'Simulate Command Week'}
-            </ActionButton>
-            <ActionButton variant="ghost" onClick={() => load(true)} disabled={loading || simulating}>
-              Refresh
-            </ActionButton>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <h3 className="font-display uppercase tracking-widest text-lg">Staff Room</h3>
-          <div className="mt-3 flex flex-col gap-3">
-            {plan.recommendations.map(item => (
-              <div key={item.department} className="rounded-md border border-[var(--color-line)] p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <strong className="font-display uppercase tracking-wider text-xs">{item.department}</strong>
-                  <span className="text-xs text-[var(--color-muted)]">{item.voice}</span>
-                </div>
-                <p className="mt-2 text-sm text-[var(--color-charcoal)]">{item.text}</p>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-        <Card className="p-4">
-          <h3 className="font-display uppercase tracking-widest text-lg">Lineup Accountability</h3>
-          <p className="mt-1 text-sm text-[var(--color-muted)]">{plan.lineup.summary}</p>
-          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {plan.lineup.players.map(player => (
-              <div key={player.id} className="rounded-md border border-[var(--color-line)] px-3 py-2">
-                <div className="font-bold">{player.name}</div>
-                <div className="text-xs text-[var(--color-muted)]">OVR {player.overall} · Potential {player.potential ?? 'n/a'}</div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 flex flex-col gap-2">
-            {plan.warnings.map(warning => <StatusMessage key={warning} title="Staff warning" tone="warning">{warning}</StatusMessage>)}
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <h3 className="font-display uppercase tracking-widest text-lg">Tactics Evidence</h3>
-          <div className="mt-3 grid grid-cols-2 gap-x-5 gap-y-1">
-            <KeyValueRow label="Target stars" value={formatTactic(plan.tactics.target_stars)} />
-            <KeyValueRow label="Ball holder" value={formatTactic(plan.tactics.target_ball_holder)} />
-            <KeyValueRow label="Rush freq." value={formatTactic(plan.tactics.rush_frequency)} />
-            <KeyValueRow label="Catch bias" value={formatTactic(plan.tactics.catch_bias)} />
-          </div>
-          <p className="mt-3 text-sm text-[var(--color-muted)]">
-            Dashboard notes only cite effects that are tracked in the saved plan or match stats.
-          </p>
-        </Card>
-      </div>
-
-      {dashboard && (
-        <Card className="overflow-hidden" data-testid="post-week-dashboard">
-          <div className="border-b border-[var(--color-border)] bg-[var(--color-charcoal)] p-4 text-[var(--color-paper)]">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* Weekly Plan + Staff Room row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}
+        className="xl-two-col">
+        {/* Weekly Plan */}
+        <div className="dm-panel">
+          <div className="dm-panel-header">
+            <p className="dm-kicker">Tactical Directive</p>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
               <div>
-                <h3 className="font-display uppercase tracking-widest text-lg">Post-Week Dashboard</h3>
-                <p className="text-sm text-[color-mix(in_srgb,var(--color-paper)_78%,transparent)]">
+                <h2 className="dm-panel-title">Weekly Plan</h2>
+                <p className="dm-panel-subtitle">Set the program intent, then accept the staff plan or adjust supporting tabs.</p>
+              </div>
+              <Badge tone="success">Playable</Badge>
+            </div>
+          </div>
+
+          <div className="dm-section">
+            {/* Intent + Dev Focus selects */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+              <label style={{ display: 'block' }}>
+                <span className="dm-kicker" style={{ display: 'block', marginBottom: '0.375rem' }}>Intent</span>
+                <select
+                  aria-label="Weekly intent"
+                  value={selectedIntent}
+                  onChange={(event) => {
+                    setSelectedIntent(event.target.value);
+                    savePlan(event.target.value, selectedDevFocus);
+                  }}
+                  style={{
+                    width: '100%',
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '4px',
+                    padding: '0.5rem 0.75rem',
+                    color: '#e2e8f0',
+                    fontFamily: 'var(--font-display)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  {plan.available_intents.map(intent => <option key={intent}>{intent}</option>)}
+                </select>
+              </label>
+
+              <label style={{ display: 'block' }}>
+                <span className="dm-kicker" style={{ display: 'block', marginBottom: '0.375rem' }}>Dev Focus</span>
+                <select
+                  aria-label="Development Focus"
+                  value={selectedDevFocus}
+                  onChange={(event) => {
+                    setSelectedDevFocus(event.target.value);
+                    savePlan(selectedIntent, event.target.value);
+                  }}
+                  style={{
+                    width: '100%',
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '4px',
+                    padding: '0.5rem 0.75rem',
+                    color: '#e2e8f0',
+                    fontFamily: 'var(--font-display)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  {devFocusOptions.map(focus => <option key={focus} value={focus}>{focus.replace(/_/g, ' ')}</option>)}
+                </select>
+              </label>
+            </div>
+
+            {/* Department orders */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem', marginTop: '1rem' }}>
+              {Object.entries(plan.department_orders).filter(([key]) => key !== 'dev_focus').map(([key, value]) => (
+                <div key={key} style={{
+                  background: '#0f172a',
+                  border: '1px solid #1e293b',
+                  borderRadius: '4px',
+                  padding: '0.75rem',
+                }}>
+                  <p className="dm-kicker" style={{ marginBottom: '0.25rem' }}>{departmentLabels[key] || key}</p>
+                  <p className="dm-data" style={{ color: '#22d3ee', fontSize: '0.75rem', fontWeight: 700, textTransform: 'capitalize' }}>{String(value)}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1rem' }}>
+              <ActionButton variant="primary" onClick={() => savePlan()} disabled={saving || simulating}>
+                {saving ? 'Saving...' : 'Accept Recommended Plan'}
+              </ActionButton>
+              <ActionButton variant="accent" onClick={simulate} disabled={simulating || saving} data-testid="simulate-command-week">
+                {simulating ? 'Simulating...' : 'Simulate Command Week'}
+              </ActionButton>
+              <ActionButton variant="ghost" onClick={() => load(true)} disabled={loading || simulating}>
+                Refresh
+              </ActionButton>
+            </div>
+          </div>
+        </div>
+
+        {/* Staff Room */}
+        <div className="dm-panel">
+          <div className="dm-panel-header">
+            <p className="dm-kicker">Personnel Briefing</p>
+            <h2 className="dm-panel-title">Staff Room</h2>
+          </div>
+          <div className="dm-section" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {plan.recommendations.map(item => (
+              <div key={item.department} style={{
+                background: '#0f172a',
+                border: '1px solid #1e293b',
+                borderRadius: '4px',
+                padding: '0.75rem',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.375rem' }}>
+                  <span className="dm-kicker">{item.department}</span>
+                  <span style={{ fontSize: '0.6875rem', color: '#475569', fontFamily: 'var(--font-body)' }}>{item.voice}</span>
+                </div>
+                <p style={{ fontSize: '0.875rem', color: '#cbd5e1', fontFamily: 'var(--font-body)' }}>{item.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Lineup + Tactics Evidence row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}
+        className="lg-two-col-roster">
+        {/* Lineup Accountability */}
+        <div className="dm-panel">
+          <div className="dm-panel-header">
+            <p className="dm-kicker">Selection</p>
+            <h2 className="dm-panel-title">Lineup Accountability</h2>
+            <p className="dm-panel-subtitle">{plan.lineup.summary}</p>
+          </div>
+          <div className="dm-section">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.625rem' }}>
+              {plan.lineup.players.map(player => (
+                <div key={player.id} style={{
+                  background: '#0f172a',
+                  border: '1px solid #1e293b',
+                  borderRadius: '4px',
+                  padding: '0.625rem 0.75rem',
+                }}>
+                  <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: '0.875rem' }}>{player.name}</div>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                    <span className="dm-badge dm-badge-slate">OVR {player.overall}</span>
+                    {player.potential != null && (
+                      <span className="dm-badge dm-badge-violet">POT {player.potential}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {plan.warnings.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.75rem' }}>
+                {plan.warnings.map(warning => (
+                  <StatusMessage key={warning} title="Staff warning" tone="warning">{warning}</StatusMessage>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Tactics Evidence */}
+        <div className="dm-panel">
+          <div className="dm-panel-header">
+            <p className="dm-kicker">Match Strategy</p>
+            <h2 className="dm-panel-title">Tactics Evidence</h2>
+          </div>
+          <div className="dm-section">
+            <KeyValueRow label="Target Stars" value={formatTactic(plan.tactics.target_stars)} />
+            <KeyValueRow label="Ball Holder" value={formatTactic(plan.tactics.target_ball_holder)} />
+            <KeyValueRow label="Rush Freq." value={formatTactic(plan.tactics.rush_frequency)} />
+            <KeyValueRow label="Catch Bias" value={formatTactic(plan.tactics.catch_bias)} />
+            <p style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: '#475569', fontFamily: 'var(--font-body)' }}>
+              Dashboard notes only cite effects that are tracked in the saved plan or match stats.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Post-Week Dashboard */}
+      {dashboard && (
+        <div className="dm-panel" data-testid="post-week-dashboard" style={{ overflow: 'hidden' }}>
+          <div className="dm-panel-header" style={{ borderBottom: '1px solid #1e293b' }}>
+            <p className="dm-kicker">Match Report</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+              <div>
+                <h2 className="dm-panel-title">Post-Week Dashboard</h2>
+                <p className="dm-panel-subtitle">
                   Week {dashboard.week} · {dashboard.result} vs {dashboard.opponent_name}
                 </p>
               </div>
-              <Badge tone={dashboard.result === 'Win' ? 'success' : dashboard.result === 'Loss' ? 'danger' : 'warning'}>{dashboard.result}</Badge>
-              {dashboard.match_id && onOpenReplay && (
-                <ActionButton variant="accent" onClick={() => onOpenReplay(dashboard.match_id)}>
-                  Open Replay Proof
-                </ActionButton>
-              )}
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <Badge tone={dashboard.result === 'Win' ? 'success' : dashboard.result === 'Loss' ? 'danger' : 'warning'}>
+                  {dashboard.result}
+                </Badge>
+                {dashboard.match_id && onOpenReplay && (
+                  <ActionButton variant="accent" onClick={() => onOpenReplay(dashboard.match_id)}>
+                    Open Replay Proof
+                  </ActionButton>
+                )}
+              </div>
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-3 p-4 lg:grid-cols-5">
+          <div className="dm-section" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.75rem' }}>
             {dashboard.lanes.map(lane => (
-              <section key={lane.title} className="rounded-md border border-[var(--color-border)] bg-[var(--color-paper)] p-3">
-                <h4 className="font-display uppercase tracking-wider text-xs text-[var(--color-brick)]">{lane.title}</h4>
-                <p className="mt-2 text-sm font-bold">{lane.summary}</p>
-                <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-[var(--color-muted)]">
-                  {lane.items.map(item => <li key={item}>{item}</li>)}
+              <div key={lane.title} style={{
+                background: '#0f172a',
+                border: '1px solid #1e293b',
+                borderRadius: '4px',
+                padding: '0.75rem',
+              }}>
+                <p className="dm-kicker" style={{ color: '#22d3ee', marginBottom: '0.375rem' }}>{lane.title}</p>
+                <p style={{ fontSize: '0.875rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '0.5rem' }}>{lane.summary}</p>
+                <ul style={{ paddingLeft: '1.125rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  {lane.items.map(item => (
+                    <li key={item} style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'var(--font-body)' }}>{item}</li>
+                  ))}
                 </ul>
-              </section>
+              </div>
             ))}
           </div>
-        </Card>
+        </div>
       )}
 
-      <Card className="p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="font-display uppercase tracking-widest text-lg">Command History</h3>
-          <Badge tone="info">{data.history.length} records</Badge>
-        </div>
-        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
-          {data.history.slice(-6).reverse().map(record => (
-            <div key={record.history_id} className="rounded-md border border-[var(--color-line)] p-3">
-              <div className="flex justify-between gap-3">
-                <strong>Week {record.week}</strong>
-                <span className="text-xs text-[var(--color-muted)]">{record.intent}</span>
-              </div>
-              <p className="mt-1 text-sm">{record.dashboard.result} vs {record.dashboard.opponent_name}</p>
-              {record.match_id && onOpenReplay && (
-                <button
-                  type="button"
-                  onClick={() => onOpenReplay(record.match_id as string)}
-                  className="mt-3 font-display text-xs uppercase tracking-wider text-[var(--color-brick)]"
-                >
-                  Open replay proof
-                </button>
-              )}
+      {/* Command History */}
+      <div className="dm-panel">
+        <div className="dm-panel-header">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+            <div>
+              <p className="dm-kicker">Session Log</p>
+              <h2 className="dm-panel-title">Command History</h2>
             </div>
-          ))}
-          {!data.history.length && <p className="text-sm text-[var(--color-muted)]">No command weeks simulated yet.</p>}
+            <Badge tone="info">{data.history.length} records</Badge>
+          </div>
         </div>
-      </Card>
+        <div className="dm-section">
+          {data.history.length > 0 ? (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="dm-table" style={{ width: '100%' }}>
+                <thead>
+                  <tr>
+                    <th>Week</th>
+                    <th>Intent</th>
+                    <th>Result</th>
+                    <th>Opponent</th>
+                    <th style={{ textAlign: 'right' }}>Replay</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.history.slice(-6).reverse().map(record => (
+                    <tr key={record.history_id}>
+                      <td>
+                        <span className="dm-data" style={{ color: '#22d3ee' }}>W{record.week}</span>
+                      </td>
+                      <td style={{ color: '#94a3b8' }}>{record.intent}</td>
+                      <td>
+                        <span className={`dm-badge ${record.dashboard.result === 'Win' ? 'dm-badge-emerald' : record.dashboard.result === 'Loss' ? 'dm-badge-rose' : 'dm-badge-amber'}`}>
+                          {record.dashboard.result}
+                        </span>
+                      </td>
+                      <td style={{ color: '#cbd5e1' }}>{record.dashboard.opponent_name}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        {record.match_id && onOpenReplay ? (
+                          <button
+                            type="button"
+                            onClick={() => onOpenReplay(record.match_id as string)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontFamily: 'var(--font-display)',
+                              fontSize: '0.6875rem',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.075em',
+                              color: '#22d3ee',
+                              padding: '0.25rem 0',
+                            }}
+                          >
+                            View
+                          </button>
+                        ) : (
+                          <span style={{ color: '#334155', fontSize: '0.75rem' }}>—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p style={{ fontSize: '0.875rem', color: '#475569', fontFamily: 'var(--font-body)' }}>No command weeks simulated yet.</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -127,47 +127,101 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
   return (
     <div
       data-testid="save-menu"
-      className="flex min-h-screen items-center justify-center bg-[var(--color-canvas)] px-4 py-10"
+      style={{
+        display: 'flex',
+        minHeight: '100vh',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#020617',
+        padding: '2.5rem 1rem',
+      }}
     >
-      <div className="w-full max-w-lg">
-        <div className="mb-8 text-center">
-          <p className="font-display uppercase tracking-[0.22em] text-xs text-[var(--color-brick)] mb-1">
+      <div style={{ width: '100%', maxWidth: '32rem' }}>
+        {/* Title block */}
+        <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
+          <p style={{
+            fontFamily: 'var(--font-mono-data)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.22em',
+            fontSize: '0.75rem',
+            color: '#22d3ee',
+            margin: '0 0 0.25rem',
+          }}>
             Dynasty simulator
           </p>
-          <h1 className="font-display uppercase tracking-widest text-4xl text-[var(--color-charcoal)]">
+          <h1 style={{
+            fontFamily: 'var(--font-display)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+            fontSize: '2.25rem',
+            color: '#ffffff',
+            margin: 0,
+          }}>
             Dodgeball Manager
           </h1>
         </div>
 
-        <div className="bg-[var(--color-paper)] border border-[var(--color-border)] rounded-md shadow-[var(--shadow-panel)]">
+        {/* Main panel */}
+        <div
+          className="dm-panel"
+          style={{ borderRadius: '6px', overflow: 'hidden' }}
+        >
           {/* Tab bar */}
-          <div className="flex border-b border-[var(--color-border)]">
+          <div style={{ display: 'flex', borderBottom: '1px solid #1e293b' }}>
             <button
               onClick={() => setView('list')}
-              className={`flex-1 py-3 text-sm font-display uppercase tracking-wider transition-colors ${
-                view === 'list'
-                  ? 'text-[var(--color-brick)] border-b-2 border-[var(--color-brick)] -mb-px'
-                  : 'text-[var(--color-muted)] hover:text-[var(--color-charcoal)]'
-              }`}
+              style={{
+                flex: 1,
+                padding: '0.75rem',
+                fontSize: '0.8125rem',
+                fontFamily: 'var(--font-display)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                cursor: 'pointer',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: view === 'list' ? '2px solid #f97316' : '2px solid transparent',
+                color: view === 'list' ? '#f97316' : '#64748b',
+                transition: 'color 0.15s',
+                marginBottom: '-1px',
+              }}
             >
               Load Game
             </button>
             <button
               onClick={() => setView('new')}
               data-testid="new-game-tab"
-              className={`flex-1 py-3 text-sm font-display uppercase tracking-wider transition-colors ${
-                view === 'new'
-                  ? 'text-[var(--color-brick)] border-b-2 border-[var(--color-brick)] -mb-px'
-                  : 'text-[var(--color-muted)] hover:text-[var(--color-charcoal)]'
-              }`}
+              style={{
+                flex: 1,
+                padding: '0.75rem',
+                fontSize: '0.8125rem',
+                fontFamily: 'var(--font-display)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                cursor: 'pointer',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: view === 'new' ? '2px solid #f97316' : '2px solid transparent',
+                color: view === 'new' ? '#f97316' : '#64748b',
+                transition: 'color 0.15s',
+                marginBottom: '-1px',
+              }}
             >
               New Game
             </button>
           </div>
 
-          <div className="p-5">
+          <div style={{ padding: '1.25rem' }}>
             {error && (
-              <div className="mb-4 rounded border border-[var(--color-danger)] bg-[var(--color-danger)]/10 p-3 text-sm text-[var(--color-danger)]">
+              <div style={{
+                marginBottom: '1rem',
+                borderRadius: '4px',
+                border: '1px solid rgba(244,63,94,0.4)',
+                background: 'rgba(244,63,94,0.10)',
+                padding: '0.75rem',
+                fontSize: '0.875rem',
+                color: '#fb7185',
+              }}>
                 {error}
               </div>
             )}
@@ -175,37 +229,62 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
             {view === 'list' && (
               <div data-testid="save-list">
                 {loading ? (
-                  <p className="py-6 text-center text-sm text-[var(--color-muted)]">Loading saves…</p>
+                  <p style={{ padding: '1.5rem 0', textAlign: 'center', fontSize: '0.875rem', color: '#64748b' }}>
+                    Loading saves…
+                  </p>
                 ) : saves.length === 0 ? (
-                  <div className="py-8 text-center">
-                    <p className="text-sm text-[var(--color-muted)] mb-4">No saves found.</p>
+                  <div style={{ padding: '2rem 0', textAlign: 'center' }}>
+                    <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1rem' }}>No saves found.</p>
                     <button
                       onClick={() => setView('new')}
-                      className="rounded-md bg-[var(--color-brick)] px-5 py-2 text-sm font-display uppercase tracking-wider text-[var(--color-paper)] hover:opacity-90 transition-opacity"
+                      style={{
+                        borderRadius: '4px',
+                        background: '#f97316',
+                        border: '1px solid #ea6c0a',
+                        padding: '0.5rem 1.25rem',
+                        fontSize: '0.8125rem',
+                        fontFamily: 'var(--font-display)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.075em',
+                        color: '#fff',
+                        cursor: 'pointer',
+                      }}
                     >
                       Start New Game
                     </button>
                   </div>
                 ) : (
-                  <ul className="divide-y divide-[var(--color-border)]">
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {saves.map((save) => (
                       <li
                         key={save.path}
                         data-testid="save-item"
-                        className={`flex items-center gap-3 py-3 ${
-                          activePath === save.path ? 'opacity-100' : 'opacity-90'
-                        }`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          padding: '0.75rem 0',
+                          borderBottom: '1px solid #1e293b',
+                          opacity: activePath === save.path ? 1 : 0.9,
+                        }}
                       >
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-[var(--color-charcoal)] truncate">
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {save.name}
                             {activePath === save.path && (
-                              <span className="ml-2 text-xs text-[var(--color-brick)] font-display uppercase tracking-wider">
+                              <span style={{
+                                marginLeft: '0.5rem',
+                                fontSize: '0.6875rem',
+                                color: '#22d3ee',
+                                fontFamily: 'var(--font-display)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.1em',
+                              }}>
                                 active
                               </span>
                             )}
                           </div>
-                          <div className="text-xs text-[var(--color-muted)] mt-0.5">
+                          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.125rem' }}>
                             {save.club_name ?? save.club_id ?? 'Unknown club'}
                             {save.week != null && ` · Week ${save.week}`}
                           </div>
@@ -214,7 +293,19 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                           onClick={() => handleLoad(save.path)}
                           disabled={activePath === save.path}
                           data-testid="load-save-btn"
-                          className="rounded border border-[var(--color-border)] px-3 py-1 text-xs font-display uppercase tracking-wider hover:bg-[var(--color-brick)] hover:text-[var(--color-paper)] hover:border-[var(--color-brick)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          style={{
+                            borderRadius: '4px',
+                            border: '1px solid #334155',
+                            background: '#1e293b',
+                            padding: '0.25rem 0.75rem',
+                            fontSize: '0.6875rem',
+                            fontFamily: 'var(--font-display)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.075em',
+                            color: '#cbd5e1',
+                            cursor: 'pointer',
+                            opacity: activePath === save.path ? 0.4 : 1,
+                          }}
                         >
                           {activePath === save.path ? 'Loaded' : 'Load'}
                         </button>
@@ -223,7 +314,19 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                             onClick={() => handleDelete(save.path)}
                             disabled={deleting === save.path}
                             data-testid="delete-save-btn"
-                            className="rounded border border-[var(--color-border)] px-3 py-1 text-xs font-display uppercase tracking-wider text-[var(--color-muted)] hover:bg-[var(--color-danger)] hover:text-[var(--color-paper)] hover:border-[var(--color-danger)] transition-colors disabled:opacity-40"
+                            style={{
+                              borderRadius: '4px',
+                              border: '1px solid rgba(244,63,94,0.3)',
+                              background: 'rgba(244,63,94,0.08)',
+                              padding: '0.25rem 0.75rem',
+                              fontSize: '0.6875rem',
+                              fontFamily: 'var(--font-display)',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.075em',
+                              color: '#fb7185',
+                              cursor: 'pointer',
+                              opacity: deleting === save.path ? 0.4 : 1,
+                            }}
                           >
                             {deleting === save.path ? '…' : 'Delete'}
                           </button>
@@ -239,10 +342,18 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
               <form
                 onSubmit={handleCreate}
                 data-testid="new-game-form"
-                className="flex flex-col gap-4"
+                style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
               >
                 <div>
-                  <label className="block text-xs font-display uppercase tracking-wider text-[var(--color-muted)] mb-1">
+                  <label style={{
+                    display: 'block',
+                    fontSize: '0.6875rem',
+                    fontFamily: 'var(--font-display)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                    color: '#64748b',
+                    marginBottom: '0.25rem',
+                  }}>
                     Save Name
                   </label>
                   <input
@@ -251,34 +362,65 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                     onChange={(e) => setNewName(e.target.value)}
                     placeholder="My Career"
                     data-testid="save-name-input"
-                    className="w-full rounded border border-[var(--color-border)] bg-[var(--color-canvas)] px-3 py-2 text-sm text-[var(--color-charcoal)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brick)]"
+                    style={{
+                      width: '100%',
+                      borderRadius: '4px',
+                      border: '1px solid #334155',
+                      background: '#0f172a',
+                      padding: '0.5rem 0.75rem',
+                      fontSize: '0.875rem',
+                      color: '#e2e8f0',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-display uppercase tracking-wider text-[var(--color-muted)] mb-1">
+                  <label style={{
+                    display: 'block',
+                    fontSize: '0.6875rem',
+                    fontFamily: 'var(--font-display)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                    color: '#64748b',
+                    marginBottom: '0.25rem',
+                  }}>
                     Club
                   </label>
                   {clubs.length > 0 ? (
-                    <ul className="divide-y divide-[var(--color-border)] border border-[var(--color-border)] rounded">
+                    <ul style={{
+                      listStyle: 'none',
+                      padding: 0,
+                      margin: 0,
+                      border: '1px solid #1e293b',
+                      borderRadius: '4px',
+                      overflow: 'hidden',
+                    }}>
                       {clubs.map((club) => (
                         <li
                           key={club.club_id}
                           onClick={() => setNewClubId(club.club_id)}
-                          className={`flex items-center gap-3 px-3 py-3 cursor-pointer transition-colors ${
-                            newClubId === club.club_id
-                              ? 'bg-[var(--color-brick)]/10 border-l-2 border-[var(--color-brick)]'
-                              : 'hover:bg-[var(--color-canvas)]'
-                          }`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            padding: '0.75rem',
+                            cursor: 'pointer',
+                            borderBottom: '1px solid #1e293b',
+                            borderLeft: newClubId === club.club_id ? '2px solid #f97316' : '2px solid transparent',
+                            background: newClubId === club.club_id ? 'rgba(249,115,22,0.08)' : 'transparent',
+                            transition: 'background 0.1s',
+                          }}
                         >
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-semibold text-[var(--color-charcoal)]">{club.name}</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#fff' }}>{club.name}</div>
                             {club.tagline && (
-                              <div className="text-xs text-[var(--color-muted)] truncate">{club.tagline}</div>
+                              <div style={{ fontSize: '0.75rem', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{club.tagline}</div>
                             )}
                           </div>
                           {newClubId === club.club_id && (
-                            <span className="text-[var(--color-brick)] text-xs">✓</span>
+                            <span style={{ color: '#f97316', fontSize: '0.75rem' }}>✓</span>
                           )}
                         </li>
                       ))}
@@ -287,7 +429,15 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                     <select
                       value={newClubId}
                       onChange={(e) => setNewClubId(e.target.value)}
-                      className="w-full rounded border border-[var(--color-border)] bg-[var(--color-canvas)] px-3 py-2 text-sm"
+                      style={{
+                        width: '100%',
+                        borderRadius: '4px',
+                        border: '1px solid #334155',
+                        background: '#0f172a',
+                        padding: '0.5rem 0.75rem',
+                        fontSize: '0.875rem',
+                        color: '#e2e8f0',
+                      }}
                     >
                       <option value="aurora">Aurora Pilots</option>
                       <option value="lunar">Lunar Arcs</option>
@@ -300,14 +450,27 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                 </div>
 
                 {createError && (
-                  <p className="text-sm text-[var(--color-danger)]">{createError}</p>
+                  <p style={{ fontSize: '0.875rem', color: '#fb7185', margin: 0 }}>{createError}</p>
                 )}
 
                 <button
                   type="submit"
                   disabled={creating}
                   data-testid="create-save-btn"
-                  className="rounded-md bg-[var(--color-brick)] px-5 py-2.5 text-sm font-display uppercase tracking-wider text-[var(--color-paper)] hover:opacity-90 transition-opacity disabled:opacity-50"
+                  style={{
+                    borderRadius: '4px',
+                    background: '#f97316',
+                    border: '1px solid #ea6c0a',
+                    padding: '0.625rem 1.25rem',
+                    fontSize: '0.8125rem',
+                    fontFamily: 'var(--font-display)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.075em',
+                    color: '#fff',
+                    cursor: creating ? 'not-allowed' : 'pointer',
+                    opacity: creating ? 0.5 : 1,
+                    fontWeight: 600,
+                  }}
                 >
                   {creating ? 'Creating…' : 'Start Career'}
                 </button>

@@ -7,7 +7,7 @@ import { Offseason } from './components/Offseason';
 import { Roster } from './components/Roster';
 import { SaveMenu } from './components/SaveMenu';
 import { Tactics } from './components/Tactics';
-import { MatchReplay } from './components/MatchReplay';
+import MatchReplay from './components/MatchReplay';
 import type { MatchReplayResponse } from './types';
 
 type Screen = 'loading' | 'menu' | 'game' | 'offseason';
@@ -29,6 +29,17 @@ const tabs: Array<{ id: Tab; label: string; short: string }> = [
   { id: 'schedule', label: 'Schedule', short: 'Fixtures' },
   { id: 'news', label: 'News', short: 'Wire' },
 ];
+
+const tabKickers: Record<Tab, string> = {
+  command: 'WAR ROOM',
+  hub: 'WAR ROOM',
+  dynasty: 'WAR ROOM',
+  roster: 'ROSTER LAB',
+  tactics: 'WAR ROOM',
+  standings: 'LEAGUE OFFICE',
+  schedule: 'LEAGUE OFFICE',
+  news: 'LEAGUE OFFICE',
+};
 
 function tabFromUrl(): Tab {
   const tab = new URLSearchParams(window.location.search).get('tab');
@@ -74,8 +85,8 @@ function App() {
 
   if (screen === 'loading') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--color-canvas)]">
-        <p className="font-display uppercase tracking-widest text-[var(--color-muted)]">Loading…</p>
+      <div className="dm-app-shell" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p className="dm-kicker" style={{ fontSize: '0.875rem', letterSpacing: '0.2em' }}>Loading…</p>
       </div>
     );
   }
@@ -84,89 +95,134 @@ function App() {
     return <SaveMenu onSaveLoaded={() => window.location.reload()} />;
   }
 
+  const menuButton = (
+    <button
+      onClick={() => {
+        fetch('/api/saves/unload', { method: 'POST' })
+          .finally(() => window.location.reload());
+      }}
+      title="Back to Save Menu"
+      style={{
+        width: '100%',
+        padding: '0.5rem 0.75rem',
+        background: 'transparent',
+        border: '1px solid #1e293b',
+        borderRadius: '4px',
+        color: '#64748b',
+        fontFamily: 'var(--font-display)',
+        fontSize: '0.6875rem',
+        textTransform: 'uppercase' as const,
+        letterSpacing: '0.1em',
+        cursor: 'pointer',
+        textAlign: 'left' as const,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#cbd5e1'; (e.currentTarget as HTMLButtonElement).style.borderColor = '#334155'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#64748b'; (e.currentTarget as HTMLButtonElement).style.borderColor = '#1e293b'; }}
+    >
+      <span className="dm-nav-dot" />
+      Menu
+    </button>
+  );
+
   if (screen === 'offseason') {
     return (
-      <div className="app-shell min-h-screen">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-4 md:px-8 md:py-6">
-          <header className="site-header">
-            <div>
-              <p className="font-display uppercase tracking-[0.22em] text-xs text-[var(--color-brick)]">Off-season</p>
-              <h1 className="font-display uppercase tracking-widest text-4xl md:text-5xl text-[var(--color-charcoal)]">
-                Dodgeball Manager
-              </h1>
+      <div className="dm-app-shell flex" style={{ minHeight: '100vh' }}>
+        {/* Left Navigation Rail */}
+        <aside className="dm-left-nav">
+          <div className="dm-left-nav-logo">
+            <p className="dm-kicker">Dodgeball Manager</p>
+            <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', margin: 0 }}>2026</p>
+          </div>
+          <nav style={{ padding: '0.5rem 0', flex: 1 }} aria-label="Primary">
+            <div className="dm-nav-item dm-nav-item-active" style={{ cursor: 'default' }}>
+              <span className="dm-nav-dot" />
+              Off-Season
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => {
-                  fetch('/api/saves/unload', { method: 'POST' })
-                    .finally(() => window.location.reload());
-                }}
-                title="Back to Save Menu"
-                className="rounded border border-[var(--color-border)] px-3 py-1.5 text-xs font-display uppercase tracking-wider text-[var(--color-muted)] hover:text-[var(--color-charcoal)] hover:border-[var(--color-charcoal)] transition-colors"
-              >
-                Menu
-              </button>
+          </nav>
+          <div style={{ padding: '0.75rem', borderTop: '1px solid #1e293b' }}>
+            {menuButton}
+          </div>
+        </aside>
+
+        {/* Main workspace */}
+        <div className="dm-workspace">
+          <header className="dm-broadcast-header">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+              <div>
+                <p className="dm-kicker">OFF-SEASON</p>
+                <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', margin: 0 }}>
+                  Dodgeball Manager
+                </h1>
+              </div>
             </div>
           </header>
-          <main className="workspace-panel">
+          <div className="dm-content">
             <Offseason />
-          </main>
+          </div>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="app-shell min-h-screen">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-4 md:px-8 md:py-6">
-        <header className="site-header">
-          <div>
-            <p className="font-display uppercase tracking-[0.22em] text-xs text-[var(--color-brick)]">Dynasty simulator</p>
-            <h1 className="font-display uppercase tracking-widest text-4xl md:text-5xl text-[var(--color-charcoal)]">
-              Dodgeball Manager
-            </h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden rounded-md border border-[var(--color-border)] bg-[var(--color-paper)] px-4 py-3 text-right shadow-[var(--shadow-panel)] md:block">
-              <div className="font-display uppercase tracking-wider text-[11px] text-[var(--color-muted)]">Weekly loop</div>
-              <div className="font-bold">V5 command center</div>
-            </div>
-            <button
-              onClick={() => {
-                fetch('/api/saves/unload', { method: 'POST' })
-                  .finally(() => window.location.reload());
-              }}
-              title="Back to Save Menu"
-              className="rounded border border-[var(--color-border)] px-3 py-1.5 text-xs font-display uppercase tracking-wider text-[var(--color-muted)] hover:text-[var(--color-charcoal)] hover:border-[var(--color-charcoal)] transition-colors"
-            >
-              Menu
-            </button>
-          </div>
-        </header>
+  const activeTabDef = tabs.find(t => t.id === activeTab) ?? tabs[0];
+  const kicker = commandReplay ? 'MATCH DAY' : commandReplayLoading ? 'MATCH DAY' : tabKickers[activeTab];
+  const headerTitle = commandReplay ? 'Match Replay' : commandReplayLoading ? 'Loading Replay…' : activeTabDef.label;
 
-        <nav className="nav-rail" aria-label="Primary">
-          {tabs.map((tab) => (
+  return (
+    <div className="dm-app-shell flex" style={{ minHeight: '100vh' }}>
+      {/* Left Navigation Rail */}
+      <aside className="dm-left-nav">
+        <div className="dm-left-nav-logo">
+          <p className="dm-kicker">Dodgeball Manager</p>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', margin: 0 }}>2026</p>
+        </div>
+        <nav style={{ padding: '0.5rem 0', flex: 1 }} aria-label="Primary">
+          {tabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`nav-tab ${activeTab === tab.id ? 'nav-tab-active' : ''}`}
+              className={`dm-nav-item ${activeTab === tab.id && !commandReplay && !commandReplayLoading ? 'dm-nav-item-active' : ''}`}
+              onClick={() => { setCommandReplay(null); setActiveTab(tab.id); }}
             >
-              <span>{tab.label}</span>
-              <small>{tab.short}</small>
+              <span className="dm-nav-dot" />
+              {tab.label}
             </button>
           ))}
         </nav>
+        <div style={{ padding: '0.75rem', borderTop: '1px solid #1e293b' }}>
+          {menuButton}
+        </div>
+      </aside>
 
-        <main className="workspace-panel">
+      {/* Main workspace */}
+      <div className="dm-workspace">
+        {/* Broadcast header */}
+        <header className="dm-broadcast-header">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+            <div>
+              <p className="dm-kicker">{kicker}</p>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', margin: 0 }}>
+                {headerTitle}
+              </h1>
+            </div>
+            <div className="dm-data" style={{ fontSize: '0.75rem', color: '#64748b' }}>
+              V5 Command Center
+            </div>
+          </div>
+        </header>
+
+        {/* Screen content */}
+        <div className="dm-content">
           {commandReplay && (
             <MatchReplay
-              replay={commandReplay}
-              acknowledging={false}
-              onAcknowledge={() => setCommandReplay(null)}
+              data={commandReplay}
+              onContinue={() => setCommandReplay(null)}
             />
           )}
           {!commandReplay && commandReplayLoading && (
-            <p className="font-display uppercase tracking-widest text-[var(--color-muted)]">Loading replay…</p>
+            <p className="dm-kicker" style={{ padding: '2rem', fontSize: '0.875rem' }}>Loading replay…</p>
           )}
           {!commandReplay && !commandReplayLoading && activeTab === 'command' && <CommandCenter onOpenReplay={openCommandReplay} />}
           {!commandReplay && !commandReplayLoading && activeTab === 'hub' && <Hub />}
@@ -176,7 +232,7 @@ function App() {
           {!commandReplay && !commandReplayLoading && activeTab === 'standings' && <Standings />}
           {!commandReplay && !commandReplayLoading && activeTab === 'schedule' && <Schedule />}
           {!commandReplay && !commandReplayLoading && activeTab === 'news' && <NewsWire />}
-        </main>
+        </div>
       </div>
     </div>
   );

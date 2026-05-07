@@ -1,7 +1,20 @@
 import { useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import type { CoachPolicy } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
-import { ActionButton, Badge, PageHeader, StatChip, StatusMessage, TendencySlider } from './ui';
+import { ActionButton, Badge, PageHeader, StatChip, StatusMessage } from './ui';
+
+// Per-tendency value display color
+const tendencyColor: Partial<Record<keyof CoachPolicy, string>> = {
+  target_stars: '#f97316',       // orange — offensive targeting
+  target_ball_holder: '#f97316', // orange — offensive targeting
+  rush_frequency: '#f97316',     // orange — aggression
+  rush_proximity: '#f97316',     // orange — aggression
+  tempo: '#f97316',              // orange — action
+  risk_tolerance: '#f59e0b',     // amber — risk/fatigue
+  sync_throws: '#22d3ee',        // cyan — coordination / conservative
+  catch_bias: '#22d3ee',         // cyan — defensive preference
+};
 
 const tacticGroups: Array<{
   title: string;
@@ -90,6 +103,102 @@ const tacticGroups: Array<{
   },
 ];
 
+// Inline coaching-board slider — renders dm-tactic-slider with per-tendency value color
+function TacticSlider({
+  label,
+  value,
+  onChange,
+  leftLabel = 'Low',
+  rightLabel = 'High',
+  description,
+  valueColor = '#cbd5e1',
+}: {
+  label: string;
+  value: number;
+  onChange: (val: number) => void;
+  leftLabel?: string;
+  rightLabel?: string;
+  description?: string;
+  valueColor?: string;
+}) {
+  const percentage = Math.round(value * 100);
+  const setClampedValue = (nextValue: number) => onChange(Math.min(1, Math.max(0, nextValue)));
+  const handleChange = (nextValue: string) => setClampedValue(parseFloat(nextValue));
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    const step = event.shiftKey ? 0.1 : 0.01;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      setClampedValue(value + step);
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+      event.preventDefault();
+      setClampedValue(value - step);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      setClampedValue(0);
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      setClampedValue(1);
+    }
+  };
+
+  return (
+    <div className="dm-tactic-slider">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+        <label
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: '0.875rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+            color: '#cbd5e1',
+          }}
+        >
+          {label}
+        </label>
+        <span className="dm-data" style={{ fontSize: '0.875rem', color: valueColor, fontWeight: 600 }}>
+          {percentage}%
+        </span>
+      </div>
+      {description && (
+        <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem', marginBottom: '0.5rem', fontFamily: 'var(--font-body)' }}>
+          {description}
+        </p>
+      )}
+      <div style={{ position: 'relative', paddingTop: '0.5rem' }}>
+        <input
+          aria-label={label}
+          data-testid={`tactic-${label.toLowerCase().replaceAll(' ', '-')}`}
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={value}
+          onChange={(e) => handleChange(e.target.value)}
+          onInput={(e) => handleChange(e.currentTarget.value)}
+          onKeyDown={handleKeyDown}
+          className="tactic-range"
+          style={{ width: '100%', cursor: 'pointer' }}
+        />
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            marginTop: '0.25rem',
+            fontSize: '0.625rem',
+            textTransform: 'uppercase',
+            color: '#475569',
+            fontFamily: 'var(--font-mono-data)',
+            letterSpacing: '0.08em',
+          }}
+        >
+          <span>{leftLabel}</span>
+          <span>{rightLabel}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Tactics() {
   const { data, loading, error, setData, setError } = useApiResource<CoachPolicy>('/api/tactics');
   const [saving, setSaving] = useState(false);
@@ -131,36 +240,39 @@ export function Tactics() {
   const averageIntent = Math.round((Object.values(data).reduce((sum, value) => sum + value, 0) / Object.values(data).length) * 100);
 
   return (
-    <div className="flex max-w-4xl flex-col gap-5">
-      <PageHeader
-        eyebrow="Coach room"
-        title="Coach Policy"
-        description="Grouped sliders keep tactical intent readable while preserving the eight-field policy model."
-        stats={
-          <>
-            <StatChip label="Intent" value={`${averageIntent}%`} tone="info" />
-            <Badge tone={isDirty ? 'warning' : 'success'}>{isDirty ? 'Unsaved' : 'Saved'}</Badge>
-            <ActionButton onClick={handleSave} disabled={saving || !isDirty} variant="primary">
-              {saving ? 'Saving...' : isDirty ? 'Save Tactics' : 'Saved'}
-            </ActionButton>
-          </>
-        }
-      />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {/* Page header — kicker / title / save controls */}
+      <div className="dm-panel">
+        <PageHeader
+          eyebrow="Coach room"
+          title="Coaching Board"
+          description="Adjust team tendencies and match strategy. Changes apply to the next match."
+          stats={
+            <>
+              <StatChip label="Intent" value={`${averageIntent}%`} tone="info" />
+              <Badge tone={isDirty ? 'warning' : 'success'}>{isDirty ? 'Unsaved' : 'Saved'}</Badge>
+              <ActionButton onClick={handleSave} disabled={saving || !isDirty} variant="primary">
+                {saving ? 'Saving...' : isDirty ? 'Save Tactics' : 'Saved'}
+              </ActionButton>
+            </>
+          }
+        />
+      </div>
 
       {savedMessage && <StatusMessage title="Saved" tone="success">{savedMessage}</StatusMessage>}
 
-      <div className="grid grid-cols-1 gap-4">
-        {tacticGroups.map(group => (
-          <section key={group.title} className="rounded-md border border-[var(--color-border)] bg-[var(--color-cream)] p-4 shadow-[var(--shadow-panel)]">
-            <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
-              <div>
-                <h3 className="font-display uppercase tracking-widest text-lg text-[var(--color-charcoal)]">{group.title}</h3>
-                <p className="text-sm text-[var(--color-muted)]">{group.description}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {/* Tactic group panels */}
+      {tacticGroups.map(group => (
+        <div key={group.title} className="dm-panel">
+          <div className="dm-panel-header" style={{ marginBottom: '1rem' }}>
+            <p className="dm-kicker">Tactics</p>
+            <h3 className="dm-panel-title">{group.title}</h3>
+            <p className="dm-panel-subtitle">{group.description}</p>
+          </div>
+          <div className="dm-section">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '0' }}>
               {group.fields.map(field => (
-                <TendencySlider
+                <TacticSlider
                   key={field.key}
                   label={field.label}
                   value={data[field.key]}
@@ -168,12 +280,13 @@ export function Tactics() {
                   leftLabel={field.leftLabel}
                   rightLabel={field.rightLabel}
                   description={field.description}
+                  valueColor={tendencyColor[field.key] ?? '#cbd5e1'}
                 />
               ))}
             </div>
-          </section>
-        ))}
-      </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

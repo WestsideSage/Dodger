@@ -1,295 +1,967 @@
-import { memo, useMemo, useState } from 'react';
-import type { CommandDashboardLane, MatchReplayResponse, ReplayEvent, ReplayProofEvent } from '../types';
-import { ActionButton, Badge, Card, KeyValueRow, PageHeader, StatChip } from './ui';
+import { memo, useMemo, useEffect, useState, useCallback } from 'react';
+import type { MatchReplayResponse, ReplayProofEvent } from '../types';
 
-function valueLine(items: Record<string, number>) {
-  return Object.entries(items)
-    .map(([key, value]) => `${key.replaceAll('_', ' ')} ${value.toFixed(2)}`)
-    .join(' | ');
+interface PlayerInfo {
+  id: string;
+  name: string;
+  label: string; // "F. LASTNAME"
+  clubId: string;
 }
 
-const ReplayDebugDetails = memo(function ReplayDebugDetails({ event }: { event?: ReplayEvent }) {
-  if (!event) return null;
-  const hasProbabilities = event.probabilities && Object.keys(event.probabilities).length > 0;
-  const hasRolls = event.rolls && Object.keys(event.rolls).length > 0;
-  if (!hasProbabilities && !hasRolls) return null;
+interface Vec2 {
+  x: number;
+  y: number;
+}
+
+const COURT_W = 600;
+const COURT_H = 280;
+const PLAYER_R = 13;
+const HOME_COLOR = '#f97316';
+const AWAY_COLOR = '#06b6d4';
+
+function playerLabel(name: string): string {
+  const parts = name.trim().split(' ');
+  if (parts.length === 1) return parts[0].toUpperCase().slice(0, 7);
+  const first = parts[0][0].toUpperCase();
+  const last = parts[parts.length - 1].toUpperCase().slice(0, 6);
+  return `${first}. ${last}`;
+}
+
+function assignPositions(
+  ids: string[],
+  xMin: number,
+  xMax: number,
+  yMin: number,
+  yMax: number
+): Map<string, Vec2> {
+  const n = ids.length;
+  if (n === 0) return new Map();
+  const cols = n <= 2 ? n : Math.ceil(n / 2);
+  const rows = Math.ceil(n / cols);
+  const xStep = cols > 1 ? (xMax - xMin) / (cols - 1) : 0;
+  const yStep = rows > 1 ? (yMax - yMin) / (rows - 1) : 0;
+  const map = new Map<string, Vec2>();
+  ids.forEach((id, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    map.set(id, { x: xMin + col * xStep, y: yMin + row * yStep });
+  });
+  return map;
+}
+
+// ── Resolution helpers ─────────────────────────────────────────────────────
+
+const resolutionColor = (r: string | null) =>
+  r === 'eliminated'
+    ? '#f43f5e'
+    : r === 'caught'
+    ? '#06b6d4'
+    : r === 'dodged'
+    ? '#a3e635'
+    : '#f97316';
+
+const resolutionLabel = (r: string | null) =>
+  r === 'eliminated' ? 'ELIMINATED' : r === 'caught' ? 'CAUGHT' : r === 'dodged' ? 'DODGED' : 'RESOLVED';
+
+const resolutionActionLabel = (r: string | null) =>
+  r === 'eliminated' ? 'OUT' : r === 'caught' ? 'CATCH' : r === 'dodged' ? 'DODGE' : '';
+
+// ── Court SVG ──────────────────────────────────────────────────────────────
+
+interface CourtViewProps {
+  homeName: string;
+  awayName: string;
+  homeIds: string[];
+  awayIds: string[];
+  positions: Map<string, Vec2>;
+  playerRegistry: Map<string, PlayerInfo>;
+  eliminatedIds: Set<string>;
+  throwerId: string | null;
+  targetId: string | null;
+  activeResolution: string | null;
+  flashTargetId: string | null;
+  ballAnimKey: string;
+}
+
+const CourtView = memo(function CourtView({
+  homeName,
+  awayName,
+  homeIds,
+  awayIds,
+  positions,
+  playerRegistry,
+  eliminatedIds,
+  throwerId,
+  targetId,
+  activeResolution,
+  flashTargetId,
+  ballAnimKey,
+}: CourtViewProps) {
+  const throwerPos = throwerId ? positions.get(throwerId) : null;
+  const targetPos = targetId ? positions.get(targetId) : null;
+  const hasActiveThrow = !!(throwerId && targetId);
+
+  const flashColor = resolutionColor(activeResolution);
+  const outcomeLabel = resolutionActionLabel(activeResolution);
+
+  // Midpoint for outcome label
+  const midX = throwerPos && targetPos ? (throwerPos.x + targetPos.x) / 2 : 0;
+  const midY = throwerPos && targetPos ? (throwerPos.y + targetPos.y) / 2 : 0;
 
   return (
-    <details className="rounded-md border border-[var(--color-line)] bg-[var(--color-paper)] p-3 text-xs text-[var(--color-muted)]">
-      <summary className="cursor-pointer font-display uppercase tracking-wider text-[11px] text-[var(--color-brick)]">
-        Replay details
-      </summary>
-      <div className="mt-2 space-y-1 font-mono">
-        {hasProbabilities && <div>Probabilities: {valueLine(event.probabilities)}</div>}
-        {hasRolls && <div>Rolls: {valueLine(event.rolls)}</div>}
-      </div>
-    </details>
+    <svg
+      viewBox={`0 0 ${COURT_W} ${COURT_H}`}
+      style={{ width: '100%', height: 'auto', display: 'block' }}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        <marker id="throw-arrow" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+          <path d="M 0 0 L 7 3.5 L 0 7 z" fill="#f97316" opacity={0.75} />
+        </marker>
+      </defs>
+
+      {/* Court background */}
+      <rect width={COURT_W} height={COURT_H} fill="#0f172a" rx={8} />
+      {/* Half tints */}
+      <rect x={0} y={0} width={COURT_W / 2} height={COURT_H} fill="rgba(249,115,22,0.05)" rx={8} />
+      <rect x={COURT_W / 2} y={0} width={COURT_W / 2} height={COURT_H} fill="rgba(6,182,212,0.05)" rx={8} />
+      {/* Court border */}
+      <rect x={1} y={1} width={COURT_W - 2} height={COURT_H - 2} fill="none" stroke="#1e293b" strokeWidth={2} rx={8} />
+      {/* Center line */}
+      <line x1={COURT_W / 2} y1={16} x2={COURT_W / 2} y2={COURT_H - 16} stroke="#334155" strokeWidth={1.5} strokeDasharray="4 4" />
+      <circle cx={COURT_W / 2} cy={COURT_H / 2} r={28} fill="none" stroke="#334155" strokeWidth={1.5} strokeDasharray="4 4" />
+
+      {/* Team labels */}
+      <text x={COURT_W * 0.25} y={14} textAnchor="middle" fill="#f97316" fontSize={9} fontFamily="Oswald, sans-serif" letterSpacing={1} opacity={0.7}>
+        {homeName.toUpperCase()}
+      </text>
+      <text x={COURT_W * 0.75} y={14} textAnchor="middle" fill="#06b6d4" fontSize={9} fontFamily="Oswald, sans-serif" letterSpacing={1} opacity={0.7}>
+        {awayName.toUpperCase()}
+      </text>
+
+      {/* Throw trajectory with arrowhead */}
+      {throwerPos && targetPos && (
+        <line
+          x1={throwerPos.x}
+          y1={throwerPos.y}
+          x2={targetPos.x}
+          y2={targetPos.y}
+          stroke="#f97316"
+          strokeWidth={2}
+          strokeDasharray="5 3"
+          opacity={0.65}
+          markerEnd="url(#throw-arrow)"
+        />
+      )}
+
+      {/* Outcome label at midpoint */}
+      {hasActiveThrow && outcomeLabel && (
+        <g>
+          <rect
+            x={midX - 28}
+            y={midY - 18}
+            width={56}
+            height={20}
+            rx={3}
+            fill="#020617"
+            opacity={0.85}
+          />
+          <text
+            x={midX}
+            y={midY - 4}
+            textAnchor="middle"
+            fill={flashColor}
+            fontSize={11}
+            fontFamily="Oswald, sans-serif"
+            fontWeight={700}
+            letterSpacing={2}
+          >
+            {outcomeLabel}
+          </text>
+        </g>
+      )}
+
+      {/* Players */}
+      {[...homeIds, ...awayIds].map((pid) => {
+        const pos = positions.get(pid);
+        if (!pos) return null;
+        const info = playerRegistry.get(pid);
+        const isHome = homeIds.includes(pid);
+        const isElim = eliminatedIds.has(pid);
+        const isThrower = throwerId === pid;
+        const isTarget = targetId === pid;
+        const isFlash = flashTargetId === pid;
+        const isActive = isThrower || isTarget;
+
+        // Dim inactive players during an active throw
+        // Eliminated stay at their visual weight; inactive alive players fade more
+        const opacity = hasActiveThrow
+          ? isActive
+            ? 1
+            : isElim
+            ? 0.35
+            : 0.22
+          : isElim
+          ? 0.4
+          : 1;
+
+        const baseColor = isHome ? HOME_COLOR : AWAY_COLOR;
+        const strokeColor = isFlash
+          ? resolutionColor(activeResolution)
+          : isActive
+          ? '#ffffff'
+          : baseColor;
+        const strokeW = isActive || isFlash ? 2.5 : 1.5;
+
+        const sublabel = isThrower ? 'THROWS' : isTarget ? (outcomeLabel || '') : '';
+
+        return (
+          <g key={pid} opacity={opacity}>
+            {/* Outer activity ring */}
+            {isActive && !isElim && (
+              <circle
+                cx={pos.x}
+                cy={pos.y}
+                r={PLAYER_R + 6}
+                fill="none"
+                stroke={baseColor}
+                strokeWidth={1.5}
+                opacity={0.5}
+              />
+            )}
+
+            {/* Flash ring on resolution */}
+            {isFlash && (
+              <circle cx={pos.x} cy={pos.y} r={PLAYER_R + 9} fill="none" stroke={resolutionColor(activeResolution)} strokeWidth={2} opacity={0.7}>
+                <animate attributeName="r" from={PLAYER_R + 4} to={PLAYER_R + 16} dur="0.5s" fill="freeze" />
+                <animate attributeName="opacity" from={0.8} to={0} dur="0.5s" fill="freeze" />
+              </circle>
+            )}
+
+            {/* Player circle */}
+            <circle
+              cx={pos.x}
+              cy={pos.y}
+              r={PLAYER_R}
+              fill={isElim ? '#0f172a' : `${baseColor}22`}
+              stroke={isElim ? '#334155' : strokeColor}
+              strokeWidth={isElim ? 1 : strokeW}
+            />
+
+            {/* Eliminated X */}
+            {isElim && (
+              <>
+                <line x1={pos.x - 6} y1={pos.y - 6} x2={pos.x + 6} y2={pos.y + 6} stroke="#475569" strokeWidth={2} />
+                <line x1={pos.x + 6} y1={pos.y - 6} x2={pos.x - 6} y2={pos.y + 6} stroke="#475569" strokeWidth={2} />
+              </>
+            )}
+
+            {/* Player name label */}
+            {!isElim && (
+              <text
+                x={pos.x}
+                y={pos.y + 4}
+                textAnchor="middle"
+                fill="#ffffff"
+                fontSize={7}
+                fontFamily="Oswald, sans-serif"
+                fontWeight={600}
+                letterSpacing={0.3}
+              >
+                {info ? info.label.split('. ')[1] ?? info.label : pid.slice(0, 4)}
+              </text>
+            )}
+
+            {/* Active player sublabel (THROWS / CATCH / DODGE / OUT) */}
+            {sublabel && !isElim && (
+              <text
+                x={pos.x}
+                y={pos.y + PLAYER_R + 11}
+                textAnchor="middle"
+                fill={isThrower ? '#f97316' : resolutionColor(activeResolution)}
+                fontSize={7}
+                fontFamily="Oswald, sans-serif"
+                letterSpacing={1}
+              >
+                {sublabel}
+              </text>
+            )}
+          </g>
+        );
+      })}
+
+      {/* Ball animation */}
+      {throwerPos && targetPos && (
+        <g key={ballAnimKey}>
+          <circle cx={0} cy={0} r={5} fill="#ffffff">
+            <animateMotion
+              dur="0.35s"
+              fill="freeze"
+              path={`M ${throwerPos.x},${throwerPos.y} L ${targetPos.x},${targetPos.y}`}
+              calcMode="spline"
+              keyTimes="0;1"
+              keySplines="0.25 0.1 0.25 1"
+            />
+          </circle>
+        </g>
+      )}
+    </svg>
   );
 });
 
-const MatchReportPanel = memo(function MatchReportPanel({ replay }: { replay: MatchReplayResponse }) {
+// ── Score Header ───────────────────────────────────────────────────────────
+
+function ScoreHeader({
+  homeName,
+  awayName,
+  homeLiving,
+  awayLiving,
+  homeTotal,
+  awayTotal,
+  week,
+  winnerName,
+  winnerClubId,
+  homeClubId,
+}: {
+  homeName: string;
+  awayName: string;
+  homeLiving: number;
+  awayLiving: number;
+  homeTotal: number;
+  awayTotal: number;
+  week: number;
+  winnerName: string | null;
+  winnerClubId: string | null;
+  homeClubId: string;
+}) {
+  const homeElim = homeTotal - homeLiving;
+  const awayElim = awayTotal - awayLiving;
+  const homeIsWinner = winnerClubId === homeClubId;
+
   return (
-    <Card className="p-4">
-      <h3 className="font-display uppercase tracking-widest text-lg text-[var(--color-charcoal)]">Match Report</h3>
-      <div className="mt-3">
-        <KeyValueRow label="Winner" value={replay.report.winner_name} />
-        <KeyValueRow label="MVP" value={replay.report.match_mvp_name ?? '-'} />
-        <div className="pt-3">
-          <span className="font-display uppercase tracking-wider text-[11px] text-[var(--color-muted)]">Turning Point</span>
-          <p className="mt-1 text-sm font-bold leading-relaxed">{replay.report.turning_point}</p>
+    <div
+      style={{
+        background: '#0f172a',
+        borderBottom: '1px solid #1e293b',
+        borderRadius: '8px 8px 0 0',
+      }}
+    >
+      {/* Winner banner */}
+      {winnerName && (
+        <div
+          style={{
+            textAlign: 'center',
+            padding: '6px',
+            background: 'rgba(249,115,22,0.08)',
+            borderBottom: '1px solid rgba(249,115,22,0.2)',
+            fontFamily: 'Oswald, sans-serif',
+            fontSize: 12,
+            color: '#f97316',
+            letterSpacing: 2,
+          }}
+        >
+          ★ {winnerName.toUpperCase()} WIN
+        </div>
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px' }}>
+        {/* Home */}
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              fontFamily: 'Oswald, sans-serif',
+              fontSize: 13,
+              color: '#f97316',
+              letterSpacing: 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            {homeName.toUpperCase()}
+            {homeIsWinner && winnerName && (
+              <span style={{ fontSize: 9, background: 'rgba(249,115,22,0.15)', border: '1px solid #f97316', borderRadius: 3, padding: '1px 4px', letterSpacing: 1 }}>
+                WIN
+              </span>
+            )}
+          </div>
+          <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 28, color: '#ffffff', lineHeight: 1, marginTop: 2 }}>
+            {homeLiving}
+          </div>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', marginTop: 2, letterSpacing: 1 }}>
+            ALIVE · {homeElim} ELIM
+          </div>
+        </div>
+
+        {/* Center */}
+        <div style={{ textAlign: 'center', padding: '0 16px' }}>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#334155', letterSpacing: 2 }}>
+            WEEK {week}
+          </div>
+          <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 14, color: '#334155', letterSpacing: 2, marginTop: 2 }}>
+            VS
+          </div>
+        </div>
+
+        {/* Away */}
+        <div style={{ flex: 1, textAlign: 'right' }}>
+          <div
+            style={{
+              fontFamily: 'Oswald, sans-serif',
+              fontSize: 13,
+              color: '#06b6d4',
+              letterSpacing: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: 6,
+            }}
+          >
+            {!homeIsWinner && winnerName && (
+              <span style={{ fontSize: 9, background: 'rgba(6,182,212,0.15)', border: '1px solid #06b6d4', borderRadius: 3, padding: '1px 4px', letterSpacing: 1 }}>
+                WIN
+              </span>
+            )}
+            {awayName.toUpperCase()}
+          </div>
+          <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 28, color: '#ffffff', lineHeight: 1, marginTop: 2 }}>
+            {awayLiving}
+          </div>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', marginTop: 2, letterSpacing: 1 }}>
+            ALIVE · {awayElim} ELIM
+          </div>
         </div>
       </div>
-    </Card>
-  );
-});
-
-const EvidenceLanes = memo(function EvidenceLanes({ lanes }: { lanes: CommandDashboardLane[] }) {
-  return (
-    <Card className="p-4">
-      <h3 className="font-display uppercase tracking-widest text-lg text-[var(--color-charcoal)]">Evidence Lanes</h3>
-      <div className="mt-3 flex flex-col gap-3">
-        {lanes.map(lane => (
-          <div key={lane.title} className="border-t border-[var(--color-line)] pt-3 first:border-t-0 first:pt-0">
-            <div className="font-display uppercase tracking-wider text-[11px] text-[var(--color-brick)]">{lane.title}</div>
-            <p className="mt-1 text-sm font-bold leading-snug">{lane.summary}</p>
-            <ul className="mt-2 list-disc space-y-1 pl-4 text-xs leading-relaxed text-[var(--color-muted)]">
-              {lane.items.map(item => <li key={item}>{item}</li>)}
-            </ul>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-});
-
-const TopPerformersList = memo(function TopPerformersList({ replay }: { replay: MatchReplayResponse }) {
-  return (
-    <Card className="p-4">
-      <h3 className="font-display uppercase tracking-widest text-lg text-[var(--color-charcoal)]">Top Performers</h3>
-      <div className="mt-3 flex flex-col">
-        {replay.report.top_performers.map(player => (
-          <div key={player.player_id} className="grid grid-cols-[1fr_56px] gap-2 border-b border-[var(--color-line)] py-2 text-sm last:border-0">
-            <span className="font-bold">{player.player_name}</span>
-            <span className="text-right font-mono font-bold">{player.score.toFixed(1)}</span>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-});
-
-function ContextBlock({ title, items }: { title: string; items: string[] }) {
-  return (
-    <div className="proof-context-block">
-      <div className="font-display uppercase tracking-wider text-[11px] text-[var(--color-muted)]">{title}</div>
-      <ul className="mt-1 space-y-1 text-sm leading-relaxed">
-        {items.map(item => <li key={item}>{item}</li>)}
-      </ul>
     </div>
   );
 }
 
-function ProofInspector({
-  proof,
-  replay,
+// ── Event Card ─────────────────────────────────────────────────────────────
+
+function EventCard({
+  label,
+  detail,
+  eventType,
+  isKeyPlay,
 }: {
-  proof?: ReplayProofEvent;
-  replay: MatchReplayResponse;
+  label: string;
+  detail: string;
+  eventType: string;
+  isKeyPlay: boolean;
 }) {
-  if (!proof) {
+  const borderColor =
+    eventType === 'throw_resolved' || eventType === 'throw'
+      ? '#f97316'
+      : eventType === 'game_start' || eventType === 'game_end'
+      ? '#06b6d4'
+      : '#334155';
+
+  return (
+    <div
+      style={{
+        borderLeft: `3px solid ${isKeyPlay ? '#f59e0b' : borderColor}`,
+        background: '#0f172a',
+        borderRadius: '0 6px 6px 0',
+        padding: '8px 12px',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+        {isKeyPlay && (
+          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '1px 5px', borderRadius: 3, letterSpacing: 1 }}>
+            KEY PLAY
+          </span>
+        )}
+        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#475569', letterSpacing: 1, textTransform: 'uppercase' as const }}>
+          {eventType.replace(/_/g, ' ')}
+        </span>
+      </div>
+      <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 15, color: '#ffffff', letterSpacing: 0.5 }}>
+        {label}
+      </div>
+      {detail && (
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#94a3b8', marginTop: 3, lineHeight: 1.4 }}>
+          {detail}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Proof Panel ────────────────────────────────────────────────────────────
+
+function ProofPanel({
+  proof,
+  currentEventType,
+  matchResult,
+}: {
+  proof: ReplayProofEvent | null;
+  currentEventType: string;
+  matchResult: string | null;
+}) {
+  // Game end — show match result state
+  if (currentEventType === 'game_end' || currentEventType === 'match_end') {
     return (
-      <div className="proof-inspector">
-        <p className="text-sm font-bold text-[var(--color-muted)]">No throw proof events were available for this replay.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {matchResult && (
+          <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 6, padding: '12px 16px', textAlign: 'center' }}>
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', letterSpacing: 2, marginBottom: 6 }}>FINAL RESULT</div>
+            <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 20, color: '#f97316', letterSpacing: 1 }}>{matchResult.toUpperCase()}</div>
+          </div>
+        )}
+        {proof && (
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#475569', letterSpacing: 1, textAlign: 'center' }}>
+            Last throw: {proof.thrower_name} → {proof.target_name}
+          </div>
+        )}
       </div>
     );
   }
-  const odds = Object.entries(proof.odds);
-  const rolls = Object.entries(proof.rolls);
-  return (
-    <div className="proof-inspector">
-      <div className="grid grid-cols-2 gap-2">
-        <StatChip label={replay.home_club_name} value={proof.score_state.home_living} />
-        <StatChip label={replay.away_club_name} value={proof.score_state.away_living} />
+
+  if (!proof) {
+    return (
+      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#475569', textAlign: 'center', padding: 24 }}>
+        No proof data for this event.
       </div>
-      <div>
-        <div className="font-display uppercase tracking-wider text-[11px] text-[var(--color-brick)]">Outcome</div>
-        <p className="mt-1 text-sm font-bold leading-relaxed">{proof.detail}</p>
-        <div className="mt-2 flex flex-wrap gap-1">
-          {proof.proof_tags.map(tag => <Badge key={tag} tone="info">{tag}</Badge>)}
+    );
+  }
+
+  const resColor = resolutionColor(proof.resolution);
+  const resLabel = resolutionLabel(proof.resolution);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Participants */}
+      <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 6, padding: '10px 12px' }}>
+        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#475569', letterSpacing: 2, marginBottom: 8 }}>
+          PARTICIPANTS
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#f97316', letterSpacing: 1 }}>THROWER</span>
+            <span style={{ fontFamily: 'Oswald, sans-serif', fontSize: 14, color: '#e2e8f0', letterSpacing: 0.5 }}>{proof.thrower_name}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#06b6d4', letterSpacing: 1 }}>TARGET</span>
+            <span style={{ fontFamily: 'Oswald, sans-serif', fontSize: 14, color: '#e2e8f0', letterSpacing: 0.5 }}>{proof.target_name}</span>
+          </div>
         </div>
       </div>
-      <ContextBlock
-        title="Odds and rolls"
-        items={
-          odds.length || rolls.length
-            ? [
-                ...odds.map(([key, value]) => `${key.replaceAll('_', ' ')} ${value.toFixed(2)}`),
-                ...rolls.map(([key, value]) => `${key.replaceAll('_', ' ')} roll ${value.toFixed(2)}`),
-              ]
-            : ['No odds or rolls were saved for this event.']
-        }
-      />
-      <ContextBlock title="Decision context" items={proof.decision_context.items} />
-      <ContextBlock title="Tactic context" items={proof.tactic_context.items.length ? proof.tactic_context.items : ['No tactic context was saved for this throw.']} />
-      <ContextBlock title="Fatigue" items={proof.fatigue.items} />
-      <ContextBlock title="Liability" items={proof.liability_context.items.length ? proof.liability_context.items : ['No lineup liability evidence on this throw.']} />
+
+      {/* Resolution */}
+      <div
+        style={{
+          background: `${resColor}10`,
+          border: `1px solid ${resColor}33`,
+          borderRadius: 6,
+          padding: '10px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+        }}
+      >
+        <div
+          style={{
+            fontFamily: 'Oswald, sans-serif',
+            fontSize: 22,
+            color: resColor,
+            letterSpacing: 2,
+            lineHeight: 1,
+          }}
+        >
+          {resLabel}
+        </div>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#94a3b8', lineHeight: 1.4, flex: 1 }}>
+          {proof.summary}
+        </div>
+      </div>
+
+      {/* Proof tags */}
+      {proof.proof_tags.length > 0 && (
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
+          {proof.proof_tags.map((tag) => (
+            <span
+              key={tag}
+              style={{
+                fontFamily: 'JetBrains Mono, monospace',
+                fontSize: 9,
+                color: '#64748b',
+                background: '#1e293b',
+                padding: '2px 6px',
+                borderRadius: 4,
+                letterSpacing: 0.5,
+              }}
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Dice rolls */}
+      {Object.keys(proof.rolls).length > 0 && (
+        <div>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#475569', letterSpacing: 2, marginBottom: 6 }}>DICE ROLLS</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 5 }}>
+            {Object.entries(proof.rolls).map(([k, v]) => (
+              <div key={k} style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 4, padding: '4px 8px', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>
+                <span style={{ color: '#475569' }}>{k}: </span>
+                <span style={{ color: '#f97316' }}>{typeof v === 'number' ? v.toFixed(2) : v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Odds */}
+      {Object.keys(proof.odds).length > 0 && (
+        <div>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#475569', letterSpacing: 2, marginBottom: 6 }}>ODDS</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 5 }}>
+            {Object.entries(proof.odds).map(([k, v]) => (
+              <div key={k} style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 4, padding: '4px 8px', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>
+                <span style={{ color: '#475569' }}>{k}: </span>
+                <span style={{ color: '#06b6d4' }}>{typeof v === 'number' ? `${(v * 100).toFixed(0)}%` : v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {proof.detail && (
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#64748b', lineHeight: 1.5, borderTop: '1px solid #1e293b', paddingTop: 8 }}>
+          {proof.detail}
+        </div>
+      )}
     </div>
   );
 }
 
-export function MatchReplay({
-  replay,
-  acknowledging,
-  onAcknowledge,
-}: {
-  replay: MatchReplayResponse;
-  acknowledging: boolean;
-  onAcknowledge: () => void;
-}) {
-  const [eventIndex, setEventIndex] = useState(0);
-  const current = replay.events[Math.min(eventIndex, Math.max(0, replay.events.length - 1))];
-  const proofEvents = useMemo(() => replay.proof_events ?? [], [replay.proof_events]);
-  const proofIndex = useMemo(() => {
-    const exact = proofEvents.findIndex(event => event.sequence_index === eventIndex);
-    if (exact >= 0) return exact;
-    for (let index = proofEvents.length - 1; index >= 0; index -= 1) {
-      if (proofEvents[index].sequence_index <= eventIndex) return index;
-    }
-    return 0;
-  }, [eventIndex, proofEvents]);
-  const currentProof = proofEvents[proofIndex];
-  const keyEventIndex = useMemo(
-    () => replay.key_play_indices?.[0] ?? -1,
-    [replay.key_play_indices]
-  );
-  const progress = replay.events.length ? ((eventIndex + 1) / replay.events.length) * 100 : 0;
+// ── Stats Panel ────────────────────────────────────────────────────────────
 
-  const jumpToProof = (proof: ReplayProofEvent) => {
-    setEventIndex(proof.sequence_index);
-  };
-
-  const jumpToKeyEvent = (direction = 1) => {
-    const keyIndices = replay.key_play_indices ?? [];
-    if (!keyIndices.length) return;
-    const currentKey = keyIndices.findIndex(index => index === proofIndex);
-    const nextKey = currentKey < 0
-      ? keyIndices[0]
-      : keyIndices[Math.max(0, Math.min(keyIndices.length - 1, currentKey + direction))];
-    const proof = proofEvents[nextKey];
-    if (proof) jumpToProof(proof);
-  };
-
+const StatsPanel = memo(function StatsPanel({ data }: { data: MatchReplayResponse }) {
+  const { report } = data;
   return (
-    <div className="flex flex-col gap-5">
-      <PageHeader
-        eyebrow="Match day"
-        title="Replay Cockpit"
-        description={`Week ${replay.week}: ${replay.home_club_name} vs ${replay.away_club_name}`}
-        stats={
-          <>
-            <StatChip label={replay.home_club_name} value={replay.home_survivors} />
-            <StatChip label={replay.away_club_name} value={replay.away_survivors} />
-            <StatChip label="Winner" value={replay.winner_name} tone="warning" />
-          </>
-        }
-      />
-
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.35fr_0.65fr]">
-        <Card className="overflow-hidden">
-          <div className="border-b border-[var(--color-border)] bg-[var(--color-charcoal)] p-4 text-[var(--color-paper)]">
-            <div className="flex items-center justify-between gap-3">
-              <Badge tone="info">Tick {current?.tick ?? 0}</Badge>
-              <span className="font-display uppercase tracking-wider text-xs opacity-80">
-                {replay.events.length ? `${eventIndex + 1} / ${replay.events.length}` : '0 / 0'}
-              </span>
-            </div>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--color-paper)_16%,transparent)]">
-              <div className="h-full rounded-full bg-[var(--color-mustard)] transition-all duration-200" style={{ width: `${progress}%` }} />
-            </div>
-          </div>
-
-          <div className="court-panel m-4 flex min-h-56 items-center justify-center rounded-md border border-[var(--color-border)] p-6 text-center">
-            <div className="max-w-2xl">
-              <div className="font-display uppercase tracking-widest text-2xl md:text-3xl text-[var(--color-charcoal)]">
-                {current?.label ?? 'No events'}
-              </div>
-              <div className="mt-3 text-sm leading-relaxed text-[var(--color-muted)]">
-                {current?.detail ?? 'Replay data is unavailable.'}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 px-4 pb-4">
-            <ActionButton
-              onClick={() => setEventIndex(index => Math.max(0, index - 1))}
-              disabled={eventIndex === 0}
-              variant="secondary"
-            >
-              Back
-            </ActionButton>
-            <ActionButton onClick={() => jumpToKeyEvent(1)} disabled={keyEventIndex < 0} variant="accent">
-              Next Key
-            </ActionButton>
-            <ActionButton
-              onClick={() => setEventIndex(index => Math.min(replay.events.length - 1, index + 1))}
-              disabled={eventIndex >= replay.events.length - 1}
-              variant="secondary"
-            >
-              Next
-            </ActionButton>
-          </div>
-
-          <div className="px-4 pb-4">
-            <ReplayDebugDetails event={current} />
-          </div>
-        </Card>
-
-        <div className="flex flex-col gap-5">
-          <MatchReportPanel replay={replay} />
-          <EvidenceLanes lanes={replay.report.evidence_lanes ?? []} />
-          <TopPerformersList replay={replay} />
-          <ActionButton onClick={onAcknowledge} disabled={acknowledging} variant="primary" className="w-full">
-            {acknowledging ? 'Saving...' : 'Continue'}
-          </ActionButton>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 6, padding: '10px 12px' }}>
+        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#f59e0b', letterSpacing: 2, marginBottom: 4 }}>TURNING POINT</div>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#cbd5e1', lineHeight: 1.5 }}>
+          {report.turning_point || '—'}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[0.78fr_1.22fr]">
-        <Card className="p-4">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="font-display uppercase tracking-widest text-lg text-[var(--color-charcoal)]">Key Plays</h3>
-            <div className="grid grid-cols-2 gap-2">
-              <ActionButton onClick={() => jumpToKeyEvent(-1)} disabled={!replay.key_play_indices?.length} variant="secondary">Prev</ActionButton>
-              <ActionButton onClick={() => jumpToKeyEvent(1)} disabled={!replay.key_play_indices?.length} variant="secondary">Next</ActionButton>
+      {report.top_performers.length > 0 && (
+        <div>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', letterSpacing: 2, marginBottom: 6 }}>TOP PERFORMERS</div>
+          {report.top_performers.slice(0, 5).map((p) => (
+            <div key={p.player_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #1e293b' }}>
+              <span style={{ fontFamily: 'Oswald, sans-serif', fontSize: 13, color: '#e2e8f0' }}>{p.player_name}</span>
+              <div style={{ display: 'flex', gap: 8, fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>
+                {p.eliminations_by_throw > 0 && <span style={{ color: '#f97316' }}>{p.eliminations_by_throw}K</span>}
+                {p.catches_made > 0 && <span style={{ color: '#06b6d4' }}>{p.catches_made}C</span>}
+                {p.dodges_successful > 0 && <span style={{ color: '#a3e635' }}>{p.dodges_successful}D</span>}
+              </div>
             </div>
+          ))}
+        </div>
+      )}
+
+      {report.evidence_lanes?.map((lane, i) => (
+        <div key={i} style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 6, padding: '10px 12px' }}>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', letterSpacing: 2, marginBottom: 6 }}>{lane.title.toUpperCase()}</div>
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{lane.summary}</div>
+          {lane.items.map((item, j) => (
+            <div key={j} style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#64748b', paddingLeft: 8, borderLeft: '2px solid #1e293b', marginTop: 3 }}>
+              {item}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+});
+
+// ── Key Plays Panel ────────────────────────────────────────────────────────
+
+function KeyPlaysPanel({ data, currentIndex, onJump }: { data: MatchReplayResponse; currentIndex: number; onJump: (i: number) => void }) {
+  const keyEvents = data.key_play_indices.map((i) => ({ index: i, event: data.events[i] })).filter((e) => e.event);
+  if (keyEvents.length === 0) {
+    return <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#475569', textAlign: 'center', padding: 24 }}>No key plays recorded.</div>;
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {keyEvents.map(({ index, event }) => {
+        const isActive = currentIndex === index;
+        return (
+          <button
+            key={index}
+            onClick={() => onJump(index)}
+            style={{ background: isActive ? 'rgba(245,158,11,0.12)' : '#0f172a', border: `1px solid ${isActive ? '#f59e0b' : '#1e293b'}`, borderRadius: 6, padding: '8px 12px', textAlign: 'left', cursor: 'pointer', width: '100%' }}
+          >
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', marginBottom: 2 }}>EVENT #{index + 1}</div>
+            <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 13, color: isActive ? '#f59e0b' : '#e2e8f0' }}>{event.label}</div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Main Component ─────────────────────────────────────────────────────────
+
+export default function MatchReplay({ data, onContinue }: { data: MatchReplayResponse; onContinue: () => void }) {
+  const [eventIndex, setEventIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playSpeed, setPlaySpeed] = useState<1 | 2 | 4>(1);
+  const [activeTab, setActiveTab] = useState<'proof' | 'keyplays' | 'stats'>('proof');
+  const [flashTargetId, setFlashTargetId] = useState<string | null>(null);
+  const [activeResolution, setActiveResolution] = useState<string | null>(null);
+  const [ballAnimKey, setBallAnimKey] = useState('ball-init');
+
+  const totalEvents = data.events.length;
+
+  // Player registry from proof events
+  const playerRegistry = useMemo(() => {
+    const reg = new Map<string, PlayerInfo>();
+    for (const pe of data.proof_events) {
+      if (!reg.has(pe.thrower_id)) {
+        reg.set(pe.thrower_id, { id: pe.thrower_id, name: pe.thrower_name, label: playerLabel(pe.thrower_name), clubId: pe.offense_club_id });
+      }
+      if (!reg.has(pe.target_id)) {
+        reg.set(pe.target_id, { id: pe.target_id, name: pe.target_name, label: playerLabel(pe.target_name), clubId: pe.defense_club_id });
+      }
+    }
+    return reg;
+  }, [data.proof_events]);
+
+  const { homeIds, awayIds } = useMemo(() => {
+    const home: string[] = [];
+    const away: string[] = [];
+    for (const [id, info] of playerRegistry.entries()) {
+      if (info.clubId === data.home_club_id) home.push(id);
+      else away.push(id);
+    }
+    home.sort();
+    away.sort();
+    return { homeIds: home, awayIds: away };
+  }, [playerRegistry, data.home_club_id]);
+
+  const positions = useMemo(() => {
+    const pad = 28;
+    const mid = COURT_W / 2;
+    const homePos = assignPositions(homeIds, pad + PLAYER_R, mid - 30, 40, COURT_H - 40);
+    const awayPos = assignPositions(awayIds, mid + 30, COURT_W - pad - PLAYER_R, 40, COURT_H - 40);
+    return new Map([...homePos, ...awayPos]);
+  }, [homeIds, awayIds]);
+
+  const currentEvent = data.events[eventIndex] ?? data.events[0];
+
+  // Last proof event at or before current index
+  const currentProof = useMemo<ReplayProofEvent | null>(() => {
+    let best: ReplayProofEvent | null = null;
+    for (const pe of data.proof_events) {
+      if (pe.sequence_index <= eventIndex) best = pe;
+      else break;
+    }
+    return best;
+  }, [data.proof_events, eventIndex]);
+
+  const scoreState = currentProof?.score_state ?? null;
+  const homeLiving = scoreState?.home_living ?? homeIds.length;
+  const awayLiving = scoreState?.away_living ?? awayIds.length;
+
+  const eliminatedIds = useMemo(() => {
+    if (!scoreState) return new Set<string>();
+    return new Set([...scoreState.home_eliminated_player_ids, ...scoreState.away_eliminated_player_ids]);
+  }, [scoreState]);
+
+  const isThrowEvent = currentEvent?.event_type === 'throw_resolved' || currentEvent?.event_type === 'throw';
+  const throwerId = isThrowEvent && currentProof ? currentProof.thrower_id : null;
+  const targetId = isThrowEvent && currentProof ? currentProof.target_id : null;
+
+  // Determine if we're at or past game end
+  const matchIsComplete = useMemo(() => {
+    for (let i = 0; i <= eventIndex; i++) {
+      const et = data.events[i]?.event_type;
+      if (et === 'game_end' || et === 'match_end') return true;
+    }
+    return false;
+  }, [data.events, eventIndex]);
+
+  const winnerName = matchIsComplete ? (data.winner_name || data.report?.winner_name || null) : null;
+
+  // Flash / resolution effect
+  useEffect(() => {
+    setFlashTargetId(null);
+    // Keep activeResolution for label display (clear only on next event change)
+    if (!isThrowEvent || !currentProof) {
+      setActiveResolution(null);
+      return;
+    }
+    setActiveResolution(currentProof.resolution);
+    setBallAnimKey(`ball-${currentProof.sequence_index}-${eventIndex}`);
+    const t1 = setTimeout(() => setFlashTargetId(currentProof.target_id), 360);
+    const t2 = setTimeout(() => setFlashTargetId(null), 860);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [eventIndex]);
+
+  // Auto-play
+  useEffect(() => {
+    if (!isPlaying) return;
+    if (eventIndex >= totalEvents - 1) { setIsPlaying(false); return; }
+    const t = setTimeout(() => setEventIndex((i) => i + 1), 900 / playSpeed);
+    return () => clearTimeout(t);
+  }, [isPlaying, eventIndex, playSpeed, totalEvents]);
+
+  const stepBack = useCallback(() => { setIsPlaying(false); setEventIndex((i) => Math.max(0, i - 1)); }, []);
+  const stepForward = useCallback(() => { setIsPlaying(false); setEventIndex((i) => Math.min(totalEvents - 1, i + 1)); }, [totalEvents]);
+  const togglePlay = useCallback(() => setIsPlaying((p) => !p), []);
+  const cycleSpeed = useCallback(() => setPlaySpeed((s) => (s === 1 ? 2 : s === 2 ? 4 : 1)), []);
+
+  const jumpToKeyEvent = useCallback(() => {
+    const kp = data.key_play_indices;
+    if (kp.length === 0) return;
+    const next = kp.find((i) => i > eventIndex) ?? kp[0];
+    setEventIndex(next);
+    setIsPlaying(false);
+  }, [data.key_play_indices, eventIndex]);
+
+  const jumpTo = useCallback((i: number) => { setEventIndex(i); setIsPlaying(false); setActiveTab('proof'); }, []);
+
+  const progress = totalEvents > 1 ? eventIndex / (totalEvents - 1) : 0;
+  const isKeyPlay = data.key_play_indices.includes(eventIndex);
+  const homeTotal = homeIds.length || data.home_survivors;
+  const awayTotal = awayIds.length || data.away_survivors;
+  const hasCourtData = playerRegistry.size > 0;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      <ScoreHeader
+        homeName={data.home_club_name}
+        awayName={data.away_club_name}
+        homeLiving={homeLiving}
+        awayLiving={awayLiving}
+        homeTotal={homeTotal}
+        awayTotal={awayTotal}
+        week={data.week}
+        winnerName={winnerName}
+        winnerClubId={data.winner_club_id}
+        homeClubId={data.home_club_id}
+      />
+
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+
+        {/* Left: court + controls + event */}
+        <div style={{ flex: '0 0 60%', display: 'flex', flexDirection: 'column', borderRight: '1px solid #1e293b', overflow: 'hidden' }}>
+          {/* Court */}
+          <div style={{ padding: '12px 12px 4px', background: '#020617' }}>
+            {hasCourtData ? (
+              <CourtView
+                homeName={data.home_club_name}
+                awayName={data.away_club_name}
+                homeIds={homeIds}
+                awayIds={awayIds}
+                positions={positions}
+                playerRegistry={playerRegistry}
+                eliminatedIds={eliminatedIds}
+                throwerId={throwerId}
+                targetId={targetId}
+                activeResolution={activeResolution}
+                flashTargetId={flashTargetId}
+                ballAnimKey={ballAnimKey}
+              />
+            ) : (
+              <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', borderRadius: 8, fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#475569' }}>
+                No player tracking data available.
+              </div>
+            )}
           </div>
-          <div className="proof-list mt-3">
-            {(replay.key_play_indices ?? []).map(index => {
-              const proof = proofEvents[index];
-              if (!proof) return null;
-              const active = proof.sequence_index === currentProof?.sequence_index;
+
+          {/* Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#020617', borderTop: '1px solid #1e293b', borderBottom: '1px solid #1e293b' }}>
+            <button onClick={stepBack} disabled={eventIndex === 0} style={{ background: 'transparent', border: '1px solid #334155', borderRadius: 4, color: eventIndex === 0 ? '#334155' : '#94a3b8', padding: '4px 10px', cursor: eventIndex === 0 ? 'default' : 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>←</button>
+
+            <button onClick={togglePlay} style={{ background: isPlaying ? '#1e293b' : '#f97316', border: 'none', borderRadius: 4, color: '#ffffff', padding: '4px 14px', cursor: 'pointer', fontFamily: 'Oswald, sans-serif', fontSize: 13, letterSpacing: 1 }}>
+              {isPlaying ? '⏸ PAUSE' : '▶ PLAY'}
+            </button>
+
+            <button onClick={stepForward} disabled={eventIndex >= totalEvents - 1} style={{ background: 'transparent', border: '1px solid #334155', borderRadius: 4, color: eventIndex >= totalEvents - 1 ? '#334155' : '#94a3b8', padding: '4px 10px', cursor: eventIndex >= totalEvents - 1 ? 'default' : 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>→</button>
+
+            <button onClick={cycleSpeed} style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 4, color: '#f97316', padding: '4px 10px', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, letterSpacing: 1 }}>{playSpeed}×</button>
+
+            {/* Scrubber */}
+            <div
+              style={{ flex: 1, height: 4, background: '#1e293b', borderRadius: 2, cursor: 'pointer', position: 'relative' }}
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setEventIndex(Math.round(((e.clientX - rect.left) / rect.width) * (totalEvents - 1)));
+                setIsPlaying(false);
+              }}
+            >
+              <div style={{ height: '100%', width: `${progress * 100}%`, background: '#f97316', borderRadius: 2, transition: 'width 0.1s' }} />
+              {data.key_play_indices.map((ki) => (
+                <div key={ki} style={{ position: 'absolute', top: -2, left: `${(ki / (totalEvents - 1)) * 100}%`, width: 2, height: 8, background: '#f59e0b', borderRadius: 1, transform: 'translateX(-50%)' }} />
+              ))}
+            </div>
+
+            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: '#475569', whiteSpace: 'nowrap' as const }}>
+              {eventIndex + 1} / {totalEvents}
+            </span>
+
+            {data.key_play_indices.length > 0 && (
+              <button onClick={jumpToKeyEvent} style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid #f59e0b44', borderRadius: 4, color: '#f59e0b', padding: '4px 8px', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 9, letterSpacing: 1, whiteSpace: 'nowrap' as const }}>
+                ★ KEY
+              </button>
+            )}
+          </div>
+
+          {/* Event description */}
+          <div style={{ padding: '8px 12px', background: '#020617' }}>
+            {currentEvent && (
+              <EventCard label={currentEvent.label} detail={currentEvent.detail} eventType={currentEvent.event_type} isKeyPlay={isKeyPlay} />
+            )}
+          </div>
+
+          {/* Continue */}
+          <div style={{ padding: '8px 12px', marginTop: 'auto', borderTop: '1px solid #1e293b', background: '#020617' }}>
+            <button onClick={onContinue} style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: 6, color: '#94a3b8', padding: '8px', cursor: 'pointer', fontFamily: 'Oswald, sans-serif', fontSize: 13, letterSpacing: 1 }}>
+              CONTINUE →
+            </button>
+          </div>
+        </div>
+
+        {/* Right: tabbed analysis */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#020617' }}>
+          <div style={{ display: 'flex', borderBottom: '1px solid #1e293b', padding: '0 4px' }}>
+            {(['proof', 'keyplays', 'stats'] as const).map((tab) => {
+              const labels = { proof: 'PROOF', keyplays: 'KEY PLAYS', stats: 'REPORT' };
+              const isActive = activeTab === tab;
               return (
                 <button
-                  key={`${proof.sequence_index}-${proof.tick}`}
-                  type="button"
-                  className={`proof-list-item ${active ? 'proof-list-item-active' : ''}`}
-                  onClick={() => jumpToProof(proof)}
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  style={{ background: 'transparent', border: 'none', borderBottom: `2px solid ${isActive ? '#f97316' : 'transparent'}`, color: isActive ? '#f97316' : '#475569', padding: '10px 12px', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: 1, marginBottom: -1 }}
                 >
-                  <span>Tick {proof.tick}</span>
-                  <strong>{proof.summary}</strong>
+                  {labels[tab]}
                 </button>
               );
             })}
-            {!replay.key_play_indices?.length && (
-              <p className="text-sm font-bold text-[var(--color-muted)]">No key play was recorded for this match.</p>
-            )}
           </div>
-        </Card>
 
-        <Card className="p-4">
-          <h3 className="font-display uppercase tracking-widest text-lg text-[var(--color-charcoal)]">Proof Inspector</h3>
-          <ProofInspector proof={currentProof} replay={replay} />
-        </Card>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+            {activeTab === 'proof' && (
+              <ProofPanel
+                proof={currentProof}
+                currentEventType={currentEvent?.event_type ?? ''}
+                matchResult={data.report?.winner_name ?? data.winner_name ?? null}
+              />
+            )}
+            {activeTab === 'keyplays' && <KeyPlaysPanel data={data} currentIndex={eventIndex} onJump={jumpTo} />}
+            {activeTab === 'stats' && <StatsPanel data={data} />}
+          </div>
+        </div>
       </div>
     </div>
   );

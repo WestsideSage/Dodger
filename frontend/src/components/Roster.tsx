@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { Player, RosterResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
-import { Badge, DataTable, PageHeader, RatingBar, StatChip, StatusMessage, TableCell, TableHeadCell } from './ui';
+import { DataTable, PageHeader, RatingBar, StatChip, StatusMessage, TableCell, TableHeadCell } from './ui';
 
 function overallRating(player: Player): number {
   if (Number.isFinite(player.overall)) return Math.round(player.overall);
@@ -9,11 +9,11 @@ function overallRating(player: Player): number {
   return Math.round((ratings.accuracy + ratings.power + ratings.dodge + ratings.catch + (ratings.tactical_iq ?? 50)) / 5);
 }
 
-function ratingTone(value: number) {
-  if (value >= 80) return 'text-[var(--color-teal)]';
-  if (value >= 65) return 'text-[var(--color-sage)]';
-  if (value >= 50) return 'text-[var(--color-mustard)]';
-  return 'text-[var(--color-danger)]';
+function overallColor(value: number): string {
+  if (value >= 80) return '#22d3ee';
+  if (value >= 65) return '#10b981';
+  if (value >= 50) return '#f59e0b';
+  return '#f43f5e';
 }
 
 export function Roster() {
@@ -41,11 +41,11 @@ export function Roster() {
     : 0;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="dm-panel">
       <PageHeader
-        eyebrow="Club room"
+        eyebrow="Roster Lab"
         title="Team Roster"
-        description="Starters are pinned first; ratings stay compact so comparison is fast."
+        description="Player condition, role fit, and match readiness"
         stats={
           <>
             <StatChip label="Players" value={roster.length} />
@@ -58,42 +58,103 @@ export function Roster() {
       <DataTable>
         <thead>
           <tr>
-            <TableHeadCell sticky>Name</TableHeadCell>
-            <TableHeadCell align="center">Role</TableHeadCell>
-            <TableHeadCell align="center">Archetype</TableHeadCell>
+            <TableHeadCell sticky>Player</TableHeadCell>
+            <TableHeadCell>Role</TableHeadCell>
             <TableHeadCell align="center">Age</TableHeadCell>
-            <TableHeadCell align="center">OVR</TableHeadCell>
-            <TableHeadCell align="center">Pot</TableHeadCell>
-            <TableHeadCell>Tactical IQ</TableHeadCell>
-            <TableHeadCell>Accuracy</TableHeadCell>
-            <TableHeadCell>Power</TableHeadCell>
-            <TableHeadCell>Dodge</TableHeadCell>
-            <TableHeadCell>Catch</TableHeadCell>
-            <TableHeadCell>Stamina</TableHeadCell>
+            <TableHeadCell align="right">OVR</TableHeadCell>
+            <TableHeadCell align="right">POT</TableHeadCell>
+            <TableHeadCell>POW</TableHeadCell>
+            <TableHeadCell>ACC</TableHeadCell>
+            <TableHeadCell>DOD</TableHeadCell>
+            <TableHeadCell>CAT</TableHeadCell>
+            <TableHeadCell>IQ</TableHeadCell>
+            <TableHeadCell>STA</TableHeadCell>
+            <TableHeadCell>Status</TableHeadCell>
           </tr>
         </thead>
         <tbody>
           {roster.map(({ player, overall, starter }) => (
-            <tr key={player.id} className={`border-b border-[var(--color-line)] last:border-0 transition-colors hover:bg-[var(--color-cream)] ${starter ? 'bg-[color-mix(in_srgb,var(--color-mustard)_18%,var(--color-paper))]' : 'bg-[var(--color-paper)]'}`}>
-              <TableCell sticky className="min-w-44 font-bold">
-                <div className="flex flex-col">
+            <tr
+              key={player.id}
+              style={{ background: starter ? 'rgba(34,211,238,0.06)' : undefined }}
+            >
+              <TableCell sticky className="min-w-44">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
                   <span>{player.name}</span>
-                  {player.newcomer && <span className="text-[11px] font-normal text-[var(--color-muted)]">Newcomer</span>}
+                  {player.newcomer && (
+                    <span style={{ fontSize: '0.6875rem', fontFamily: 'var(--font-mono-data)', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Newcomer
+                    </span>
+                  )}
                 </div>
               </TableCell>
-              <TableCell align="center">
-                <Badge tone={starter ? 'warning' : 'neutral'}>{player.role ?? (starter ? 'Starter' : 'Bench')}</Badge>
+
+              <TableCell>
+                {(player.role || player.archetype) ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+                    {player.role && (
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.075em', color: '#22d3ee' }}>
+                        {player.role}
+                      </span>
+                    )}
+                    {player.archetype && (
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '0.625rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569' }}>
+                        {player.archetype}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <span style={{ color: '#334155' }}>—</span>
+                )}
               </TableCell>
-              <TableCell align="center"><span className="text-[11px] uppercase tracking-wider text-[var(--color-muted)]">{player.archetype ?? '–'}</span></TableCell>
-              <TableCell align="center">{player.age}</TableCell>
-              <TableCell align="center" className={`font-mono text-base font-bold ${ratingTone(overall)}`}>{overall}</TableCell>
-              <TableCell align="center" className="font-mono font-bold">{player.traits.potential}</TableCell>
-              <TableCell className="min-w-24"><RatingBar rating={player.ratings.tactical_iq ?? 50} compact /></TableCell>
-              <TableCell className="min-w-24"><RatingBar rating={player.ratings.accuracy} compact /></TableCell>
-              <TableCell className="min-w-24"><RatingBar rating={player.ratings.power} compact /></TableCell>
-              <TableCell className="min-w-24"><RatingBar rating={player.ratings.dodge} compact /></TableCell>
-              <TableCell className="min-w-24"><RatingBar rating={player.ratings.catch} compact /></TableCell>
-              <TableCell className="min-w-24"><RatingBar rating={player.ratings.stamina} compact /></TableCell>
+
+              <TableCell align="center">
+                <span className="dm-data" style={{ fontSize: '0.8125rem', color: '#94a3b8' }}>{player.age}</span>
+              </TableCell>
+
+              <TableCell align="right">
+                <span className="dm-data" style={{ fontSize: '1rem', fontWeight: 700, color: overallColor(overall) }}>
+                  {overall}
+                </span>
+              </TableCell>
+
+              <TableCell align="right">
+                <span className="dm-data" style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#cbd5e1' }}>
+                  {player.traits.potential}
+                </span>
+              </TableCell>
+
+              <TableCell className="min-w-24">
+                <RatingBar rating={player.ratings.power} compact />
+              </TableCell>
+              <TableCell className="min-w-24">
+                <RatingBar rating={player.ratings.accuracy} compact />
+              </TableCell>
+              <TableCell className="min-w-24">
+                <RatingBar rating={player.ratings.dodge} compact />
+              </TableCell>
+              <TableCell className="min-w-24">
+                <RatingBar rating={player.ratings.catch} compact />
+              </TableCell>
+              <TableCell className="min-w-24">
+                <RatingBar rating={player.ratings.tactical_iq ?? 50} compact />
+              </TableCell>
+              <TableCell className="min-w-24">
+                <RatingBar rating={player.ratings.stamina} compact />
+              </TableCell>
+
+              <TableCell>
+                <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                  {starter ? (
+                    <span className="dm-badge dm-badge-cyan">STARTER</span>
+                  ) : (
+                    <span className="dm-badge dm-badge-slate">BENCH</span>
+                  )}
+                  {player.newcomer && (
+                    <span className="dm-badge dm-badge-violet">NEW</span>
+                  )}
+                </div>
+              </TableCell>
             </tr>
           ))}
         </tbody>

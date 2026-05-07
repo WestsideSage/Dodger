@@ -2,21 +2,37 @@ import type { KeyboardEvent, ReactNode } from 'react';
 
 export type Tone = 'neutral' | 'accent' | 'success' | 'warning' | 'danger' | 'info';
 
-const toneClasses: Record<Tone, string> = {
-  neutral: 'bg-[var(--color-paper)] text-[var(--color-charcoal)] border-[var(--color-border)]',
-  accent: 'bg-[var(--color-brick)] text-[var(--color-paper)] border-[var(--color-border)]',
-  success: 'bg-[var(--color-sage)] text-[var(--color-paper)] border-[var(--color-border)]',
-  warning: 'bg-[var(--color-mustard)] text-[var(--color-charcoal)] border-[var(--color-border)]',
-  danger: 'bg-[var(--color-danger)] text-[var(--color-paper)] border-[var(--color-border)]',
-  info: 'bg-[var(--color-gym)] text-[var(--color-paper)] border-[var(--color-border)]',
+// Maps Tone to dm-badge modifier classes
+const toneBadgeClass: Record<Tone, string> = {
+  neutral: '',
+  accent: 'dm-badge-cyan',
+  success: 'dm-badge-emerald',
+  warning: 'dm-badge-amber',
+  danger: 'dm-badge-rose',
+  info: 'dm-badge-violet',
+};
+
+// Maps Tone to border color for StatusMessage
+const toneBorderColor: Record<Tone, string> = {
+  neutral: '#1e293b',
+  accent: 'rgba(34,211,238,0.3)',
+  success: 'rgba(16,185,129,0.3)',
+  warning: 'rgba(245,158,11,0.3)',
+  danger: 'rgba(244,63,94,0.4)',
+  info: 'rgba(139,92,246,0.3)',
+};
+
+const toneKickerColor: Record<Tone, string> = {
+  neutral: '#64748b',
+  accent: '#22d3ee',
+  success: '#10b981',
+  warning: '#f59e0b',
+  danger: '#f43f5e',
+  info: '#8b5cf6',
 };
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return (
-    <section className={`bg-[var(--color-paper)] border border-[var(--color-border)] rounded-md shadow-[var(--shadow-panel)] ${className}`}>
-      {children}
-    </section>
-  );
+  return <div className={`dm-panel ${className}`}>{children}</div>;
 }
 
 export function PageHeader({
@@ -33,50 +49,92 @@ export function PageHeader({
   stats?: ReactNode;
 }) {
   return (
-    <div className="dashboard-header">
-      <div className="min-w-0">
-        {eyebrow && (
-          <div className="font-display uppercase tracking-[0.18em] text-[11px] text-[var(--color-brick)] mb-1">
-            {eyebrow}
-          </div>
-        )}
-        <h2 className="text-2xl md:text-3xl font-display uppercase tracking-widest text-[var(--color-charcoal)]">
-          {title}
-        </h2>
-        {description && <p className="text-sm text-[var(--color-muted)] max-w-2xl mt-1">{description}</p>}
-      </div>
-      {(actions || stats) && (
-        <div className="flex flex-wrap items-end justify-start md:justify-end gap-2">
-          {stats}
-          {actions}
+    <div className="dm-panel-header" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      {eyebrow && <p className="dm-kicker">{eyebrow}</p>}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+        <div>
+          <h2 className="dm-panel-title">{title}</h2>
+          {description && <p className="dm-panel-subtitle">{description}</p>}
         </div>
+        {actions && (
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>{actions}</div>
+        )}
+      </div>
+      {stats && (
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>{stats}</div>
       )}
     </div>
   );
 }
 
+const variantStyles: Record<string, React.CSSProperties> = {
+  primary: {
+    background: '#f97316',
+    color: '#fff',
+    border: '1px solid #ea6c0a',
+    fontFamily: 'var(--font-display)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  accent: {
+    background: 'rgba(34,211,238,0.10)',
+    color: '#22d3ee',
+    border: '1px solid rgba(34,211,238,0.3)',
+    fontFamily: 'var(--font-mono-data)',
+  },
+  secondary: {
+    background: '#1e293b',
+    color: '#cbd5e1',
+    border: '1px solid #334155',
+    fontFamily: 'var(--font-body)',
+  },
+  danger: {
+    background: 'rgba(244,63,94,0.10)',
+    color: '#f43f5e',
+    border: '1px solid rgba(244,63,94,0.3)',
+    fontFamily: 'var(--font-body)',
+  },
+  ghost: {
+    background: 'transparent',
+    color: '#94a3b8',
+    border: '1px solid transparent',
+    fontFamily: 'var(--font-body)',
+  },
+};
+
 export function ActionButton({
   children,
   variant = 'secondary',
   className = '',
+  style,
   ...props
 }: {
   children: ReactNode;
   variant?: 'primary' | 'accent' | 'secondary' | 'danger' | 'ghost';
   className?: string;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  const variants = {
-    primary: 'bg-[var(--color-gym)] text-[var(--color-paper)] hover:bg-[var(--color-teal)]',
-    accent: 'bg-[var(--color-brick)] text-[var(--color-paper)] hover:bg-[var(--color-orange)]',
-    secondary: 'bg-[var(--color-paper)] text-[var(--color-charcoal)] hover:bg-[var(--color-cream)]',
-    danger: 'bg-[var(--color-danger)] text-[var(--color-paper)] hover:bg-[var(--color-brick)]',
-    ghost: 'bg-transparent text-[var(--color-charcoal)] hover:bg-[var(--color-line)]',
+  const baseStyle: React.CSSProperties = {
+    display: 'inline-flex',
+    minHeight: '2.5rem',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: '4px',
+    padding: '0.375rem 1rem',
+    fontSize: '0.6875rem',
+    letterSpacing: '0.075em',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    textTransform: 'uppercase',
+    fontWeight: 600,
+    ...variantStyles[variant],
+    ...style,
   };
 
   return (
     <button
       {...props}
-      className={`inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-border)] px-4 py-2 font-display uppercase tracking-wider text-xs transition-all duration-150 shadow-[var(--shadow-button)] cursor-pointer disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-[inherit] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brick)] ${variants[variant]} ${className}`}
+      className={className}
+      style={baseStyle}
     >
       {children}
     </button>
@@ -84,18 +142,21 @@ export function ActionButton({
 }
 
 export function Badge({ children, tone = 'neutral', className = '' }: { children: ReactNode; tone?: Tone; className?: string }) {
+  const modifier = toneBadgeClass[tone];
   return (
-    <span className={`inline-flex items-center rounded-sm border px-2 py-0.5 font-display uppercase tracking-wider text-[10px] leading-4 ${toneClasses[tone]} ${className}`}>
+    <span className={`dm-badge ${modifier} ${className}`.trim()}>
       {children}
     </span>
   );
 }
 
 export function StatChip({ label, value, tone = 'neutral' }: { label: string; value: string | number; tone?: Tone }) {
+  // tone is accepted for API compatibility; value color uses white for all tones
+  void tone;
   return (
-    <div className={`inline-flex min-w-20 flex-col rounded-md border px-3 py-2 shadow-[var(--shadow-button)] ${toneClasses[tone]}`}>
-      <span className="text-[10px] uppercase tracking-wider opacity-75 font-display">{label}</span>
-      <span className="text-sm font-bold leading-tight">{value}</span>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.125rem' }}>
+      <span className="dm-data" style={{ fontSize: '1rem', fontWeight: 600, color: '#fff' }}>{value}</span>
+      <span style={{ fontSize: '0.625rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', fontFamily: 'var(--font-display)' }}>{label}</span>
     </div>
   );
 }
@@ -109,27 +170,44 @@ export function StatusMessage({
   children?: ReactNode;
   tone?: Tone;
 }) {
-  const border = tone === 'danger' ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)]';
   return (
-    <div className={`rounded-md border ${border} bg-[var(--color-paper)] p-4 shadow-[var(--shadow-panel)]`}>
-      <div className="font-display uppercase tracking-widest text-xs text-[var(--color-brick)]">{title}</div>
-      {children && <div className="mt-1 text-sm text-[var(--color-muted)]">{children}</div>}
+    <div style={{
+      background: '#0f172a',
+      border: `1px solid ${toneBorderColor[tone]}`,
+      borderRadius: '4px',
+      padding: '1rem',
+    }}>
+      <div className="dm-kicker" style={{ color: toneKickerColor[tone] }}>{title}</div>
+      {children && (
+        <div style={{ marginTop: '0.25rem', fontSize: '0.875rem', color: '#94a3b8', fontFamily: 'var(--font-body)' }}>
+          {children}
+        </div>
+      )}
     </div>
   );
 }
 
 export function KeyValueRow({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="grid grid-cols-[minmax(96px,0.8fr)_minmax(0,1fr)] gap-3 border-b border-[var(--color-line)] py-2 text-sm last:border-0">
-      <span className="font-display uppercase tracking-wider text-[11px] text-[var(--color-muted)]">{label}</span>
-      <span className="min-w-0 text-right font-bold text-[var(--color-charcoal)]">{value}</span>
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'minmax(96px, 0.8fr) minmax(0, 1fr)',
+      gap: '0.75rem',
+      borderBottom: '1px solid #1e293b',
+      padding: '0.5rem 0',
+      fontSize: '0.875rem',
+    }}
+      className="last:border-0"
+    >
+      <span style={{ fontFamily: 'var(--font-display)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.075em', color: '#64748b' }}>{label}</span>
+      <span style={{ minWidth: 0, textAlign: 'right', fontWeight: 700, color: '#e2e8f0' }}>{value}</span>
     </div>
   );
 }
 
 export function CompactList({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-paper)] shadow-[var(--shadow-panel)] ${className}`}>
+    <div className={`dm-panel ${className}`} style={{ overflow: 'hidden' }}>
       {children}
     </div>
   );
@@ -137,7 +215,17 @@ export function CompactList({ children, className = '' }: { children: ReactNode;
 
 export function CompactListRow({ children, highlight = false, className = '' }: { children: ReactNode; highlight?: boolean; className?: string }) {
   return (
-    <div className={`border-b border-[var(--color-line)] p-3 last:border-0 ${highlight ? 'bg-[var(--color-cream)]' : 'hover:bg-[var(--color-cream)]'} ${className}`}>
+    <div
+      className={className}
+      style={{
+        borderBottom: '1px solid rgba(30,41,59,0.7)',
+        padding: '0.75rem',
+        background: highlight ? 'rgba(30,41,59,0.5)' : undefined,
+        transition: 'background 0.1s',
+      }}
+      onMouseEnter={e => { if (!highlight) (e.currentTarget as HTMLDivElement).style.background = 'rgba(30,41,59,0.5)'; }}
+      onMouseLeave={e => { if (!highlight) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+    >
       {children}
     </div>
   );
@@ -145,27 +233,42 @@ export function CompactListRow({ children, highlight = false, className = '' }: 
 
 export function DataTable({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`overflow-x-auto rounded-md border border-[var(--color-border)] bg-[var(--color-paper)] shadow-[var(--shadow-panel)] ${className}`}>
-      <table className="w-full border-collapse text-left text-sm">
-        {children}
-      </table>
+    <div style={{ overflowX: 'auto' }}>
+      <table className={`dm-table ${className}`.trim()}>{children}</table>
     </div>
   );
 }
 
 export function TableHeadCell({ children, align = 'left', sticky = false }: { children: ReactNode; align?: 'left' | 'center' | 'right'; sticky?: boolean }) {
-  const alignClass = align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left';
   return (
-    <th className={`border-b border-r border-[var(--color-border)] bg-[var(--color-cream)] p-2 font-display uppercase tracking-wider text-[11px] text-[var(--color-muted)] last:border-r-0 ${alignClass} ${sticky ? 'sticky left-0 z-10' : ''}`}>
+    <th
+      style={{
+        textAlign: align,
+        position: sticky ? 'sticky' : undefined,
+        left: sticky ? 0 : undefined,
+        background: sticky ? '#020617' : undefined,
+        zIndex: sticky ? 10 : undefined,
+      }}
+    >
       {children}
     </th>
   );
 }
 
 export function TableCell({ children, align = 'left', sticky = false, className = '' }: { children: ReactNode; align?: 'left' | 'center' | 'right'; sticky?: boolean; className?: string }) {
-  const alignClass = align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left';
   return (
-    <td className={`border-r border-[var(--color-line)] p-2 last:border-r-0 ${alignClass} ${sticky ? 'sticky left-0 z-10 bg-inherit' : ''} ${className}`}>
+    <td
+      className={className}
+      style={{
+        textAlign: align,
+        position: sticky ? 'sticky' : undefined,
+        left: sticky ? 0 : undefined,
+        background: sticky ? '#0f172a' : undefined,
+        fontWeight: sticky ? 600 : undefined,
+        color: sticky ? '#fff' : '#cbd5e1',
+        zIndex: sticky ? 10 : undefined,
+      }}
+    >
       {children}
     </td>
   );
@@ -174,25 +277,29 @@ export function TableCell({ children, align = 'left', sticky = false, className 
 export function RatingBar({ rating, max = 100, label, compact = false }: { rating: number; max?: number; label?: string; compact?: boolean }) {
   const percentage = Math.min(100, Math.max(0, (rating / max) * 100));
 
-  let color = 'var(--color-danger)';
-  if (percentage >= 80) color = 'var(--color-teal)';
-  else if (percentage >= 60) color = 'var(--color-sage)';
-  else if (percentage >= 40) color = 'var(--color-mustard)';
-  else if (percentage >= 20) color = 'var(--color-orange)';
+  let color = '#f43f5e'; // rose — poor
+  if (percentage >= 80) color = '#22d3ee'; // cyan — elite
+  else if (percentage >= 60) color = '#10b981'; // emerald — good
+  else if (percentage >= 40) color = '#f59e0b'; // amber — average
 
   return (
-    <div className="flex w-full flex-col gap-1">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%' }}>
       {label && (
-        <div className="flex justify-between text-xs font-display tracking-wider text-[var(--color-muted)] uppercase">
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontFamily: 'var(--font-display)', letterSpacing: '0.075em', color: '#64748b', textTransform: 'uppercase' }}>
           <span>{label}</span>
           <span>{Math.round(rating)}</span>
         </div>
       )}
-      <div className={`${compact ? 'h-1.5' : 'h-2'} w-full overflow-hidden rounded-full bg-[var(--color-line)]`}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        {!label && (
+          <span className="dm-data" style={{ fontSize: '0.75rem', color: '#cbd5e1', width: '1.75rem', textAlign: 'right', flexShrink: 0 }}>{Math.round(rating)}</span>
+        )}
         <div
-          className="h-full rounded-full transition-all duration-300"
-          style={{ width: `${percentage}%`, backgroundColor: color }}
-        />
+          className="dm-stat-bar-track"
+          style={{ flex: 1, height: compact ? '0.375rem' : '0.5rem' }}
+        >
+          <div style={{ height: '100%', width: `${percentage}%`, background: color, transition: 'width 0.3s' }} />
+        </div>
       </div>
     </div>
   );
@@ -234,14 +341,15 @@ export function TendencySlider({
   };
 
   return (
-    <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-paper)] p-4 shadow-[var(--shadow-button)] transition-transform duration-150 hover:-translate-y-0.5">
-      <label className="flex justify-between gap-3 items-end">
-        <span className="font-display uppercase tracking-widest text-sm text-[var(--color-charcoal)]">{label}</span>
-        <span className="rounded-sm bg-[var(--color-cream)] px-2 py-0.5 text-xs font-bold text-[var(--color-muted)]">{percentage}%</span>
+    <div className="dm-tactic-slider">
+      <label style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-end' }}>
+        <span style={{ fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.875rem', color: '#e2e8f0' }}>{label}</span>
+        <span className="dm-badge dm-badge-slate">{percentage}%</span>
       </label>
-      {description && <p className="text-xs text-[var(--color-muted)] mt-2 min-h-8">{description}</p>}
-
-      <div className="relative pt-3">
+      {description && (
+        <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem', minHeight: '2rem', fontFamily: 'var(--font-body)' }}>{description}</p>
+      )}
+      <div style={{ position: 'relative', paddingTop: '0.75rem' }}>
         <input
           aria-label={label}
           data-testid={`tactic-${label.toLowerCase().replaceAll(' ', '-')}`}
@@ -253,9 +361,10 @@ export function TendencySlider({
           onChange={(e) => handleChange(e.target.value)}
           onInput={(e) => handleChange(e.currentTarget.value)}
           onKeyDown={handleKeyDown}
-          className="tactic-range w-full cursor-pointer"
+          className="tactic-range"
+          style={{ width: '100%', cursor: 'pointer' }}
         />
-        <div className="flex justify-between mt-1 text-[10px] uppercase text-[var(--color-muted)] font-display tracking-wider">
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem', fontSize: '0.625rem', textTransform: 'uppercase', color: '#475569', fontFamily: 'var(--font-display)', letterSpacing: '0.1em' }}>
           <span>{leftLabel}</span>
           <span>{rightLabel}</span>
         </div>

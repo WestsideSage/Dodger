@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActionButton, Card, PageHeader, StatChip, StatusMessage } from './ui';
+import { ActionButton, PageHeader, StatChip, StatusMessage } from './ui';
 
 interface OffseasonBeat {
   beat_index: number;
@@ -71,9 +71,9 @@ export function Offseason() {
   const stateLabel = beat.state.replace(/_/g, ' ');
 
   return (
-    <div className="flex flex-col gap-5">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <PageHeader
-        eyebrow="Off-season ceremony"
+        eyebrow="Offseason"
         title={beat.title}
         description="Work through the off-season milestones to begin your next campaign."
         stats={
@@ -88,75 +88,87 @@ export function Offseason() {
         <StatusMessage title="Error" tone="danger">{error}</StatusMessage>
       )}
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.6fr_0.4fr]">
-        <Card className="overflow-hidden">
-          <div className="border-b border-[var(--color-border)] bg-[var(--color-charcoal)] px-5 py-3">
-            <h3 className="font-display uppercase tracking-widest text-sm text-[var(--color-paper)]">
-              {beat.title}
-            </h3>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }} className="lg:grid-cols-[1.6fr_0.4fr]">
+        {/* Beat narrative panel */}
+        <div className="dm-panel" style={{ overflow: 'hidden' }}>
+          <div
+            className="dm-panel-header"
+            style={{ borderBottom: '1px solid #1e293b', background: '#020617' }}
+          >
+            <p className="dm-kicker">Current beat</p>
+            <h3 className="dm-panel-title">{beat.title}</h3>
           </div>
-          <pre className="whitespace-pre-wrap p-5 font-mono text-sm text-[var(--color-charcoal)] leading-relaxed">
+          <pre
+            style={{
+              whiteSpace: 'pre-wrap',
+              padding: '1.25rem',
+              fontFamily: 'var(--font-mono-data)',
+              fontSize: '0.875rem',
+              color: '#cbd5e1',
+              lineHeight: 1.6,
+              margin: 0,
+            }}
+          >
             {beat.body}
           </pre>
-        </Card>
+        </div>
 
-        <Card className="p-4 flex flex-col gap-3">
-          <div>
-            <h3 className="font-display uppercase tracking-widest text-sm text-[var(--color-charcoal)] mb-1">
-              Actions
-            </h3>
-            <p className="text-xs text-[var(--color-muted)]">
-              Beat {beat.beat_index + 1} of {beat.total_beats}
-            </p>
+        {/* Actions panel */}
+        <div className="dm-panel" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="dm-panel-header">
+            <p className="dm-kicker">Offseason</p>
+            <h3 className="dm-panel-title">Actions</h3>
+            <p className="dm-panel-subtitle">Beat {beat.beat_index + 1} of {beat.total_beats}</p>
           </div>
-
-          {beat.can_advance && (
-            <ActionButton
-              variant="primary"
-              onClick={() => act('/api/offseason/advance')}
-              disabled={acting}
-            >
-              {acting ? 'Advancing…' : 'Next Beat →'}
-            </ActionButton>
-          )}
-
-          {beat.can_recruit && (
-            <div className="flex flex-col gap-2">
-              <p className="text-xs text-[var(--color-muted)]">
-                Sign the top available prospect to your roster before next season.
-              </p>
+          <div className="dm-section" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1 }}>
+            {beat.can_advance && (
               <ActionButton
-                variant="accent"
-                onClick={() => act('/api/offseason/recruit')}
+                variant="primary"
+                onClick={() => act('/api/offseason/advance')}
                 disabled={acting}
               >
-                {acting ? 'Signing…' : 'Sign Best Rookie'}
+                {acting ? 'Advancing…' : 'Next Beat →'}
               </ActionButton>
-            </div>
-          )}
+            )}
 
-          {beat.signed_player_id && !beat.can_recruit && (
-            <StatusMessage title="Rookie signed" tone="success">
-              A new player has joined your squad.
-            </StatusMessage>
-          )}
+            {beat.can_recruit && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>
+                  Sign the top available prospect to your roster before next season.
+                </p>
+                <ActionButton
+                  variant="accent"
+                  onClick={() => act('/api/offseason/recruit')}
+                  disabled={acting}
+                >
+                  {acting ? 'Signing…' : 'Sign Best Rookie'}
+                </ActionButton>
+              </div>
+            )}
 
-          {beat.can_begin_season && (
-            <ActionButton
-              variant="primary"
-              onClick={() => act('/api/offseason/begin-season')}
-              disabled={acting}
-            >
-              {acting ? 'Building schedule…' : 'Begin Next Season ▶'}
-            </ActionButton>
-          )}
+            {beat.signed_player_id && !beat.can_recruit && (
+              <StatusMessage title="Rookie signed" tone="success">
+                A new player has joined your squad.
+              </StatusMessage>
+            )}
 
-          {!beat.can_advance && !beat.can_recruit && !beat.can_begin_season && (
-            <p className="text-xs text-[var(--color-muted)]">
-              No actions available in this state.
-            </p>
-          )}
-        </Card>
+            {beat.can_begin_season && (
+              <ActionButton
+                variant="primary"
+                onClick={() => act('/api/offseason/begin-season')}
+                disabled={acting}
+              >
+                {acting ? 'Building schedule…' : 'Begin Next Season ▶'}
+              </ActionButton>
+            )}
+
+            {!beat.can_advance && !beat.can_recruit && !beat.can_begin_season && (
+              <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>
+                No actions available in this state.
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
