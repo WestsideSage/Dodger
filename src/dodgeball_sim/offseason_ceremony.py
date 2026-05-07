@@ -217,7 +217,10 @@ def initialize_manager_offseason(
     development_rows: List[Dict[str, Any]] = []
     retirement_rows: List[Dict[str, Any]] = []
 
-    cursor = conn.execute("SELECT plan_json FROM weekly_command_plans ORDER BY season_id DESC, week DESC LIMIT 1")
+    cursor = conn.execute(
+        "SELECT plan_json FROM weekly_command_plans WHERE season_id = ? ORDER BY week DESC LIMIT 1",
+        (season.season_id,),
+    )
     row = cursor.fetchone()
     player_dev_focus = "BALANCED"
     if row:

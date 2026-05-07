@@ -362,4 +362,4 @@ def test_offseason_ceremony_evaluates_promises_during_dev_beat():
     )
     match = next((p for p in promises if p["player_id"] == prospect_id), None)
     assert match is not None
-    assert match["result"] in ("fulfilled", "broken")
+    assert match["result"] == "fulfilled"
