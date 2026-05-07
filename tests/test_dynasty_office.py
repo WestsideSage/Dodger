@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import sqlite3
 
+import pytest
+
 from dodgeball_sim.career_setup import initialize_curated_manager_career
 from dodgeball_sim.dynasty_office import (
     build_dynasty_office_state,
@@ -66,3 +68,28 @@ def test_staff_hire_updates_department_head_and_records_visible_effects():
     assert after[department]["rating_primary"] >= before[department]["rating_primary"]
     assert updated["staff_market"]["recent_actions"][0]["candidate_id"] == candidate["candidate_id"]
     assert all(item["department"] != department for item in updated["staff_market"]["candidates"])
+
+
+def test_ensure_dynasty_keys_initializes_missing_keys():
+    conn = _career_conn()
+    # Keys start absent — build_dynasty_office_state should not crash
+    conn.execute("DELETE FROM dynasty_state WHERE key IN (?, ?)",
+                 ("program_promises_json", "staff_market_actions_json"))
+    conn.commit()
+
+    state = build_dynasty_office_state(conn)
+    assert state["recruiting"]["active_promises"] == []
+    assert state["staff_market"]["recent_actions"] == []
+
+
+def test_ensure_dynasty_keys_raises_on_corrupt_value():
+    from dodgeball_sim.dynasty_office import _ensure_dynasty_keys
+    conn = _career_conn()
+    conn.execute(
+        "INSERT OR REPLACE INTO dynasty_state (key, value) VALUES (?, ?)",
+        ("program_promises_json", "NOT VALID JSON {{{"),
+    )
+    conn.commit()
+
+    with pytest.raises(ValueError, match="Corrupted dynasty state key"):
+        _ensure_dynasty_keys(conn)

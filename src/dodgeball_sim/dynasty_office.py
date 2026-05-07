@@ -35,7 +35,22 @@ PROMISE_OPTIONS = (
 )
 
 
+def _ensure_dynasty_keys(conn: sqlite3.Connection) -> None:
+    for key in (PROMISE_STATE_KEY, STAFF_ACTION_STATE_KEY):
+        row = conn.execute(
+            "SELECT value FROM dynasty_state WHERE key = ?", (key,)
+        ).fetchone()
+        if row is None:
+            set_state(conn, key, "[]")
+        else:
+            try:
+                json.loads(row["value"])
+            except (json.JSONDecodeError, TypeError):
+                raise ValueError(f"Corrupted dynasty state key: {key}")
+
+
 def build_dynasty_office_state(conn: sqlite3.Connection) -> dict[str, Any]:
+    _ensure_dynasty_keys(conn)
     season_id = get_state(conn, "active_season_id")
     player_club_id = get_state(conn, "player_club_id")
     if not season_id or not player_club_id:
@@ -62,6 +77,7 @@ def save_recruiting_promise(
     player_id: str,
     promise_type: str,
 ) -> dict[str, Any]:
+    _ensure_dynasty_keys(conn)
     if promise_type not in PROMISE_OPTIONS:
         raise ValueError(f"Unknown promise type: {promise_type}")
     promises = _load_promises(conn)
@@ -84,6 +100,7 @@ def save_recruiting_promise(
 
 
 def hire_staff_candidate(conn: sqlite3.Connection, candidate_id: str) -> dict[str, Any]:
+    _ensure_dynasty_keys(conn)
     state = build_dynasty_office_state(conn)
     candidates = state["staff_market"]["candidates"]
     candidate = next((item for item in candidates if item["candidate_id"] == candidate_id), None)
