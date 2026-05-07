@@ -22,6 +22,7 @@ from .persistence import (
     load_all_rosters,
     load_awards,
     load_clubs,
+    load_department_heads,
     load_free_agents,
     load_player_career_stats,
     load_player_trajectory,
@@ -233,6 +234,16 @@ def initialize_manager_offseason(
     if _player_club_id:
         evaluate_season_promises(conn, season.season_id, _player_club_id)
 
+    # Compute staff development modifier from development department head
+    _all_dept_heads = {h["department"]: h for h in load_department_heads(conn)}
+    _dev_head = _all_dept_heads.get("development")
+    _max_mod = 0.15  # matches BalanceConfig.max_staff_development_modifier
+    _staff_dev_modifier = 0.0
+    if _dev_head is not None:
+        _staff_dev_modifier = max(
+            0.0, (_dev_head["rating_primary"] - 50.0) / 50.0 * _max_mod
+        )
+
     for club_id, roster in rosters.items():
         next_roster: List[Player] = []
         is_player_club = club_id == get_state(conn, "player_club_id")
@@ -245,6 +256,7 @@ def initialize_manager_offseason(
                 rng=DeterministicRNG(derive_seed(root_seed, "manager_development", season.season_id, player.id)),
                 trajectory=load_player_trajectory(conn, player.id),
                 dev_focus=player_dev_focus if is_player_club else "BALANCED",
+                staff_development_modifier=_staff_dev_modifier if is_player_club else 0.0,
             )
             aged = replace(developed, age=developed.age + 1)
             delta = round(aged.overall() - player.overall(), 2)
