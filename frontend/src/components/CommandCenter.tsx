@@ -133,8 +133,7 @@ export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: strin
       />
 
       {/* Weekly Plan + Staff Room row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}
-        className="xl-two-col">
+      <div className="xl-two-col">
         {/* Weekly Plan */}
         <div className="dm-panel">
           <div className="dm-panel-header">
@@ -262,8 +261,7 @@ export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: strin
       </div>
 
       {/* Lineup + Tactics Evidence row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}
-        className="lg-two-col-roster">
+      <div className="lg-two-col-roster">
         {/* Lineup Accountability */}
         <div className="dm-panel">
           <div className="dm-panel-header">

@@ -315,13 +315,23 @@ def test_promise_development_priority_broken_when_insufficient_focused_weeks():
 
 def test_promise_development_priority_broken_when_player_not_on_roster():
     from dodgeball_sim.dynasty_office import evaluate_season_promises
+    from dodgeball_sim.persistence import load_all_rosters
 
     conn = _career_conn()
     state = build_dynasty_office_state(conn)
     season_id = state["season_id"]
     club_id = state["player_club_id"]
 
-    save_recruiting_promise(conn, "nonexistent_player", "development_priority")
+    # Pick a real player on some other club's roster: input passes validation,
+    # but evaluation still reports "not on the user's active roster".
+    rosters = load_all_rosters(conn)
+    other_player_id = next(
+        player.id
+        for cid, roster in rosters.items()
+        if cid != club_id
+        for player in roster
+    )
+    save_recruiting_promise(conn, other_player_id, "development_priority")
     _insert_dev_focus_history(conn, season_id, club_id, n_weeks=3)
 
     evaluate_season_promises(conn, season_id, club_id)
@@ -331,7 +341,7 @@ def test_promise_development_priority_broken_when_player_not_on_roster():
             "SELECT value FROM dynasty_state WHERE key = 'program_promises_json'"
         ).fetchone()["value"]
     )
-    match = next(p for p in promises if p["player_id"] == "nonexistent_player")
+    match = next(p for p in promises if p["player_id"] == other_player_id)
     assert match["result"] == "broken"
 
 
@@ -429,3 +439,33 @@ def test_dynasty_office_fallback_pool_matches_scouting_center_seed():
     # Only assert namespace difference if names actually differ (they should with different seeds)
     if bad_names != expected_names:
         assert office_names != bad_names, "Office is using old seed namespace"
+
+
+def test_save_recruiting_promise_rejects_unknown_player_id():
+    """Forged client requests must not be able to persist promises against ghost
+    player IDs. Without this guard, the 3-active-promise cap could be silently
+    consumed by invisible/unfulfillable rows. (Chaos report 2026-05-07.)"""
+    conn = _career_conn()
+
+    with pytest.raises(ValueError, match="Unknown player_id"):
+        save_recruiting_promise(conn, "ghost_player_not_in_pool", "early_playing_time")
+
+    state = build_dynasty_office_state(conn)
+    assert state["recruiting"]["active_promises"] == []
+
+
+def test_save_recruiting_promise_accepts_current_roster_player():
+    """Players already on a club roster are valid promise targets, so that
+    promises survive Recruitment Day signing and can be evaluated later."""
+    from dodgeball_sim.persistence import load_all_rosters
+
+    conn = _career_conn()
+    rosters = load_all_rosters(conn)
+    player_club_id = next(iter(rosters))
+    roster = rosters[player_club_id]
+    assert roster, "Curated career should populate at least one roster"
+    target_id = roster[0].id
+
+    updated = save_recruiting_promise(conn, target_id, "development_priority")
+
+    assert updated["recruiting"]["active_promises"][0]["player_id"] == target_id

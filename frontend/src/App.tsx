@@ -207,9 +207,6 @@ function App() {
                 {headerTitle}
               </h1>
             </div>
-            <div className="dm-data" style={{ fontSize: '0.75rem', color: '#64748b' }}>
-              V5 Command Center
-            </div>
           </div>
         </header>
 

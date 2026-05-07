@@ -72,6 +72,68 @@ SAVES_DIR = Path("saves")
 
 _active_save_path: Path | None = None
 
+
+def _resolve_managed_save_path(raw: str, *, allow_legacy: bool) -> Path:
+    """Resolve a client-supplied save path against the managed save area.
+
+    Returns the resolved Path on success. Raises HTTPException with the
+    appropriate status on path traversal, missing files, non-managed
+    locations, or non-`.db` files.
+    """
+    if not raw or not isinstance(raw, str):
+        raise HTTPException(status_code=400, detail="Save path is required.")
+    candidate = Path(raw)
+    try:
+        resolved = candidate.resolve(strict=False)
+    except OSError:
+        raise HTTPException(status_code=400, detail="Invalid save path.")
+    saves_root = SAVES_DIR.resolve()
+    legacy = DEFAULT_DB_PATH.resolve()
+    if resolved.suffix.lower() != ".db":
+        raise HTTPException(status_code=400, detail="Save files must end in .db.")
+    is_managed = False
+    try:
+        resolved.relative_to(saves_root)
+        is_managed = True
+    except ValueError:
+        is_managed = False
+    if not is_managed and not (allow_legacy and resolved == legacy):
+        raise HTTPException(
+            status_code=403,
+            detail="Save path must be under the managed saves directory.",
+        )
+    if not resolved.exists():
+        raise HTTPException(status_code=404, detail="Save file not found.")
+    if not resolved.is_file():
+        raise HTTPException(status_code=400, detail="Save path is not a file.")
+    return resolved
+
+
+def _looks_like_dodgeball_save(path: Path) -> bool:
+    """Verify the file at *path* is a SQLite save with our schema row.
+
+    The check opens through `connect()` so that schema migrations are exercised
+    the same way the live request path would exercise them; if any step fails,
+    the file is rejected.
+    """
+    try:
+        conn = connect(path)
+    except Exception:
+        return False
+    try:
+        try:
+            row = conn.execute(
+                "SELECT version FROM schema_version ORDER BY version DESC LIMIT 1"
+            ).fetchone()
+        except Exception:
+            return False
+        return row is not None
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
 _ROLE_LABELS = ["Captain", "Striker", "Anchor", "Runner", "Rookie", "Utility"]
 
 
@@ -546,6 +608,8 @@ def get_command_history(conn = Depends(get_db)) -> list[dict[str, Any]]:
 def get_dynasty_office(conn = Depends(get_db)) -> dict[str, Any]:
     try:
         return build_dynasty_office_state(conn)
+    except CorruptSaveError as exc:
+        raise HTTPException(status_code=409, detail=f"Corrupted dynasty state: {exc}") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -554,6 +618,8 @@ def get_dynasty_office(conn = Depends(get_db)) -> dict[str, Any]:
 def create_recruiting_promise(request: RecruitingPromiseRequest, conn = Depends(get_db)) -> dict[str, Any]:
     try:
         return save_recruiting_promise(conn, request.player_id, request.promise_type)
+    except CorruptSaveError as exc:
+        raise HTTPException(status_code=409, detail=f"Corrupted dynasty state: {exc}") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -562,6 +628,8 @@ def create_recruiting_promise(request: RecruitingPromiseRequest, conn = Depends(
 def hire_dynasty_staff(request: StaffHireRequest, conn = Depends(get_db)) -> dict[str, Any]:
     try:
         return hire_staff_candidate(conn, request.candidate_id)
+    except CorruptSaveError as exc:
+        raise HTTPException(status_code=409, detail=f"Corrupted dynasty state: {exc}") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -1041,11 +1109,14 @@ class LoadSaveRequest(BaseModel):
 @app.post("/api/saves/load")
 def api_load_save(req: LoadSaveRequest):
     global _active_save_path
-    path = Path(req.path)
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="Save file not found.")
-    _active_save_path = path
-    return {"status": "ok", "path": str(path)}
+    resolved = _resolve_managed_save_path(req.path, allow_legacy=True)
+    if not _looks_like_dodgeball_save(resolved):
+        raise HTTPException(
+            status_code=400,
+            detail="File is not a recognizable Dodgeball Manager save.",
+        )
+    _active_save_path = resolved
+    return {"status": "ok", "path": str(resolved)}
 
 
 class DeleteSaveRequest(BaseModel):
@@ -1055,13 +1126,11 @@ class DeleteSaveRequest(BaseModel):
 @app.post("/api/saves/delete")
 def api_delete_save(req: DeleteSaveRequest):
     global _active_save_path
-    path = Path(req.path)
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="Save file not found.")
-    if path.resolve() == DEFAULT_DB_PATH.resolve():
+    resolved = _resolve_managed_save_path(req.path, allow_legacy=False)
+    if resolved == DEFAULT_DB_PATH.resolve():
         raise HTTPException(status_code=403, detail="Cannot delete the legacy save via this endpoint.")
-    path.unlink()
-    if _active_save_path == path:
+    resolved.unlink()
+    if _active_save_path is not None and _active_save_path.resolve() == resolved:
         _active_save_path = None
     return {"status": "ok"}
 

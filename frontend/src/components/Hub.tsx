@@ -217,8 +217,7 @@ export function Hub() {
       )}
 
       {/* Match Controls + Club Status row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}
-        className="lg-two-col-hub">
+      <div className="lg-two-col-hub">
 
         {/* Match Controls */}
         <div className="dm-panel">

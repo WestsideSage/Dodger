@@ -16,7 +16,7 @@
   --color-border: #2D2A31;
 
   --font-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  --font-display: 'Bahnschrift SemiBold', 'Arial Narrow', sans-serif;
+  --font-display: 'Oswald', 'Bahnschrift SemiBold', 'Arial Narrow', sans-serif;
 
   /* DM v2 — Dark shell palette */
   --color-dm-bg: #020617;
@@ -626,6 +626,31 @@ input {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+}
+
+/* Two-column desktop layouts used by Hub and CommandCenter. Stack on mobile,
+   side-by-side at lg/xl. The classes are referenced from JSX as bare class
+   names (no Tailwind breakpoint prefix), so they live here in plain CSS.
+   Each class sets display+gap so JSX does not need an inline grid override. */
+.lg-two-col-hub,
+.lg-two-col-roster,
+.xl-two-col {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+@media (min-width: 1024px) {
+  .lg-two-col-hub,
+  .lg-two-col-roster {
+    grid-template-columns: 1.2fr 0.8fr;
+  }
+}
+
+@media (min-width: 1280px) {
+  .xl-two-col {
+    grid-template-columns: 1.1fr 0.9fr;
+  }
 }
 
 /* === MOTION === */

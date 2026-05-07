@@ -83,6 +83,10 @@ def save_recruiting_promise(
     _ensure_dynasty_keys(conn)
     if promise_type not in PROMISE_OPTIONS:
         raise ValueError(f"Unknown promise type: {promise_type}")
+    if not _is_known_player(conn, player_id):
+        raise ValueError(
+            f"Unknown player_id: {player_id} is not in the current prospect pool or any club roster."
+        )
     promises = _load_promises(conn)
     open_promises = [promise for promise in promises if promise.get("status") == "open"]
     if len(open_promises) >= MAX_ACTIVE_PROMISES and not any(p.get("player_id") == player_id for p in open_promises):
@@ -433,6 +437,43 @@ def _evaluate_one_promise(
         return "broken", "Club did not reach the playoffs this season."
 
     return "broken", f"Unknown promise type '{promise_type}'."
+
+
+def _current_prospect_pool(conn: sqlite3.Connection) -> list[Any]:
+    """Return the prospect pool the Dynasty Office surfaces today.
+
+    Mirrors `_prospect_rows`: prefer the persisted pool, otherwise fall back to
+    a deterministically-generated pool seeded the same way the scouting center
+    uses. Validation must accept any ID the office shows the client.
+    """
+    season_id = get_state(conn, "active_season_id")
+    if not season_id:
+        return []
+    class_year = _class_year_from_season(season_id)
+    persisted = load_prospect_pool(conn, class_year)
+    if persisted:
+        return list(persisted)
+    rng = DeterministicRNG(derive_seed(_root_seed(conn), "prospect_gen", str(class_year)))
+    return list(generate_prospect_pool(class_year, rng, DEFAULT_SCOUTING_CONFIG))
+
+
+def _is_known_player(conn: sqlite3.Connection, player_id: str) -> bool:
+    """A promise must reference either a current prospect or a current club player.
+
+    Recruits live in the prospect pool until Recruitment Day. After signing they
+    move to a club roster, where promise evaluation needs to find them.
+    """
+    if not player_id:
+        return False
+    for prospect in _current_prospect_pool(conn):
+        if prospect.player_id == player_id:
+            return True
+    rosters = load_all_rosters(conn)
+    for roster in rosters.values():
+        for player in roster:
+            if getattr(player, "id", None) == player_id:
+                return True
+    return False
 
 
 def _load_promises(conn: sqlite3.Connection) -> list[dict[str, Any]]:
