@@ -333,3 +333,33 @@ def test_promise_development_priority_broken_when_player_not_on_roster():
     )
     match = next(p for p in promises if p["player_id"] == "nonexistent_player")
     assert match["result"] == "broken"
+
+
+def test_offseason_ceremony_evaluates_promises_during_dev_beat():
+    """Promise results are set after initialize_manager_offseason runs."""
+    import json as j
+    from dodgeball_sim.offseason_ceremony import initialize_manager_offseason
+    from dodgeball_sim.persistence import load_clubs, load_season, load_all_rosters
+
+    conn = _career_conn()
+    state = build_dynasty_office_state(conn)
+    season_id = state["season_id"]
+    club_id = state["player_club_id"]
+    prospect_id = state["recruiting"]["prospects"][0]["player_id"]
+
+    save_recruiting_promise(conn, prospect_id, "early_playing_time")
+    _make_match_stats_row(conn, season_id, prospect_id, club_id, n_matches=6)
+
+    season = load_season(conn, season_id)
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+    initialize_manager_offseason(conn, season, clubs, rosters, root_seed=20260426)
+
+    promises = j.loads(
+        conn.execute(
+            "SELECT value FROM dynasty_state WHERE key = 'program_promises_json'"
+        ).fetchone()["value"]
+    )
+    match = next((p for p in promises if p["player_id"] == prospect_id), None)
+    assert match is not None
+    assert match["result"] in ("fulfilled", "broken")

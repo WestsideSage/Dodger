@@ -217,13 +217,18 @@ def initialize_manager_offseason(
     development_rows: List[Dict[str, Any]] = []
     retirement_rows: List[Dict[str, Any]] = []
 
-    cursor = conn.execute("SELECT plan_json FROM weekly_command_plans ORDER BY id DESC LIMIT 1")
+    cursor = conn.execute("SELECT plan_json FROM weekly_command_plans ORDER BY season_id DESC, week DESC LIMIT 1")
     row = cursor.fetchone()
     player_dev_focus = "BALANCED"
     if row:
-        import json
         plan = json.loads(row[0])
         player_dev_focus = plan.get("department_orders", {}).get("dev_focus", "BALANCED")
+
+    # Evaluate open promises before retirements alter roster state
+    from .dynasty_office import evaluate_season_promises
+    _player_club_id = get_state(conn, "player_club_id") or ""
+    if _player_club_id:
+        evaluate_season_promises(conn, season.season_id, _player_club_id)
 
     for club_id, roster in rosters.items():
         next_roster: List[Player] = []
