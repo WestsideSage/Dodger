@@ -34,7 +34,7 @@ from dodgeball_sim.career_state import CareerState, advance
 from dodgeball_sim.models import CoachPolicy
 from dodgeball_sim.sim_pacing import SimRequest, choose_matches_to_sim
 from dodgeball_sim.stats import PlayerMatchStats
-from dodgeball_sim.copy_quality import title_label
+from dodgeball_sim.replay_proof import build_replay_proof, event_detail, event_label
 from dodgeball_sim.game_loop import (
     current_week,
     recompute_regular_season_standings,
@@ -58,6 +58,11 @@ from dodgeball_sim.command_center import (
     build_command_center_state,
     build_default_weekly_plan,
     build_post_week_dashboard,
+)
+from dodgeball_sim.dynasty_office import (
+    build_dynasty_office_state,
+    hire_staff_candidate,
+    save_recruiting_promise,
 )
 
 app = FastAPI(title="Dodgeball Manager API")
@@ -275,6 +280,8 @@ class MatchReplayResponse(BaseModel):
     home_survivors: int
     away_survivors: int
     events: list[dict[str, Any]]
+    proof_events: list[dict[str, Any]] = Field(default_factory=list)
+    key_play_indices: list[int] = Field(default_factory=list)
     report: dict[str, Any]
 
 
@@ -300,6 +307,15 @@ class CommandCenterSimResponse(BaseModel):
     plan: dict[str, Any]
     dashboard: dict[str, Any]
     next_state: str | None = None
+
+
+class RecruitingPromiseRequest(BaseModel):
+    player_id: str
+    promise_type: str
+
+
+class StaffHireRequest(BaseModel):
+    candidate_id: str
 
 # --- API Endpoints ---
 
@@ -524,6 +540,30 @@ def get_command_history(conn = Depends(get_db)) -> list[dict[str, Any]]:
     if not season_id:
         raise HTTPException(status_code=400, detail="No active season")
     return load_command_history(conn, season_id)
+
+
+@app.get("/api/dynasty-office", response_model=dict[str, Any])
+def get_dynasty_office(conn = Depends(get_db)) -> dict[str, Any]:
+    try:
+        return build_dynasty_office_state(conn)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/dynasty-office/promises", response_model=dict[str, Any])
+def create_recruiting_promise(request: RecruitingPromiseRequest, conn = Depends(get_db)) -> dict[str, Any]:
+    try:
+        return save_recruiting_promise(conn, request.player_id, request.promise_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/dynasty-office/staff/hire", response_model=dict[str, Any])
+def hire_dynasty_staff(request: StaffHireRequest, conn = Depends(get_db)) -> dict[str, Any]:
+    try:
+        return hire_staff_candidate(conn, request.candidate_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/api/tactics", response_model=dict[str, str])
@@ -790,50 +830,6 @@ def _score_player(stats: PlayerMatchStats | None) -> float:
     )
 
 
-def _event_label(event: dict[str, Any], name_map: dict[str, str]) -> str:
-    if event.get("event_type") == "match_end":
-        winner = event.get("outcome", {}).get("winner")
-        return f"Final whistle: {winner or 'draw'}"
-    if event.get("event_type") != "throw":
-        return title_label(str(event.get("event_type", "event")))
-    outcome = event.get("outcome", {})
-    actors = event.get("actors", {})
-    resolution = str(outcome.get("resolution", "throw"))
-    thrower_id = actors.get("thrower", "-")
-    target_id = actors.get("target", "-")
-    thrower = name_map.get(thrower_id, thrower_id)
-    target = name_map.get(target_id, target_id)
-    if resolution == "hit":
-        return f"HIT: {thrower} tags {target}"
-    if resolution == "failed_catch":
-        return f"DROP: {target} cannot hold {thrower}'s throw"
-    if resolution == "catch":
-        return f"CATCH: {target} turns over {thrower}"
-    if resolution == "dodged":
-        return f"DODGE: {target} slips {thrower}"
-    if resolution == "miss":
-        return f"MISS: {thrower} misses {target}"
-    return f"{resolution.upper()}: {thrower} to {target}"
-
-
-def _event_detail(event: dict[str, Any], name_map: dict[str, str]) -> str:
-    if event.get("event_type") != "throw":
-        return f"{title_label(str(event.get('event_type', 'event')))}."
-    actors = event.get("actors", {})
-    outcome = event.get("outcome", {})
-    probabilities = event.get("probabilities", {})
-    rolls = event.get("rolls", {})
-    thrower = name_map.get(actors.get("thrower"), actors.get("thrower", "-"))
-    target = name_map.get(actors.get("target"), actors.get("target", "-"))
-    resolution = str(outcome.get("resolution", "throw")).replace("_", " ")
-    parts = [f"{thrower} vs {target}: {resolution}."]
-    if "p_on_target" in probabilities and "on_target" in rolls:
-        parts.append(f"On-target {float(probabilities['p_on_target']):.2f} (roll {float(rolls['on_target']):.2f}).")
-    if "p_catch" in probabilities and "catch" in rolls:
-        parts.append(f"Catch {float(probabilities['p_catch']):.2f} (roll {float(rolls['catch']):.2f}).")
-    return " ".join(parts)
-
-
 def _stats_for_match(conn, match_id: str) -> dict[str, PlayerMatchStats]:
     rows = conn.execute("SELECT * FROM player_match_stats WHERE match_id = ?", (match_id,)).fetchall()
     return {
@@ -860,18 +856,22 @@ def _match_record_row(conn, match_id: str):
     return conn.execute("SELECT * FROM match_records WHERE match_id = ?", (match_id,)).fetchone()
 
 
-def _player_name_map(conn, match_id: str, home_club_id: str, away_club_id: str) -> dict[str, str]:
-    names: dict[str, str] = {}
+def _roster_snapshots(conn, match_id: str, home_club_id: str, away_club_id: str) -> dict[str, list[dict[str, Any]]]:
     try:
-        snapshots = (
-            fetch_roster_snapshot(conn, match_id, home_club_id)
-            + fetch_roster_snapshot(conn, match_id, away_club_id)
-        )
-    except (json.JSONDecodeError, TypeError, ValueError) as exc:
+        return {
+            home_club_id: fetch_roster_snapshot(conn, match_id, home_club_id),
+            away_club_id: fetch_roster_snapshot(conn, match_id, away_club_id),
+        }
+    except (KeyError, json.JSONDecodeError, TypeError, ValueError) as exc:
         raise HTTPException(status_code=409, detail="Match roster snapshot is damaged.") from exc
-    for player in snapshots:
-        names[player.get("id", "")] = player.get("name", player.get("id", ""))
-    return names
+
+
+def _command_plan_for_match(conn, match_id: str, season_id: str) -> dict[str, Any] | None:
+    for record in load_command_history(conn, season_id):
+        if record.get("match_id") == match_id:
+            plan = record.get("plan")
+            return plan if isinstance(plan, dict) else None
+    return None
 
 
 @app.get("/api/matches/{match_id}/replay", response_model=MatchReplayResponse)
@@ -893,17 +893,33 @@ def get_match_replay(match_id: str, conn = Depends(get_db)) -> MatchReplayRespon
     except (KeyError, json.JSONDecodeError, TypeError, ValueError) as exc:
         raise HTTPException(status_code=409, detail="Match replay data is damaged") from exc
 
-    name_map = _player_name_map(conn, match_id, row["home_club_id"], row["away_club_id"])
+    snapshots = _roster_snapshots(conn, match_id, row["home_club_id"], row["away_club_id"])
+    name_map = {
+        str(player.get("id", "")): str(player.get("name", player.get("id", "")))
+        for players in snapshots.values()
+        for player in players
+    }
     events = []
     for index, event in enumerate(stored["events"]):
         events.append({
             **event,
             "index": index,
-            "label": _event_label(event, name_map),
-            "detail": _event_detail(event, name_map),
+            "label": event_label(event, name_map),
+            "detail": event_detail(event, name_map),
         })
 
     stats = _stats_for_match(conn, match_id)
+    proof = build_replay_proof(
+        stored["events"],
+        name_map=name_map,
+        roster_snapshots=snapshots,
+        home_club_id=row["home_club_id"],
+        away_club_id=row["away_club_id"],
+        home_survivors=row["home_survivors"],
+        away_survivors=row["away_survivors"],
+        player_match_stats=stats,
+        command_plan=_command_plan_for_match(conn, match_id, row["season_id"]),
+    )
     top = sorted(stats.items(), key=lambda item: (-_score_player(item[1]), item[0]))[:6]
     top_performers = [
         {
@@ -928,6 +944,7 @@ def get_match_replay(match_id: str, conn = Depends(get_db)) -> MatchReplayRespon
             (event["label"] for event in events if event.get("event_type") == "throw" and event.get("outcome", {}).get("resolution") in {"hit", "failed_catch", "catch"}),
             "No high-leverage swing detected.",
         ),
+        "evidence_lanes": proof["evidence_report"]["evidence_lanes"],
     }
     return {
         "match_id": match_id,
@@ -942,6 +959,8 @@ def get_match_replay(match_id: str, conn = Depends(get_db)) -> MatchReplayRespon
         "home_survivors": row["home_survivors"],
         "away_survivors": row["away_survivors"],
         "events": events,
+        "proof_events": proof["proof_events"],
+        "key_play_indices": proof["key_play_indices"],
         "report": report,
     }
 

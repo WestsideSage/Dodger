@@ -178,10 +178,80 @@ def test_user_match_enters_report_pending_and_exposes_replay_payload():
     replay_payload = replay.json()
     assert replay_payload["match_id"] == match_id
     assert replay_payload["events"]
+    assert replay_payload["proof_events"]
+    assert replay_payload["key_play_indices"]
     assert replay_payload["report"]["winner_name"]
     assert replay_payload["report"]["top_performers"]
+    assert replay_payload["report"]["evidence_lanes"]
     assert acknowledged.status_code == 200
     assert load_career_state_cursor(conn).state == CareerState.SEASON_ACTIVE_PRE_MATCH
+
+
+def test_command_center_match_replay_includes_saved_plan_evidence():
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_curated_manager_career(conn, "aurora", root_seed=20260426)
+    conn.commit()
+
+    def override_db():
+        yield conn
+
+    server.app.dependency_overrides[server.get_db] = override_db
+    try:
+        client = TestClient(server.app)
+        simulated = client.post(
+            "/api/command-center/simulate",
+            json={"intent": "Prepare For Playoffs"},
+        )
+        match_id = simulated.json()["dashboard"]["match_id"]
+        replay = client.get(f"/api/matches/{match_id}/replay")
+    finally:
+        server.app.dependency_overrides.clear()
+
+    assert simulated.status_code == 200
+    assert replay.status_code == 200
+    lanes = {lane["title"]: lane for lane in replay.json()["report"]["evidence_lanes"]}
+    assert lanes["Command plan"]["summary"] == "Intent: Prepare For Playoffs."
+    assert any("sync throws" in item for item in lanes["Command plan"]["items"])
+
+
+def test_dynasty_office_endpoint_exposes_remaining_milestone_loops_and_actions():
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_curated_manager_career(conn, "aurora", root_seed=20260426)
+    conn.commit()
+
+    def override_db():
+        yield conn
+
+    server.app.dependency_overrides[server.get_db] = override_db
+    try:
+        client = TestClient(server.app)
+        office = client.get("/api/dynasty-office")
+        prospect_id = office.json()["recruiting"]["prospects"][0]["player_id"]
+        promised = client.post(
+            "/api/dynasty-office/promises",
+            json={"player_id": prospect_id, "promise_type": "early_playing_time"},
+        )
+        candidate_id = office.json()["staff_market"]["candidates"][0]["candidate_id"]
+        hired = client.post(
+            "/api/dynasty-office/staff/hire",
+            json={"candidate_id": candidate_id},
+        )
+    finally:
+        server.app.dependency_overrides.clear()
+
+    assert office.status_code == 200
+    payload = office.json()
+    assert payload["recruiting"]["credibility"]["grade"]
+    assert payload["league_memory"]["records"]["items"]
+    assert payload["staff_market"]["candidates"]
+    assert promised.status_code == 200
+    assert promised.json()["recruiting"]["active_promises"][0]["player_id"] == prospect_id
+    assert hired.status_code == 200
+    assert hired.json()["staff_market"]["recent_actions"][0]["candidate_id"] == candidate_id
 
 
 def test_sim_command_rejects_non_active_lifecycle_states():

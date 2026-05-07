@@ -15,7 +15,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.4"]
+dev = [
+    "httpx>=0.27",
+    "pytest>=7.4",
+]
 
 [project.scripts]
 dodgeball-sim = "dodgeball_sim.cli:main"
@@ -25,4 +28,12 @@ dodgeball-manager-web = "dodgeball_sim.web_cli:main"
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 addopts = "-q"
-norecursedirs = ["output", ".pytest_cache", "build", "dist", "*.egg-info"]
+norecursedirs = [
+    "output",
+    ".pytest_cache",
+    "build",
+    "dist",
+    "*.egg-info",
+    "node_modules",
+    "frontend/node_modules",
+]

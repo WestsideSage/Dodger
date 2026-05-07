@@ -17,9 +17,9 @@ Each milestone has its own folder under `docs/specs/`, containing the canonical 
 
 ## Milestone Status
 
-**Current next milestone:** V7 Watchable Match Proof Loop.
+**Current next milestone:** Polish and hardening after the V8-V10 implementation blitz.
 
-V6 shipped 2026-05-05 — core player identity, lineup liability, and development-focus mechanics are implemented and documented. V7 implementation should begin from `docs/specs/2026-05-05-v7-sprint-plan.md`.
+V8-V10 shipped as a thin implementation blitz on 2026-05-06 — recruiting promises/program credibility, league memory, and staff market loops are exposed through the Dynasty Office. Handoff: `docs/retrospectives/v8-v10/2026-05-06-dynasty-office-blitz-handoff.md`. Learnings: `docs/learnings/v8-v10/2026-05-06-dynasty-office-blitz-learnings.md`.
 
 **Long-range scope control:** `docs/specs/long-range-playable-roadmap.md`.
 
@@ -38,7 +38,10 @@ V6 shipped 2026-05-05 — core player identity, lineup liability, and developmen
 | V4    | Web Architecture Foundation                     | Shipped (2026-04-29)         | `docs/specs/v4/2026-04-29-v4-sprint-plan.md`                            | Web backend, React app, shared orchestration, DB concurrency fixes, AI balancing, and first-pass parity screens. V5 builds on the web app as the product foundation. |
 | V5    | Weekly Command Center                           | Shipped (2026-05-04)         | `docs/specs/v5/2026-05-02-v5-weekly-command-center/design.md`           | Playable week-by-week command loop: intent, department orders, staff recommendations, lineup/tactics accountability, post-week dashboard, command history, offseason ceremony (10-beat web flow), recruitment, and dev hot-reload. All gates passed. Retro: `docs/retrospectives/v5/2026-05-02-v5-weekly-command-center-handoff.md`. |
 | V6    | Player Identity and Development Loop            | Shipped (2026-05-05)         | `docs/specs/v6/2026-05-04-v6-player-identity/design.md`                 | Archetype-first player model, Tactical IQ, Lineup Liabilities matrix, AI lineup avoidance, engine liability penalties, and development focus. Handoff: `docs/retrospectives/v6/2026-05-05-v6-player-identity-handoff.md`. Learnings: `docs/learnings/v6/2026-05-05-v6-player-identity-learnings.md`. |
-| V7    | Watchable Match Proof Loop                      | Planned (2026-05-05)         | `docs/specs/2026-05-05-v7-sprint-plan.md`                                | Replay proof loop: key-play navigation, event-derived tactical/fatigue/liability evidence, report evidence lanes, and command-plan-to-replay continuity. |
+| V7    | Watchable Match Proof Loop                      | Shipped (2026-05-05)         | `docs/specs/2026-05-05-v7-sprint-plan.md`                                | Replay proof loop: key-play navigation, event-derived tactical/fatigue/liability evidence, report evidence lanes, and command-plan-to-replay continuity. QA: `docs/retrospectives/v7/2026-05-05-v7-playthrough-qa.md`. |
+| V8    | Recruiting, Promises, and Program Credibility   | Shipped thin (2026-05-06)    | `docs/specs/long-range-playable-roadmap.md`                              | Implemented in the Dynasty Office: credibility from command history/prestige, limited saved recruiting promises, prospect interest evidence, and explicit future promise-check boundaries. |
+| V9    | Living League Memory Loop                       | Shipped thin (2026-05-06)    | `docs/specs/long-range-playable-roadmap.md`                              | Implemented in the Dynasty Office: records, awards, rivalry, and recent-match memory surfaces that report real saved data or clear limited-state copy. |
+| V10   | Staff Market and Program Arms Race Loop         | Shipped thin (2026-05-06)    | `docs/specs/long-range-playable-roadmap.md`                              | Implemented in the Dynasty Office: deterministic staff candidates, visible staff hires, staff-action history, and current recommendation-facing effects. |
 
 ---
 

@@ -17,7 +17,7 @@ function formatTactic(value: number) {
   return `${Math.round(value * 100)}%`;
 }
 
-export function CommandCenter() {
+export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: string) => void }) {
   const [data, setData] = useState<CommandCenterResponse | null>(null);
   const [selectedIntent, setSelectedIntent] = useState('Win Now');
   const [selectedDevFocus, setSelectedDevFocus] = useState('BALANCED');
@@ -252,6 +252,11 @@ export function CommandCenter() {
                 </p>
               </div>
               <Badge tone={dashboard.result === 'Win' ? 'success' : dashboard.result === 'Loss' ? 'danger' : 'warning'}>{dashboard.result}</Badge>
+              {dashboard.match_id && onOpenReplay && (
+                <ActionButton variant="accent" onClick={() => onOpenReplay(dashboard.match_id)}>
+                  Open Replay Proof
+                </ActionButton>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-1 gap-3 p-4 lg:grid-cols-5">
@@ -281,6 +286,15 @@ export function CommandCenter() {
                 <span className="text-xs text-[var(--color-muted)]">{record.intent}</span>
               </div>
               <p className="mt-1 text-sm">{record.dashboard.result} vs {record.dashboard.opponent_name}</p>
+              {record.match_id && onOpenReplay && (
+                <button
+                  type="button"
+                  onClick={() => onOpenReplay(record.match_id as string)}
+                  className="mt-3 font-display text-xs uppercase tracking-wider text-[var(--color-brick)]"
+                >
+                  Open replay proof
+                </button>
+              )}
             </div>
           ))}
           {!data.history.length && <p className="text-sm text-[var(--color-muted)]">No command weeks simulated yet.</p>}

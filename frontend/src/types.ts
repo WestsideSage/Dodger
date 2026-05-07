@@ -84,6 +84,42 @@ export interface ReplayEvent {
     detail: string;
 }
 
+export interface ProofContextSection {
+    items: string[];
+    thrower_fatigue?: number;
+    target_fatigue?: number;
+}
+
+export interface ScoreState {
+    home_living: number;
+    away_living: number;
+    home_eliminated_player_ids: string[];
+    away_eliminated_player_ids: string[];
+}
+
+export interface ReplayProofEvent {
+    sequence_index: number;
+    tick: number;
+    thrower_id: string;
+    thrower_name: string;
+    target_id: string;
+    target_name: string;
+    offense_club_id: string;
+    defense_club_id: string;
+    resolution: string;
+    is_key_play: boolean;
+    proof_tags: string[];
+    summary: string;
+    detail: string;
+    odds: Record<string, number>;
+    rolls: Record<string, number>;
+    fatigue: ProofContextSection;
+    decision_context: ProofContextSection;
+    tactic_context: ProofContextSection;
+    liability_context: ProofContextSection;
+    score_state: ScoreState;
+}
+
 export interface TopPerformer {
     player_id: string;
     player_name: string;
@@ -106,12 +142,15 @@ export interface MatchReplayResponse {
     home_survivors: number;
     away_survivors: number;
     events: ReplayEvent[];
+    proof_events: ReplayProofEvent[];
+    key_play_indices: number[];
     report: {
         winner_name: string;
         match_mvp_player_id: string | null;
         match_mvp_name: string | null;
         top_performers: TopPerformer[];
         turning_point: string;
+        evidence_lanes: CommandDashboardLane[];
     };
 }
 
@@ -244,6 +283,81 @@ export interface CommandCenterSimResponse {
     plan: CommandCenterPlan;
     dashboard: CommandDashboard;
     next_state: string | null;
+}
+
+export interface DynastyOfficeResponse {
+    season_id: string;
+    week: number;
+    player_club_id: string;
+    player_club_name: string;
+    recruiting: {
+        credibility: {
+            score: number;
+            grade: string;
+            evidence: string[];
+        };
+        active_promises: Array<{
+            player_id: string;
+            promise_type: string;
+            status: string;
+            evidence: string;
+        }>;
+        prospects: Array<{
+            player_id: string;
+            name: string;
+            hometown: string;
+            public_archetype: string;
+            public_ovr_band: number[];
+            fit_score: number;
+            promise_options: string[];
+            active_promise: { promise_type: string; status: string } | null;
+            interest_evidence: string[];
+        }>;
+        rules: {
+            max_active_promises: number;
+            promise_options: string[];
+            honesty: string;
+        };
+    };
+    league_memory: {
+        records: { items: Array<Record<string, string | number | null>> };
+        awards: { items: Array<Record<string, string | number | null>> };
+        rivalries: { items: Array<Record<string, string | number | null>> };
+        recent_matches: Array<{
+            match_id: string;
+            week: number;
+            summary: string;
+            winner_name: string;
+        }>;
+    };
+    staff_market: {
+        current_staff: Array<{
+            department: string;
+            name: string;
+            rating_primary: number;
+            rating_secondary: number;
+            voice: string;
+        }>;
+        active_facilities: string[];
+        candidates: Array<{
+            candidate_id: string;
+            department: string;
+            name: string;
+            rating_primary: number;
+            rating_secondary: number;
+            voice: string;
+            effect_lanes: string[];
+        }>;
+        recent_actions: Array<{
+            candidate_id: string;
+            department: string;
+            name: string;
+            effect_lanes: string[];
+        }>;
+        rules: {
+            honesty: string;
+        };
+    };
 }
 
 export interface SaveInfo {

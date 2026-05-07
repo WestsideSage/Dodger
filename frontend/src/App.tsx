@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 import { CommandCenter } from './components/CommandCenter';
 import { Hub } from './components/Hub';
+import { DynastyOffice } from './components/DynastyOffice';
 import { NewsWire, Schedule, Standings } from './components/LeagueContext';
 import { Offseason } from './components/Offseason';
 import { Roster } from './components/Roster';
 import { SaveMenu } from './components/SaveMenu';
 import { Tactics } from './components/Tactics';
+import { MatchReplay } from './components/MatchReplay';
+import type { MatchReplayResponse } from './types';
 
 type Screen = 'loading' | 'menu' | 'game' | 'offseason';
-type Tab = 'command' | 'hub' | 'roster' | 'tactics' | 'standings' | 'schedule' | 'news';
+type Tab = 'command' | 'hub' | 'dynasty' | 'roster' | 'tactics' | 'standings' | 'schedule' | 'news';
 
 const OFFSEASON_STATES = new Set([
   'season_complete_offseason_beat',
@@ -19,6 +22,7 @@ const OFFSEASON_STATES = new Set([
 const tabs: Array<{ id: Tab; label: string; short: string }> = [
   { id: 'command', label: 'Command Center', short: 'Week' },
   { id: 'hub', label: 'Hub', short: 'Ops' },
+  { id: 'dynasty', label: 'Dynasty Office', short: 'Program' },
   { id: 'roster', label: 'Roster', short: 'Team' },
   { id: 'tactics', label: 'Tactics', short: 'Policy' },
   { id: 'standings', label: 'Standings', short: 'Table' },
@@ -34,6 +38,8 @@ function tabFromUrl(): Tab {
 function App() {
   const [screen, setScreen] = useState<Screen>('loading');
   const [activeTab, setActiveTab] = useState<Tab>(tabFromUrl);
+  const [commandReplay, setCommandReplay] = useState<MatchReplayResponse | null>(null);
+  const [commandReplayLoading, setCommandReplayLoading] = useState(false);
 
   useEffect(() => {
     fetch('/api/save-state')
@@ -54,6 +60,17 @@ function App() {
     params.set('tab', activeTab);
     window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
   }, [activeTab, screen]);
+
+  const openCommandReplay = (matchId: string) => {
+    setCommandReplayLoading(true);
+    fetch(`/api/matches/${encodeURIComponent(matchId)}/replay`)
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch match replay');
+        return res.json();
+      })
+      .then(setCommandReplay)
+      .finally(() => setCommandReplayLoading(false));
+  };
 
   if (screen === 'loading') {
     return (
@@ -141,13 +158,24 @@ function App() {
         </nav>
 
         <main className="workspace-panel">
-          {activeTab === 'command' && <CommandCenter />}
-          {activeTab === 'hub' && <Hub />}
-          {activeTab === 'roster' && <Roster />}
-          {activeTab === 'tactics' && <Tactics />}
-          {activeTab === 'standings' && <Standings />}
-          {activeTab === 'schedule' && <Schedule />}
-          {activeTab === 'news' && <NewsWire />}
+          {commandReplay && (
+            <MatchReplay
+              replay={commandReplay}
+              acknowledging={false}
+              onAcknowledge={() => setCommandReplay(null)}
+            />
+          )}
+          {!commandReplay && commandReplayLoading && (
+            <p className="font-display uppercase tracking-widest text-[var(--color-muted)]">Loading replay…</p>
+          )}
+          {!commandReplay && !commandReplayLoading && activeTab === 'command' && <CommandCenter onOpenReplay={openCommandReplay} />}
+          {!commandReplay && !commandReplayLoading && activeTab === 'hub' && <Hub />}
+          {!commandReplay && !commandReplayLoading && activeTab === 'dynasty' && <DynastyOffice />}
+          {!commandReplay && !commandReplayLoading && activeTab === 'roster' && <Roster />}
+          {!commandReplay && !commandReplayLoading && activeTab === 'tactics' && <Tactics />}
+          {!commandReplay && !commandReplayLoading && activeTab === 'standings' && <Standings />}
+          {!commandReplay && !commandReplayLoading && activeTab === 'schedule' && <Schedule />}
+          {!commandReplay && !commandReplayLoading && activeTab === 'news' && <NewsWire />}
         </main>
       </div>
     </div>

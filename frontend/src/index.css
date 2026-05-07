@@ -134,6 +134,66 @@ input {
     var(--color-cream);
 }
 
+.proof-list {
+  display: flex;
+  min-height: 16rem;
+  max-height: 24rem;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow: auto;
+}
+
+.proof-list-item {
+  display: grid;
+  min-height: 4.25rem;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.375rem;
+  background: var(--color-paper);
+  color: var(--color-charcoal);
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.proof-list-item span {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--color-brick);
+}
+
+.proof-list-item strong {
+  font-size: 0.88rem;
+  line-height: 1.25;
+}
+
+.proof-list-item-active {
+  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-mustard) 22%, var(--color-paper));
+}
+
+.proof-inspector {
+  display: grid;
+  min-height: 24rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.proof-context-block {
+  min-height: 7rem;
+  border-top: 1px solid var(--color-line);
+  padding-top: 0.75rem;
+}
+
+.proof-inspector > *:first-child,
+.proof-inspector > *:nth-child(2) {
+  grid-column: 1 / -1;
+}
+
 .schedule-row {
   display: grid;
   grid-template-columns: 76px minmax(0, 1fr) auto;
@@ -205,5 +265,15 @@ input {
   .schedule-row {
     grid-template-columns: 1fr;
     align-items: start;
+  }
+
+  .proof-list-item,
+  .proof-inspector {
+    grid-template-columns: 1fr;
+  }
+
+  .proof-inspector > *:first-child,
+  .proof-inspector > *:nth-child(2) {
+    grid-column: auto;
   }
 }
