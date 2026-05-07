@@ -18,6 +18,8 @@ from .persistence import (
     load_department_heads,
     load_json_state,
     load_league_records,
+    load_playoff_bracket,
+    load_prospect_pool,
     load_rivalry_records,
     load_season,
     set_state,
@@ -333,6 +335,98 @@ def _staff_effect_lanes(department: str, primary: float, secondary: float) -> li
     ]
 
 
+def evaluate_season_promises(
+    conn: sqlite3.Connection,
+    season_id: str,
+    club_id: str,
+) -> None:
+    """Evaluate open promises for the season and persist fulfilled/broken results.
+
+    Safe to call multiple times — already-evaluated promises are skipped.
+    Must be called before retirements so load_all_rosters() reflects pre-retirement state.
+    """
+    promises = _load_promises(conn)
+    if not promises:
+        return
+
+    changed = False
+    for promise in promises:
+        if promise.get("result_season_id") == season_id:
+            continue  # already evaluated this season — idempotent
+        if promise.get("status") != "open":
+            continue
+
+        player_id = promise.get("player_id")
+        if not player_id:
+            promise["evidence"] = "Legacy promise — player identity not recorded."
+            changed = True
+            continue
+
+        promise_type = promise.get("promise_type", "")
+        result, evidence = _evaluate_one_promise(
+            conn, season_id, club_id, player_id, promise_type
+        )
+        promise["result"] = result
+        promise["result_season_id"] = season_id
+        promise["evidence"] = evidence
+        changed = True
+
+    if changed:
+        set_state(conn, PROMISE_STATE_KEY, json.dumps(promises))
+        conn.commit()
+
+
+def _evaluate_one_promise(
+    conn: sqlite3.Connection,
+    season_id: str,
+    club_id: str,
+    player_id: str,
+    promise_type: str,
+) -> tuple[str, str]:
+    """Return (result, evidence_text) for a single promise."""
+    if promise_type == "early_playing_time":
+        count = conn.execute(
+            """
+            SELECT COUNT(*) FROM player_match_stats pms
+            JOIN match_records mr ON mr.match_id = pms.match_id
+            WHERE mr.season_id = ? AND pms.player_id = ?
+            """,
+            (season_id, player_id),
+        ).fetchone()[0]
+        if count >= 6:
+            return "fulfilled", f"Player appeared in {count} matches this season (threshold: 6)."
+        return "broken", f"Player appeared in only {count} matches this season (threshold: 6)."
+
+    if promise_type == "development_priority":
+        history = load_command_history(conn, season_id)
+        focused_weeks = sum(
+            1 for entry in history
+            if entry.get("plan", {}).get("department_orders", {}).get("dev_focus", "BALANCED") != "BALANCED"
+        )
+        rosters = load_all_rosters(conn)
+        club_roster = rosters.get(club_id, [])
+        on_roster = any(p.id == player_id for p in club_roster)
+        if focused_weeks >= 3 and on_roster:
+            return (
+                "fulfilled",
+                f"Club ran focused development {focused_weeks} weeks and player is on the active roster.",
+            )
+        reason = []
+        if focused_weeks < 3:
+            reason.append(f"only {focused_weeks} focused dev weeks (threshold: 3)")
+        if not on_roster:
+            reason.append("player not on active roster")
+        return "broken", "Not fulfilled: " + "; ".join(reason) + "."
+
+    if promise_type == "contender_path":
+        bracket = load_playoff_bracket(conn, season_id)
+        if bracket is not None and club_id in bracket.seeds:
+            return "fulfilled", "Club reached the playoffs this season."
+        return "broken", "Club did not reach the playoffs this season."
+
+    return "broken", f"Unknown promise type '{promise_type}'."
+
+
 def _load_promises(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     return list(load_json_state(conn, PROMISE_STATE_KEY, []))
 
@@ -414,6 +508,7 @@ def _staff_voice(department: str) -> str:
 
 __all__ = [
     "build_dynasty_office_state",
+    "evaluate_season_promises",
     "hire_staff_candidate",
     "save_recruiting_promise",
 ]

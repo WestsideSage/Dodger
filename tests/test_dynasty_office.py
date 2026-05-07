@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json as _json
 import sqlite3
 
 import pytest
@@ -11,6 +12,32 @@ from dodgeball_sim.dynasty_office import (
     save_recruiting_promise,
 )
 from dodgeball_sim.persistence import create_schema, load_department_heads
+
+
+def _make_match_stats_row(conn, season_id, player_id, club_id, n_matches=6):
+    """Insert n_matches worth of match_records + player_match_stats for a player."""
+    for i in range(n_matches):
+        match_id = f"test_match_{season_id}_{player_id}_{i}"
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO match_records
+              (match_id, season_id, week, home_club_id, away_club_id,
+               winner_club_id, home_survivors, away_survivors,
+               home_roster_hash, away_roster_hash, config_version,
+               ruleset_version, seed, event_log_hash, final_state_hash)
+            VALUES (?,?,?,?,?,?,0,0,'h','a','v1','v1',1,'e','f')
+            """,
+            (match_id, season_id, i + 1, club_id, "other_club", club_id),
+        )
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO player_match_stats
+              (match_id, player_id, club_id)
+            VALUES (?, ?, ?)
+            """,
+            (match_id, player_id, club_id),
+        )
+    conn.commit()
 
 
 def _career_conn() -> sqlite3.Connection:
@@ -112,3 +139,105 @@ def test_promise_record_stores_player_id_and_result_fields():
     assert promise["result"] is None
     assert promise["result_season_id"] is None
     assert promise["status"] == "open"
+
+
+def test_promise_early_playing_time_fulfilled_when_six_match_appearances():
+    from dodgeball_sim.dynasty_office import evaluate_season_promises
+    conn = _career_conn()
+    state = build_dynasty_office_state(conn)
+    season_id = state["season_id"]
+    club_id = state["player_club_id"]
+    prospect_id = state["recruiting"]["prospects"][0]["player_id"]
+
+    save_recruiting_promise(conn, prospect_id, "early_playing_time")
+    _make_match_stats_row(conn, season_id, prospect_id, club_id, n_matches=6)
+
+    evaluate_season_promises(conn, season_id, club_id)
+
+    promises = _json.loads(
+        conn.execute(
+            "SELECT value FROM dynasty_state WHERE key = 'program_promises_json'"
+        ).fetchone()["value"]
+    )
+    match = next(p for p in promises if p["player_id"] == prospect_id)
+    assert match["result"] == "fulfilled"
+    assert match["result_season_id"] == season_id
+    assert "6" in match["evidence"] or "match" in match["evidence"].lower()
+
+
+def test_promise_early_playing_time_broken_when_fewer_than_six():
+    from dodgeball_sim.dynasty_office import evaluate_season_promises
+    conn = _career_conn()
+    state = build_dynasty_office_state(conn)
+    season_id = state["season_id"]
+    club_id = state["player_club_id"]
+    prospect_id = state["recruiting"]["prospects"][0]["player_id"]
+
+    save_recruiting_promise(conn, prospect_id, "early_playing_time")
+    _make_match_stats_row(conn, season_id, prospect_id, club_id, n_matches=3)
+
+    evaluate_season_promises(conn, season_id, club_id)
+
+    promises = _json.loads(
+        conn.execute(
+            "SELECT value FROM dynasty_state WHERE key = 'program_promises_json'"
+        ).fetchone()["value"]
+    )
+    match = next(p for p in promises if p["player_id"] == prospect_id)
+    assert match["result"] == "broken"
+
+
+def test_promise_evaluation_is_idempotent():
+    from dodgeball_sim.dynasty_office import evaluate_season_promises
+    conn = _career_conn()
+    state = build_dynasty_office_state(conn)
+    season_id = state["season_id"]
+    club_id = state["player_club_id"]
+    prospect_id = state["recruiting"]["prospects"][0]["player_id"]
+
+    save_recruiting_promise(conn, prospect_id, "early_playing_time")
+    _make_match_stats_row(conn, season_id, prospect_id, club_id, n_matches=6)
+
+    evaluate_season_promises(conn, season_id, club_id)
+    evaluate_season_promises(conn, season_id, club_id)  # second call must be idempotent
+
+    promises = _json.loads(
+        conn.execute(
+            "SELECT value FROM dynasty_state WHERE key = 'program_promises_json'"
+        ).fetchone()["value"]
+    )
+    season_results = [p for p in promises if p.get("result_season_id") == season_id]
+    assert len(season_results) == 1  # not doubled
+
+
+def test_promise_contender_path_fulfilled_from_playoff_bracket():
+    from dodgeball_sim.dynasty_office import evaluate_season_promises
+    import json as j
+    conn = _career_conn()
+    state = build_dynasty_office_state(conn)
+    season_id = state["season_id"]
+    club_id = state["player_club_id"]
+    prospect_id = state["recruiting"]["prospects"][0]["player_id"]
+
+    save_recruiting_promise(conn, prospect_id, "contender_path")
+
+    # Seed a playoff bracket that includes the player's club
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO playoff_brackets
+          (season_id, format, seeds_json, rounds_json, status)
+        VALUES (?, 'top4', ?, '[]', 'complete')
+        """,
+        (season_id, j.dumps([club_id, "other1", "other2", "other3"])),
+    )
+    conn.commit()
+
+    evaluate_season_promises(conn, season_id, club_id)
+
+    promises = _json.loads(
+        conn.execute(
+            "SELECT value FROM dynasty_state WHERE key = 'program_promises_json'"
+        ).fetchone()["value"]
+    )
+    match = next(p for p in promises if p["player_id"] == prospect_id)
+    assert match["result"] == "fulfilled"
