@@ -180,7 +180,7 @@ def test_staff_dev_modifier_zero_when_no_staff_unchanged_output():
     assert result_no_modifier.ratings == result_zero_modifier.ratings
 
 
-def test_staff_dev_modifier_bounded_at_max():
+def test_staff_dev_modifier_positive_raises_ovr():
     """A non-zero modifier produces higher OVR than no modifier."""
     max_mod = DEFAULT_CONFIG.max_staff_development_modifier  # 0.15
     player = _staff_mod_player()
