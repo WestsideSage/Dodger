@@ -49,6 +49,8 @@ def test_recruiting_promises_are_limited_and_persisted_as_truth():
             "player_id": prospect_id,
             "promise_type": "early_playing_time",
             "status": "open",
+            "result": None,
+            "result_season_id": None,
             "evidence": "Will be checked against future command history and player match stats.",
         }
     ]
@@ -95,3 +97,18 @@ def test_ensure_dynasty_keys_raises_on_corrupt_value():
 
     with pytest.raises(CorruptSaveError, match="Corrupted dynasty state key"):
         _ensure_dynasty_keys(conn)
+
+
+def test_promise_record_stores_player_id_and_result_fields():
+    conn = _career_conn()
+    state = build_dynasty_office_state(conn)
+    prospect_id = state["recruiting"]["prospects"][0]["player_id"]
+
+    updated = save_recruiting_promise(conn, prospect_id, "early_playing_time")
+
+    promise = updated["recruiting"]["active_promises"][0]
+    assert promise["player_id"] == prospect_id
+    assert promise["promise_type"] == "early_playing_time"
+    assert promise["result"] is None
+    assert promise["result_season_id"] is None
+    assert promise["status"] == "open"

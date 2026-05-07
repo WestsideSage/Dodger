@@ -92,6 +92,8 @@ def save_recruiting_promise(
             "player_id": player_id,
             "promise_type": promise_type,
             "status": "open",
+            "result": None,
+            "result_season_id": None,
             "evidence": "Will be checked against future command history and player match stats.",
         }
     )
