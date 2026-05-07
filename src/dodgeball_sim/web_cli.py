@@ -56,8 +56,8 @@ def _run_dev(root: Path) -> None:
         return
 
     print("Starting Dodgeball Manager [DEV]")
-    print("  API  → http://localhost:8000")
-    print("  App  → http://localhost:5173  (Vite HMR)")
+    print("  API  -> http://localhost:8000")
+    print("  App  -> http://localhost:5173  (Vite HMR)")
 
     npm = "npm.cmd" if sys.platform == "win32" else "npm"
     vite_proc = subprocess.Popen(
