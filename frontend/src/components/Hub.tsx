@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { MatchReplayResponse, StatusResponse, SimResponse } from '../types';
 import MatchReplay from './MatchReplay';
-import { ActionButton, KeyValueRow, Badge, PageHeader, StatChip, StatusMessage } from './ui';
+import { useApiResource } from '../hooks/useApiResource';
+import { ActionButton, KeyValueRow, Badge, PageHeader, StatChip, StatusMessage, Tile } from './ui';
 
 function formatState(value: string) {
   return value.replaceAll('_', ' ');
@@ -43,15 +44,15 @@ function SimAction({
 }) {
   const varStyle = simTileVariantStyle[variant];
   return (
-    <button
+    <Tile
+      as="button"
       onClick={onClick}
       disabled={disabled}
       style={{
         ...varStyle,
-        borderRadius: '4px',
         padding: '0.875rem 1rem',
         textAlign: 'left',
-        cursor: 'pointer',
+        cursor: disabled ? 'default' : 'pointer',
         transition: 'all 0.15s',
         opacity: disabled ? 0.45 : 1,
         width: '100%',
@@ -77,18 +78,15 @@ function SimAction({
       }}>
         {detail}
       </span>
-    </button>
+    </Tile>
   );
 }
 
 export function Hub() {
-  const [status, setStatus] = useState<StatusResponse | null>(null);
-  const [loading, setLoading] = useState(true);
   const [simulating, setSimulating] = useState(false);
   const [, setAcknowledging] = useState(false);
   const [simResult, setSimResult] = useState<SimResponse | null>(null);
   const [replay, setReplay] = useState<MatchReplayResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const loadReplay = useCallback((matchId: string) => {
     return fetch(`/api/matches/${encodeURIComponent(matchId)}/replay`)
@@ -98,6 +96,14 @@ export function Hub() {
       })
       .then(setReplay);
   }, []);
+
+  const handleLoad = useCallback((data: StatusResponse) => {
+    if (data.state?.state === 'season_active_match_report_pending' && data.state.match_id) {
+      loadReplay(data.state.match_id).catch(() => {});
+    }
+  }, [loadReplay]);
+
+  const { data: status, error, loading, setData: setStatus, setError, setLoading } = useApiResource<StatusResponse>('/api/status', handleLoad);
 
   const refreshStatus = useCallback((showLoading = false) => {
     if (showLoading) setLoading(true);
@@ -109,39 +115,14 @@ export function Hub() {
       .then(data => {
         setStatus(data);
         if (data.state?.state === 'season_active_match_report_pending' && data.state.match_id) {
-          return loadReplay(data.state.match_id);
+          loadReplay(data.state.match_id).catch(err => setError(err.message));
+        } else {
+          setReplay(null);
         }
-        setReplay(null);
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
-  }, [loadReplay]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    fetch('/api/status')
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch status');
-        return res.json();
-      })
-      .then(data => {
-        if (!cancelled) setStatus(data);
-        if (!cancelled && data.state?.state === 'season_active_match_report_pending' && data.state.match_id) {
-          return loadReplay(data.state.match_id);
-        }
-      })
-      .catch(err => {
-        if (!cancelled) setError(err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [loadReplay]);
+  }, [setStatus, setError, setLoading, loadReplay]);
 
   const handleSimulate = (mode = 'week', body: Record<string, string | number> = {}) => {
     setSimulating(true);

@@ -35,6 +35,24 @@ export function Card({ children, className = '' }: { children: ReactNode; classN
   return <div className={`dm-panel ${className}`}>{children}</div>;
 }
 
+export function Tile({ children, className = '', style, as: Component = 'div', ...rest }: { children: ReactNode; className?: string; style?: React.CSSProperties; as?: React.ElementType; disabled?: boolean } & React.HTMLAttributes<HTMLElement>) {
+  return (
+    <Component
+      className={className}
+      style={{
+        borderRadius: '4px',
+        border: '1px solid #1e293b',
+        background: '#0f172a',
+        padding: '0.75rem',
+        ...style,
+      }}
+      {...rest}
+    >
+      {children}
+    </Component>
+  );
+}
+
 export function PageHeader({
   eyebrow,
   title,

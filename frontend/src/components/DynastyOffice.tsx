@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { DynastyOfficeResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
-import { ActionButton, Badge, CompactList, CompactListRow, PageHeader, StatChip, StatusMessage } from './ui';
+import { ActionButton, Badge, CompactList, CompactListRow, PageHeader, StatChip, StatusMessage, Tile } from './ui';
 
 function label(value: string) {
   return value.replace(/_/g, ' ');
@@ -76,20 +76,11 @@ export function DynastyOffice() {
               <h3 className="dm-panel-title">Recruiting Promises</h3>
               <p className="dm-panel-subtitle">{data.recruiting.rules.honesty}</p>
             </div>
-            <Badge tone="warning">V8</Badge>
           </div>
           <div className="dm-section" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.75rem' }} >
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '0.75rem' }}>
               {data.recruiting.prospects.slice(0, 6).map(prospect => (
-                <section
-                  key={prospect.player_id}
-                  style={{
-                    borderRadius: '4px',
-                    border: '1px solid #1e293b',
-                    background: '#0f172a',
-                    padding: '0.75rem',
-                  }}
-                >
+                <Tile key={prospect.player_id} as="section">
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
                     <div>
                       <h4 style={{ fontWeight: 700, margin: 0, color: '#fff' }}>{prospect.name}</h4>
@@ -117,7 +108,7 @@ export function DynastyOffice() {
                       </ActionButton>
                     ))}
                   </div>
-                </section>
+                </Tile>
               ))}
             </div>
           </div>
@@ -167,33 +158,40 @@ export function DynastyOffice() {
               <p className="dm-kicker">League</p>
               <h3 className="dm-panel-title">League Memory</h3>
             </div>
-            <Badge tone="warning">V9</Badge>
           </div>
           <div className="dm-section" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <CompactList>
-              {data.league_memory.records.items.slice(0, 4).map((item, index) => (
-                <CompactListRow key={`record-${index}`}>
-                  <ItemText item={item} />
-                </CompactListRow>
-              ))}
-            </CompactList>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {data.league_memory.recent_matches.map(match => (
-                <div
-                  key={match.match_id}
-                  style={{
-                    borderRadius: '4px',
-                    border: '1px solid #1e293b',
-                    padding: '0.5rem 0.75rem',
-                    fontSize: '0.875rem',
-                    color: '#cbd5e1',
-                  }}
-                >
-                  <strong style={{ color: '#fff' }}>Week {match.week}</strong>
-                  {' · '}{match.summary}{' · '}{match.winner_name}
-                </div>
-              ))}
-            </div>
+            {data.league_memory.records.items.length === 0 && data.league_memory.recent_matches.length === 0 ? (
+              <p className="dm-empty-state">The league record books are currently empty. History begins when the first records are ratified.</p>
+            ) : (
+              <>
+                {data.league_memory.records.items.length > 0 && (
+                  <CompactList>
+                    {data.league_memory.records.items.slice(0, 4).map((item, index) => (
+                      <CompactListRow key={`record-${index}`}>
+                        <ItemText item={item} />
+                      </CompactListRow>
+                    ))}
+                  </CompactList>
+                )}
+                {data.league_memory.recent_matches.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {data.league_memory.recent_matches.map(match => (
+                      <Tile
+                        key={match.match_id}
+                        style={{
+                          padding: '0.5rem 0.75rem',
+                          fontSize: '0.875rem',
+                          color: '#cbd5e1',
+                        }}
+                      >
+                        <strong style={{ color: '#fff' }}>Week {match.week}</strong>
+                        {' · '}{match.summary}{' · '}{match.winner_name}
+                      </Tile>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -204,24 +202,23 @@ export function DynastyOffice() {
               <p className="dm-kicker">Front Office</p>
               <h3 className="dm-panel-title">Staff Market</h3>
             </div>
-            <Badge tone="warning">V10</Badge>
           </div>
           <div className="dm-section" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <p style={{ fontSize: '0.875rem', color: '#64748b', margin: 0 }}>{data.staff_market.rules.honesty}</p>
 
             {data.staff_market.recent_actions.length > 0 && (
-              <div style={{ borderRadius: '4px', border: '1px solid #1e293b', background: '#0f172a', padding: '0.75rem' }}>
+              <Tile>
                 <div style={{ fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '11px', color: '#64748b' }}>Recent staff moves</div>
                 <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                   {data.staff_market.recent_actions.map(action => (
                     <Badge key={action.candidate_id} tone="success">{label(action.department)}: {action.name}</Badge>
                   ))}
                 </div>
-              </div>
+              </Tile>
             )}
 
             {data.staff_market.current_staff.length > 0 && (
-              <div style={{ borderRadius: '4px', border: '1px solid #1e293b', background: '#0f172a', padding: '0.75rem' }}>
+              <Tile>
                 <div style={{ fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '11px', color: '#64748b' }}>Current staff</div>
                 <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                   {data.staff_market.current_staff.map((head) => {
@@ -239,20 +236,12 @@ export function DynastyOffice() {
                     );
                   })}
                 </div>
-              </div>
+              </Tile>
             )}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.75rem' }}>
               {data.staff_market.candidates.slice(0, 6).map(candidate => (
-                <section
-                  key={candidate.candidate_id}
-                  style={{
-                    borderRadius: '4px',
-                    border: '1px solid #1e293b',
-                    background: '#0f172a',
-                    padding: '0.75rem',
-                  }}
-                >
+                <Tile key={candidate.candidate_id} as="section">
                   <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
                     <div>
                       <h4 style={{ fontWeight: 700, margin: 0, color: '#fff' }}>{candidate.name}</h4>
@@ -271,7 +260,7 @@ export function DynastyOffice() {
                   >
                     Hire
                   </ActionButton>
-                </section>
+                </Tile>
               ))}
             </div>
           </div>

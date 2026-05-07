@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useApiResource } from '../hooks/useApiResource';
 import { ActionButton, PageHeader, StatChip, StatusMessage } from './ui';
 
 interface OffseasonBeat {
@@ -16,29 +17,8 @@ interface OffseasonBeat {
 }
 
 export function Offseason() {
-  const [beat, setBeat] = useState<OffseasonBeat | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: beat, error, loading, setData: setBeat, setError } = useApiResource<OffseasonBeat>('/api/offseason/beat');
   const [acting, setActing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchBeat = useCallback((showLoading = false) => {
-    if (showLoading) setLoading(true);
-    return fetch('/api/offseason/beat')
-      .then(res => {
-        if (!res.ok) return res.json().then(d => Promise.reject(new Error(d.detail || 'Failed to load offseason')));
-        return res.json();
-      })
-      .then(data => {
-        setBeat(data);
-        setError(null);
-      })
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    void Promise.resolve().then(() => fetchBeat(true));
-  }, [fetchBeat]);
 
   const act = (endpoint: string, method = 'POST') => {
     setActing(true);
@@ -98,11 +78,11 @@ export function Offseason() {
             <p className="dm-kicker">Current beat</p>
             <h3 className="dm-panel-title">{beat.title}</h3>
           </div>
-          <pre
+          <div
             style={{
               whiteSpace: 'pre-wrap',
               padding: '1.25rem',
-              fontFamily: 'var(--font-mono-data)',
+              fontFamily: 'var(--font-body)',
               fontSize: '0.875rem',
               color: '#cbd5e1',
               lineHeight: 1.6,
@@ -110,7 +90,7 @@ export function Offseason() {
             }}
           >
             {beat.body}
-          </pre>
+          </div>
         </div>
 
         {/* Actions panel */}

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { CommandCenterResponse, CommandCenterSimResponse } from '../types';
-import { ActionButton, Badge, KeyValueRow, PageHeader, StatChip, StatusMessage } from './ui';
+import { useApiResource } from '../hooks/useApiResource';
+import { ActionButton, Badge, KeyValueRow, PageHeader, StatChip, StatusMessage, Tile } from './ui';
 
 const devFocusOptions = ['BALANCED', 'YOUTH_ACCELERATION', 'TACTICAL_DRILLS', 'STRENGTH_AND_CONDITIONING'];
 
@@ -18,14 +19,15 @@ function formatTactic(value: number) {
 }
 
 export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: string) => void }) {
-  const [data, setData] = useState<CommandCenterResponse | null>(null);
-  const [selectedIntent, setSelectedIntent] = useState('Win Now');
-  const [selectedDevFocus, setSelectedDevFocus] = useState('BALANCED');
-  const [loading, setLoading] = useState(true);
+  const { data, setData, error, setError, loading, setLoading } = useApiResource<CommandCenterResponse>('/api/command-center');
+  const [localIntent, setLocalIntent] = useState<string | undefined>(undefined);
+  const [localDevFocus, setLocalDevFocus] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   const [simulating, setSimulating] = useState(false);
   const [result, setResult] = useState<CommandCenterSimResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+
+  const selectedIntent = localIntent ?? data?.plan.intent ?? 'Win Now';
+  const selectedDevFocus = localDevFocus ?? data?.plan.department_orders?.dev_focus ?? 'BALANCED';
 
   const load = (showLoading = false) => {
     if (showLoading) setLoading(true);
@@ -36,36 +38,12 @@ export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: strin
       })
       .then((payload: CommandCenterResponse) => {
         setData(payload);
-        setSelectedIntent(payload.plan.intent);
-        setSelectedDevFocus(payload.plan.department_orders?.dev_focus ?? 'BALANCED');
+        setLocalIntent(undefined);
+        setLocalDevFocus(undefined);
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
   };
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/command-center')
-      .then(res => {
-        if (!res.ok) throw new Error('Command center unavailable');
-        return res.json();
-      })
-      .then((payload: CommandCenterResponse) => {
-        if (cancelled) return;
-        setData(payload);
-        setSelectedIntent(payload.plan.intent);
-        setSelectedDevFocus(payload.plan.department_orders?.dev_focus ?? 'BALANCED');
-      })
-      .catch(err => {
-        if (!cancelled) setError(err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const savePlan = (intent = selectedIntent, devFocus = selectedDevFocus) => {
     setSaving(true);
@@ -81,8 +59,8 @@ export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: strin
       })
       .then((payload: CommandCenterResponse) => {
         setData(payload);
-        setSelectedIntent(payload.plan.intent);
-        setSelectedDevFocus(payload.plan.department_orders?.dev_focus ?? 'BALANCED');
+        setLocalIntent(undefined);
+        setLocalDevFocus(undefined);
       })
       .catch(err => setError(err.message))
       .finally(() => setSaving(false));
@@ -156,7 +134,7 @@ export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: strin
                   aria-label="Weekly intent"
                   value={selectedIntent}
                   onChange={(event) => {
-                    setSelectedIntent(event.target.value);
+                    setLocalIntent(event.target.value);
                     savePlan(event.target.value, selectedDevFocus);
                   }}
                   style={{
@@ -183,7 +161,7 @@ export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: strin
                   aria-label="Development Focus"
                   value={selectedDevFocus}
                   onChange={(event) => {
-                    setSelectedDevFocus(event.target.value);
+                    setLocalDevFocus(event.target.value);
                     savePlan(selectedIntent, event.target.value);
                   }}
                   style={{
@@ -208,15 +186,10 @@ export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: strin
             {/* Department orders */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem', marginTop: '1rem' }}>
               {Object.entries(plan.department_orders).filter(([key]) => key !== 'dev_focus').map(([key, value]) => (
-                <div key={key} style={{
-                  background: '#0f172a',
-                  border: '1px solid #1e293b',
-                  borderRadius: '4px',
-                  padding: '0.75rem',
-                }}>
+                <Tile key={key}>
                   <p className="dm-kicker" style={{ marginBottom: '0.25rem' }}>{departmentLabels[key] || key}</p>
                   <p className="dm-data" style={{ color: '#22d3ee', fontSize: '0.75rem', fontWeight: 700, textTransform: 'capitalize' }}>{String(value)}</p>
-                </div>
+                </Tile>
               ))}
             </div>
 
@@ -243,18 +216,13 @@ export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: strin
           </div>
           <div className="dm-section" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {plan.recommendations.map(item => (
-              <div key={item.department} style={{
-                background: '#0f172a',
-                border: '1px solid #1e293b',
-                borderRadius: '4px',
-                padding: '0.75rem',
-              }}>
+              <Tile key={item.department}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.375rem' }}>
                   <span className="dm-kicker">{item.department}</span>
                   <span style={{ fontSize: '0.6875rem', color: '#475569', fontFamily: 'var(--font-body)' }}>{item.voice}</span>
                 </div>
                 <p style={{ fontSize: '0.875rem', color: '#cbd5e1', fontFamily: 'var(--font-body)' }}>{item.text}</p>
-              </div>
+              </Tile>
             ))}
           </div>
         </div>
@@ -272,12 +240,7 @@ export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: strin
           <div className="dm-section">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.625rem' }}>
               {plan.lineup.players.map(player => (
-                <div key={player.id} style={{
-                  background: '#0f172a',
-                  border: '1px solid #1e293b',
-                  borderRadius: '4px',
-                  padding: '0.625rem 0.75rem',
-                }}>
+                <Tile key={player.id} style={{ padding: '0.625rem 0.75rem' }}>
                   <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: '0.875rem' }}>{player.name}</div>
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
                     <span className="dm-badge dm-badge-slate">OVR {player.overall}</span>
@@ -285,7 +248,7 @@ export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: strin
                       <span className="dm-badge dm-badge-violet">POT {player.potential}</span>
                     )}
                   </div>
-                </div>
+                </Tile>
               ))}
             </div>
             {plan.warnings.length > 0 && (
@@ -342,12 +305,7 @@ export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: strin
           </div>
           <div className="dm-section" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.75rem' }}>
             {dashboard.lanes.map(lane => (
-              <div key={lane.title} style={{
-                background: '#0f172a',
-                border: '1px solid #1e293b',
-                borderRadius: '4px',
-                padding: '0.75rem',
-              }}>
+              <Tile key={lane.title}>
                 <p className="dm-kicker" style={{ color: '#22d3ee', marginBottom: '0.375rem' }}>{lane.title}</p>
                 <p style={{ fontSize: '0.875rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '0.5rem' }}>{lane.summary}</p>
                 <ul style={{ paddingLeft: '1.125rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
@@ -355,7 +313,7 @@ export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: strin
                     <li key={item} style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'var(--font-body)' }}>{item}</li>
                   ))}
                 </ul>
-              </div>
+              </Tile>
             ))}
           </div>
         </div>
