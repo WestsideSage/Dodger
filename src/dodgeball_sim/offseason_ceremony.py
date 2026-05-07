@@ -6,6 +6,7 @@ import sqlite3
 from dataclasses import dataclass, replace
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
+from .config import DEFAULT_CONFIG
 from .career_state import CareerState, CareerStateCursor
 from .copy_quality import title_label
 from .development import apply_season_development, should_retire
@@ -237,7 +238,7 @@ def initialize_manager_offseason(
     # Compute staff development modifier from development department head
     _all_dept_heads = {h["department"]: h for h in load_department_heads(conn)}
     _dev_head = _all_dept_heads.get("development")
-    _max_mod = 0.15  # matches BalanceConfig.max_staff_development_modifier
+    _max_mod = DEFAULT_CONFIG.max_staff_development_modifier
     _staff_dev_modifier = 0.0
     if _dev_head is not None:
         _staff_dev_modifier = max(

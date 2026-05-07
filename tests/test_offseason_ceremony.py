@@ -73,6 +73,6 @@ def test_offseason_dev_path_loads_department_head_and_applies_modifier():
         len(updated_hired.get(player_club_hired, [])), 1
     )
 
-    assert avg_ovr_hired >= avg_ovr_base - 0.5, (
-        f"Expected hired ({avg_ovr_hired:.2f}) >= base ({avg_ovr_base:.2f}) within tolerance"
+    assert avg_ovr_hired >= avg_ovr_base, (
+        f"Expected hired ({avg_ovr_hired:.2f}) >= base ({avg_ovr_base:.2f})"
     )
