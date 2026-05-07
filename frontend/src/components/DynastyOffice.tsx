@@ -123,11 +123,22 @@ export function DynastyOffice() {
             {data.recruiting.credibility.evidence.map(item => <li key={item}>{item}</li>)}
           </ul>
           <div className="mt-4 flex flex-col gap-2">
-            {data.recruiting.active_promises.map(promise => (
-              <StatusMessage key={promise.player_id} title={label(promise.promise_type)} tone="success">
-                {promise.player_id}: {promise.evidence}
-              </StatusMessage>
-            ))}
+            {data.recruiting.active_promises.map(promise => {
+              const resultTone = promise.result === 'fulfilled' ? 'success'
+                : promise.result === 'broken' ? 'danger'
+                : 'info';
+              const resultLabel = promise.result === 'fulfilled' ? 'FULFILLED'
+                : promise.result === 'broken' ? 'BROKEN'
+                : 'OPEN';
+              return (
+                <StatusMessage key={promise.player_id} title={label(promise.promise_type)} tone={resultTone}>
+                  <div className="flex items-center gap-2">
+                    <Badge tone={resultTone}>{resultLabel}</Badge>
+                    <span>{promise.evidence}</span>
+                  </div>
+                </StatusMessage>
+              );
+            })}
           </div>
         </Card>
       </div>
@@ -167,6 +178,27 @@ export function DynastyOffice() {
                 {data.staff_market.recent_actions.map(action => (
                   <Badge key={action.candidate_id} tone="success">{label(action.department)}: {action.name}</Badge>
                 ))}
+              </div>
+            </div>
+          )}
+          {data.staff_market.current_staff.length > 0 && (
+            <div className="mb-3 rounded-md border border-[var(--color-line)] bg-[var(--color-cream)] p-3">
+              <div className="font-display uppercase tracking-wider text-[11px] text-[var(--color-muted)]">Current staff</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {data.staff_market.current_staff.map((head: { department: string; name: string; rating_primary: number }) => {
+                  const modifier = head.department === 'development'
+                    ? Math.max(0, ((head.rating_primary - 50) / 50) * 0.15)
+                    : 0;
+                  const modifierPct = (modifier * 100).toFixed(1);
+                  return (
+                    <div key={head.department} className="flex items-center gap-2">
+                      <Badge tone="info">{label(head.department)}: {head.name} ({head.rating_primary})</Badge>
+                      {head.department === 'development' && modifier > 0 && (
+                        <Badge tone="success">+{modifierPct}% dev</Badge>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

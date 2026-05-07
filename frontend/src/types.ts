@@ -301,6 +301,8 @@ export interface DynastyOfficeResponse {
             promise_type: string;
             status: string;
             evidence: string;
+            result: 'fulfilled' | 'broken' | null;
+            result_season_id: string | null;
         }>;
         prospects: Array<{
             player_id: string;
