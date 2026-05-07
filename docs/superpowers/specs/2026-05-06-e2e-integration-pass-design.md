@@ -18,7 +18,9 @@ Changes are delivered in game-flow order. Each seam is wired mechanically and it
 
 ### Where it lives
 
-`src/dodgeball_sim/dynasty_office.py`, `src/dodgeball_sim/offseason_beats.py`
+`src/dodgeball_sim/dynasty_office.py`, `src/dodgeball_sim/offseason_ceremony.py`
+
+`offseason_beats.py` owns ceremony payload helpers and beat-completion state only. The actual mutation point — where rosters, dev ticks, and season state are live — is `offseason_ceremony.initialize_manager_offseason()`, called before `offseason_beats` finalizes each beat. Promise evaluation runs here, immediately before the `development` beat is marked complete, so roster state from `load_all_rosters()` is valid and pre-retirement.
 
 ### What's missing
 
@@ -45,7 +47,7 @@ Schema after change:
 | Promise type | Fulfilled when | Evidence source |
 |---|---|---|
 | `early_playing_time` | Player has ≥ 6 rows in `player_match_stats` for the current season's match IDs | `player_match_stats` joined to `match_records` by season. No start marker exists — participation (having a stats row) is the explicit model. Spec records this explicitly so implementors do not infer starts from appearances. |
-| `development_priority` | Club applied a non-`BALANCED` `dev_focus` for ≥ 3 weeks this season AND player was on the active roster | `command_history.plan_json → department_orders.dev_focus != "BALANCED"` (count weeks); roster presence from `player_match_stats` rows or active roster. Note: `dev_focus` is a club-level command, not per-player. This is the correct evidence model — the promise means "I'll run a development-focused program while you're here," not a targeted player regimen. |
+| `development_priority` | Club applied a non-`BALANCED` `dev_focus` for ≥ 3 weeks this season AND player is on the active roster at the pre-retirement evaluation moment | `command_history.plan_json → department_orders.dev_focus != "BALANCED"` (count weeks); roster presence from `load_all_rosters(conn)[cursor.club_id]` at evaluation time — not from match participation. Note: `dev_focus` is a club-level command, not per-player. This is the correct evidence model — the promise means "I'll run a development-focused program while you're here," not a targeted player regimen. |
 | `contender_path` | The manager's club (from `CareerStateCursor.club_id`) appears in `playoff_brackets.seeds_json` for the current season | `load_playoff_bracket(conn, season_id)` — if the bracket exists and `cursor.club_id` is in seeds, fulfilled |
 
 ### Evaluation timing and idempotency
@@ -68,7 +70,7 @@ This makes the evaluator safe to replay through ceremony state: repeated calls p
 
 ### Where it lives
 
-`src/dodgeball_sim/development.py`, `src/dodgeball_sim/offseason_beats.py`, `src/dodgeball_sim/config.py`
+`src/dodgeball_sim/development.py`, `src/dodgeball_sim/offseason_ceremony.py`, `src/dodgeball_sim/config.py`
 
 ### What's missing
 
@@ -110,10 +112,11 @@ Follows existing `max_` naming convention. Default preserves current behavior wh
 
 ### Baseline invariants (required tests)
 
-Two tests must ship alongside this seam:
+Three tests must ship alongside this seam:
 
 1. `test_staff_dev_modifier_zero_when_no_department_head` — `apply_season_development` called without a staff modifier produces identical output to current behavior.
 2. `test_staff_dev_modifier_bounded_at_max` — a hired department head at rating 100 produces a modifier of exactly `max_staff_development_modifier`, not more.
+3. `test_offseason_dev_path_loads_department_head_and_passes_modifier` — run `offseason_ceremony.initialize_manager_offseason()` (or the relevant caller) against an in-memory save with a hired development department head; assert the returned player ratings reflect a non-zero bounded modifier. This test proves the path from department head persistence → modifier calculation → `apply_season_development` is actually connected, not just that the math formula is correct in isolation.
 
 ### UI evidence
 
@@ -152,9 +155,11 @@ In `dynasty_office._prospect_rows()`:
 
 This means Dynasty Office either shows the exact persisted pool, or the exact deterministic pool that will be persisted later. No divergence.
 
-### Acceptance test
+### Acceptance tests
 
-`test_dynasty_office_prospect_pool_matches_recruitment_day_pool` — given the same conn with a saved prospect pool (via `save_prospect_pool`), Dynasty Office `build_dynasty_office_state` must return prospects whose `player_id` values exactly match `load_prospect_pool` output. At least one prospect identity verified by `player_id`.
+1. `test_dynasty_office_prospect_pool_matches_recruitment_day_pool` — given the same conn with a saved prospect pool (via `save_prospect_pool`), Dynasty Office `build_dynasty_office_state` must return prospects whose `player_id` values exactly match `load_prospect_pool` output. At least one prospect identity verified by `player_id`.
+
+2. `test_dynasty_office_fallback_pool_matches_scouting_center_seed` — given a conn with no saved prospect pool, Dynasty Office `build_dynasty_office_state` generates prospects using `derive_seed(root_seed, "prospect_gen", str(class_year))`. Assert that the returned `player_id` values exactly match what `generate_prospect_pool` produces when called with the same seed — i.e., the same pool that `scouting_center.py` line 664 will later persist. This ensures pre-scouting and post-scouting previews are identical.
 
 ### Save compatibility
 
