@@ -305,7 +305,7 @@ export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: strin
           </div>
           <div className="dm-section" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.75rem' }}>
             {dashboard.lanes.map(lane => (
-              <Tile key={lane.title}>
+              <div key={lane.title} style={{ padding: '0.75rem 0', borderBottom: '1px solid rgba(30, 41, 59, 0.5)' }}>
                 <p className="dm-kicker" style={{ color: '#22d3ee', marginBottom: '0.375rem' }}>{lane.title}</p>
                 <p style={{ fontSize: '0.875rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '0.5rem' }}>{lane.summary}</p>
                 <ul style={{ paddingLeft: '1.125rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
@@ -313,7 +313,7 @@ export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: strin
                     <li key={item} style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'var(--font-body)' }}>{item}</li>
                   ))}
                 </ul>
-              </Tile>
+              </div>
             ))}
           </div>
         </div>

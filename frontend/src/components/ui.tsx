@@ -310,7 +310,7 @@ export function RatingBar({ rating, max = 100, label, compact = false }: { ratin
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         {!label && (
-          <span className="dm-data" style={{ fontSize: '0.75rem', color: '#cbd5e1', width: '1.75rem', textAlign: 'right', flexShrink: 0 }}>{Math.round(rating)}</span>
+          <span className="dm-data" style={{ fontSize: '0.875rem', color: '#e2e8f0', minWidth: '1.75rem', textAlign: 'right', flexShrink: 0 }}>{Math.round(rating)}</span>
         )}
         <div
           className="dm-stat-bar-track"

@@ -246,6 +246,7 @@ const CourtView = memo(function CourtView({
               fill={isElim ? '#0f172a' : `${baseColor}22`}
               stroke={isElim ? '#334155' : strokeColor}
               strokeWidth={isElim ? 1 : strokeW}
+              style={!isElim ? { filter: `drop-shadow(0 0 10px ${baseColor})` } : undefined}
             />
 
             {/* Eliminated X */}
@@ -385,10 +386,10 @@ function ScoreHeader({
               </span>
             )}
           </div>
-          <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 28, color: '#ffffff', lineHeight: 1, marginTop: 2 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 48, fontWeight: 700, color: '#ffffff', lineHeight: 1, marginTop: 4, textShadow: '0 0 15px rgba(249,115,22,0.5)' }}>
             {homeLiving}
           </div>
-          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', marginTop: 2, letterSpacing: 1 }}>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', marginTop: 4, letterSpacing: 1 }}>
             ALIVE · {homeElim} ELIM
           </div>
         </div>
@@ -424,10 +425,10 @@ function ScoreHeader({
             )}
             {awayName.toUpperCase()}
           </div>
-          <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 28, color: '#ffffff', lineHeight: 1, marginTop: 2 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 48, fontWeight: 700, color: '#ffffff', lineHeight: 1, marginTop: 4, textShadow: '0 0 15px rgba(6,182,212,0.5)' }}>
             {awayLiving}
           </div>
-          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', marginTop: 2, letterSpacing: 1 }}>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', marginTop: 4, letterSpacing: 1 }}>
             ALIVE · {awayElim} ELIM
           </div>
         </div>
@@ -893,16 +894,16 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
 
             {/* Scrubber */}
             <div
-              style={{ flex: 1, height: 4, background: '#1e293b', borderRadius: 2, cursor: 'pointer', position: 'relative' }}
+              style={{ flex: 1, height: 8, background: '#1e293b', borderRadius: 4, cursor: 'pointer', position: 'relative' }}
               onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 setEventIndex(Math.round(((e.clientX - rect.left) / rect.width) * (totalEvents - 1)));
                 setIsPlaying(false);
               }}
             >
-              <div style={{ height: '100%', width: `${progress * 100}%`, background: '#f97316', borderRadius: 2, transition: 'width 0.1s' }} />
+              <div style={{ height: '100%', width: `${progress * 100}%`, background: '#f97316', borderRadius: 4, transition: 'width 0.1s' }} />
               {data.key_play_indices.map((ki) => (
-                <div key={ki} style={{ position: 'absolute', top: -2, left: `${(ki / (totalEvents - 1)) * 100}%`, width: 2, height: 8, background: '#f59e0b', borderRadius: 1, transform: 'translateX(-50%)' }} />
+                <div key={ki} style={{ position: 'absolute', top: -2, left: `${(ki / (totalEvents - 1)) * 100}%`, width: 3, height: 12, background: '#f59e0b', borderRadius: 1.5, transform: 'translateX(-50%)' }} />
               ))}
             </div>
 

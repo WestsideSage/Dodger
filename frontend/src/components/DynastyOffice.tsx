@@ -207,14 +207,14 @@ export function DynastyOffice() {
             <p style={{ fontSize: '0.875rem', color: '#64748b', margin: 0 }}>{data.staff_market.rules.honesty}</p>
 
             {data.staff_market.recent_actions.length > 0 && (
-              <Tile>
+              <div style={{ padding: '0.75rem 0', borderBottom: '1px solid rgba(30, 41, 59, 0.5)' }}>
                 <div style={{ fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '11px', color: '#64748b' }}>Recent staff moves</div>
                 <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                   {data.staff_market.recent_actions.map(action => (
                     <Badge key={action.candidate_id} tone="success">{label(action.department)}: {action.name}</Badge>
                   ))}
                 </div>
-              </Tile>
+              </div>
             )}
 
             {data.staff_market.current_staff.length > 0 && (

@@ -233,35 +233,46 @@ input {
 
 .tactic-range {
   appearance: none;
-  height: 0.55rem;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--color-gym), var(--color-mustard), var(--color-brick));
-  outline: 1px solid var(--color-border);
-  outline-offset: 2px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #1e293b;
+  outline: none;
 }
 
 .tactic-range::-webkit-slider-thumb {
   appearance: none;
   width: 1rem;
   height: 1rem;
-  border: 2px solid var(--color-border);
+  border: none;
   border-radius: 999px;
-  background: var(--color-paper);
-  box-shadow: 0 2px 0 rgba(35, 33, 38, 0.2);
+  background: #f97316;
+  box-shadow: 0 0 10px rgba(249,115,22,0.4);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.tactic-range::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
 }
 
 .tactic-range::-moz-range-thumb {
   width: 1rem;
   height: 1rem;
-  border: 2px solid var(--color-border);
+  border: none;
   border-radius: 999px;
-  background: var(--color-paper);
-  box-shadow: 0 2px 0 rgba(35, 33, 38, 0.2);
+  background: #f97316;
+  box-shadow: 0 0 10px rgba(249,115,22,0.4);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.tactic-range::-moz-range-thumb:hover {
+  transform: scale(1.15);
 }
 
 .tactic-range:focus-visible {
-  outline: 2px solid var(--color-brick);
-  outline-offset: 4px;
+  outline: 2px solid #f97316;
+  outline-offset: 2px;
 }
 
 @media (min-width: 720px) {
@@ -455,7 +466,7 @@ input {
 
 .dm-nav-item-active {
   border-left-color: #22d3ee !important;
-  background: rgba(8, 145, 178, 0.15) !important;
+  background: rgba(22, 78, 99, 0.4) !important;
   color: #67e8f9 !important;
 }
 
