@@ -71,10 +71,11 @@ def test_staff_hire_updates_department_head_and_records_visible_effects():
 
 
 def test_ensure_dynasty_keys_initializes_missing_keys():
+    from dodgeball_sim.dynasty_office import PROMISE_STATE_KEY, STAFF_ACTION_STATE_KEY
     conn = _career_conn()
     # Keys start absent — build_dynasty_office_state should not crash
     conn.execute("DELETE FROM dynasty_state WHERE key IN (?, ?)",
-                 ("program_promises_json", "staff_market_actions_json"))
+                 (PROMISE_STATE_KEY, STAFF_ACTION_STATE_KEY))
     conn.commit()
 
     state = build_dynasty_office_state(conn)
@@ -84,6 +85,7 @@ def test_ensure_dynasty_keys_initializes_missing_keys():
 
 def test_ensure_dynasty_keys_raises_on_corrupt_value():
     from dodgeball_sim.dynasty_office import _ensure_dynasty_keys
+    from dodgeball_sim.persistence import CorruptSaveError
     conn = _career_conn()
     conn.execute(
         "INSERT OR REPLACE INTO dynasty_state (key, value) VALUES (?, ?)",
@@ -91,5 +93,5 @@ def test_ensure_dynasty_keys_raises_on_corrupt_value():
     )
     conn.commit()
 
-    with pytest.raises(ValueError, match="Corrupted dynasty state key"):
+    with pytest.raises(CorruptSaveError, match="Corrupted dynasty state key"):
         _ensure_dynasty_keys(conn)

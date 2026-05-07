@@ -7,6 +7,7 @@ from typing import Any
 from .config import DEFAULT_SCOUTING_CONFIG
 from .game_loop import current_week
 from .persistence import (
+    CorruptSaveError,
     get_state,
     load_all_rosters,
     load_awards,
@@ -46,7 +47,7 @@ def _ensure_dynasty_keys(conn: sqlite3.Connection) -> None:
             try:
                 json.loads(row["value"])
             except (json.JSONDecodeError, TypeError):
-                raise ValueError(f"Corrupted dynasty state key: {key}")
+                raise CorruptSaveError(f"Corrupted dynasty state key: {key}")
 
 
 def build_dynasty_office_state(conn: sqlite3.Connection) -> dict[str, Any]:
