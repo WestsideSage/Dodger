@@ -33,6 +33,7 @@ def apply_season_development(
     rng: DeterministicRNG,
     trajectory: str | None = None,
     dev_focus: str = "BALANCED",
+    staff_development_modifier: float = 0.0,
 ) -> Player:
     """Apply one offseason of deterministic development to a player using V6 Reps-based formula.
 
@@ -84,6 +85,8 @@ def apply_season_development(
 
     # 4. Final Allocation weighting
     pool = base_growth * potential_modifier * growth_multiplier
+    effective_staff_modifier = max(0.0, staff_development_modifier)
+    pool = pool * (1.0 + effective_staff_modifier)
     
     primary_stats = []
     if player.archetype == PlayerArchetype.POWER:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from dodgeball_sim.config import DEFAULT_CONFIG
 from dodgeball_sim.development import (
     apply_season_development,
     fatigue_consistency_modifier,
@@ -9,7 +10,7 @@ from dodgeball_sim.development import (
     should_retire,
 )
 from dodgeball_sim.models import PlayerTraits
-from dodgeball_sim.models import Player, PlayerRatings
+from dodgeball_sim.models import Player, PlayerArchetype, PlayerRatings
 from dodgeball_sim.rng import DeterministicRNG, derive_seed
 from dodgeball_sim.stats import PlayerMatchStats
 
@@ -139,3 +140,75 @@ def test_trajectory_ordering_in_cumulative_growth():
     assert delta_normal < delta_impact
     assert delta_impact < delta_star
     assert delta_star < delta_generational
+
+
+# ---------------------------------------------------------------------------
+# staff_development_modifier tests
+# ---------------------------------------------------------------------------
+
+def _staff_mod_player() -> Player:
+    return Player(
+        id="p1",
+        name="Test Player",
+        age=24,
+        archetype=PlayerArchetype.PRECISION,
+        ratings=PlayerRatings(
+            accuracy=65.0, power=60.0, dodge=60.0,
+            catch=60.0, stamina=60.0, tactical_iq=60.0,
+        ),
+        traits=PlayerTraits(potential=70.0, growth_curve=50.0),
+        newcomer=False,
+        club_id="club1",
+    )
+
+
+def _staff_mod_stats() -> PlayerMatchStats:
+    return PlayerMatchStats(minutes_played=800)
+
+
+def test_staff_dev_modifier_zero_when_no_staff_unchanged_output():
+    """Baseline: zero modifier produces same output as current behavior."""
+    player = _staff_mod_player()
+    rng1 = DeterministicRNG(seed=42)
+    rng2 = DeterministicRNG(seed=42)
+
+    result_no_modifier = apply_season_development(player, _staff_mod_stats(), facilities=(), rng=rng1)
+    result_zero_modifier = apply_season_development(
+        player, _staff_mod_stats(), facilities=(), rng=rng2, staff_development_modifier=0.0
+    )
+
+    assert result_no_modifier.ratings == result_zero_modifier.ratings
+
+
+def test_staff_dev_modifier_bounded_at_max():
+    """A non-zero modifier produces higher OVR than no modifier."""
+    max_mod = DEFAULT_CONFIG.max_staff_development_modifier  # 0.15
+    player = _staff_mod_player()
+    rng_base = DeterministicRNG(seed=99)
+    rng_max = DeterministicRNG(seed=99)
+
+    result_base = apply_season_development(player, _staff_mod_stats(), facilities=(), rng=rng_base)
+    result_max = apply_season_development(
+        player, _staff_mod_stats(), facilities=(), rng=rng_max,
+        staff_development_modifier=max_mod,
+    )
+
+    assert result_max.overall() >= result_base.overall()
+
+
+def test_staff_dev_modifier_positive_only():
+    """Negative modifier values have no effect (clamped to 0)."""
+    player = _staff_mod_player()
+    rng1 = DeterministicRNG(seed=77)
+    rng2 = DeterministicRNG(seed=77)
+
+    result_negative = apply_season_development(
+        player, _staff_mod_stats(), facilities=(), rng=rng1,
+        staff_development_modifier=-0.5,
+    )
+    result_zero = apply_season_development(
+        player, _staff_mod_stats(), facilities=(), rng=rng2,
+        staff_development_modifier=0.0,
+    )
+
+    assert result_negative.ratings == result_zero.ratings
