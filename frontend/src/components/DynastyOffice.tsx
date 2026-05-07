@@ -185,7 +185,7 @@ export function DynastyOffice() {
             <div className="mb-3 rounded-md border border-[var(--color-line)] bg-[var(--color-cream)] p-3">
               <div className="font-display uppercase tracking-wider text-[11px] text-[var(--color-muted)]">Current staff</div>
               <div className="mt-2 flex flex-wrap gap-2">
-                {data.staff_market.current_staff.map((head: { department: string; name: string; rating_primary: number }) => {
+                {data.staff_market.current_staff.map((head) => {
                   const modifier = head.department === 'development'
                     ? Math.max(0, ((head.rating_primary - 50) / 50) * 0.15)
                     : 0;
