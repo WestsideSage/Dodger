@@ -363,3 +363,50 @@ def test_offseason_ceremony_evaluates_promises_during_dev_beat():
     match = next((p for p in promises if p["player_id"] == prospect_id), None)
     assert match is not None
     assert match["result"] == "fulfilled"
+
+
+def test_dynasty_office_prospect_pool_matches_persisted_pool():
+    """When pool is saved, Dynasty Office returns the same player_ids."""
+    from dodgeball_sim.persistence import save_prospect_pool, load_prospect_pool
+    from dodgeball_sim.recruitment import generate_prospect_pool
+    from dodgeball_sim.rng import DeterministicRNG, derive_seed
+    from dodgeball_sim.config import DEFAULT_SCOUTING_CONFIG
+    from dodgeball_sim.dynasty_office import _class_year_from_season
+
+    conn = _career_conn()
+    state = build_dynasty_office_state(conn)
+    season_id = state["season_id"]
+
+    class_year = _class_year_from_season(season_id)
+    rng = DeterministicRNG(derive_seed(20260426, "prospect_gen", str(class_year)))
+    pool = generate_prospect_pool(class_year, rng, DEFAULT_SCOUTING_CONFIG)
+    save_prospect_pool(conn, pool)
+    conn.commit()
+
+    state2 = build_dynasty_office_state(conn)
+    office_ids = {p["player_id"] for p in state2["recruiting"]["prospects"]}
+    persisted_ids = {p.player_id for p in load_prospect_pool(conn, class_year)}
+
+    assert office_ids.issubset(persisted_ids)
+    assert len(office_ids) > 0
+
+
+def test_dynasty_office_fallback_pool_matches_scouting_center_seed():
+    """When no pool is saved, Dynasty Office uses the same seed as scouting center."""
+    from dodgeball_sim.recruitment import generate_prospect_pool
+    from dodgeball_sim.rng import DeterministicRNG, derive_seed
+    from dodgeball_sim.config import DEFAULT_SCOUTING_CONFIG
+    from dodgeball_sim.dynasty_office import _class_year_from_season
+
+    conn = _career_conn()
+    state = build_dynasty_office_state(conn)
+    season_id = state["season_id"]
+
+    class_year = _class_year_from_season(season_id)
+    rng = DeterministicRNG(derive_seed(20260426, "prospect_gen", str(class_year)))
+    expected_pool = generate_prospect_pool(class_year, rng, DEFAULT_SCOUTING_CONFIG)
+    expected_ids = [p.player_id for p in expected_pool[:8]]
+
+    office_ids = [p["player_id"] for p in state["recruiting"]["prospects"]]
+
+    assert office_ids == expected_ids

@@ -197,10 +197,16 @@ def _prospect_rows(
     promises: list[dict[str, Any]],
     credibility: dict[str, Any],
 ) -> list[dict[str, Any]]:
-    del conn
     class_year = _class_year_from_season(season_id)
-    rng = DeterministicRNG(derive_seed(root_seed, "v8_recruiting_preview", season_id))
-    prospects = generate_prospect_pool(class_year, rng, DEFAULT_SCOUTING_CONFIG)
+
+    # Source of truth: persisted pool (same one Recruitment Day uses)
+    persisted = load_prospect_pool(conn, class_year)
+    if persisted:
+        prospects = persisted
+    else:
+        # Fallback: generate using the identical seed the scouting center will use
+        rng = DeterministicRNG(derive_seed(root_seed, "prospect_gen", str(class_year)))
+        prospects = generate_prospect_pool(class_year, rng, DEFAULT_SCOUTING_CONFIG)
     promised = {promise["player_id"]: promise for promise in promises}
     rows = []
     for prospect in prospects[:8]:
