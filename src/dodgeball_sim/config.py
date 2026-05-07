@@ -29,6 +29,7 @@ class BalanceConfig:
     base_seed_offset: int
     rush_accuracy_modifier_max: float
     rush_fatigue_cost_max: float
+    max_staff_development_modifier: float
     difficulty_profiles: Dict[str, DifficultyProfile]
 
 
@@ -73,6 +74,7 @@ CONFIG_REGISTRY: Dict[str, BalanceConfig] = {
         base_seed_offset=17,
         rush_accuracy_modifier_max=0.15,
         rush_fatigue_cost_max=0.20,
+        max_staff_development_modifier=0.15,
         difficulty_profiles=_DEFAULT_DIFFICULTIES,
     )
 }
