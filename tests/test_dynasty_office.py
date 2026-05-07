@@ -241,3 +241,95 @@ def test_promise_contender_path_fulfilled_from_playoff_bracket():
     )
     match = next(p for p in promises if p["player_id"] == prospect_id)
     assert match["result"] == "fulfilled"
+
+
+def _insert_dev_focus_history(conn, season_id, club_id, n_weeks, dev_focus="YOUTH_ACCELERATION"):
+    """Insert n_weeks of command_history rows with the given dev_focus."""
+    import json as j
+    for week_num in range(1, n_weeks + 1):
+        conn.execute(
+            "INSERT INTO command_history (season_id, week, club_id, intent, plan_json, dashboard_json) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                season_id,
+                week_num,
+                club_id,
+                "weekly_plan",
+                j.dumps({"department_orders": {"dev_focus": dev_focus}}),
+                j.dumps({}),
+            ),
+        )
+    conn.commit()
+
+
+def test_promise_development_priority_fulfilled_when_focused_weeks_and_on_roster():
+    from dodgeball_sim.dynasty_office import evaluate_season_promises
+    from dodgeball_sim.persistence import load_all_rosters
+
+    conn = _career_conn()
+    state = build_dynasty_office_state(conn)
+    season_id = state["season_id"]
+    club_id = state["player_club_id"]
+
+    rosters = load_all_rosters(conn)
+    roster_player_id = rosters[club_id][0].id
+
+    save_recruiting_promise(conn, roster_player_id, "development_priority")
+    _insert_dev_focus_history(conn, season_id, club_id, n_weeks=3)
+
+    evaluate_season_promises(conn, season_id, club_id)
+
+    promises = _json.loads(
+        conn.execute(
+            "SELECT value FROM dynasty_state WHERE key = 'program_promises_json'"
+        ).fetchone()["value"]
+    )
+    match = next(p for p in promises if p["player_id"] == roster_player_id)
+    assert match["result"] == "fulfilled"
+
+
+def test_promise_development_priority_broken_when_insufficient_focused_weeks():
+    from dodgeball_sim.dynasty_office import evaluate_season_promises
+    from dodgeball_sim.persistence import load_all_rosters
+
+    conn = _career_conn()
+    state = build_dynasty_office_state(conn)
+    season_id = state["season_id"]
+    club_id = state["player_club_id"]
+
+    rosters = load_all_rosters(conn)
+    roster_player_id = rosters[club_id][0].id
+
+    save_recruiting_promise(conn, roster_player_id, "development_priority")
+    _insert_dev_focus_history(conn, season_id, club_id, n_weeks=2)
+
+    evaluate_season_promises(conn, season_id, club_id)
+
+    promises = _json.loads(
+        conn.execute(
+            "SELECT value FROM dynasty_state WHERE key = 'program_promises_json'"
+        ).fetchone()["value"]
+    )
+    match = next(p for p in promises if p["player_id"] == roster_player_id)
+    assert match["result"] == "broken"
+
+
+def test_promise_development_priority_broken_when_player_not_on_roster():
+    from dodgeball_sim.dynasty_office import evaluate_season_promises
+
+    conn = _career_conn()
+    state = build_dynasty_office_state(conn)
+    season_id = state["season_id"]
+    club_id = state["player_club_id"]
+
+    save_recruiting_promise(conn, "nonexistent_player", "development_priority")
+    _insert_dev_focus_history(conn, season_id, club_id, n_weeks=3)
+
+    evaluate_season_promises(conn, season_id, club_id)
+
+    promises = _json.loads(
+        conn.execute(
+            "SELECT value FROM dynasty_state WHERE key = 'program_promises_json'"
+        ).fetchone()["value"]
+    )
+    match = next(p for p in promises if p["player_id"] == "nonexistent_player")
+    assert match["result"] == "broken"

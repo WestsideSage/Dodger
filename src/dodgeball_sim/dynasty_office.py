@@ -358,6 +358,8 @@ def evaluate_season_promises(
 
         player_id = promise.get("player_id")
         if not player_id:
+            promise["result"] = "broken"
+            promise["result_season_id"] = season_id
             promise["evidence"] = "Legacy promise — player identity not recorded."
             changed = True
             continue
