@@ -366,7 +366,7 @@ def test_offseason_ceremony_evaluates_promises_during_dev_beat():
 
 
 def test_dynasty_office_prospect_pool_matches_persisted_pool():
-    """When pool is saved, Dynasty Office returns the same player_ids."""
+    """When pool is saved, Dynasty Office returns data from the persisted pool (not regenerated)."""
     from dodgeball_sim.persistence import save_prospect_pool, load_prospect_pool
     from dodgeball_sim.recruitment import generate_prospect_pool
     from dodgeball_sim.rng import DeterministicRNG, derive_seed
@@ -383,12 +383,21 @@ def test_dynasty_office_prospect_pool_matches_persisted_pool():
     save_prospect_pool(conn, pool)
     conn.commit()
 
-    state2 = build_dynasty_office_state(conn)
-    office_ids = {p["player_id"] for p in state2["recruiting"]["prospects"]}
-    persisted_ids = {p.player_id for p in load_prospect_pool(conn, class_year)}
+    # Write a sentinel name to the DB — proves the office reads persisted data, not regenerated
+    conn.execute(
+        """UPDATE prospect_pool SET name = 'SENTINEL_FROM_DB'
+           WHERE class_year = ? AND player_id = (
+               SELECT player_id FROM prospect_pool WHERE class_year = ? ORDER BY player_id LIMIT 1
+           )""",
+        (class_year, class_year),
+    )
+    conn.commit()
 
-    assert office_ids.issubset(persisted_ids)
-    assert len(office_ids) > 0
+    state2 = build_dynasty_office_state(conn)
+    office_names = [p["name"] for p in state2["recruiting"]["prospects"]]
+    assert "SENTINEL_FROM_DB" in office_names, (
+        f"Expected sentinel name in office prospects, got: {office_names}"
+    )
 
 
 def test_dynasty_office_fallback_pool_matches_scouting_center_seed():
@@ -405,8 +414,18 @@ def test_dynasty_office_fallback_pool_matches_scouting_center_seed():
     class_year = _class_year_from_season(season_id)
     rng = DeterministicRNG(derive_seed(20260426, "prospect_gen", str(class_year)))
     expected_pool = generate_prospect_pool(class_year, rng, DEFAULT_SCOUTING_CONFIG)
-    expected_ids = [p.player_id for p in expected_pool[:8]]
 
-    office_ids = [p["player_id"] for p in state["recruiting"]["prospects"]]
+    # Compare names — these are seed-dependent unlike player_ids
+    expected_names = [p.name for p in expected_pool[:8]]
+    office_names = [p["name"] for p in state["recruiting"]["prospects"]]
+    assert office_names == expected_names, (
+        f"Dynasty Office names {office_names} don't match prospect_gen seed names {expected_names}"
+    )
 
-    assert office_ids == expected_ids
+    # Prove the old seed namespace produces different names (confirming the namespace fix matters)
+    bad_rng = DeterministicRNG(derive_seed(20260426, "v8_recruiting_preview", str(class_year)))
+    bad_pool = generate_prospect_pool(class_year, bad_rng, DEFAULT_SCOUTING_CONFIG)
+    bad_names = [p.name for p in bad_pool[:8]]
+    # Only assert namespace difference if names actually differ (they should with different seeds)
+    if bad_names != expected_names:
+        assert office_names != bad_names, "Office is using old seed namespace"
