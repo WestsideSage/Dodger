@@ -6,8 +6,10 @@ Complete this before implementation work:
 - Read `docs/specs/MILESTONES.md` for milestone work.
 - Confirm worktree path and branch.
 - Confirm the branch starts from the intended base, normally `develop`.
+- Confirm the path is a normal Windows path such as `C:\GPT5-Projects\...`, not a WSL `/mnt/c/...` path.
 - Bootstrap missing worktree dependencies without waiting for Maurice:
   - Create/use `.venv`.
+  - Activate with `.venv\Scripts\Activate.ps1` when using PowerShell.
   - Install Python dev deps with `python -m pip install -e '.[dev]'`.
   - Run `npm install` from `frontend/` if frontend dependencies are missing.
 - Do not use `sudo`, upgrade system runtimes, or change global Node/Python configuration without explicit approval.

@@ -30,23 +30,23 @@ Each agent owns dependency setup inside its assigned worktree. Maurice should no
 
 Run this from the agent's worktree when `.venv` is missing, Python tests cannot find project dependencies, or pytest is unavailable:
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
+```powershell
+py -3 -m venv .venv
+.venv\Scripts\Activate.ps1
 python -m pip install -U pip
 python -m pip install -e '.[dev]'
 ```
 
 Run this from the frontend folder when `frontend/node_modules/` is missing or frontend checks cannot find packages:
 
-```bash
+```powershell
 cd frontend
 npm install
 ```
 
 Then verify:
 
-```bash
+```powershell
 python -m pytest -q
 cd frontend
 npm run lint
@@ -55,7 +55,7 @@ npm run build
 
 The expected model is shared system runtimes, separate dependencies per worktree:
 
-- Shared: Python executable, `python3-venv`, `python3-pip`, Node 20.19+ or 22.12+.
+- Shared: Windows Python launcher (`py`) or `python`, Node 20.19+ or 22.12+, and npm.
 - Per worktree: `.venv/`, editable Python install, `frontend/node_modules/`.
 
 Agents may install per-worktree dependencies by default. They should not use `sudo`, upgrade system runtimes, or change global Node/Python configuration unless Maurice explicitly authorizes it.
@@ -64,7 +64,7 @@ Agents may install per-worktree dependencies by default. They should not use `su
 
 From the main repo or review worktree:
 
-```bash
+```powershell
 git switch develop
 git pull --ff-only
 git switch -c feature/<scope>
@@ -72,7 +72,7 @@ git switch -c feature/<scope>
 
 For an additional worktree:
 
-```bash
+```powershell
 git worktree add "../Dodgeball Simulator.worktrees/<agent-or-task>" -b feature/<scope> develop
 ```
 
@@ -80,7 +80,7 @@ git worktree add "../Dodgeball Simulator.worktrees/<agent-or-task>" -b feature/<
 
 Before switching:
 
-```bash
+```powershell
 git status --short
 ```
 
@@ -88,7 +88,7 @@ If there are unrelated edits, stop and write a handoff. Do not stash or revert s
 
 ## Sync From Develop
 
-```bash
+```powershell
 git fetch origin
 git switch develop
 git pull --ff-only
@@ -102,7 +102,7 @@ If there is no remote or fetch is unavailable, merge from the local `develop` br
 
 Use the review worktree for integration:
 
-```bash
+```powershell
 git switch review/integration
 git merge develop
 git merge --no-ff <task-branch>

@@ -31,6 +31,7 @@ addopts = "-q"
 norecursedirs = [
     "output",
     ".pytest_cache",
+    ".claude",
     "build",
     "dist",
     "*.egg-info",

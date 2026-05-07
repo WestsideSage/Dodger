@@ -14,9 +14,9 @@ Treat local SQLite files such as `demo.db`, `dodgeball_sim.db`, and `dodgeball_m
 
 ## Commands
 
-- Install Python dev environment in the current worktree:
-  - `python3 -m venv .venv`
-  - `source .venv/bin/activate`
+- Install Python dev environment in the current Windows worktree:
+  - `py -3 -m venv .venv`
+  - `.venv\Scripts\Activate.ps1`
   - `python -m pip install -U pip`
   - `python -m pip install -e '.[dev]'`
 - Run Python tests: `python -m pytest -q`
@@ -27,6 +27,7 @@ Treat local SQLite files such as `demo.db`, `dodgeball_sim.db`, and `dodgeball_m
 - Install frontend dependencies from `frontend/`: `npm install`
 - Build frontend from `frontend/`: `npm run build`
 - Lint frontend from `frontend/`: `npm run lint`
+- Run root Playwright smoke checks: `npm run e2e`
 
 ## Architecture Snapshot
 
@@ -126,6 +127,7 @@ Preferred local worktrees live outside the main repo:
 Rules:
 
 - Do not implement major work directly in the main repo folder.
+- Use standard Windows paths for local work. Do not set up new worktrees under `/mnt/c/...` or document WSL-only commands as the normal path.
 - Before editing, confirm the worktree path, branch, baseline status, and intended files.
 - Agents are responsible for bootstrapping their own assigned worktree dependencies when missing: create/use `.venv`, install Python dev deps, run `npm install` in `frontend/`, then verify.
 - Inspect `git status --short` before and after work. Do not overwrite or revert someone else's changes.
