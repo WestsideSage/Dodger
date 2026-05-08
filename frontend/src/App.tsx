@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { CommandCenter } from './components/CommandCenter';
+import { MatchWeek } from './components/MatchWeek';
 import { DynastyOffice } from './components/DynastyOffice';
 import { Standings } from './components/LeagueContext';
-import { Offseason } from './components/Offseason';
 import { Roster } from './components/Roster';
 import { SaveMenu } from './components/SaveMenu';
 import MatchReplay from './components/MatchReplay';
@@ -39,6 +38,7 @@ function tabFromUrl(): Tab {
 function App() {
   const [screen, setScreen] = useState<Screen>('loading');
   const [activeTab, setActiveTab] = useState<Tab>(tabFromUrl);
+  const [postSimThisSession, setPostSimThisSession] = useState(false);
   const [commandReplay, setCommandReplay] = useState<MatchReplayResponse | null>(null);
   const [commandReplayLoading, setCommandReplayLoading] = useState(false);
 
@@ -56,7 +56,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (screen !== 'game') return;
+    if (screen !== 'game' && screen !== 'offseason') return;
     const params = new URLSearchParams(window.location.search);
     params.set('tab', activeTab);
     window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
@@ -117,48 +117,10 @@ function App() {
     </button>
   );
 
-  if (screen === 'offseason') {
-    return (
-      <div className="dm-app-shell flex" style={{ minHeight: '100vh' }}>
-        {/* Left Navigation Rail */}
-        <aside className="dm-left-nav">
-          <div className="dm-left-nav-logo">
-            <p className="dm-kicker">Dodgeball Manager</p>
-            <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', margin: 0 }}>2026</p>
-          </div>
-          <nav style={{ padding: '0.5rem 0', flex: 1 }} aria-label="Primary">
-            <div className="dm-nav-item dm-nav-item-active" style={{ cursor: 'default' }}>
-              <span className="dm-nav-dot" />
-              Off-Season
-            </div>
-          </nav>
-          <div style={{ padding: '0.75rem', borderTop: '1px solid #1e293b' }}>
-            {menuButton}
-          </div>
-        </aside>
+  const effectiveActiveTab: Tab = screen === 'offseason' ? 'command' : activeTab;
 
-        {/* Main workspace */}
-        <div className="dm-workspace">
-          <header className="dm-broadcast-header">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-              <div>
-                <p className="dm-kicker">OFF-SEASON</p>
-                <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', margin: 0 }}>
-                  Dodgeball Manager
-                </h1>
-              </div>
-            </div>
-          </header>
-          <div className="dm-content">
-            <Offseason />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const activeTabDef = tabs.find(t => t.id === activeTab) ?? tabs[0];
-  const kicker = commandReplay ? 'MATCH DAY' : commandReplayLoading ? 'MATCH DAY' : tabKickers[activeTab];
+  const activeTabDef = tabs.find(t => t.id === effectiveActiveTab) ?? tabs[0];
+  const kicker = commandReplay ? 'MATCH DAY' : commandReplayLoading ? 'MATCH DAY' : tabKickers[effectiveActiveTab];
   const headerTitle = commandReplay ? 'Match Replay' : commandReplayLoading ? 'Loading Replay…' : activeTabDef.label;
 
   return (
@@ -173,7 +135,7 @@ function App() {
           {tabs.map(tab => (
             <button
               key={tab.id}
-              className={`dm-nav-item ${activeTab === tab.id && !commandReplay && !commandReplayLoading ? 'dm-nav-item-active' : ''}`}
+              className={`dm-nav-item ${effectiveActiveTab === tab.id && !commandReplay && !commandReplayLoading ? 'dm-nav-item-active' : ''}`}
               onClick={() => { setCommandReplay(null); setActiveTab(tab.id); }}
             >
               <span className="dm-nav-dot" />
@@ -211,10 +173,21 @@ function App() {
           {!commandReplay && commandReplayLoading && (
             <p className="dm-kicker" style={{ padding: '2rem', fontSize: '0.875rem' }}>Loading replay…</p>
           )}
-          {!commandReplay && !commandReplayLoading && activeTab === 'command' && <CommandCenter onOpenReplay={openCommandReplay} />}
-          {!commandReplay && !commandReplayLoading && activeTab === 'dynasty' && <DynastyOffice />}
-          {!commandReplay && !commandReplayLoading && activeTab === 'roster' && <Roster />}
-          {!commandReplay && !commandReplayLoading && activeTab === 'standings' && <Standings />}
+          {!commandReplay && !commandReplayLoading && effectiveActiveTab === 'command' && (
+            <MatchWeek
+              onOpenReplay={openCommandReplay}
+              mode={
+                screen === 'offseason' ? 'offseason'
+                : postSimThisSession ? 'post-sim'
+                : 'pre-sim'
+              }
+              onSimComplete={() => setPostSimThisSession(true)}
+              onAdvanceWeek={() => setPostSimThisSession(false)}
+            />
+          )}
+          {!commandReplay && !commandReplayLoading && effectiveActiveTab === 'dynasty' && <DynastyOffice />}
+          {!commandReplay && !commandReplayLoading && effectiveActiveTab === 'roster' && <Roster />}
+          {!commandReplay && !commandReplayLoading && effectiveActiveTab === 'standings' && <Standings />}
         </div>
       </div>
     </div>
