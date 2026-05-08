@@ -61,6 +61,7 @@ def test_dynasty_office_surfaces_v8_v9_v10_loops_without_fake_claims():
     assert state["staff_market"]["current_staff"]
     assert state["staff_market"]["candidates"]
     assert state["staff_market"]["candidates"][0]["effect_lanes"]
+    assert "Training staff affects offseason player development" in state["staff_market"]["rules"]["honesty"]
 
 
 def test_recruiting_promises_are_limited_and_persisted_as_truth():
@@ -161,6 +162,7 @@ def test_promise_early_playing_time_fulfilled_when_six_match_appearances():
     )
     match = next(p for p in promises if p["player_id"] == prospect_id)
     assert match["result"] == "fulfilled"
+    assert match["status"] == "fulfilled"
     assert match["result_season_id"] == season_id
     assert "6" in match["evidence"] or "match" in match["evidence"].lower()
 
@@ -185,6 +187,7 @@ def test_promise_early_playing_time_broken_when_fewer_than_six():
     )
     match = next(p for p in promises if p["player_id"] == prospect_id)
     assert match["result"] == "broken"
+    assert match["status"] == "broken"
 
 
 def test_promise_evaluation_is_idempotent():
@@ -285,6 +288,7 @@ def test_promise_development_priority_fulfilled_when_focused_weeks_and_on_roster
     )
     match = next(p for p in promises if p["player_id"] == roster_player_id)
     assert match["result"] == "fulfilled"
+    assert match["status"] == "fulfilled"
 
 
 def test_promise_development_priority_broken_when_insufficient_focused_weeks():
@@ -311,6 +315,7 @@ def test_promise_development_priority_broken_when_insufficient_focused_weeks():
     )
     match = next(p for p in promises if p["player_id"] == roster_player_id)
     assert match["result"] == "broken"
+    assert match["status"] == "broken"
 
 
 def test_promise_development_priority_broken_when_player_not_on_roster():
@@ -343,6 +348,7 @@ def test_promise_development_priority_broken_when_player_not_on_roster():
     )
     match = next(p for p in promises if p["player_id"] == other_player_id)
     assert match["result"] == "broken"
+    assert match["status"] == "broken"
 
 
 def test_offseason_ceremony_evaluates_promises_during_dev_beat():
@@ -373,6 +379,61 @@ def test_offseason_ceremony_evaluates_promises_during_dev_beat():
     match = next((p for p in promises if p["player_id"] == prospect_id), None)
     assert match is not None
     assert match["result"] == "fulfilled"
+
+
+def test_evaluated_promises_no_longer_count_against_open_promise_cap():
+    from dodgeball_sim.dynasty_office import evaluate_season_promises
+
+    conn = _career_conn()
+    state = build_dynasty_office_state(conn)
+    season_id = state["season_id"]
+    club_id = state["player_club_id"]
+    prospects = state["recruiting"]["prospects"]
+    for prospect in prospects[:3]:
+        save_recruiting_promise(conn, prospect["player_id"], "early_playing_time")
+
+    evaluate_season_promises(conn, season_id, club_id)
+    updated = save_recruiting_promise(conn, prospects[3]["player_id"], "early_playing_time")
+
+    open_promises = [
+        promise for promise in updated["recruiting"]["active_promises"]
+        if promise["status"] == "open"
+    ]
+    assert [promise["player_id"] for promise in open_promises] == [prospects[3]["player_id"]]
+
+
+def test_training_staff_rating_changes_user_club_offseason_development():
+    from dodgeball_sim.offseason_ceremony import initialize_manager_offseason
+    from dodgeball_sim.persistence import load_all_rosters, load_clubs, load_season
+
+    def run_with_training_rating(rating: float) -> float:
+        conn = _career_conn()
+        state = build_dynasty_office_state(conn)
+        season_id = state["season_id"]
+        club_id = state["player_club_id"]
+        conn.execute(
+            """
+            UPDATE department_heads
+               SET rating_primary = ?
+             WHERE department = 'training'
+            """,
+            (rating,),
+        )
+        conn.commit()
+        initialize_manager_offseason(
+            conn,
+            load_season(conn, season_id),
+            load_clubs(conn),
+            load_all_rosters(conn),
+            root_seed=20260426,
+        )
+        roster = load_all_rosters(conn)[club_id]
+        return sum(player.overall() for player in roster)
+
+    weak_staff_total = run_with_training_rating(50.0)
+    elite_staff_total = run_with_training_rating(100.0)
+
+    assert elite_staff_total > weak_staff_total
 
 
 def test_dynasty_office_prospect_pool_matches_persisted_pool():

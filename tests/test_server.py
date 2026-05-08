@@ -15,6 +15,7 @@ from dodgeball_sim.persistence import (
     load_command_history,
     load_clubs,
     load_career_state_cursor,
+    load_completed_match_ids,
     load_lineup_default,
     load_playoff_bracket,
     load_season,
@@ -258,6 +259,97 @@ def test_match_replay_report_copy_does_not_expose_raw_ids_or_tuning_labels():
     assert not any("policy snapshot" in text.lower() for text in visible_copy)
     assert not any("rush frequency" in text.lower() for text in visible_copy)
     assert not any("target stars:" in text.lower() for text in visible_copy)
+
+
+def test_command_center_simulation_completes_the_full_schedule_week():
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_curated_manager_career(conn, "aurora", root_seed=20260426)
+    season = load_season(conn, "season_1")
+    week_one_ids = {match.match_id for match in season.matches_for_week(1)}
+    conn.commit()
+
+    def override_db():
+        yield conn
+
+    server.app.dependency_overrides[server.get_db] = override_db
+    try:
+        response = TestClient(server.app).post(
+            "/api/command-center/simulate",
+            json={"intent": "Win Now"},
+        )
+    finally:
+        server.app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert week_one_ids <= load_completed_match_ids(conn, "season_1")
+    assert load_career_state_cursor(conn).week == 2
+
+
+def test_dynasty_office_corrupt_state_returns_recoverable_conflict():
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_curated_manager_career(conn, "aurora", root_seed=20260426)
+    conn.execute(
+        "INSERT OR REPLACE INTO dynasty_state (key, value) VALUES (?, ?)",
+        ("program_promises_json", "NOT JSON {{{"),
+    )
+    conn.commit()
+
+    def override_db():
+        yield conn
+
+    server.app.dependency_overrides[server.get_db] = override_db
+    try:
+        response = TestClient(server.app, raise_server_exceptions=False).get("/api/dynasty-office")
+    finally:
+        server.app.dependency_overrides.clear()
+
+    assert response.status_code == 409
+    assert "dynasty state" in response.json()["detail"]
+
+
+def test_save_load_rejects_path_outside_managed_saves_and_keeps_active_save(tmp_path, monkeypatch):
+    saves_dir = tmp_path / "saves"
+    legacy_path = tmp_path / "dodgeball_sim.db"
+    managed_path = saves_dir / "managed.db"
+    outside_path = tmp_path / "not-a-save.txt"
+    saves_dir.mkdir()
+    outside_path.write_text("not sqlite", encoding="utf-8")
+
+    conn = sqlite3.connect(managed_path)
+    conn.close()
+
+    monkeypatch.setattr(server, "SAVES_DIR", saves_dir)
+    monkeypatch.setattr(server, "DEFAULT_DB_PATH", legacy_path)
+    original_save_path = server._active_save_path
+    server._active_save_path = managed_path
+    try:
+        response = TestClient(server.app).post("/api/saves/load", json={"path": str(outside_path)})
+    finally:
+        active_after = server._active_save_path
+        server._active_save_path = original_save_path
+
+    assert response.status_code == 400
+    assert active_after == managed_path
+
+
+def test_save_delete_rejects_path_outside_managed_saves_without_unlinking(tmp_path, monkeypatch):
+    saves_dir = tmp_path / "saves"
+    legacy_path = tmp_path / "dodgeball_sim.db"
+    outside_path = tmp_path / "delete-victim.txt"
+    saves_dir.mkdir()
+    outside_path.write_text("keep me", encoding="utf-8")
+
+    monkeypatch.setattr(server, "SAVES_DIR", saves_dir)
+    monkeypatch.setattr(server, "DEFAULT_DB_PATH", legacy_path)
+
+    response = TestClient(server.app).post("/api/saves/delete", json={"path": str(outside_path)})
+
+    assert response.status_code == 400
+    assert outside_path.exists()
 
 
 def test_dynasty_office_endpoint_exposes_remaining_milestone_loops_and_actions():

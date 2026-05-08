@@ -306,7 +306,7 @@ def _staff_market_state(
         "candidates": candidates,
         "recent_actions": recent_actions,
         "rules": {
-            "honesty": "Staff upgrades are already reshaping our weekly training plans and scouting coverage.",
+            "honesty": "Training staff affects offseason player development now; scouting, recovery, and deeper staff economy effects remain explicit future hooks.",
         },
     }
 
@@ -333,7 +333,7 @@ def _candidate_for_head(head: dict[str, Any], root_seed: int, season_id: str) ->
 def _staff_effect_lanes(department: str, primary: float, secondary: float) -> list[str]:
     labels = {
         "tactics": "Tactics recommendations and replay-proof preparation.",
-        "training": "Development focus advice and player-growth reporting.",
+        "training": "Development focus advice and offseason player-growth impact.",
         "conditioning": "Fatigue-risk recommendations and recovery planning.",
         "medical": "Availability warnings and overuse-risk reporting.",
         "scouting": "Recruiting fit explanations and prospect board clarity.",
@@ -369,6 +369,7 @@ def evaluate_season_promises(
         player_id = promise.get("player_id")
         if not player_id:
             promise["result"] = "broken"
+            promise["status"] = "broken"
             promise["result_season_id"] = season_id
             promise["evidence"] = "Legacy promise — player identity not recorded."
             changed = True
@@ -379,6 +380,7 @@ def evaluate_season_promises(
             conn, season_id, club_id, player_id, promise_type
         )
         promise["result"] = result
+        promise["status"] = result
         promise["result_season_id"] = season_id
         promise["evidence"] = evidence
         changed = True

@@ -1083,21 +1083,31 @@ def simulate_command_center_week(update: WeeklyCommandPlanUpdate | None = None, 
         raise HTTPException(status_code=409, detail=f"No user match available: {stop_reason}")
 
     scheduled = chosen[0]
+    completed = load_completed_match_ids(conn, season_id)
+    week_matches = [
+        match
+        for match in sorted(season.matches_for_week(scheduled.week), key=lambda item: item.match_id)
+        if match.match_id not in completed
+    ]
     _apply_command_plan_to_match(conn, plan, scheduled.match_id, player_club_id)
     rosters = load_all_rosters(conn)
     root_seed = normalize_root_seed(get_state(conn, "root_seed", "1"), default_on_invalid=True)
     if ensure_ai_rosters_playable(conn, clubs, rosters, root_seed, season_id, player_club_id):
         rosters = load_all_rosters(conn)
-    _validate_match_rosters([scheduled], rosters)
+    _validate_match_rosters(week_matches, rosters)
     difficulty = get_state(conn, "difficulty", "pro") or "pro"
-    record = simulate_scheduled_match(
-        conn,
-        scheduled=scheduled,
-        clubs=clubs,
-        rosters=rosters,
-        root_seed=root_seed,
-        difficulty=difficulty,
-    )
+    records = [
+        simulate_scheduled_match(
+            conn,
+            scheduled=week_match,
+            clubs=clubs,
+            rosters=rosters,
+            root_seed=root_seed,
+            difficulty=difficulty,
+        )
+        for week_match in week_matches
+    ]
+    record = next(item for item in records if item.match_id == scheduled.match_id)
     recompute_regular_season_standings(conn, season)
     dashboard = build_post_week_dashboard(conn, plan, record)
     save_command_history_record(

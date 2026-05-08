@@ -312,9 +312,9 @@ def initialize_manager_offseason(
     if _player_club_id:
         evaluate_season_promises(conn, season.season_id, _player_club_id)
 
-    # Compute staff development modifier from development department head
+    # Training is the persisted staff department that owns player-growth work.
     _all_dept_heads = {h["department"]: h for h in load_department_heads(conn)}
-    _dev_head = _all_dept_heads.get("development")
+    _dev_head = _all_dept_heads.get("training")
     _max_mod = DEFAULT_CONFIG.max_staff_development_modifier
     _staff_dev_modifier = 0.0
     if _dev_head is not None:

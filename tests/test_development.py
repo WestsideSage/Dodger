@@ -48,6 +48,28 @@ def test_apply_season_development_grows_young_player_without_exceeding_potential
     assert developed.ratings.stamina <= player.traits.potential
 
 
+def test_positive_development_never_drops_rating_to_low_potential_cap():
+    player = replace(
+        make_player("capped", accuracy=65, power=64, dodge=63, catch=62, stamina=61),
+        age=23,
+        traits=PlayerTraits(potential=45.0, growth_curve="steady", consistency=0.6, pressure=0.5),
+    )
+
+    developed = apply_season_development(
+        player=player,
+        season_stats=PlayerMatchStats(minutes_played=800),
+        facilities=(),
+        rng=DeterministicRNG(20260508),
+        dev_focus="BALANCED",
+    )
+
+    assert developed.ratings.accuracy >= player.ratings.accuracy
+    assert developed.ratings.power >= player.ratings.power
+    assert developed.ratings.dodge >= player.ratings.dodge
+    assert developed.ratings.catch >= player.ratings.catch
+    assert developed.ratings.stamina >= player.ratings.stamina
+
+
 def test_fatigue_consistency_modifier_rewards_higher_consistency():
     assert fatigue_consistency_modifier(0.9) < fatigue_consistency_modifier(0.2)
 

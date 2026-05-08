@@ -174,7 +174,8 @@ def pressure_context(player: Player, reason: str | None) -> dict[str, float | bo
 
 def _apply_delta(current_value: float, delta: float, potential: float) -> float:
     if delta >= 0:
-        return min(potential, current_value + delta)
+        growth_cap = max(current_value, potential)
+        return min(growth_cap, current_value + delta)
     return max(1.0, current_value + delta)
 
 
