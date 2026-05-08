@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type { Player, RosterResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
 import { DataTable, PageHeader, RatingBar, StatChip, StatusMessage, TableCell, TableHeadCell } from './ui';
@@ -16,8 +16,69 @@ function overallColor(value: number): string {
   return '#f43f5e';
 }
 
+const DEV_FOCUS_OPTIONS = ['BALANCED', 'YOUTH_ACCELERATION', 'TACTICAL_DRILLS', 'STRENGTH_AND_CONDITIONING'];
+
+function DevFocusChip({
+  current,
+  intent,
+  onUpdated,
+}: {
+  current: string;
+  intent: string;
+  onUpdated: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const update = (next: string) => {
+    fetch('/api/command-center/plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ intent, department_orders: { dev_focus: next } }),
+    })
+      .then(() => { setOpen(false); onUpdated(); });
+  };
+
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="dm-kicker"
+        style={{ padding: '0.5rem 0.75rem', background: '#0f172a', border: '1px solid #334155', borderRadius: '4px', color: '#22d3ee', fontWeight: 700, cursor: 'pointer' }}
+      >
+        Dev Focus: {current.replace(/_/g, ' ')}
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '0.25rem', background: '#0f172a', border: '1px solid #334155', borderRadius: '4px', zIndex: 10, minWidth: '200px' }}>
+          {DEV_FOCUS_OPTIONS.map(opt => (
+            <button
+              key={opt}
+              onClick={() => update(opt)}
+              style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', background: opt === current ? '#1e293b' : 'transparent', border: 'none', color: '#e2e8f0', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+            >
+              {opt.replace(/_/g, ' ')}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Roster() {
   const { data, loading, error } = useApiResource<RosterResponse>('/api/roster');
+  const [planContext, setPlanContext] = useState<{ intent: string; dev_focus: string } | null>(null);
+
+  const fetchPlan = () => {
+    fetch('/api/command-center')
+      .then(r => r.json())
+      .then((d: any) => setPlanContext({
+        intent: d.plan.intent,
+        dev_focus: d.plan.department_orders?.dev_focus ?? 'BALANCED',
+      }));
+  };
+
+  useEffect(() => {
+    fetchPlan();
+  }, []);
 
   const defaultLineupIds = useMemo(
     () => new Set(data?.default_lineup ?? []),
@@ -51,6 +112,13 @@ export function Roster() {
             <StatChip label="Players" value={roster.length} />
             <StatChip label="Starters" value={starters} tone="warning" />
             <StatChip label="Avg OVR" value={averageOverall} tone="info" />
+            {planContext && (
+              <DevFocusChip
+                current={planContext.dev_focus}
+                intent={planContext.intent}
+                onUpdated={fetchPlan}
+              />
+            )}
           </>
         }
       />

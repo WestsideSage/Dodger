@@ -4,8 +4,6 @@ import { useApiResource } from '../hooks/useApiResource';
 import { ActionButton, Badge, KeyValueRow, PageHeader, StatChip, StatusMessage, Tile } from './ui';
 import { Offseason } from './Offseason';
 
-const devFocusOptions = ['BALANCED', 'YOUTH_ACCELERATION', 'TACTICAL_DRILLS', 'STRENGTH_AND_CONDITIONING'];
-
 const departmentLabels: Record<string, string> = {
   tactics: 'Tactics',
   training: 'Training',
@@ -34,13 +32,11 @@ export function MatchWeek({
 }) {
   const { data, setData, error, setError, loading, setLoading } = useApiResource<CommandCenterResponse>('/api/command-center');
   const [localIntent, setLocalIntent] = useState<string | undefined>(undefined);
-  const [localDevFocus, setLocalDevFocus] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   const [simulating, setSimulating] = useState(false);
   const [result, setResult] = useState<CommandCenterSimResponse | null>(null);
 
   const selectedIntent = localIntent ?? data?.plan.intent ?? 'Win Now';
-  const selectedDevFocus = localDevFocus ?? data?.plan.department_orders?.dev_focus ?? 'BALANCED';
 
   const load = (showLoading = false) => {
     if (showLoading) setLoading(true);
@@ -52,19 +48,18 @@ export function MatchWeek({
       .then((payload: CommandCenterResponse) => {
         setData(payload);
         setLocalIntent(undefined);
-        setLocalDevFocus(undefined);
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
   };
 
-  const savePlan = (intent = selectedIntent, devFocus = selectedDevFocus) => {
+  const savePlan = (intent = selectedIntent) => {
     setSaving(true);
     setError(null);
     return fetch('/api/command-center/plan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ intent, department_orders: { dev_focus: devFocus } }),
+      body: JSON.stringify({ intent }),
     })
       .then(res => {
         if (!res.ok) throw new Error('Plan save failed');
@@ -73,7 +68,6 @@ export function MatchWeek({
       .then((payload: CommandCenterResponse) => {
         setData(payload);
         setLocalIntent(undefined);
-        setLocalDevFocus(undefined);
       })
       .catch(err => setError(err.message))
       .finally(() => setSaving(false));
@@ -150,7 +144,7 @@ export function MatchWeek({
                     value={selectedIntent}
                     onChange={(event) => {
                       setLocalIntent(event.target.value);
-                      savePlan(event.target.value, selectedDevFocus);
+                      savePlan(event.target.value);
                     }}
                     style={{
                       width: '100%',
@@ -167,33 +161,6 @@ export function MatchWeek({
                     }}
                   >
                     {plan.available_intents.map(intent => <option key={intent}>{intent}</option>)}
-                  </select>
-                </label>
-
-                <label style={{ display: 'block' }}>
-                  <span className="dm-kicker" style={{ display: 'block', marginBottom: '0.375rem' }}>Dev Focus</span>
-                  <select
-                    aria-label="Development Focus"
-                    value={selectedDevFocus}
-                    onChange={(event) => {
-                      setLocalDevFocus(event.target.value);
-                      savePlan(selectedIntent, event.target.value);
-                    }}
-                    style={{
-                      width: '100%',
-                      background: '#0f172a',
-                      border: '1px solid #334155',
-                      borderRadius: '4px',
-                      padding: '0.5rem 0.75rem',
-                      color: '#e2e8f0',
-                      fontFamily: 'var(--font-display)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {devFocusOptions.map(focus => <option key={focus} value={focus}>{focus.replace(/_/g, ' ')}</option>)}
                   </select>
                 </label>
               </div>
