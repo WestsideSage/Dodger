@@ -65,7 +65,7 @@ def _snapshots() -> dict:
 def test_build_replay_proof_uses_saved_throw_context_without_engine_rerun():
     proof = build_replay_proof(
         [_throw_event("hit", player_out={"team": "away", "player_id": "away_1"})],
-        name_map={"home_1": "Power Captain", "away_1": "Away Target"},
+        name_map={"home_1": "Power Captain", "away_1": "Away Target", "away_2": "Away Two"},
         roster_snapshots=_snapshots(),
         home_club_id="home",
         away_club_id="away",
@@ -82,8 +82,8 @@ def test_build_replay_proof_uses_saved_throw_context_without_engine_rerun():
     assert event["resolution"] == "hit"
     assert event["odds"] == {"p_on_target": 0.74, "p_catch": 0.31}
     assert event["rolls"] == {"on_target": 0.3, "catch": 0.6}
-    assert "Rushed the throw" in event["tactic_context"]["items"][0]
-    assert "Synchronized attack" in event["tactic_context"]["items"][1]
+    assert "rush arrived" in event["tactic_context"]["items"][0]
+    assert "synchronized attack" in event["tactic_context"]["items"][1]
     assert event["fatigue"]["thrower_fatigue"] == 1.25
     assert event["score_state"]["away_living"] == 1
     assert "mismatched Captain" in event["liability_context"]["items"][0]
@@ -93,7 +93,7 @@ def test_build_replay_proof_uses_saved_throw_context_without_engine_rerun():
 def test_replay_proof_uses_narrative_pack_language_for_saved_context():
     proof = build_replay_proof(
         [_throw_event("hit", player_out={"team": "away", "player_id": "away_1"})],
-        name_map={"home_1": "Power Captain", "away_1": "Away Target"},
+        name_map={"home_1": "Power Captain", "away_1": "Away Target", "away_2": "Away Two"},
         roster_snapshots=_snapshots(),
         home_club_id="home",
         away_club_id="away",
@@ -102,9 +102,9 @@ def test_replay_proof_uses_narrative_pack_language_for_saved_context():
     event = proof["proof_events"][0]
     assert event["proof_tags"] == ["HIT", "RUSH", "SYNC", "EXHAUSTED", "LIABILITY"]
     assert event["summary"] == "A synced attack connects! Power Captain eliminates Away Target."
-    assert "Target selected to exploit Away Target" in event["decision_context"]["items"][0]
-    assert any("Rushed the throw" in item for item in event["tactic_context"]["items"])
-    assert any("Synchronized attack triggered" in item for item in event["tactic_context"]["items"])
+    assert "Target selection leaned toward Away Target" in event["decision_context"]["items"][0]
+    assert any("rush arrived" in item for item in event["tactic_context"]["items"])
+    assert any("synchronized attack triggered" in item.lower() for item in event["tactic_context"]["items"])
     assert any("High fatigue" in item for item in event["fatigue"]["items"])
     assert event["liability_context"]["items"] == [
         "Thrower suffered a liability penalty as a mismatched Captain (Power archetype)."

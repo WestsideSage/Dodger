@@ -243,9 +243,9 @@ export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: strin
                 <Tile key={player.id} style={{ padding: '0.625rem 0.75rem' }}>
                   <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: '0.875rem' }}>{player.name}</div>
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
-                    <span className="dm-badge dm-badge-slate">OVR {player.overall}</span>
+                    <span className="dm-badge dm-badge-slate">OVR {Math.round(player.overall)}</span>
                     {player.potential != null && (
-                      <span className="dm-badge dm-badge-violet">POT {player.potential}</span>
+                      <span className="dm-badge dm-badge-violet">POT {Math.round(player.potential)}</span>
                     )}
                   </div>
                 </Tile>
@@ -268,10 +268,10 @@ export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: strin
             <h2 className="dm-panel-title">Tactics Evidence</h2>
           </div>
           <div className="dm-section">
-            <KeyValueRow label="Target Stars" value={formatTactic(plan.tactics.target_stars)} />
-            <KeyValueRow label="Ball Holder" value={formatTactic(plan.tactics.target_ball_holder)} />
-            <KeyValueRow label="Rush Freq." value={formatTactic(plan.tactics.rush_frequency)} />
-            <KeyValueRow label="Catch Bias" value={formatTactic(plan.tactics.catch_bias)} />
+            <KeyValueRow label="Star Pressure" value={formatTactic(plan.tactics.target_stars)} />
+            <KeyValueRow label="Ball Pressure" value={formatTactic(plan.tactics.target_ball_holder)} />
+            <KeyValueRow label="Rush Pressure" value={formatTactic(plan.tactics.rush_frequency)} />
+            <KeyValueRow label="Catch Calls" value={formatTactic(plan.tactics.catch_bias)} />
             <p style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: '#475569', fontFamily: 'var(--font-body)' }}>
               Dashboard notes only cite effects that are tracked in the saved plan or match stats.
             </p>
@@ -303,17 +303,20 @@ export function CommandCenter({ onOpenReplay }: { onOpenReplay?: (matchId: strin
               </div>
             </div>
           </div>
-          <div className="dm-section" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.75rem' }}>
-            {dashboard.lanes.map(lane => (
-              <div key={lane.title} style={{ padding: '0.75rem 0', borderBottom: '1px solid rgba(30, 41, 59, 0.5)' }}>
-                <p className="dm-kicker" style={{ color: '#22d3ee', marginBottom: '0.375rem' }}>{lane.title}</p>
-                <p style={{ fontSize: '0.875rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '0.5rem' }}>{lane.summary}</p>
-                <ul style={{ paddingLeft: '1.125rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+          <div className="dm-command-report-lanes">
+            {dashboard.lanes.map((lane, index) => (
+              <section key={lane.title} className={`dm-command-report-lane ${index === 0 ? 'dm-command-report-lane-primary' : ''}`}>
+                <div className="dm-command-report-index">{String(index + 1).padStart(2, '0')}</div>
+                <div>
+                  <p className="dm-kicker" style={{ color: index === 0 ? '#fb923c' : '#22d3ee', marginBottom: '0.375rem' }}>{lane.title}</p>
+                  <p className="dm-command-report-summary">{lane.summary}</p>
+                </div>
+                <ul className="dm-command-report-items">
                   {lane.items.map(item => (
-                    <li key={item} style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'var(--font-body)' }}>{item}</li>
+                    <li key={item}>{item}</li>
                   ))}
                 </ul>
-              </div>
+              </section>
             ))}
           </div>
         </div>

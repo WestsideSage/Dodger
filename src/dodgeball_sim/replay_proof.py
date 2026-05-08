@@ -158,13 +158,13 @@ def build_evidence_report(
         },
         {
             "title": "Tactics proof",
-            "summary": "Uses policy snapshots, rush context, sync context, and target-selection context saved on throw events.",
+            "summary": "Uses the saved throw log to explain pressure, timing, and target selection.",
             "items": _lane_items(tactic_events, "No saved tactic context was present on throw events."),
         },
         {
             "title": "Fatigue proof",
             "summary": "Uses fatigue values and minutes played already saved for this match.",
-            "items": _fatigue_lane_items(fatigue_events, player_match_stats),
+            "items": _fatigue_lane_items(fatigue_events, player_match_stats, name_map),
         },
         {
             "title": "Liability proof",
@@ -287,15 +287,15 @@ def _decision_context(context: Mapping[str, Any], name_map: Mapping[str, str]) -
                 score = top.get("score")
                 if score is not None:
                     target_name = _player_name(player_id, name_map)
-                    items.append(f"Target selected to exploit {target_name} at model score {float(score):.2f}.")
+                    items.append(f"Target selection leaned toward {target_name}.")
         if target.get("recent_pressure_player_id"):
-            items.append(f"Recent pressure marker: {target['recent_pressure_player_id']}.")
+            items.append(f"Recent pressure stayed on {_player_name(target['recent_pressure_player_id'], name_map)}.")
     catch = context.get("catch_decision")
     if isinstance(catch, Mapping):
         attempt = "attempted" if catch.get("attempt") else "declined"
-        items.append(f"Catch decision {attempt} at threshold {float(catch.get('threshold', 0.0)):.2f}.")
+        items.append(f"Catch decision {attempt} on the read.")
     if context.get("pressure_active") is not None:
-        items.append(f"Pressure context active: {bool(context.get('pressure_active'))}.")
+        items.append("Pressure was active on the play." if context.get("pressure_active") else "The throw developed without extra pressure.")
     return {"items": items or ["No decision context was saved for this throw."]}
 
 
@@ -305,25 +305,21 @@ def _tactic_context(context: Mapping[str, Any]) -> dict[str, Any]:
     if isinstance(rush, Mapping):
         if rush.get("active"):
             modifier = float(rush.get("proximity_modifier", 0.0) or 0.0)
-            items.append(f"Rushed the throw, reducing accuracy by {modifier:.2f}.")
+            if modifier >= 0.08:
+                items.append("The rush crowded the throw and made the release harder.")
+            else:
+                items.append("The rush arrived, but the thrower still had enough room to release cleanly.")
         else:
-            items.append(
-                f"Patient buildup; rush frequency {float(rush.get('rush_frequency', 0.0)):.2f}, proximity {float(rush.get('rush_proximity', 0.0)):.2f}."
-            )
+            items.append("The possession developed patiently rather than through a hard rush.")
     sync = context.get("sync_context")
     if isinstance(sync, Mapping):
         if sync.get("is_synced"):
-            items.append(f"Synchronized attack triggered ({float(sync.get('sync_modifier', 0.0)):.2f} accuracy modifier).")
+            items.append("A synchronized attack triggered and improved the throwing window.")
         else:
             items.append("Standard tactical execution; synchronized attack did not trigger.")
     policy = context.get("policy_snapshot")
     if isinstance(policy, Mapping):
-        items.append(
-            "Policy snapshot: "
-            f"target stars {float(policy.get('target_stars', 0.0)):.2f}, "
-            f"tempo {float(policy.get('tempo', 0.0)):.2f}, "
-            f"catch bias {float(policy.get('catch_bias', 0.0)):.2f}."
-        )
+        items.append(_policy_snapshot_note(policy))
     return {"items": items}
 
 
@@ -403,7 +399,7 @@ def _lane_items(events: Sequence[Mapping[str, Any]], fallback: str) -> list[str]
     return items or [fallback]
 
 
-def _fatigue_lane_items(events: Sequence[Mapping[str, Any]], player_match_stats: Mapping[str, Any]) -> list[str]:
+def _fatigue_lane_items(events: Sequence[Mapping[str, Any]], player_match_stats: Mapping[str, Any], name_map: Mapping[str, str]) -> list[str]:
     items = _lane_items(events, "No saved fatigue context was present on throw events.")
     if player_match_stats:
         top_minutes = sorted(
@@ -414,7 +410,7 @@ def _fatigue_lane_items(events: Sequence[Mapping[str, Any]], player_match_stats:
             key=lambda item: (-item[1], item[0]),
         )[:2]
         for player_id, minutes in top_minutes:
-            items.append(f"{player_id} logged {minutes} saved match minutes.")
+            items.append(f"{_player_name(player_id, name_map)} carried a heavy workload with {minutes} match minutes.")
     return items
 
 
@@ -422,12 +418,32 @@ def _command_plan_items(command_plan: Mapping[str, Any]) -> list[str]:
     items = []
     dev_focus = command_plan.get("department_orders", {}).get("dev_focus")
     if dev_focus:
-        items.append(f"Development focus: {dev_focus}.")
+        items.append(f"Development focus: {title_label(str(dev_focus))}.")
     tactics = command_plan.get("tactics", {})
-    for key in ("target_stars", "rush_frequency", "sync_throws", "catch_bias"):
-        if key in tactics:
-            items.append(f"{key.replace('_', ' ')}: {float(tactics[key]):.2f}.")
+    if float(tactics.get("target_stars", 0.0)) >= 0.65:
+        items.append("Star containment shaped the target plan.")
+    else:
+        items.append("Target pressure was spread across the opposing lineup.")
+    if float(tactics.get("rush_frequency", 0.0)) >= 0.65:
+        items.append("Rush pressure was emphasized in the saved plan.")
+    else:
+        items.append("Rush pressure was used selectively in the saved plan.")
+    if float(tactics.get("sync_throws", 0.0)) >= 0.55:
+        items.append("Sync throws were emphasized when the timing window opened.")
+    if float(tactics.get("catch_bias", 0.0)) >= 0.55:
+        items.append("Catch chances were encouraged when defenders had a clean read.")
     return items or ["Command plan was saved, but no displayable orders were present."]
+
+
+def _policy_snapshot_note(policy: Mapping[str, Any]) -> str:
+    target_stars = float(policy.get("target_stars", 0.0))
+    tempo = float(policy.get("tempo", 0.0))
+    catch_bias = float(policy.get("catch_bias", 0.0))
+    notes: list[str] = []
+    notes.append("star-focused targets" if target_stars >= 0.65 else "spread target pressure")
+    notes.append("higher tempo" if tempo >= 0.6 else "controlled tempo")
+    notes.append("aggressive catch reads" if catch_bias >= 0.6 else "selective catch reads")
+    return "Tactical posture: " + ", ".join(notes) + "."
 
 
 __all__ = [

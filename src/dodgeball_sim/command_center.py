@@ -190,7 +190,7 @@ def _lineup_warnings(roster: list[Player], player_ids: list[str], intent: str, t
     if weak_starters and intent == "Win Now":
         warnings.append(f"{weak_starters[0].name} is a weak starter and may be targeted.")
     if tactics.get("rush_frequency", 0.0) > 0.75:
-        warnings.append("High rush frequency is creating extreme fatigue pressure. Consider rotating your front line more often.")
+        warnings.append("Heavy rush pressure is creating extreme fatigue risk. Consider rotating your front line more often.")
     if not warnings:
         warnings.append("Lineup and tactical intent are well-aligned. The squad is ready for match day.")
     return warnings
@@ -198,6 +198,12 @@ def _lineup_warnings(roster: list[Player], player_ids: list[str], intent: str, t
 
 def build_post_week_dashboard(conn: sqlite3.Connection, plan: Mapping[str, Any], record: MatchRecord) -> dict[str, Any]:
     clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+    player_names = {
+        player.id: player.name
+        for roster in rosters.values()
+        for player in roster
+    }
     player_club_id = str(plan["player_club_id"])
     opponent_id = record.away_club_id if record.home_club_id == player_club_id else record.home_club_id
     won = record.result.winner_team_id == player_club_id
@@ -207,11 +213,13 @@ def build_post_week_dashboard(conn: sqlite3.Connection, plan: Mapping[str, Any],
     away_survivors = int(box[record.away_club_id]["totals"]["living"])
     score = f"{home_survivors}-{away_survivors}"
     stats = _match_stats(conn, record.match_id)
-    target_note = _target_note(stats, player_club_id)
+    target_note = _target_note(stats, player_club_id, player_names)
     rush_frequency = float(plan.get("tactics", {}).get("rush_frequency", 0.0))
     fatigue_note = "Conservative rush plan limited fatigue-risk exposure."
     if rush_frequency > 0.65:
         fatigue_note = "Aggressive rush plan raised visible fatigue-risk pressure."
+    target_plan_note = _target_plan_note(float(plan.get("tactics", {}).get("target_stars", 0.0)))
+    pressure_plan_note = _pressure_plan_note(rush_frequency)
     return {
         "season_id": record.season_id,
         "week": record.week,
@@ -226,11 +234,11 @@ def build_post_week_dashboard(conn: sqlite3.Connection, plan: Mapping[str, Any],
             },
             {
                 "title": "Why it happened",
-                "summary": "Tactical diagnosis correlates execution metrics to the mandated game plan.",
+                "summary": "The staff review ties the result to visible pressure, target selection, and late-match execution.",
                 "items": [
                     target_note,
-                    f"Tactical target-stars setting: {float(plan.get('tactics', {}).get('target_stars', 0.0)):.2f}.",
-                    f"Rush frequency setting: {rush_frequency:.2f}.",
+                    target_plan_note,
+                    pressure_plan_note,
                 ],
             },
             {
@@ -257,12 +265,32 @@ def _match_stats(conn: sqlite3.Connection, match_id: str) -> list[dict[str, Any]
     return [dict(row) for row in rows]
 
 
-def _target_note(stats: list[dict[str, Any]], player_club_id: str) -> str:
+def _target_note(stats: list[dict[str, Any]], player_club_id: str, player_names: Mapping[str, str]) -> str:
     club_stats = [row for row in stats if row.get("club_id") == player_club_id]
     if not club_stats:
         return "No player target distribution was available."
     most_targeted = max(club_stats, key=lambda row: (row.get("times_targeted", 0), row.get("player_id", "")))
-    return f"Target evidence: {most_targeted['player_id']} was targeted {most_targeted['times_targeted']} times."
+    player_name = player_names.get(str(most_targeted["player_id"]), "The busiest defender")
+    target_count = int(most_targeted.get("times_targeted", 0) or 0)
+    if target_count <= 0:
+        return "The opponent did not build sustained pressure against one clear defender."
+    return f"{player_name} absorbed the most pressure, drawing {target_count} throws."
+
+
+def _target_plan_note(target_stars: float) -> str:
+    if target_stars >= 0.7:
+        return "The plan leaned into star containment and forced their best players to work through traffic."
+    if target_stars <= 0.35:
+        return "The plan spread attention across the lineup instead of overcommitting to one star matchup."
+    return "The plan balanced star containment with broader lineup pressure."
+
+
+def _pressure_plan_note(rush_frequency: float) -> str:
+    if rush_frequency >= 0.65:
+        return "The team played on the front foot, using frequent pressure to speed up possessions."
+    if rush_frequency <= 0.35:
+        return "The team stayed patient, choosing shape and recovery over constant rush pressure."
+    return "The team mixed patient possessions with selective rush pressure."
 
 
 __all__ = [

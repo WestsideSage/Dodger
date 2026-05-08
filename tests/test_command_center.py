@@ -8,6 +8,7 @@ from dodgeball_sim.command_center import (
     build_default_weekly_plan,
     build_post_week_dashboard,
 )
+from dodgeball_sim.copy_quality import has_unresolved_token
 from dodgeball_sim.game_loop import simulate_scheduled_match
 from dodgeball_sim.persistence import (
     create_schema,
@@ -113,4 +114,39 @@ def test_post_week_dashboard_is_derived_from_persisted_match_facts():
         "Player movement",
         "Next decisions",
     }
-    assert any("target" in item.lower() or "tactic" in item.lower() for item in dashboard["lanes"][1]["items"])
+    assert any("pressure" in item.lower() or "plan" in item.lower() for item in dashboard["lanes"][1]["items"])
+
+
+def test_post_week_dashboard_copy_is_player_facing_not_raw_tuning_output():
+    conn = _career_conn()
+    state = build_command_center_state(conn)
+    plan = build_default_weekly_plan(state)
+    season = load_season(conn, plan["season_id"])
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+    completed = load_completed_match_ids(conn, plan["season_id"])
+    user_match = next(
+        match
+        for match in season.scheduled_matches
+        if match.match_id not in completed
+        and plan["player_club_id"] in (match.home_club_id, match.away_club_id)
+    )
+
+    record = simulate_scheduled_match(
+        conn,
+        scheduled=user_match,
+        clubs=clubs,
+        rosters=rosters,
+        root_seed=normalize_root_seed("20260426", default_on_invalid=True),
+        difficulty="pro",
+    )
+    dashboard = build_post_week_dashboard(conn, plan, record)
+    visible_copy = [
+        text
+        for lane in dashboard["lanes"]
+        for text in [lane["title"], lane["summary"], *lane["items"]]
+    ]
+
+    assert not any(has_unresolved_token(text) for text in visible_copy)
+    assert not any("setting:" in text.lower() for text in visible_copy)
+    assert not any("target-stars" in text.lower() for text in visible_copy)

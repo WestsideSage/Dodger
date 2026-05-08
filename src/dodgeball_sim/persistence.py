@@ -113,7 +113,7 @@ def _json_dump(payload: Any) -> str:
 
 def connect(path: str | Path) -> sqlite3.Connection:
     path = Path(path)
-    conn = sqlite3.connect(path, timeout=5.0)
+    conn = sqlite3.connect(path, timeout=5.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA busy_timeout=5000")
     if path != Path(":memory:"):

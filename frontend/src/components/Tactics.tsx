@@ -33,14 +33,14 @@ const tacticGroups: Array<{
     fields: [
       {
         key: 'target_stars',
-        label: 'Target Stars',
+        label: 'Star Pressure',
         leftLabel: 'Weakest',
         rightLabel: 'Best Players',
         description: "Focus throws on the opponent's strongest players.",
       },
       {
         key: 'target_ball_holder',
-        label: 'Target Ball Holder',
+        label: 'Ball Carrier Pressure',
         leftLabel: 'Ignore',
         rightLabel: 'Prioritize',
         description: 'Focus throws on opponents currently holding balls.',
@@ -60,7 +60,7 @@ const tacticGroups: Array<{
       },
       {
         key: 'sync_throws',
-        label: 'Sync Throws',
+        label: 'Coordinated Throws',
         leftLabel: 'Individual',
         rightLabel: 'Coordinated',
         description: 'Tendency to wait and throw together with teammates.',
@@ -80,21 +80,21 @@ const tacticGroups: Array<{
     fields: [
       {
         key: 'rush_frequency',
-        label: 'Rush Frequency',
+        label: 'Rush Pressure',
         leftLabel: 'Stay Back',
         rightLabel: 'Aggressive',
         description: 'How often players will rush the center line.',
       },
       {
         key: 'rush_proximity',
-        label: 'Rush Proximity',
+        label: 'Rush Depth',
         leftLabel: 'Distant',
         rightLabel: 'Close Range',
         description: 'How close players get to the center line when rushing.',
       },
       {
         key: 'catch_bias',
-        label: 'Catch Bias',
+        label: 'Catch Attempts',
         leftLabel: 'Dodge',
         rightLabel: 'Attempt Catch',
         description: 'Preference for attempting catches over dodging.',

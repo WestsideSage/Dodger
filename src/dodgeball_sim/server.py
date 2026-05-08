@@ -3,6 +3,7 @@ import dataclasses
 import json
 import math
 import mimetypes
+import re
 from typing import Any
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -28,6 +29,10 @@ from dodgeball_sim.persistence import (
     load_command_history,
     load_free_agents,
     load_season_outcome,
+    load_playoff_bracket,
+    save_playoff_bracket,
+    save_scheduled_matches,
+    save_season_outcome,
 )
 from dodgeball_sim.awards import compute_match_mvp
 from dodgeball_sim.career_state import CareerState, advance
@@ -51,8 +56,18 @@ from dodgeball_sim.offseason_ceremony import (
     stored_root_seed,
     create_next_manager_season,
     clamp_offseason_beat_index,
+    ensure_ai_rosters_playable,
+)
+from dodgeball_sim.playoffs import (
+    PLAYOFF_FORMAT,
+    create_final_match,
+    create_semifinal_bracket,
+    is_playoff_match_id,
+    outcome_from_final,
 )
 from dodgeball_sim.sample_data import curated_clubs
+from dodgeball_sim.scheduler import ScheduledMatch
+from dodgeball_sim.season import Season, StandingsRow
 from dodgeball_sim.view_models import build_schedule_rows, build_wire_items, normalize_root_seed
 from dodgeball_sim.command_center import (
     build_command_center_state,
@@ -71,6 +86,9 @@ DEFAULT_DB_PATH = Path("dodgeball_sim.db")
 SAVES_DIR = Path("saves")
 
 _active_save_path: Path | None = None
+_LEGACY_TARGET_EVIDENCE_RE = re.compile(r"^Target evidence: ([A-Za-z0-9_]+) was targeted (\d+) times\.$")
+_LEGACY_STAR_SETTING_RE = re.compile(r"^Tactical target-stars setting: ([0-9.]+)\.$")
+_LEGACY_RUSH_SETTING_RE = re.compile(r"^Rush frequency setting: ([0-9.]+)\.$")
 
 
 def _resolve_managed_save_path(raw: str, *, allow_legacy: bool) -> Path:
@@ -531,7 +549,7 @@ def _command_center_payload(conn) -> CommandCenterResponse:
     club = state["player_club"]
     existing = load_weekly_command_plan(conn, state["season_id"], state["week"], state["player_club_id"])
     plan = existing or build_default_weekly_plan(state)
-    history = load_command_history(conn, state["season_id"])
+    history = _sanitized_command_history(conn, state["season_id"])
     latest_dashboard = history[-1]["dashboard"] if history else None
     return {
         "season_id": state["season_id"],
@@ -601,7 +619,233 @@ def get_command_history(conn = Depends(get_db)) -> list[dict[str, Any]]:
     season_id = get_state(conn, "active_season_id")
     if not season_id:
         raise HTTPException(status_code=400, detail="No active season")
-    return load_command_history(conn, season_id)
+    return _sanitized_command_history(conn, season_id)
+
+
+def _sanitized_command_history(conn, season_id: str) -> list[dict[str, Any]]:
+    rosters = load_all_rosters(conn)
+    player_names = {
+        player.id: player.name
+        for roster in rosters.values()
+        for player in roster
+    }
+    sanitized: list[dict[str, Any]] = []
+    for record in load_command_history(conn, season_id):
+        next_record = dict(record)
+        dashboard = record.get("dashboard")
+        if isinstance(dashboard, dict):
+            next_record["dashboard"] = _sanitize_dashboard_copy(dashboard, player_names)
+        sanitized.append(next_record)
+    return sanitized
+
+
+def _sanitize_dashboard_copy(dashboard: dict[str, Any], player_names: dict[str, str]) -> dict[str, Any]:
+    next_dashboard = dict(dashboard)
+    lanes = []
+    for lane in dashboard.get("lanes", []):
+        if not isinstance(lane, dict):
+            lanes.append(lane)
+            continue
+        next_lane = dict(lane)
+        summary = str(next_lane.get("summary", ""))
+        if summary == "Tactical diagnosis correlates execution metrics to the mandated game plan.":
+            next_lane["summary"] = "The staff review ties the result to visible pressure, target selection, and late-match execution."
+        next_lane["items"] = [
+            _sanitize_dashboard_item(str(item), player_names)
+            for item in next_lane.get("items", [])
+        ]
+        lanes.append(next_lane)
+    next_dashboard["lanes"] = lanes
+    return next_dashboard
+
+
+def _sanitize_dashboard_item(text: str, player_names: dict[str, str]) -> str:
+    target_match = _LEGACY_TARGET_EVIDENCE_RE.match(text)
+    if target_match:
+        player_id, count = target_match.groups()
+        player_name = player_names.get(player_id, "The busiest defender")
+        return f"{player_name} absorbed the most pressure, drawing {int(count)} throws."
+    star_match = _LEGACY_STAR_SETTING_RE.match(text)
+    if star_match:
+        value = float(star_match.group(1))
+        if value >= 0.7:
+            return "The plan leaned into star containment and forced their best players to work through traffic."
+        if value <= 0.35:
+            return "The plan spread attention across the lineup instead of overcommitting to one star matchup."
+        return "The plan balanced star containment with broader lineup pressure."
+    rush_match = _LEGACY_RUSH_SETTING_RE.match(text)
+    if rush_match:
+        value = float(rush_match.group(1))
+        if value >= 0.65:
+            return "The team played on the front foot, using frequent pressure to speed up possessions."
+        if value <= 0.35:
+            return "The team stayed patient, choosing shape and recovery over constant rush pressure."
+        return "The team mixed patient possessions with selective rush pressure."
+    return text
+
+
+def _regular_season_matches(season: Season) -> list[ScheduledMatch]:
+    return [
+        match
+        for match in season.scheduled_matches
+        if not is_playoff_match_id(season.season_id, match.match_id)
+    ]
+
+
+def _standings_with_all_clubs(standings: list[StandingsRow], clubs: dict[str, Any]) -> list[StandingsRow]:
+    by_id = {row.club_id: row for row in standings}
+    rows = [
+        by_id.get(club_id, StandingsRow(club_id, wins=0, losses=0, draws=0, elimination_differential=0, points=0))
+        for club_id in clubs
+    ]
+    rows.sort(key=lambda row: (-row.points, -row.elimination_differential, row.club_id))
+    return rows
+
+
+def _regular_season_complete(conn, season: Season) -> bool:
+    completed = load_completed_match_ids(conn, season.season_id)
+    return all(match.match_id in completed for match in _regular_season_matches(season))
+
+
+def _simulate_ai_playoff_matches(
+    conn,
+    matches: list[ScheduledMatch],
+    clubs: dict[str, Any],
+    player_club_id: str,
+    season_id: str,
+) -> None:
+    if not matches:
+        return
+    rosters = load_all_rosters(conn)
+    root_seed = normalize_root_seed(get_state(conn, "root_seed", "1"), default_on_invalid=True)
+    if ensure_ai_rosters_playable(conn, clubs, rosters, root_seed, season_id, player_club_id):
+        rosters = load_all_rosters(conn)
+    _validate_match_rosters(matches, rosters)
+    difficulty = get_state(conn, "difficulty", "pro") or "pro"
+    for match in matches:
+        simulate_scheduled_match(
+            conn,
+            scheduled=match,
+            clubs=clubs,
+            rosters=rosters,
+            root_seed=root_seed,
+            difficulty=difficulty,
+        )
+
+
+def _advance_playoffs_if_needed(conn, season: Season, clubs: dict[str, Any], player_club_id: str) -> Season:
+    if load_season_outcome(conn, season.season_id) is not None:
+        return season
+    if not _regular_season_complete(conn, season):
+        return season
+
+    while True:
+        bracket = load_playoff_bracket(conn, season.season_id)
+        completed = load_completed_match_ids(conn, season.season_id)
+        if bracket is None:
+            standings = _standings_with_all_clubs(load_standings(conn, season.season_id), clubs)
+            next_week = max((match.week for match in _regular_season_matches(season)), default=0) + 1
+            bracket, semifinals = create_semifinal_bracket(season.season_id, standings, next_week)
+            save_playoff_bracket(conn, bracket)
+            save_scheduled_matches(conn, semifinals)
+            conn.commit()
+            season = load_season(conn, season.season_id)
+            continue
+
+        if bracket.status == "semifinals_scheduled":
+            semifinal_ids = {f"{season.season_id}_p_r1_m1", f"{season.season_id}_p_r1_m2"}
+            semifinal_matches = [match for match in season.scheduled_matches if match.match_id in semifinal_ids]
+            pending = [match for match in semifinal_matches if match.match_id not in completed]
+            ai_pending = [
+                match
+                for match in pending
+                if player_club_id not in (match.home_club_id, match.away_club_id)
+            ]
+            if ai_pending:
+                _simulate_ai_playoff_matches(conn, ai_pending, clubs, player_club_id, season.season_id)
+                recompute_regular_season_standings(conn, season)
+                conn.commit()
+                continue
+            if pending:
+                return season
+            winners = {
+                row["match_id"]: row["winner_club_id"]
+                for row in conn.execute(
+                    "SELECT match_id, winner_club_id FROM match_records WHERE match_id IN (?, ?)",
+                    (f"{season.season_id}_p_r1_m1", f"{season.season_id}_p_r1_m2"),
+                ).fetchall()
+            }
+            next_week = max(match.week for match in semifinal_matches) + 1
+            bracket, final = create_final_match(bracket, winners, next_week)
+            save_playoff_bracket(conn, bracket)
+            save_scheduled_matches(conn, [final])
+            conn.commit()
+            season = load_season(conn, season.season_id)
+            continue
+
+        if bracket.status == "final_scheduled":
+            final = next(
+                (match for match in season.scheduled_matches if match.match_id == f"{season.season_id}_p_final"),
+                None,
+            )
+            if final is None:
+                return season
+            if final.match_id not in completed:
+                if player_club_id in (final.home_club_id, final.away_club_id):
+                    return season
+                _simulate_ai_playoff_matches(conn, [final], clubs, player_club_id, season.season_id)
+                recompute_regular_season_standings(conn, season)
+                completed = load_completed_match_ids(conn, season.season_id)
+            if final.match_id in completed:
+                row = conn.execute(
+                    "SELECT winner_club_id FROM match_records WHERE match_id = ?",
+                    (final.match_id,),
+                ).fetchone()
+                if row is None or row["winner_club_id"] is None:
+                    return season
+                save_season_outcome(
+                    conn,
+                    outcome_from_final(
+                        bracket,
+                        final_match_id=final.match_id,
+                        home_club_id=final.home_club_id,
+                        away_club_id=final.away_club_id,
+                        winner_club_id=row["winner_club_id"],
+                    ),
+                )
+                save_playoff_bracket(conn, dataclasses.replace(bracket, status="complete"))
+                conn.commit()
+            return season
+        return season
+
+
+def _choose_next_user_match_after_automation(
+    conn,
+    season: Season,
+    clubs: dict[str, Any],
+    player_club_id: str,
+) -> tuple[Season, list[ScheduledMatch], str]:
+    season = _advance_playoffs_if_needed(conn, season, clubs, player_club_id)
+    completed = load_completed_match_ids(conn, season.season_id)
+    chosen, stop_reason = _choose_user_match(season, completed, player_club_id)
+    if chosen:
+        return season, chosen, stop_reason
+
+    ai_regular_pending = [
+        match
+        for match in _regular_season_matches(season)
+        if match.match_id not in completed
+        and player_club_id not in (match.home_club_id, match.away_club_id)
+    ]
+    if ai_regular_pending:
+        _simulate_ai_playoff_matches(conn, ai_regular_pending, clubs, player_club_id, season.season_id)
+        recompute_regular_season_standings(conn, season)
+        conn.commit()
+        season = load_season(conn, season.season_id)
+        season = _advance_playoffs_if_needed(conn, season, clubs, player_club_id)
+        completed = load_completed_match_ids(conn, season.season_id)
+        chosen, stop_reason = _choose_user_match(season, completed, player_club_id)
+    return season, chosen, stop_reason
 
 
 @app.get("/api/dynasty-office", response_model=dict[str, Any])
@@ -705,11 +949,14 @@ def _run_simulation_command(conn, command: SimCommand) -> SimResponse:
             status_code=409,
             detail="Simulation requires career state season_active_pre_match.",
         )
+    clubs = load_clubs(conn)
     week = cursor.week or current_week(conn, season) or 1
-    completed = load_completed_match_ids(conn, season_id)
     if command.mode == "user_match":
-        chosen, stop_reason = _choose_user_match(season, completed, player_club_id)
+        season, chosen, stop_reason = _choose_next_user_match_after_automation(conn, season, clubs, player_club_id)
+        completed = load_completed_match_ids(conn, season_id)
     else:
+        season = _advance_playoffs_if_needed(conn, season, clubs, player_club_id)
+        completed = load_completed_match_ids(conn, season_id)
         chosen, stop = choose_matches_to_sim(
             list(season.scheduled_matches),
             completed,
@@ -731,10 +978,11 @@ def _run_simulation_command(conn, command: SimCommand) -> SimResponse:
             "next_state": cursor.state.value,
         }
 
-    clubs = load_clubs(conn)
     rosters = load_all_rosters(conn)
-    _validate_match_rosters(chosen, rosters)
     root_seed = normalize_root_seed(get_state(conn, "root_seed", "1"), default_on_invalid=True)
+    if ensure_ai_rosters_playable(conn, clubs, rosters, root_seed, season_id, player_club_id):
+        rosters = load_all_rosters(conn)
+    _validate_match_rosters(chosen, rosters)
     difficulty = get_state(conn, "difficulty", "pro") or "pro"
 
     records = [
@@ -810,17 +1058,37 @@ def simulate_command_center_week(update: WeeklyCommandPlanUpdate | None = None, 
     save_weekly_command_plan(conn, plan)
 
     season = load_season(conn, season_id)
-    completed = load_completed_match_ids(conn, season_id)
-    chosen, stop_reason = _choose_user_match(season, completed, player_club_id)
+    clubs = load_clubs(conn)
+    season, chosen, stop_reason = _choose_next_user_match_after_automation(conn, season, clubs, player_club_id)
     if not chosen:
+        if stop_reason == "season_complete":
+            cursor = advance(cursor, CareerState.SEASON_COMPLETE_OFFSEASON_BEAT, week=0, match_id=None)
+            save_career_state_cursor(conn, cursor)
+            conn.commit()
+            return {
+                "status": "success",
+                "message": "Season complete. Offseason review is ready.",
+                "plan": plan,
+                "dashboard": state.get("latest_dashboard")
+                or {
+                    "season_id": season_id,
+                    "week": state["week"],
+                    "match_id": None,
+                    "opponent_name": "Season complete",
+                    "result": "Season Complete",
+                    "lanes": [],
+                },
+                "next_state": cursor.state.value,
+            }
         raise HTTPException(status_code=409, detail=f"No user match available: {stop_reason}")
 
     scheduled = chosen[0]
     _apply_command_plan_to_match(conn, plan, scheduled.match_id, player_club_id)
-    clubs = load_clubs(conn)
     rosters = load_all_rosters(conn)
-    _validate_match_rosters([scheduled], rosters)
     root_seed = normalize_root_seed(get_state(conn, "root_seed", "1"), default_on_invalid=True)
+    if ensure_ai_rosters_playable(conn, clubs, rosters, root_seed, season_id, player_club_id):
+        rosters = load_all_rosters(conn)
+    _validate_match_rosters([scheduled], rosters)
     difficulty = get_state(conn, "difficulty", "pro") or "pro"
     record = simulate_scheduled_match(
         conn,
@@ -844,16 +1112,17 @@ def simulate_command_center_week(update: WeeklyCommandPlanUpdate | None = None, 
             "dashboard": dashboard,
         },
     )
-    next_week = current_week(conn, season)
-    if next_week is None:
-        cursor = advance(cursor, CareerState.SEASON_COMPLETE_OFFSEASON_BEAT, week=0, match_id=None)
-    else:
+    season = load_season(conn, season.season_id)
+    season, next_chosen, _stop_reason = _choose_next_user_match_after_automation(conn, season, clubs, player_club_id)
+    if next_chosen:
         cursor = dataclasses.replace(
             cursor,
             state=CareerState.SEASON_ACTIVE_PRE_MATCH,
-            week=next_week,
+            week=next_chosen[0].week,
             match_id=None,
         )
+    else:
+        cursor = advance(cursor, CareerState.SEASON_COMPLETE_OFFSEASON_BEAT, week=0, match_id=None)
     save_career_state_cursor(conn, cursor)
     conn.commit()
     return {
@@ -1042,11 +1311,17 @@ def acknowledge_match_report(match_id: str, conn = Depends(get_db)) -> Acknowled
     if not season_id:
         raise HTTPException(status_code=400, detail="No active season")
     season = load_season(conn, season_id)
-    next_week = current_week(conn, season)
-    if next_week is None:
-        cursor = advance(cursor, CareerState.SEASON_COMPLETE_OFFSEASON_BEAT, week=0, match_id=None)
+    clubs = load_clubs(conn)
+    season, chosen, _stop_reason = _choose_next_user_match_after_automation(
+        conn,
+        season,
+        clubs,
+        get_state(conn, "player_club_id") or "",
+    )
+    if chosen:
+        cursor = advance(cursor, CareerState.SEASON_ACTIVE_PRE_MATCH, week=chosen[0].week, match_id=None)
     else:
-        cursor = advance(cursor, CareerState.SEASON_ACTIVE_PRE_MATCH, week=next_week, match_id=None)
+        cursor = advance(cursor, CareerState.SEASON_COMPLETE_OFFSEASON_BEAT, week=0, match_id=None)
     save_career_state_cursor(conn, cursor)
     conn.commit()
     return {

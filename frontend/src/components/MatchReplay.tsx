@@ -792,26 +792,37 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
 
   // Flash / resolution effect
   useEffect(() => {
-    setFlashTargetId(null);
-    // Keep activeResolution for label display (clear only on next event change)
+    const t0 = setTimeout(() => {
+      setFlashTargetId(null);
+      // Keep activeResolution for label display (clear only on next event change)
+      if (!isThrowEvent || !currentProof) {
+        setActiveResolution(null);
+        return;
+      }
+      setActiveResolution(currentProof.resolution);
+      setBallAnimKey(`ball-${currentProof.sequence_index}-${eventIndex}`);
+    }, 0);
+
     if (!isThrowEvent || !currentProof) {
-      setActiveResolution(null);
-      return;
+      return () => clearTimeout(t0);
     }
-    setActiveResolution(currentProof.resolution);
-    setBallAnimKey(`ball-${currentProof.sequence_index}-${eventIndex}`);
+
     const t1 = setTimeout(() => setFlashTargetId(currentProof.target_id), 360);
     const t2 = setTimeout(() => setFlashTargetId(null), 860);
     return () => {
+      clearTimeout(t0);
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [eventIndex]);
+  }, [currentProof, eventIndex, isThrowEvent]);
 
   // Auto-play
   useEffect(() => {
     if (!isPlaying) return;
-    if (eventIndex >= totalEvents - 1) { setIsPlaying(false); return; }
+    if (eventIndex >= totalEvents - 1) {
+      const t = setTimeout(() => setIsPlaying(false), 0);
+      return () => clearTimeout(t);
+    }
     const t = setTimeout(() => setEventIndex((i) => i + 1), 900 / playSpeed);
     return () => clearTimeout(t);
   }, [isPlaying, eventIndex, playSpeed, totalEvents]);
@@ -838,7 +849,7 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
   const hasCourtData = playerRegistry.size > 0;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', overflow: 'visible' }}>
       <ScoreHeader
         homeName={data.home_club_name}
         awayName={data.away_club_name}
@@ -852,12 +863,12 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
         homeClubId={data.home_club_id}
       />
 
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div className="dm-replay-layout">
 
         {/* Left: court + controls + event */}
-        <div style={{ flex: '0 0 60%', display: 'flex', flexDirection: 'column', borderRight: '1px solid #1e293b', overflow: 'hidden' }}>
+        <div className="dm-replay-stage">
           {/* Court */}
-          <div style={{ padding: '12px 12px 4px', background: '#020617' }}>
+          <div className="dm-replay-court">
             {hasCourtData ? (
               <CourtView
                 homeName={data.home_club_name}
@@ -881,7 +892,7 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
           </div>
 
           {/* Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#020617', borderTop: '1px solid #1e293b', borderBottom: '1px solid #1e293b' }}>
+          <div className="dm-replay-controls">
             <button onClick={stepBack} disabled={eventIndex === 0} style={{ background: 'transparent', border: '1px solid #334155', borderRadius: 4, color: eventIndex === 0 ? '#334155' : '#94a3b8', padding: '4px 10px', cursor: eventIndex === 0 ? 'default' : 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>←</button>
 
             <button onClick={togglePlay} style={{ background: isPlaying ? '#1e293b' : '#f97316', border: 'none', borderRadius: 4, color: '#ffffff', padding: '4px 14px', cursor: 'pointer', fontFamily: 'Oswald, sans-serif', fontSize: 13, letterSpacing: 1 }}>
@@ -894,7 +905,8 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
 
             {/* Scrubber */}
             <div
-              style={{ flex: 1, height: 8, background: '#1e293b', borderRadius: 4, cursor: 'pointer', position: 'relative' }}
+              className="dm-replay-scrubber"
+              style={{ height: 8, background: '#1e293b', borderRadius: 4, cursor: 'pointer', position: 'relative' }}
               onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 setEventIndex(Math.round(((e.clientX - rect.left) / rect.width) * (totalEvents - 1)));
@@ -926,7 +938,7 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
           </div>
 
           {/* Continue */}
-          <div style={{ padding: '8px 12px', marginTop: 'auto', borderTop: '1px solid #1e293b', background: '#020617' }}>
+          <div style={{ padding: '8px 12px', borderTop: '1px solid #1e293b', background: '#020617' }}>
             <button onClick={onContinue} style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: 6, color: '#94a3b8', padding: '8px', cursor: 'pointer', fontFamily: 'Oswald, sans-serif', fontSize: 13, letterSpacing: 1 }}>
               CONTINUE →
             </button>
@@ -934,7 +946,7 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
         </div>
 
         {/* Right: tabbed analysis */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#020617' }}>
+        <div className="dm-replay-sidebar">
           <div style={{ display: 'flex', borderBottom: '1px solid #1e293b', padding: '0 4px' }}>
             {(['proof', 'keyplays', 'stats'] as const).map((tab) => {
               const labels = { proof: 'PROOF', keyplays: 'KEY PLAYS', stats: 'REPORT' };

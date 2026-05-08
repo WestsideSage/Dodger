@@ -64,6 +64,8 @@ OFFSEASON_CEREMONY_BEATS = (
 
 _RECRUITMENT_BEAT_INDEX = OFFSEASON_CEREMONY_BEATS.index("recruitment")
 _SCHEDULE_REVEAL_BEAT_INDEX = OFFSEASON_CEREMONY_BEATS.index("schedule_reveal")
+AI_MIN_PLAYABLE_ROSTER_SIZE = 6
+PLAYER_FREE_AGENT_RESERVE = 6
 
 
 @dataclass(frozen=True)
@@ -106,6 +108,81 @@ def create_next_manager_season(
         conferences=(Conference("main", "Premier", tuple(clubs)),),
     )
     return create_season(f"season_{season_number}", year, league, root_seed=root_seed)
+
+
+def _sign_ai_replacements(
+    rosters: Dict[str, List[Player]],
+    clubs: Mapping[str, Club],
+    player_club_id: str,
+    candidates: List[Player],
+    min_size: int = AI_MIN_PLAYABLE_ROSTER_SIZE,
+) -> List[Player]:
+    """Fill depleted AI rosters from a deterministic candidate pool."""
+    remaining = sorted(candidates, key=lambda player: (-player.overall(), player.id))
+    ai_club_ids = sorted(club_id for club_id in clubs if club_id != player_club_id)
+    while remaining:
+        needy = [
+            club_id
+            for club_id in sorted(ai_club_ids, key=lambda cid: (len(rosters.get(cid, [])), cid))
+            if len(rosters.get(club_id, [])) < min_size
+        ]
+        if not needy:
+            break
+        for club_id in needy:
+            if not remaining:
+                break
+            roster = list(rosters.get(club_id, []))
+            roster.append(replace(remaining.pop(0), club_id=club_id, newcomer=True))
+            rosters[club_id] = roster
+    return remaining
+
+
+def ensure_ai_rosters_playable(
+    conn: sqlite3.Connection,
+    clubs: Mapping[str, Club],
+    rosters: Mapping[str, List[Player]],
+    root_seed: int,
+    season_id: str,
+    player_club_id: Optional[str] = None,
+    min_size: int = AI_MIN_PLAYABLE_ROSTER_SIZE,
+) -> bool:
+    """Repair legacy or long-running saves whose AI clubs fell below starter count."""
+    player_club_id = player_club_id or get_state(conn, "player_club_id") or ""
+    updated_rosters = {club_id: list(roster) for club_id, roster in rosters.items()}
+    shortfall = sum(
+        max(0, min_size - len(updated_rosters.get(club_id, [])))
+        for club_id in clubs
+        if club_id != player_club_id
+    )
+    if shortfall <= 0:
+        return False
+
+    free_agents = load_free_agents(conn)
+    extra_needed = max(0, shortfall + PLAYER_FREE_AGENT_RESERVE - len(free_agents))
+    emergency_rookies = generate_rookie_class(
+        season_id,
+        DeterministicRNG(derive_seed(root_seed, "ai_roster_repair", season_id, str(shortfall))),
+        size=extra_needed,
+    ) if extra_needed else []
+    remaining = _sign_ai_replacements(
+        updated_rosters,
+        clubs,
+        player_club_id,
+        free_agents + emergency_rookies,
+        min_size=min_size,
+    )
+
+    from .lineup import optimize_ai_lineup
+
+    for club_id, club in clubs.items():
+        if club_id == player_club_id:
+            continue
+        roster = updated_rosters.get(club_id, [])
+        save_club(conn, club, roster)
+        save_lineup_default(conn, club_id, optimize_ai_lineup(roster))
+    save_free_agents(conn, remaining, season_id)
+    conn.commit()
+    return True
 
 
 def _career_rows_for_player(conn: sqlite3.Connection, player_id: str) -> List[Dict[str, Any]]:
@@ -295,19 +372,31 @@ def initialize_manager_offseason(
         if season.season_id.rsplit("_", 1)[-1].isdigit()
         else f"{season.season_id}_next"
     )
+    player_club_id = get_state(conn, "player_club_id") or ""
+    ai_shortfall = sum(
+        max(0, AI_MIN_PLAYABLE_ROSTER_SIZE - len(updated_rosters.get(club_id, [])))
+        for club_id in clubs
+        if club_id != player_club_id
+    )
     rookies = generate_rookie_class(
         next_season_id,
         DeterministicRNG(derive_seed(root_seed, "manager_draft", next_season_id)),
-        size=12,
+        size=max(12, ai_shortfall + PLAYER_FREE_AGENT_RESERVE),
+    )
+    free_agents = _sign_ai_replacements(
+        updated_rosters,
+        clubs,
+        player_club_id,
+        rookies + released_ai_players,
     )
     from .lineup import optimize_ai_lineup
     for club_id, club in clubs.items():
         save_club(conn, club, updated_rosters.get(club_id, []))
-        if club_id == get_state(conn, "player_club_id"):
+        if club_id == player_club_id:
             save_lineup_default(conn, club_id, [player.id for player in updated_rosters.get(club_id, [])])
         else:
             save_lineup_default(conn, club_id, optimize_ai_lineup(updated_rosters.get(club_id, [])))
-    save_free_agents(conn, rookies + released_ai_players, next_season_id)
+    save_free_agents(conn, free_agents, next_season_id)
     set_state(conn, "offseason_development_json", json.dumps(development_rows))
     set_state(conn, "offseason_retirements_json", json.dumps(retirement_rows))
     set_state(conn, "offseason_draft_signed_player_id", "")

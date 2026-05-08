@@ -1,31 +1,45 @@
 import { useCallback, useState } from 'react';
-import type { MatchReplayResponse, StatusResponse, SimResponse } from '../types';
+import type { MatchReplayResponse, ScheduleResponse, StatusResponse, SimResponse } from '../types';
 import MatchReplay from './MatchReplay';
 import { useApiResource } from '../hooks/useApiResource';
-import { ActionButton, KeyValueRow, Badge, PageHeader, StatChip, StatusMessage, Tile } from './ui';
+import { ActionButton, KeyValueRow, Badge, StatusMessage } from './ui';
 
 function formatState(value: string) {
   return value.replaceAll('_', ' ');
 }
 
-// War-room variant styles for sim action tiles
-const simTileVariantStyle: Record<'primary' | 'accent' | 'secondary', React.CSSProperties> = {
-  primary: {
-    background: 'rgba(249,115,22,0.08)',
-    border: '1px solid rgba(249,115,22,0.35)',
-    color: '#f97316',
-  },
-  accent: {
-    background: 'rgba(34,211,238,0.07)',
-    border: '1px solid rgba(34,211,238,0.3)',
-    color: '#22d3ee',
-  },
-  secondary: {
-    background: '#0f172a',
-    border: '1px solid #1e293b',
-    color: '#94a3b8',
-  },
-};
+function formatPhaseLabel(value: string) {
+  const labels: Record<string, string> = {
+    season_active_pre_match: 'Matchday ready',
+    season_active_in_match: 'Match in progress',
+    season_active_match_report_pending: 'Match report ready',
+    season_complete_offseason_beat: 'Offseason review',
+    season_complete_recruitment_pending: 'Recruitment day',
+    next_season_ready: 'Next season ready',
+  };
+  return labels[value] ?? formatState(value);
+}
+
+function formatSeasonLabel(seasonId: string | null | undefined, seasonNumber: number) {
+  if (seasonNumber > 0) return `Season ${seasonNumber}`;
+  const parsed = seasonId?.match(/(\d+)$/)?.[1];
+  return parsed ? `Season ${parsed}` : 'No active season';
+}
+
+function formatMatchStatus(value: string) {
+  const labels: Record<string, string> = {
+    open: 'Scheduled',
+    scheduled: 'Scheduled',
+    played: 'Final',
+    completed: 'Final',
+    final: 'Final',
+  };
+  return labels[value.toLowerCase()] ?? formatState(value);
+}
+
+function isUnplayedStatus(value: string) {
+  return !['played', 'completed', 'final'].includes(value.toLowerCase());
+}
 
 function SimAction({
   title,
@@ -42,43 +56,18 @@ function SimAction({
   variant: 'primary' | 'accent' | 'secondary';
   onClick: () => void;
 }) {
-  const varStyle = simTileVariantStyle[variant];
   return (
-    <Tile
-      as="button"
+    <button
+      type="button"
+      className={`dm-hub-action dm-hub-action-${variant}`}
       onClick={onClick}
       disabled={disabled}
-      style={{
-        ...varStyle,
-        padding: '0.875rem 1rem',
-        textAlign: 'left',
-        cursor: disabled ? 'default' : 'pointer',
-        transition: 'all 0.15s',
-        opacity: disabled ? 0.45 : 1,
-        width: '100%',
-      }}
     >
-      <span style={{
-        display: 'block',
-        fontFamily: 'var(--font-display)',
-        textTransform: 'uppercase',
-        letterSpacing: '0.08em',
-        fontSize: '0.8125rem',
-        fontWeight: 700,
-        color: varStyle.color,
-      }}>
+      <span className="dm-hub-action-title">
         {loading ? 'Simulating...' : title}
       </span>
-      <span style={{
-        display: 'block',
-        marginTop: '0.25rem',
-        fontSize: '0.75rem',
-        color: '#475569',
-        fontFamily: 'var(--font-body)',
-      }}>
-        {detail}
-      </span>
-    </Tile>
+      <span className="dm-hub-action-detail">{detail}</span>
+    </button>
   );
 }
 
@@ -104,6 +93,7 @@ export function Hub() {
   }, [loadReplay]);
 
   const { data: status, error, loading, setData: setStatus, setError, setLoading } = useApiResource<StatusResponse>('/api/status', handleLoad);
+  const { data: schedule } = useApiResource<ScheduleResponse>('/api/schedule');
 
   const refreshStatus = useCallback((showLoading = false) => {
     if (showLoading) setLoading(true);
@@ -172,61 +162,91 @@ export function Hub() {
   if (replay) return <MatchReplay data={replay} onContinue={handleAcknowledge} />;
 
   const canSimulate = status.state.state === 'season_active_pre_match';
+  const nextUserMatch = schedule?.schedule.find(row => row.is_user_match && isUnplayedStatus(row.status)) ?? null;
+  const upcomingRows = schedule?.schedule.filter(row => isUnplayedStatus(row.status)).slice(0, 4) ?? [];
+  const playerClubId = status.context.player_club_id;
+  const opponentName = nextUserMatch
+    ? nextUserMatch.home_club_id === playerClubId
+      ? nextUserMatch.away_club_name
+      : nextUserMatch.home_club_name
+    : null;
+  const matchupLine = nextUserMatch
+    ? `${nextUserMatch.home_club_name} vs ${nextUserMatch.away_club_name}`
+    : 'No user match queued';
+  const phaseLabel = formatPhaseLabel(status.state.state);
+  const seasonLabel = formatSeasonLabel(status.context.season_id, status.state.season_number);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-
-      {/* Page header */}
-      <PageHeader
-        eyebrow="War Room"
-        title="Season Hub"
-        description="Advance the schedule from the same workspace, with single-match play separated from bulk simulation."
-        stats={
-          <>
-            <StatChip label="Season" value={status.state.season_number} />
-            <StatChip label="Week" value={status.state.week} tone="warning" />
-            <StatChip label="State" value={formatState(status.state.state)} tone={canSimulate ? 'success' : 'info'} />
-          </>
-        }
-      />
+    <div className="dm-hub-page">
+      <section className="dm-hub-hero">
+        <div className="dm-hub-court-mark" aria-hidden="true">
+          <div />
+          <div />
+          <div />
+        </div>
+        <div className="dm-hub-hero-main">
+          <p className="dm-kicker">Season Hub</p>
+          <h1>{status.context.player_club_name || 'Club Office'}</h1>
+          <p>{phaseLabel}</p>
+          <div className="dm-hub-score-strip">
+            <div>
+              <span>Season</span>
+              <strong>{seasonLabel}</strong>
+            </div>
+            <div>
+              <span>Match Week</span>
+              <strong>Week {status.state.week}</strong>
+            </div>
+            <div>
+              <span>Next Opponent</span>
+              <strong>{opponentName || 'Pending'}</strong>
+            </div>
+          </div>
+        </div>
+        <div className="dm-hub-match-card">
+          <span className="dm-hub-match-label">Next User Match</span>
+          <strong>{matchupLine}</strong>
+          {nextUserMatch && <span>Week {nextUserMatch.week} &middot; {formatMatchStatus(nextUserMatch.status)}</span>}
+          <ActionButton
+            variant="primary"
+            onClick={() => handleSimulate('user_match')}
+            disabled={simulating || !canSimulate}
+            style={{ width: '100%', marginTop: '1rem' }}
+          >
+            {simulating ? 'Simulating...' : 'Play Next Match'}
+          </ActionButton>
+        </div>
+      </section>
 
       {/* Pre-match state alert */}
       {!canSimulate && (
         <StatusMessage title="No playable match" tone="warning">
-          The backend reports {formatState(status.state.state)}. Simulation actions are held until a pre-match state is available.
+          {phaseLabel}. Simulation actions are held until the next matchday is available.
         </StatusMessage>
       )}
 
       {/* Match Controls + Club Status row */}
-      <div className="lg-two-col-hub">
+      <div className="dm-hub-grid">
 
         {/* Match Controls */}
-        <div className="dm-panel">
-          <div className="dm-panel-header" style={{ borderBottom: '1px solid #1e293b' }}>
-            <p className="dm-kicker">Simulation Console</p>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+        <section className="dm-panel dm-hub-operations">
+          <div className="dm-panel-header">
+            <p className="dm-kicker">Operations</p>
+            <div className="dm-hub-section-title">
               <div>
-                <h2 className="dm-panel-title">Match Controls</h2>
-                <p className="dm-panel-subtitle">Choose how aggressively to move time forward.</p>
+                <h2 className="dm-panel-title">Advance Time</h2>
+                <p className="dm-panel-subtitle">Choose the smallest jump that matches what you want to review next.</p>
               </div>
               <Badge tone={canSimulate ? 'success' : 'warning'}>{canSimulate ? 'Ready' : 'Waiting'}</Badge>
             </div>
           </div>
 
           <div className="dm-section">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.75rem' }}>
-              <SimAction
-                title="Play Next Match"
-                detail={`Stops at the Week ${status.state.week} report.`}
-                variant="primary"
-                loading={simulating}
-                disabled={simulating || !canSimulate}
-                onClick={() => handleSimulate('user_match')}
-              />
+            <div className="dm-hub-action-grid">
               <SimAction
                 title="Sim Week"
                 detail="Advances the current league week."
-                variant="accent"
+                variant="primary"
                 disabled={simulating || !canSimulate}
                 onClick={() => handleSimulate('week')}
               />
@@ -244,15 +264,13 @@ export function Hub() {
                 disabled={simulating || !canSimulate}
                 onClick={() => handleSimulate('multiple_weeks', { weeks: 2 })}
               />
-              <div style={{ gridColumn: '1 / -1' }}>
-                <SimAction
-                  title="Sim To Playoffs"
-                  detail="Fastest option; may skip quiet weeks until a milestone blocks progress."
-                  variant="secondary"
-                  disabled={simulating || !canSimulate}
-                  onClick={() => handleSimulate('milestone', { milestone: 'playoffs' })}
-                />
-              </div>
+              <SimAction
+                title="Sim To Playoffs"
+                detail="Fastest option; may skip quiet weeks until a milestone blocks progress."
+                variant="secondary"
+                disabled={simulating || !canSimulate}
+                onClick={() => handleSimulate('milestone', { milestone: 'playoffs' })}
+              />
             </div>
 
             {simResult && (
@@ -263,16 +281,16 @@ export function Hub() {
               </div>
             )}
           </div>
-        </div>
+        </section>
 
         {/* Club Status */}
-        <div className="dm-panel">
+        <section className="dm-panel dm-hub-side">
           <div className="dm-panel-header">
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+            <div className="dm-hub-section-title">
               <div>
-                <p className="dm-kicker">Save Cursor</p>
+                <p className="dm-kicker">Manager Desk</p>
                 <h2 className="dm-panel-title">Club Status</h2>
-                <p className="dm-panel-subtitle">Current save cursor and club context.</p>
+                <p className="dm-panel-subtitle">Your club, season, and the next thing waiting for attention.</p>
               </div>
               <ActionButton variant="ghost" onClick={() => refreshStatus(true)} disabled={loading}>
                 Refresh
@@ -281,19 +299,27 @@ export function Hub() {
           </div>
           <div className="dm-section">
             <KeyValueRow
-              label="Active Season"
-              value={status.context.season_id ? (status.context.season_id.split('-')[0] || status.context.season_id) : 'None'}
+              label="Season"
+              value={seasonLabel}
             />
             <KeyValueRow
               label="Your Club"
               value={status.context.player_club_name || status.context.player_club_id || 'None'}
             />
-            <KeyValueRow label="Cursor" value={formatState(status.state.state)} />
-            {status.state.match_id && (
-              <KeyValueRow label="Last Match" value={`${status.state.match_id.substring(0, 8)}...`} />
+            <KeyValueRow label="Current Step" value={phaseLabel} />
+          </div>
+          <div className="dm-hub-fixtures">
+            <p className="dm-kicker">Upcoming</p>
+            {upcomingRows.length > 0 ? upcomingRows.map(row => (
+              <div key={row.match_id} className={row.is_user_match ? 'dm-hub-fixture dm-hub-fixture-user' : 'dm-hub-fixture'}>
+                <span>W{row.week}</span>
+                <strong>{row.home_club_name} vs {row.away_club_name}</strong>
+              </div>
+            )) : (
+              <p className="dm-panel-subtitle">No scheduled fixtures remain.</p>
             )}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

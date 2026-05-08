@@ -8,13 +8,20 @@ from fastapi.testclient import TestClient
 from dodgeball_sim import server
 from dodgeball_sim.career_state import CareerState, CareerStateCursor
 from dodgeball_sim.career_setup import initialize_curated_manager_career
+from dodgeball_sim.copy_quality import has_unresolved_token
 from dodgeball_sim.persistence import (
     create_schema,
+    load_all_rosters,
     load_command_history,
     load_clubs,
     load_career_state_cursor,
     load_lineup_default,
+    load_playoff_bracket,
+    load_season,
+    load_season_outcome,
+    save_command_history_record,
     save_career_state_cursor,
+    save_club,
 )
 
 
@@ -213,7 +220,44 @@ def test_command_center_match_replay_includes_saved_plan_evidence():
     assert replay.status_code == 200
     lanes = {lane["title"]: lane for lane in replay.json()["report"]["evidence_lanes"]}
     assert lanes["Command plan"]["summary"] == "Intent: Prepare For Playoffs."
-    assert any("sync throws" in item for item in lanes["Command plan"]["items"])
+    assert any("sync throws" in item.lower() for item in lanes["Command plan"]["items"])
+
+
+def test_match_replay_report_copy_does_not_expose_raw_ids_or_tuning_labels():
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_curated_manager_career(conn, "aurora", root_seed=20260426)
+    conn.commit()
+
+    def override_db():
+        yield conn
+
+    server.app.dependency_overrides[server.get_db] = override_db
+    try:
+        client = TestClient(server.app)
+        simulated = client.post(
+            "/api/command-center/simulate",
+            json={"intent": "Prepare For Playoffs"},
+        )
+        match_id = simulated.json()["dashboard"]["match_id"]
+        replay = client.get(f"/api/matches/{match_id}/replay")
+    finally:
+        server.app.dependency_overrides.clear()
+
+    assert simulated.status_code == 200
+    assert replay.status_code == 200
+    lanes = replay.json()["report"]["evidence_lanes"]
+    visible_copy = [
+        text
+        for lane in lanes
+        for text in [lane["title"], lane["summary"], *lane["items"]]
+    ]
+
+    assert not any(has_unresolved_token(text) for text in visible_copy)
+    assert not any("policy snapshot" in text.lower() for text in visible_copy)
+    assert not any("rush frequency" in text.lower() for text in visible_copy)
+    assert not any("target stars:" in text.lower() for text in visible_copy)
 
 
 def test_dynasty_office_endpoint_exposes_remaining_milestone_loops_and_actions():
@@ -433,3 +477,160 @@ def test_command_center_endpoints_save_plan_simulate_and_record_dashboard():
     assert history.status_code == 200
     assert len(history.json()) == 1
     assert load_command_history(conn, "season_1")[0]["dashboard"]["match_id"]
+
+
+def test_command_center_repairs_depleted_ai_roster_before_simulation():
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_curated_manager_career(conn, "aurora", root_seed=20260426)
+    clubs = load_clubs(conn)
+    season = load_season(conn, "season_1")
+    first_user_match = next(
+        match
+        for match in season.scheduled_matches
+        if "aurora" in (match.home_club_id, match.away_club_id)
+    )
+    depleted_club_id = (
+        first_user_match.away_club_id
+        if first_user_match.home_club_id == "aurora"
+        else first_user_match.home_club_id
+    )
+    save_club(conn, clubs[depleted_club_id], [])
+    conn.commit()
+
+    def override_db():
+        yield conn
+
+    server.app.dependency_overrides[server.get_db] = override_db
+    try:
+        response = TestClient(server.app).post("/api/command-center/simulate")
+    finally:
+        server.app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert len(load_all_rosters(conn)[depleted_club_id]) >= 6
+
+
+def test_command_center_simulate_enters_offseason_when_no_user_match_remains():
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_curated_manager_career(conn, "aurora", root_seed=20260426)
+    conn.commit()
+
+    def override_db():
+        yield conn
+
+    server.app.dependency_overrides[server.get_db] = override_db
+    try:
+        client = TestClient(server.app)
+        for _ in range(10):
+            response = client.post("/api/command-center/simulate")
+            if response.status_code == 200 and response.json()["next_state"] == CareerState.SEASON_COMPLETE_OFFSEASON_BEAT.value:
+                break
+            assert response.status_code == 200
+        else:
+            response = client.post("/api/command-center/simulate")
+    finally:
+        server.app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["next_state"] == CareerState.SEASON_COMPLETE_OFFSEASON_BEAT.value
+    assert load_career_state_cursor(conn).state == CareerState.SEASON_COMPLETE_OFFSEASON_BEAT
+
+
+def test_command_center_completes_ai_schedule_and_persists_playoff_champion():
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_curated_manager_career(conn, "aurora", root_seed=20260426)
+    conn.commit()
+
+    def override_db():
+        yield conn
+
+    server.app.dependency_overrides[server.get_db] = override_db
+    try:
+        client = TestClient(server.app)
+        for _ in range(20):
+            response = client.post("/api/command-center/simulate")
+            assert response.status_code == 200
+            payload = response.json()
+            if payload["next_state"] == CareerState.SEASON_ACTIVE_MATCH_REPORT_PENDING.value:
+                match_id = payload["dashboard"]["match_id"]
+                replay = client.get(f"/api/matches/{match_id}/replay")
+                assert replay.status_code == 200
+                ack = client.post(f"/api/matches/{match_id}/acknowledge")
+                assert ack.status_code == 200
+                continue
+            if payload["next_state"] == CareerState.SEASON_COMPLETE_OFFSEASON_BEAT.value:
+                break
+        else:
+            raise AssertionError("Command Center did not reach offseason")
+    finally:
+        server.app.dependency_overrides.clear()
+
+    assert load_playoff_bracket(conn, "season_1") is not None
+    assert load_season_outcome(conn, "season_1") is not None
+
+
+def test_command_center_api_sanitizes_legacy_dashboard_copy_from_saved_history():
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_curated_manager_career(conn, "harbor", root_seed=20260426)
+    save_command_history_record(
+        conn,
+        {
+            "season_id": "season_1",
+            "week": 2,
+            "match_id": "legacy-match",
+            "opponent_club_id": "solstice",
+            "intent": "Win Now",
+            "plan": {"intent": "Win Now", "player_club_id": "harbor"},
+            "dashboard": {
+                "season_id": "season_1",
+                "week": 2,
+                "match_id": "legacy-match",
+                "opponent_name": "Solstice Flare",
+                "result": "Loss",
+                "lanes": [
+                    {
+                        "title": "Why it happened",
+                        "summary": "Tactical diagnosis correlates execution metrics to the mandated game plan.",
+                        "items": [
+                            "Target evidence: harbor_3 was targeted 6 times.",
+                            "Tactical target-stars setting: 0.75.",
+                            "Rush frequency setting: 0.35.",
+                        ],
+                    }
+                ],
+            },
+        },
+    )
+    conn.commit()
+
+    def override_db():
+        yield conn
+
+    server.app.dependency_overrides[server.get_db] = override_db
+    try:
+        client = TestClient(server.app)
+        loaded = client.get("/api/command-center")
+        history = client.get("/api/command-center/history")
+    finally:
+        server.app.dependency_overrides.clear()
+
+    assert loaded.status_code == 200
+    assert history.status_code == 200
+    visible_copy = [
+        text
+        for payload in (loaded.json()["latest_dashboard"], history.json()[0]["dashboard"])
+        for lane in payload["lanes"]
+        for text in [lane["title"], lane["summary"], *lane["items"]]
+    ]
+    assert not any(has_unresolved_token(text) for text in visible_copy)
+    assert not any("target evidence" in text.lower() for text in visible_copy)
+    assert not any("target-stars" in text.lower() for text in visible_copy)
+    assert not any("setting:" in text.lower() for text in visible_copy)
