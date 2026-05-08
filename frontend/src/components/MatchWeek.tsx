@@ -4,15 +4,6 @@ import { useApiResource } from '../hooks/useApiResource';
 import { ActionButton, Badge, KeyValueRow, PageHeader, StatChip, StatusMessage, Tile } from './ui';
 import { Offseason } from './Offseason';
 
-const departmentLabels: Record<string, string> = {
-  tactics: 'Tactics',
-  training: 'Training',
-  conditioning: 'Conditioning',
-  medical: 'Medical',
-  scouting: 'Scouting',
-  culture: 'Culture',
-};
-
 function formatTactic(value: number) {
   return `${Math.round(value * 100)}%`;
 }
@@ -135,45 +126,34 @@ export function MatchWeek({
             </div>
 
             <div className="dm-section">
-              {/* Intent + Dev Focus selects */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
-                <label style={{ display: 'block' }}>
-                  <span className="dm-kicker" style={{ display: 'block', marginBottom: '0.375rem' }}>Intent</span>
-                  <select
-                    aria-label="Weekly intent"
-                    value={selectedIntent}
-                    onChange={(event) => {
-                      setLocalIntent(event.target.value);
-                      savePlan(event.target.value);
-                    }}
-                    style={{
-                      width: '100%',
-                      background: '#0f172a',
-                      border: '1px solid #334155',
-                      borderRadius: '4px',
-                      padding: '0.5rem 0.75rem',
-                      color: '#e2e8f0',
-                      fontFamily: 'var(--font-display)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {plan.available_intents.map(intent => <option key={intent}>{intent}</option>)}
-                  </select>
-                </label>
-              </div>
-
-              {/* Department orders */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem', marginTop: '1rem' }}>
-                {Object.entries(plan.department_orders).filter(([key]) => key !== 'dev_focus').map(([key, value]) => (
-                  <Tile key={key}>
-                    <p className="dm-kicker" style={{ marginBottom: '0.25rem' }}>{departmentLabels[key] || key}</p>
-                    <p className="dm-data" style={{ color: '#22d3ee', fontSize: '0.75rem', fontWeight: 700, textTransform: 'capitalize' }}>{String(value)}</p>
-                  </Tile>
-                ))}
-              </div>
+              {/* Intent select */}
+              <label style={{ display: 'block' }}>
+                <span className="dm-kicker" style={{ display: 'block', marginBottom: '0.375rem' }}>Intent</span>
+                <select
+                  aria-label="Weekly intent"
+                  value={selectedIntent}
+                  onChange={(event) => {
+                    setLocalIntent(event.target.value);
+                    savePlan(event.target.value);
+                  }}
+                  style={{
+                    width: '100%',
+                    maxWidth: '180px',
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '4px',
+                    padding: '0.5rem 0.75rem',
+                    color: '#e2e8f0',
+                    fontFamily: 'var(--font-display)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  {plan.available_intents.map(intent => <option key={intent}>{intent}</option>)}
+                </select>
+              </label>
 
               {/* Action buttons */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1rem' }}>

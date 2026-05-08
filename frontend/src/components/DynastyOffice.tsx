@@ -1,7 +1,16 @@
-import { useState } from 'react';
-import type { DynastyOfficeResponse } from '../types';
+import { useEffect, useState } from 'react';
+import type { CommandCenterResponse, DynastyOfficeResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
 import { ActionButton, Badge, CompactList, CompactListRow, PageHeader, StatChip, StatusMessage, Tile } from './ui';
+
+const DEPARTMENT_LABELS: Record<string, string> = {
+  tactics: 'Tactics',
+  training: 'Training',
+  conditioning: 'Conditioning',
+  medical: 'Medical',
+  scouting: 'Scouting',
+  culture: 'Culture',
+};
 
 function label(value: string) {
   return value.replace(/_/g, ' ');
@@ -15,6 +24,25 @@ function ItemText({ item }: { item: Record<string, string | number | null> }) {
 export function DynastyOffice() {
   const { data, error, loading, setData, setError } = useApiResource<DynastyOfficeResponse>('/api/dynasty-office');
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  const [planContext, setPlanContext] = useState<CommandCenterResponse | null>(null);
+  useEffect(() => {
+    fetch('/api/command-center').then(r => r.json()).then(setPlanContext);
+  }, []);
+
+  const updateDepartmentOrder = (key: string, value: string) => {
+    if (!planContext) return;
+    fetch('/api/command-center/plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intent: planContext.plan.intent,
+        department_orders: { [key]: value },
+      }),
+    })
+      .then(r => r.json())
+      .then(setPlanContext);
+  };
 
   const savePromise = (playerId: string, promiseType: string) => {
     setBusyId(playerId);
@@ -66,6 +94,35 @@ export function DynastyOffice() {
           </>
         }
       />
+
+      {planContext && (
+        <div className="dm-panel">
+          <div className="dm-panel-header">
+            <p className="dm-kicker">Program Priorities</p>
+            <h2 className="dm-panel-title">Department Orders</h2>
+            <p className="dm-panel-subtitle">Season-long staff priorities. Adjust rarely.</p>
+          </div>
+          <div className="dm-section" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+            {Object.entries(planContext.plan.department_orders)
+              .filter(([key]) => key !== 'dev_focus')
+              .map(([key, value]) => (
+                <label key={key} style={{ display: 'block' }}>
+                  <span className="dm-kicker" style={{ display: 'block', marginBottom: '0.375rem' }}>{DEPARTMENT_LABELS[key] ?? key}</span>
+                  <input
+                    type="text"
+                    value={String(value)}
+                    onChange={e => updateDepartmentOrder(key, e.target.value)}
+                    style={{
+                      width: '100%', background: '#0f172a', border: '1px solid #334155',
+                      borderRadius: '4px', padding: '0.5rem 0.75rem', color: '#e2e8f0',
+                      fontFamily: 'var(--font-display)', fontSize: '0.75rem',
+                    }}
+                  />
+                </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }} className="xl:grid-cols-[1.1fr_0.9fr]">
         {/* Recruiting Promises */}
