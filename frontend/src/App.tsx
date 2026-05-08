@@ -1,17 +1,15 @@
 import { useEffect, useState } from 'react';
 import { CommandCenter } from './components/CommandCenter';
-import { Hub } from './components/Hub';
 import { DynastyOffice } from './components/DynastyOffice';
-import { NewsWire, Schedule, Standings } from './components/LeagueContext';
+import { Standings } from './components/LeagueContext';
 import { Offseason } from './components/Offseason';
 import { Roster } from './components/Roster';
 import { SaveMenu } from './components/SaveMenu';
-import { Tactics } from './components/Tactics';
 import MatchReplay from './components/MatchReplay';
 import type { MatchReplayResponse } from './types';
 
 type Screen = 'loading' | 'menu' | 'game' | 'offseason';
-type Tab = 'command' | 'hub' | 'dynasty' | 'roster' | 'tactics' | 'standings' | 'schedule' | 'news';
+type Tab = 'command' | 'dynasty' | 'roster' | 'standings';
 
 const OFFSEASON_STATES = new Set([
   'season_complete_offseason_beat',
@@ -20,25 +18,17 @@ const OFFSEASON_STATES = new Set([
 ]);
 
 const tabs: Array<{ id: Tab; label: string; short: string }> = [
-  { id: 'command', label: 'Command Center', short: 'Week' },
-  { id: 'hub', label: 'Hub', short: 'Ops' },
+  { id: 'command', label: 'Match Week', short: 'Week' },
   { id: 'dynasty', label: 'Dynasty Office', short: 'Program' },
   { id: 'roster', label: 'Roster', short: 'Team' },
-  { id: 'tactics', label: 'Tactics', short: 'Policy' },
   { id: 'standings', label: 'Standings', short: 'Table' },
-  { id: 'schedule', label: 'Schedule', short: 'Fixtures' },
-  { id: 'news', label: 'News', short: 'Wire' },
 ];
 
 const tabKickers: Record<Tab, string> = {
   command: 'WAR ROOM',
-  hub: 'WAR ROOM',
   dynasty: 'WAR ROOM',
   roster: 'ROSTER LAB',
-  tactics: 'WAR ROOM',
   standings: 'LEAGUE OFFICE',
-  schedule: 'LEAGUE OFFICE',
-  news: 'LEAGUE OFFICE',
 };
 
 function tabFromUrl(): Tab {
@@ -222,13 +212,9 @@ function App() {
             <p className="dm-kicker" style={{ padding: '2rem', fontSize: '0.875rem' }}>Loading replay…</p>
           )}
           {!commandReplay && !commandReplayLoading && activeTab === 'command' && <CommandCenter onOpenReplay={openCommandReplay} />}
-          {!commandReplay && !commandReplayLoading && activeTab === 'hub' && <Hub />}
           {!commandReplay && !commandReplayLoading && activeTab === 'dynasty' && <DynastyOffice />}
           {!commandReplay && !commandReplayLoading && activeTab === 'roster' && <Roster />}
-          {!commandReplay && !commandReplayLoading && activeTab === 'tactics' && <Tactics />}
           {!commandReplay && !commandReplayLoading && activeTab === 'standings' && <Standings />}
-          {!commandReplay && !commandReplayLoading && activeTab === 'schedule' && <Schedule />}
-          {!commandReplay && !commandReplayLoading && activeTab === 'news' && <NewsWire />}
         </div>
       </div>
     </div>
