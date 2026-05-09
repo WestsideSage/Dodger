@@ -198,6 +198,13 @@ export interface NewsResponse {
     items: NewsItem[];
 }
 
+export interface MatchupDetails {
+  opponent_record: string;
+  last_meeting: string;
+  key_matchup: string;
+  framing_line: string;
+}
+
 export interface CommandCenterPlan {
     season_id: string;
     week: number;
@@ -236,6 +243,7 @@ export interface CommandCenterPlan {
     };
     tactics: CoachPolicy;
     history_count: number;
+    matchup_details?: MatchupDetails;
 }
 
 export interface CommandDashboardLane {

@@ -142,6 +142,12 @@ def build_default_weekly_plan(state: Mapping[str, Any], intent: str = "Win Now")
         "lineup": lineup,
         "tactics": tactics,
         "history_count": len(state.get("history", [])),
+        "matchup_details": {
+            "opponent_record": "0-0",
+            "last_meeting": "None",
+            "key_matchup": "TBD",
+            "framing_line": "A tough matchup against a conference rival.",
+        },
     }
 
 
