@@ -234,9 +234,18 @@ def _normalize_unit(value: float) -> float:
 def _clamp(value: float, low: float, high: float) -> float:
     return max(low, min(high, value))
 
+def calculate_potential_tier(potential: float) -> str:
+    if potential >= 90:
+        return "Elite"
+    if potential >= 80:
+        return "High"
+    if potential >= 65:
+        return "Solid"
+    return "Limited"
 
 __all__ = [
     "apply_season_development",
+    "calculate_potential_tier",
     "fatigue_consistency_modifier",
     "pressure_context",
     "should_retire",

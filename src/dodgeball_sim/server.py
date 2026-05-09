@@ -45,6 +45,7 @@ from dodgeball_sim.game_loop import (
     recompute_regular_season_standings,
     simulate_scheduled_match,
 )
+from dodgeball_sim.development import calculate_potential_tier
 from dodgeball_sim.career_setup import ensure_default_web_career, initialize_curated_manager_career
 from dodgeball_sim.offseason_ceremony import (
     OFFSEASON_CEREMONY_BEATS,
@@ -439,8 +440,13 @@ def get_roster(conn = Depends(get_db)) -> RosterResponse:
     for i, player in enumerate(roster):
         role = _ROLE_LABELS[i] if i < len(_ROLE_LABELS) else "Utility"
         d = dataclasses.asdict(player)
-        d["overall"] = round(player.overall(), 1)
+        d["overall"] = int(round(player.overall()))
         d["role"] = role
+        d["potential_tier"] = calculate_potential_tier(player.traits.potential)
+        d["scouting_confidence"] = 3
+        d["weekly_ovr_history"] = [int(round(player.overall()))]
+        if "traits" in d:
+            d["traits"].pop("potential", None)
         enriched.append(d)
 
     return {

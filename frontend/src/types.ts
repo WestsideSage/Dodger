@@ -18,13 +18,16 @@ export interface Player {
     id: string;
     name: string;
     ratings: PlayerRatings;
-    traits: PlayerTraits;
+    traits: Omit<PlayerTraits, 'potential'>;
     age: number;
     club_id: string | null;
     newcomer: boolean;
     archetype: string;
     overall: number;
     role: string;
+    potential_tier: string;
+    scouting_confidence: number;
+    weekly_ovr_history: number[];
 }
 
 export interface RosterResponse {

@@ -1,20 +1,9 @@
 import { useMemo, useState, useEffect } from 'react';
-import type { Player, RosterResponse } from '../types';
+import type { RosterResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
-import { DataTable, PageHeader, RatingBar, StatChip, StatusMessage, TableCell, TableHeadCell } from './ui';
-
-function overallRating(player: Player): number {
-  if (Number.isFinite(player.overall)) return Math.round(player.overall);
-  const ratings = player.ratings;
-  return Math.round((ratings.accuracy + ratings.power + ratings.dodge + ratings.catch + (ratings.tactical_iq ?? 50)) / 5);
-}
-
-function overallColor(value: number): string {
-  if (value >= 80) return '#22d3ee';
-  if (value >= 65) return '#10b981';
-  if (value >= 50) return '#f59e0b';
-  return '#f43f5e';
-}
+import { PageHeader, StatChip, StatusMessage } from './ui';
+import { PlayerTheaterRow } from './roster/PlayerTheaterRow';
+import { PlayerCompactRow } from './roster/PlayerCompactRow';
 
 const DEV_FOCUS_OPTIONS = ['BALANCED', 'YOUTH_ACCELERATION', 'TACTICAL_DRILLS', 'STRENGTH_AND_CONDITIONING'];
 
@@ -66,6 +55,7 @@ function DevFocusChip({
 export function Roster() {
   const { data, loading, error } = useApiResource<RosterResponse>('/api/roster');
   const [planContext, setPlanContext] = useState<{ intent: string; dev_focus: string } | null>(null);
+  const [isCompact, setIsCompact] = useState(false);
 
   const fetchPlan = () => {
     fetch('/api/command-center')
@@ -87,8 +77,8 @@ export function Roster() {
 
   const roster = useMemo(
     () => (data?.roster ?? [])
-      .map(player => ({ player, overall: overallRating(player), starter: defaultLineupIds.has(player.id) }))
-      .sort((a, b) => Number(b.starter) - Number(a.starter) || b.overall - a.overall || a.player.age - b.player.age),
+      .map(player => ({ player, starter: defaultLineupIds.has(player.id) }))
+      .sort((a, b) => Number(b.starter) - Number(a.starter) || b.player.overall - a.player.overall || a.player.age - b.player.age),
     [data?.roster, defaultLineupIds]
   );
 
@@ -96,10 +86,8 @@ export function Roster() {
   if (error) return <StatusMessage title="Roster unavailable" tone="danger">{error}</StatusMessage>;
   if (!data) return <StatusMessage title="No roster">No roster data returned.</StatusMessage>;
 
-  const starters = roster.filter(row => row.starter).length;
-  const averageOverall = roster.length
-    ? Math.round(roster.reduce((total, row) => total + row.overall, 0) / roster.length)
-    : 0;
+  const averageAge = Math.round(roster.reduce((sum, r) => sum + r.player.age, 0) / roster.length);
+  const averageOverall = Math.round(roster.reduce((sum, r) => sum + r.player.overall, 0) / roster.length);
 
   return (
     <div className="dm-panel">
@@ -109,9 +97,9 @@ export function Roster() {
         description="Player condition, role fit, and match readiness"
         stats={
           <>
-            <StatChip label="Players" value={roster.length} />
-            <StatChip label="Starters" value={starters} tone="warning" />
+            <StatChip label="Avg Age" value={averageAge} />
             <StatChip label="Avg OVR" value={averageOverall} tone="info" />
+            <StatChip label="Trend" value="↑" tone="success" />
             {planContext && (
               <DevFocusChip
                 current={planContext.dev_focus}
@@ -119,114 +107,51 @@ export function Roster() {
                 onUpdated={fetchPlan}
               />
             )}
+            <button 
+              onClick={() => setIsCompact(!isCompact)}
+              style={{ padding: '0.5rem 0.75rem', background: '#1e293b', border: '1px solid #334155', borderRadius: '4px', color: '#cbd5e1', cursor: 'pointer', fontSize: '0.75rem', textTransform: 'uppercase' }}
+            >
+              {isCompact ? 'Theater View' : 'Compact View'}
+            </button>
           </>
         }
       />
 
-      <DataTable>
-        <thead>
-          <tr>
-            <TableHeadCell sticky>Player</TableHeadCell>
-            <TableHeadCell>Role</TableHeadCell>
-            <TableHeadCell align="center">Age</TableHeadCell>
-            <TableHeadCell align="right">OVR</TableHeadCell>
-            <TableHeadCell align="right">POT</TableHeadCell>
-            <TableHeadCell>POW</TableHeadCell>
-            <TableHeadCell>ACC</TableHeadCell>
-            <TableHeadCell>DOD</TableHeadCell>
-            <TableHeadCell>CAT</TableHeadCell>
-            <TableHeadCell>IQ</TableHeadCell>
-            <TableHeadCell>STA</TableHeadCell>
-            <TableHeadCell>Status</TableHeadCell>
-          </tr>
-        </thead>
-        <tbody>
-          {roster.map(({ player, overall, starter }) => (
-            <tr
-              key={player.id}
-              style={{ background: starter ? 'rgba(34,211,238,0.06)' : undefined }}
-            >
-              <TableCell sticky className="min-w-44">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
-                  <span>{player.name}</span>
-                  {player.newcomer && (
-                    <span style={{ fontSize: '0.6875rem', fontFamily: 'var(--font-mono-data)', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Newcomer
-                    </span>
-                  )}
-                </div>
-              </TableCell>
-
-              <TableCell>
-                {(player.role || player.archetype) ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
-                    {player.role && (
-                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.075em', color: '#22d3ee' }}>
-                        {player.role}
-                      </span>
-                    )}
-                    {player.archetype && (
-                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '0.625rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569' }}>
-                        {player.archetype}
-                      </span>
-                    )}
-                  </div>
-                ) : (
-                  <span style={{ color: '#334155' }}>—</span>
-                )}
-              </TableCell>
-
-              <TableCell align="center">
-                <span className="dm-data" style={{ fontSize: '0.8125rem', color: '#94a3b8' }}>{player.age}</span>
-              </TableCell>
-
-              <TableCell align="right">
-                <span className="dm-data" style={{ fontSize: '1rem', fontWeight: 700, color: overallColor(overall) }}>
-                  {overall}
-                </span>
-              </TableCell>
-
-              <TableCell align="right">
-                <span className="dm-data" style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#cbd5e1' }}>
-                  {player.traits.potential}
-                </span>
-              </TableCell>
-
-              <TableCell className="min-w-24">
-                <RatingBar rating={player.ratings.power} compact />
-              </TableCell>
-              <TableCell className="min-w-24">
-                <RatingBar rating={player.ratings.accuracy} compact />
-              </TableCell>
-              <TableCell className="min-w-24">
-                <RatingBar rating={player.ratings.dodge} compact />
-              </TableCell>
-              <TableCell className="min-w-24">
-                <RatingBar rating={player.ratings.catch} compact />
-              </TableCell>
-              <TableCell className="min-w-24">
-                <RatingBar rating={player.ratings.tactical_iq ?? 50} compact />
-              </TableCell>
-              <TableCell className="min-w-24">
-                <RatingBar rating={player.ratings.stamina} compact />
-              </TableCell>
-
-              <TableCell>
-                <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                  {starter ? (
-                    <span className="dm-badge dm-badge-cyan">STARTER</span>
-                  ) : (
-                    <span className="dm-badge dm-badge-slate">BENCH</span>
-                  )}
-                  {player.newcomer && (
-                    <span className="dm-badge dm-badge-violet">NEW</span>
-                  )}
-                </div>
-              </TableCell>
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
+        {!isCompact && (
+          <thead>
+            <tr style={{ textAlign: 'left', borderBottom: '1px solid #1e293b' }}>
+              <th style={{ padding: '1rem', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase' }}>Player</th>
+              <th style={{ padding: '1rem', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase' }}>Ratings</th>
+              <th style={{ padding: '1rem', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase' }}>Potential</th>
+              <th style={{ padding: '1rem', textAlign: 'right', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase' }}>OVR</th>
+              <th style={{ padding: '1rem', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase' }}>Status</th>
             </tr>
+          </thead>
+        )}
+        {isCompact && (
+          <thead>
+             <tr style={{ textAlign: 'left', borderBottom: '1px solid #1e293b' }}>
+               <th style={{ padding: '0.5rem', color: '#64748b', fontSize: '0.75rem' }}>Name</th>
+               <th style={{ padding: '0.5rem', color: '#64748b', fontSize: '0.75rem' }}>ACC</th>
+               <th style={{ padding: '0.5rem', color: '#64748b', fontSize: '0.75rem' }}>POW</th>
+               <th style={{ padding: '0.5rem', color: '#64748b', fontSize: '0.75rem' }}>DOD</th>
+               <th style={{ padding: '0.5rem', color: '#64748b', fontSize: '0.75rem' }}>CAT</th>
+               <th style={{ padding: '0.5rem', color: '#64748b', fontSize: '0.75rem' }}>OVR</th>
+               <th style={{ padding: '0.5rem', color: '#64748b', fontSize: '0.75rem' }}>Status</th>
+             </tr>
+          </thead>
+        )}
+        <tbody>
+          {roster.map(({ player, starter }) => (
+            isCompact ? (
+              <PlayerCompactRow key={player.id} player={player} starter={starter} />
+            ) : (
+              <PlayerTheaterRow key={player.id} player={player} starter={starter} />
+            )
           ))}
         </tbody>
-      </DataTable>
+      </table>
     </div>
   );
 }
