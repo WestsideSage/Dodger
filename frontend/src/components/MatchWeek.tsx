@@ -1,7 +1,12 @@
 import { MatchupCard } from './match-week/MatchupCard';
 import { WeeklyChecklist } from './match-week/WeeklyChecklist';
 import { ProgramStatusStrip } from './match-week/ProgramStatusStrip';
-import { useState } from 'react';
+import { Headline } from './match-week/aftermath/Headline';
+import { MatchCard as AftermathMatchCard } from './match-week/aftermath/MatchCard';
+import { PlayerGrowthBlock } from './match-week/aftermath/PlayerGrowthBlock';
+import { StandingsShift } from './match-week/aftermath/StandingsShift';
+import { RecruitReactions } from './match-week/aftermath/RecruitReactions';
+import { useState, useEffect } from 'react';
 import type { CommandCenterResponse, CommandCenterSimResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
 import { ActionButton, PageHeader, StatChip, StatusMessage } from './ui';
@@ -22,6 +27,7 @@ export function MatchWeek({
   const { data, setData, error, setError, loading, setLoading } = useApiResource<CommandCenterResponse>('/api/command-center');
   const [localIntent, setLocalIntent] = useState<string | undefined>(undefined);
   const [result, setResult] = useState<CommandCenterSimResponse | null>(null);
+  const [revealStage, setRevealStage] = useState(0);
 
   const selectedIntent = localIntent ?? data?.plan.intent ?? 'Win Now';
 
@@ -77,13 +83,33 @@ export function MatchWeek({
       .catch(err => setError(err.message));
   };
 
+  useEffect(() => {
+    if (mode !== 'post-sim' || !result?.aftermath) return;
+    if (revealStage >= 5) return;
+    const t = setTimeout(() => setRevealStage(prev => prev + 1), 1000);
+    return () => clearTimeout(t);
+  }, [revealStage, mode, result]);
+
+  useEffect(() => {
+    if (mode !== 'post-sim') return;
+    const skip = (e: KeyboardEvent | MouseEvent) => {
+      if (e.type === 'keydown' && (e as KeyboardEvent).code !== 'Space') return;
+      setRevealStage(5);
+    };
+    window.addEventListener('keydown', skip);
+    window.addEventListener('click', skip);
+    return () => {
+      window.removeEventListener('keydown', skip);
+      window.removeEventListener('click', skip);
+    };
+  }, [mode]);
+
   const renderPreSimMode = () => {
     if (loading && !data) return <StatusMessage title="Loading command center">Opening the weekly desk.</StatusMessage>;
     if (error) return <StatusMessage title="Command center unavailable" tone="danger">{error}</StatusMessage>;
     if (!data) return null;
 
     const plan = data.plan;
-
     const isSimReady = data.plan.warnings?.length === 0;
 
     return (
@@ -141,17 +167,40 @@ export function MatchWeek({
     );
   };
 
-  const renderPostSimMode = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }} data-testid="match-week-post-sim">
-      <PageHeader eyebrow="Match Week" title="Aftermath" description="Match results — full layout in Wave 2." />
+  const renderPostSimMode = () => {
+    if (!result?.aftermath) return (
       <div className="dm-panel">
-        <p>Post-sim aftermath stub. Subplan 06 will replace this with sequenced reveal blocks (Headline, Match Card, Player Growth, Standings Shift, Recruit Reactions).</p>
-        {result && (
-          <ActionButton onClick={() => { setResult(null); load(); onAdvanceWeek?.(); }}>Advance to Next Week</ActionButton>
+        <p>Processing results...</p>
+      </div>
+    );
+
+    const { aftermath } = result;
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }} data-testid="match-week-post-sim">
+        <PageHeader eyebrow="Match Week" title="Aftermath" description="Reviewing the weekly fallout." />
+        
+        {revealStage >= 0 && <Headline text={aftermath.headline} />}
+        {revealStage >= 1 && <AftermathMatchCard data={aftermath.match_card} />}
+        {revealStage >= 2 && <PlayerGrowthBlock deltas={aftermath.player_growth_deltas} />}
+        {revealStage >= 3 && <StandingsShift shifts={aftermath.standings_shift} />}
+        {revealStage >= 4 && <RecruitReactions reactions={aftermath.recruit_reactions} />}
+
+        {revealStage >= 5 && (
+          <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center' }}>
+            <ActionButton variant="primary" onClick={() => { 
+                setRevealStage(0);
+                setResult(null); 
+                load(); 
+                onAdvanceWeek?.(); 
+            }}>
+              Advance to Next Week
+            </ActionButton>
+          </div>
         )}
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderOffseasonMode = () => (
     <div data-testid="match-week-offseason">

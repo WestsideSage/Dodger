@@ -387,6 +387,7 @@ class CommandCenterSimResponse(BaseModel):
     plan: dict[str, Any]
     dashboard: dict[str, Any]
     next_state: str | None = None
+    aftermath: dict[str, Any] | None = None
 
 
 class RecruitingPromiseRequest(BaseModel):
@@ -1079,6 +1080,13 @@ def simulate_command_center_week(update: WeeklyCommandPlanUpdate | None = None, 
                     "lanes": [],
                 },
                 "next_state": cursor.state.value,
+                "aftermath": {
+                    "headline": "Season Complete",
+                    "match_card": None,
+                    "player_growth_deltas": [],
+                    "standings_shift": [],
+                    "recruit_reactions": [],
+                }
             }
         raise HTTPException(status_code=409, detail=f"No user match available: {stop_reason}")
 
@@ -1141,6 +1149,19 @@ def simulate_command_center_week(update: WeeklyCommandPlanUpdate | None = None, 
         "plan": plan,
         "dashboard": dashboard,
         "next_state": cursor.state.value,
+        "aftermath": {
+            "headline": f"{dashboard['result']} vs {dashboard['opponent_name']}",
+            "match_card": {
+                "home_club_id": record.home_club_id,
+                "away_club_id": record.away_club_id,
+                "winner_club_id": record.result.winner_team_id,
+                "home_survivors": 0, # placeholder, should extract from dashboard logic
+                "away_survivors": 0,
+            },
+            "player_growth_deltas": [],
+            "standings_shift": [],
+            "recruit_reactions": [],
+        }
     }
 
 

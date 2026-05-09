@@ -285,12 +285,42 @@ export interface CommandCenterResponse {
     history: CommandHistoryRecord[];
 }
 
+export interface Aftermath {
+    headline: string;
+    match_card: {
+        home_club_id: string;
+        away_club_id: string;
+        winner_club_id: string | null;
+        home_survivors: number;
+        away_survivors: number;
+    } | null;
+    player_growth_deltas: Array<{
+        player_id: string;
+        player_name: string;
+        attribute: string;
+        delta: number;
+    }>;
+    standings_shift: Array<{
+        club_id: string;
+        club_name: string;
+        old_rank: number;
+        new_rank: number;
+    }>;
+    recruit_reactions: Array<{
+        prospect_id: string;
+        prospect_name: string;
+        interest_delta: string;
+        evidence: string;
+    }>;
+}
+
 export interface CommandCenterSimResponse {
     status: string;
     message: string;
     plan: CommandCenterPlan;
     dashboard: CommandDashboard;
     next_state: string | null;
+    aftermath?: Aftermath;
 }
 
 export interface DynastyOfficeResponse {
