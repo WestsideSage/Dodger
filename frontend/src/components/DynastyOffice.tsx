@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { CommandCenterResponse, DynastyOfficeResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
-import { ActionButton, Badge, CompactList, CompactListRow, PageHeader, StatChip, StatusMessage, Tile } from './ui';
+import { ActionButton, PageHeader, StatusMessage } from './ui';
+import { CredibilityStrip } from './dynasty/CredibilityStrip';
+import { ProspectCard } from './dynasty/ProspectCard';
+import { StaffMarketModal } from './dynasty/StaffMarketModal';
 
 const DEPARTMENT_LABELS: Record<string, string> = {
   tactics: 'Tactics',
@@ -12,23 +15,61 @@ const DEPARTMENT_LABELS: Record<string, string> = {
   culture: 'Culture',
 };
 
-function label(value: string) {
-  return value.replace(/_/g, ' ');
-}
-
-function ItemText({ item }: { item: Record<string, string | number | null> }) {
-  const text = item.text ?? item.summary ?? item.award_type ?? item.club_a_name ?? item.status ?? '-';
-  return <span style={{ fontWeight: 700 }}>{String(text)}</span>;
+function SettingsModal({ plan, onUpdate, onClose }: { plan: any, onUpdate: (k: string, v: string) => void, onClose: () => void }) {
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 101, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="dm-panel" style={{ width: '400px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+          <h2>Program Settings</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>✕</button>
+        </div>
+        <p className="dm-kicker">Department Orders</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+           {Object.entries(plan.department_orders).filter(([k]) => k !== 'dev_focus').map(([k, v]) => (
+             <label key={k} style={{ display: 'block' }}>
+               <span style={{ fontSize: '0.7rem', color: '#64748b' }}>{DEPARTMENT_LABELS[k] ?? k}</span>
+               <input 
+                 type="text" 
+                 value={String(v)} 
+                 onChange={e => onUpdate(k, e.target.value)}
+                 style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: '4px', padding: '0.5rem', color: '#e2e8f0' }}
+               />
+             </label>
+           ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function DynastyOffice() {
-  const { data, error, loading, setData, setError } = useApiResource<DynastyOfficeResponse>('/api/dynasty-office');
-  const [busyId, setBusyId] = useState<string | null>(null);
-
+  const { data, loading, error, setData, setLoading, setError } = useApiResource<DynastyOfficeResponse>('/api/dynasty-office');
+  const [activeSubTab, setActiveSubTab] = useState<'recruit' | 'history'>('recruit');
+  const [showStaffMarket, setShowStaffMarket] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  
   const [planContext, setPlanContext] = useState<CommandCenterResponse | null>(null);
-  useEffect(() => {
+  
+  const load = () => {
+    setLoading(true);
+    fetch('/api/dynasty-office')
+      .then(res => res.json())
+      .then(setData)
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  };
+
+  const fetchPlan = () => {
     fetch('/api/command-center').then(r => r.json()).then(setPlanContext);
+  };
+
+  useEffect(() => {
+    fetchPlan();
   }, []);
+
+  if (loading && !data) return <StatusMessage title="Opening the program office">Loading dynasty records.</StatusMessage>;
+  if (error) return <StatusMessage title="Office unavailable" tone="danger">{error}</StatusMessage>;
+  if (!data) return null;
 
   const updateDepartmentOrder = (key: string, value: string) => {
     if (!planContext) return;
@@ -44,285 +85,81 @@ export function DynastyOffice() {
       .then(setPlanContext);
   };
 
-  const savePromise = (playerId: string, promiseType: string) => {
-    setBusyId(playerId);
-    fetch('/api/dynasty-office/promises', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ player_id: playerId, promise_type: promiseType }),
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Promise could not be saved');
-        return res.json();
-      })
-      .then((payload: DynastyOfficeResponse) => setData(payload))
-      .catch(err => setError(err.message))
-      .finally(() => setBusyId(null));
-  };
-
-  const hireStaff = (candidateId: string) => {
-    setBusyId(candidateId);
+  const hireStaff = (id: string) => {
     fetch('/api/dynasty-office/staff/hire', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ candidate_id: candidateId }),
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Staff move could not be completed');
-        return res.json();
-      })
-      .then((payload: DynastyOfficeResponse) => setData(payload))
-      .catch(err => setError(err.message))
-      .finally(() => setBusyId(null));
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidate_id: id }),
+    }).then(() => { setShowStaffMarket(false); load(); });
   };
-
-  if (error) return <StatusMessage title="Dynasty office unavailable" tone="danger">{error}</StatusMessage>;
-  if (loading) return <StatusMessage title="Loading dynasty office">Opening program files.</StatusMessage>;
-  if (!data) return <StatusMessage title="No dynasty data">No program data returned.</StatusMessage>;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }} data-testid="dynasty-office">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <PageHeader
         eyebrow="Dynasty Office"
-        title="Dynasty Office"
-        description="The nerve center of the program: manage recruiting promises, monitor league history, and oversee staff hiring."
+        title={data.player_club_name}
+        description={`Season ${data.season_id.split('_')[1]} · Week ${data.week}`}
         stats={
-          <>
-            <StatChip label="Credibility" value={data.recruiting.credibility.grade} tone="warning" />
-            <StatChip label="Week" value={data.week} tone="info" />
-            <StatChip label="Club" value={data.player_club_name} />
-          </>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+             <button onClick={() => setShowSettings(true)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>⚙️</button>
+          </div>
         }
       />
 
-      {planContext && (
+      <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid #1e293b', paddingBottom: '0.5rem' }}>
+        <button 
+          onClick={() => setActiveSubTab('recruit')}
+          style={{ background: 'none', border: 'none', color: activeSubTab === 'recruit' ? '#22d3ee' : '#64748b', cursor: 'pointer', fontWeight: 700, fontSize: '0.875rem', textTransform: 'uppercase' }}
+        >
+          Recruit
+        </button>
+        <button 
+          onClick={() => setActiveSubTab('history')}
+          style={{ background: 'none', border: 'none', color: activeSubTab === 'history' ? '#22d3ee' : '#64748b', cursor: 'pointer', fontWeight: 700, fontSize: '0.875rem', textTransform: 'uppercase' }}
+        >
+          History
+        </button>
+      </div>
+
+      {activeSubTab === 'history' && (
         <div className="dm-panel">
-          <div className="dm-panel-header">
-            <p className="dm-kicker">Program Priorities</p>
-            <h2 className="dm-panel-title">Department Orders</h2>
-            <p className="dm-panel-subtitle">Season-long staff priorities. Adjust rarely.</p>
-          </div>
-          <div className="dm-section" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
-            {Object.entries(planContext.plan.department_orders)
-              .filter(([key]) => key !== 'dev_focus')
-              .map(([key, value]) => (
-                <label key={key} style={{ display: 'block' }}>
-                  <span className="dm-kicker" style={{ display: 'block', marginBottom: '0.375rem' }}>{DEPARTMENT_LABELS[key] ?? key}</span>
-                  <input
-                    type="text"
-                    value={String(value)}
-                    onChange={e => updateDepartmentOrder(key, e.target.value)}
-                    style={{
-                      width: '100%', background: '#0f172a', border: '1px solid #334155',
-                      borderRadius: '4px', padding: '0.5rem 0.75rem', color: '#e2e8f0',
-                      fontFamily: 'var(--font-display)', fontSize: '0.75rem',
-                    }}
-                  />
-                </label>
+          <h3>Program History</h3>
+          <p>The history of the {data.player_club_name} dynasty is still being written. Results will appear here in future seasons.</p>
+        </div>
+      )}
+
+      {activeSubTab === 'recruit' && (
+        <div style={{ display: 'flex', gap: '1.25rem' }}>
+          <CredibilityStrip credibility={data.recruiting.credibility} />
+          
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', gap: '1.5rem' }}>
+                 <div><b>Scout:</b> {data.recruiting.budget.scout[0]}/{data.recruiting.budget.scout[1]}</div>
+                 <div><b>Contact:</b> {data.recruiting.budget.contact[0]}/{data.recruiting.budget.contact[1]}</div>
+                 <div><b>Visit:</b> {data.recruiting.budget.visit[0]}/{data.recruiting.budget.visit[1]}</div>
+              </div>
+            </div>
+            {data.recruiting.prospects.map(p => (
+              <ProspectCard key={p.player_id} prospect={p} budget={data.recruiting.budget} onAction={load} />
             ))}
+          </div>
+
+          <div className="dm-panel" style={{ flex: '0 0 200px' }}>
+            <p className="dm-kicker">Staff Room</p>
+            {data.staff_market.current_staff.map(s => (
+              <div key={s.department} style={{ marginBottom: '1rem' }}>
+                <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{s.department.toUpperCase()}</div>
+                <div style={{ fontWeight: 700 }}>{s.name}</div>
+              </div>
+            ))}
+            <ActionButton onClick={() => setShowStaffMarket(true)}>Staff Market</ActionButton>
           </div>
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }} className="xl:grid-cols-[1.1fr_0.9fr]">
-        {/* Recruiting Promises */}
-        <div className="dm-panel">
-          <div className="dm-panel-header" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
-            <div>
-              <p className="dm-kicker">Recruiting</p>
-              <h3 className="dm-panel-title">Recruiting Promises</h3>
-              <p className="dm-panel-subtitle">{data.recruiting.rules.honesty}</p>
-            </div>
-          </div>
-          <div className="dm-section" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.75rem' }} >
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '0.75rem' }}>
-              {data.recruiting.prospects.slice(0, 6).map(prospect => (
-                <Tile key={prospect.player_id} as="section">
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
-                    <div>
-                      <h4 style={{ fontWeight: 700, margin: 0, color: '#fff' }}>{prospect.name}</h4>
-                      <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0.125rem 0 0' }}>
-                        {prospect.public_archetype} · OVR {prospect.public_ovr_band.join('-')} · {prospect.hometown}
-                      </p>
-                    </div>
-                    <Badge tone="info">Fit {prospect.fit_score}</Badge>
-                  </div>
-                  <ul style={{ marginTop: '0.5rem', paddingLeft: '1rem', listStyleType: 'disc', fontSize: '0.75rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
-                    {prospect.interest_evidence.map(item => <li key={item}>{item}</li>)}
-                  </ul>
-                  <div style={{ marginTop: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    {prospect.active_promise ? (
-                      <Badge tone="success">{label(prospect.active_promise.promise_type)}</Badge>
-                    ) : prospect.promise_options.map(option => (
-                      <ActionButton
-                        key={option}
-                        variant="secondary"
-                        style={{ minHeight: '2rem', padding: '0.25rem 0.5rem', fontSize: '10px' }}
-                        disabled={busyId === prospect.player_id}
-                        onClick={() => savePromise(prospect.player_id, option)}
-                      >
-                        {label(option)}
-                      </ActionButton>
-                    ))}
-                  </div>
-                </Tile>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Program Credibility */}
-        <div className="dm-panel">
-          <div className="dm-panel-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
-            <div>
-              <p className="dm-kicker">Program</p>
-              <h3 className="dm-panel-title">Program Credibility</h3>
-              <p className="dm-panel-subtitle">Score {data.recruiting.credibility.score} · Grade {data.recruiting.credibility.grade}</p>
-            </div>
-            <Badge tone="info">{data.recruiting.active_promises.length}/{data.recruiting.rules.max_active_promises}</Badge>
-          </div>
-          <div className="dm-section" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <ul style={{ paddingLeft: '1rem', listStyleType: 'disc', fontSize: '0.875rem', color: '#94a3b8', display: 'flex', flexDirection: 'column', gap: '0.5rem', margin: 0 }}>
-              {data.recruiting.credibility.evidence.map(item => <li key={item}>{item}</li>)}
-            </ul>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {data.recruiting.active_promises.map(promise => {
-                const resultTone = promise.result === 'fulfilled' ? 'success'
-                  : promise.result === 'broken' ? 'danger'
-                  : 'info';
-                const resultLabel = promise.result === 'fulfilled' ? 'FULFILLED'
-                  : promise.result === 'broken' ? 'BROKEN'
-                  : 'OPEN';
-                return (
-                  <StatusMessage key={promise.player_id} title={label(promise.promise_type)} tone={resultTone}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Badge tone={resultTone}>{resultLabel}</Badge>
-                      <span>{promise.evidence}</span>
-                    </div>
-                  </StatusMessage>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }} className="xl:grid-cols-3">
-        {/* League Memory */}
-        <div className="dm-panel">
-          <div className="dm-panel-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-            <div>
-              <p className="dm-kicker">League</p>
-              <h3 className="dm-panel-title">League Memory</h3>
-            </div>
-          </div>
-          <div className="dm-section" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {data.league_memory.records.items.length === 0 && data.league_memory.recent_matches.length === 0 ? (
-              <p className="dm-empty-state">The league record books are currently empty. History begins when the first records are ratified.</p>
-            ) : (
-              <>
-                {data.league_memory.records.items.length > 0 && (
-                  <CompactList>
-                    {data.league_memory.records.items.slice(0, 4).map((item, index) => (
-                      <CompactListRow key={`record-${index}`}>
-                        <ItemText item={item} />
-                      </CompactListRow>
-                    ))}
-                  </CompactList>
-                )}
-                {data.league_memory.recent_matches.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {data.league_memory.recent_matches.map(match => (
-                      <Tile
-                        key={match.match_id}
-                        style={{
-                          padding: '0.5rem 0.75rem',
-                          fontSize: '0.875rem',
-                          color: '#cbd5e1',
-                        }}
-                      >
-                        <strong style={{ color: '#fff' }}>Week {match.week}</strong>
-                        {' · '}{match.summary}{' · '}{match.winner_name}
-                      </Tile>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Staff Market */}
-        <div className="dm-panel xl:col-span-2">
-          <div className="dm-panel-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-            <div>
-              <p className="dm-kicker">Front Office</p>
-              <h3 className="dm-panel-title">Staff Market</h3>
-            </div>
-          </div>
-          <div className="dm-section" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <p style={{ fontSize: '0.875rem', color: '#64748b', margin: 0 }}>{data.staff_market.rules.honesty}</p>
-
-            {data.staff_market.recent_actions.length > 0 && (
-              <div style={{ padding: '0.75rem 0', borderBottom: '1px solid rgba(30, 41, 59, 0.5)' }}>
-                <div style={{ fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '11px', color: '#64748b' }}>Recent staff moves</div>
-                <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  {data.staff_market.recent_actions.map(action => (
-                    <Badge key={action.candidate_id} tone="success">{label(action.department)}: {action.name}</Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {data.staff_market.current_staff.length > 0 && (
-              <Tile>
-                <div style={{ fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '11px', color: '#64748b' }}>Current staff</div>
-                <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  {data.staff_market.current_staff.map((head) => {
-                    const modifier = head.department === 'development'
-                      ? Math.max(0, ((head.rating_primary - 50) / 50) * 0.15)
-                      : 0;
-                    const modifierPct = (modifier * 100).toFixed(1);
-                    return (
-                      <div key={head.department} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Badge tone="info">{label(head.department)}: {head.name} ({head.rating_primary})</Badge>
-                        {head.department === 'development' && modifier > 0 && (
-                          <Badge tone="success">+{modifierPct}% dev</Badge>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </Tile>
-            )}
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.75rem' }}>
-              {data.staff_market.candidates.slice(0, 6).map(candidate => (
-                <Tile key={candidate.candidate_id} as="section">
-                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
-                    <div>
-                      <h4 style={{ fontWeight: 700, margin: 0, color: '#fff' }}>{candidate.name}</h4>
-                      <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.075em', color: '#64748b', margin: '0.125rem 0 0' }}>{label(candidate.department)}</p>
-                    </div>
-                    <Badge tone="info">{candidate.rating_primary}/{candidate.rating_secondary}</Badge>
-                  </div>
-                  <ul style={{ marginTop: '0.5rem', paddingLeft: '1rem', listStyleType: 'disc', fontSize: '0.75rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
-                    {candidate.effect_lanes.map(item => <li key={item}>{item}</li>)}
-                  </ul>
-                  <ActionButton
-                    style={{ marginTop: '0.75rem', minHeight: '2rem', padding: '0.25rem 0.75rem' }}
-                    variant="accent"
-                    disabled={busyId === candidate.candidate_id}
-                    onClick={() => hireStaff(candidate.candidate_id)}
-                  >
-                    Hire
-                  </ActionButton>
-                </Tile>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+      {showStaffMarket && <StaffMarketModal candidates={data.staff_market.candidates} onHire={hireStaff} onClose={() => setShowStaffMarket(false)} />}
+      {showSettings && planContext && <SettingsModal plan={planContext.plan} onUpdate={updateDepartmentOrder} onClose={() => setShowSettings(false)} />}
     </div>
   );
 }

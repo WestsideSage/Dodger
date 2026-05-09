@@ -33,6 +33,7 @@ from dodgeball_sim.persistence import (
     save_playoff_bracket,
     save_scheduled_matches,
     save_season_outcome,
+    set_state,
 )
 from dodgeball_sim.awards import compute_match_mvp
 from dodgeball_sim.career_state import CareerState, advance
@@ -398,6 +399,10 @@ class RecruitingPromiseRequest(BaseModel):
 
 class StaffHireRequest(BaseModel):
     candidate_id: str
+
+
+class PitchAngleRequest(BaseModel):
+    angle: str
 
 # --- API Endpoints ---
 
@@ -1179,6 +1184,62 @@ def simulate_command(command: SimCommand, conn = Depends(get_db)) -> SimResponse
 @app.post("/api/sim/week", response_model=SimResponse)
 def simulate_week(conn = Depends(get_db)) -> SimResponse:
     return _run_simulation_command(conn, SimCommand(mode="week"))
+
+
+@app.post("/api/recruiting/scout/{prospect_id}")
+def recruiting_scout(prospect_id: str, conn = Depends(get_db)):
+    from dodgeball_sim.recruitment import deduct_recruiting_slot
+    season_id = get_state(conn, "active_season_id")
+    week = int(get_state(conn, "career_week") or 0)
+    try:
+        deduct_recruiting_slot(conn, season_id, week, "scout")
+        # In a real impl, this would update scouting_state for the prospect
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"status": "success"}
+
+
+@app.post("/api/recruiting/contact/{prospect_id}")
+def recruiting_contact(prospect_id: str, conn = Depends(get_db)):
+    from dodgeball_sim.recruitment import deduct_recruiting_slot
+    season_id = get_state(conn, "active_season_id")
+    week = int(get_state(conn, "career_week") or 0)
+    try:
+        deduct_recruiting_slot(conn, season_id, week, "contact")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"status": "success"}
+
+
+@app.post("/api/recruiting/visit/{prospect_id}")
+def recruiting_visit(prospect_id: str, conn = Depends(get_db)):
+    from dodgeball_sim.recruitment import deduct_recruiting_slot
+    season_id = get_state(conn, "active_season_id")
+    week = int(get_state(conn, "career_week") or 0)
+    try:
+        deduct_recruiting_slot(conn, season_id, week, "visit")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"status": "success"}
+
+
+@app.post("/api/recruiting/pitch-angle")
+def recruiting_pitch_angle(request: PitchAngleRequest, conn = Depends(get_db)):
+    season_id = get_state(conn, "active_season_id")
+    key = f"pitch_angle_locked_{season_id}"
+    if get_state(conn, key):
+        raise HTTPException(status_code=400, detail="Pitch angle already chosen this season.")
+    set_state(conn, key, request.angle)
+    conn.commit()
+    return {"status": "success"}
+
+
+@app.post("/api/recruiting/sign/{prospect_id}")
+def recruiting_sign(prospect_id: str, conn = Depends(get_db)):
+    cursor = load_career_state_cursor(conn)
+    if cursor.state.value != "signing_day":
+        raise HTTPException(status_code=403, detail="Signing only allowed on Signing Day.")
+    return {"status": "success"}
 
 
 def _validate_match_rosters(chosen, rosters) -> None:

@@ -24,7 +24,7 @@ from .persistence import (
     load_season,
     set_state,
 )
-from .recruitment import generate_prospect_pool
+from .recruitment import generate_prospect_pool, get_current_recruiting_budget
 from .rng import DeterministicRNG, derive_seed
 
 
@@ -155,10 +155,19 @@ def _recruiting_state(
     promises = _load_promises(conn)
     credibility = _credibility(conn, season_id, player_club_id, history)
     prospects = _prospect_rows(conn, season_id, root_seed, promises, credibility)
+    
+    # Track used slots
+    week_val = 0
+    row = conn.execute("SELECT value FROM dynasty_state WHERE key='career_week'").fetchone()
+    if row:
+        week_val = int(row[0])
+    budget = get_current_recruiting_budget(conn, season_id, week_val)
+
     return {
         "credibility": credibility,
         "active_promises": promises,
         "prospects": prospects,
+        "budget": budget,
         "rules": {
             "max_active_promises": MAX_ACTIVE_PROMISES,
             "promise_options": list(PROMISE_OPTIONS),

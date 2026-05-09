@@ -23,6 +23,47 @@ class TransactionEvent:
     club_id: str | None
 
 
+DEFAULT_RECRUITMENT_BUDGET = {
+    "scout": [0, 3],
+    "contact": [0, 5],
+    "visit": [0, 1],
+}
+
+def get_current_recruiting_budget(conn: sqlite3.Connection, season_id: str, week: int) -> dict[str, list[int]]:
+    from .persistence import get_state
+    budget = {
+        "scout": [0, 3],
+        "contact": [0, 5],
+        "visit": [0, 1],
+    }
+    # Load used slots from db
+    raw = get_state(conn, f"recruiting_slots_used_{season_id}_{week}")
+    if raw:
+        used = __import__("json").loads(raw)
+        budget["scout"][0] = used.get("scout", 0)
+        budget["contact"][0] = used.get("contact", 0)
+        budget["visit"][0] = used.get("visit", 0)
+    return budget
+
+def deduct_recruiting_slot(conn: sqlite3.Connection, season_id: str, week: int, verb: str) -> None:
+    from .persistence import get_state, set_state
+    if verb not in DEFAULT_RECRUITMENT_BUDGET:
+        raise ValueError(f"Unknown recruiting verb: {verb}")
+    
+    key = f"recruiting_slots_used_{season_id}_{week}"
+    raw = get_state(conn, key)
+    used = __import__("json").loads(raw) if raw else {}
+    current_used = used.get(verb, 0)
+    max_allowed = DEFAULT_RECRUITMENT_BUDGET[verb][1]
+    
+    if current_used >= max_allowed:
+        raise ValueError(f"No {verb} slots remaining this week")
+        
+    used[verb] = current_used + 1
+    set_state(conn, key, __import__("json").dumps(used))
+    conn.commit()
+
+
 _FIRST_NAMES = (
     "Rin", "Avery", "Kai", "River", "Mara", "Ezra", "Sloane", "Jules",
     "Remy", "Quinn", "Niko", "Sable", "Ash", "Lyra", "Zeph", "Cass",

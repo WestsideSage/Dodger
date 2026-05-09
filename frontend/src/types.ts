@@ -337,6 +337,11 @@ export interface DynastyOfficeResponse {
             grade: string;
             evidence: string[];
         };
+        budget: {
+            scout: [number, number];
+            contact: [number, number];
+            visit: [number, number];
+        };
         active_promises: Array<{
             player_id: string;
             promise_type: string;
