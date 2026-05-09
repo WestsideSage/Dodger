@@ -80,6 +80,7 @@ from dodgeball_sim.dynasty_office import (
     build_dynasty_office_state,
     hire_staff_candidate,
     save_recruiting_promise,
+    _recent_match_item,
 )
 
 app = FastAPI(title="Dodgeball Manager API")
@@ -284,6 +285,7 @@ class StandingItem(BaseModel):
 class StandingsResponse(BaseModel):
     season_id: str
     standings: list[StandingItem]
+    recent_matches: list[dict[str, Any]] | None = None
 
 
 class ScheduleItem(BaseModel):
@@ -497,7 +499,23 @@ def get_standings(conn = Depends(get_db)) -> StandingsResponse:
             "is_user_club": club_id == player_club_id,
         })
     rows.sort(key=lambda item: (-item["points"], -item["elimination_differential"], item["club_id"]))
-    return {"season_id": season_id, "standings": rows}
+    
+    recent = conn.execute(
+        """
+        SELECT match_id, week, home_club_id, away_club_id, winner_club_id, home_survivors, away_survivors
+        FROM match_records
+        WHERE season_id = ?
+        ORDER BY week DESC, match_id DESC
+        LIMIT 5
+        """,
+        (season_id,),
+    ).fetchall()
+    
+    return {
+        "season_id": season_id,
+        "standings": rows,
+        "recent_matches": [_recent_match_item(row, clubs) for row in recent]
+    }
 
 
 @app.get("/api/schedule", response_model=ScheduleResponse)

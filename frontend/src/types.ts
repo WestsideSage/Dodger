@@ -171,6 +171,7 @@ export interface StandingRow {
 export interface StandingsResponse {
     season_id: string;
     standings: StandingRow[];
+    recent_matches?: any[];
 }
 
 export interface ScheduleRow {
