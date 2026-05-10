@@ -68,15 +68,19 @@ Source: `load_awards(conn, season_id)` joined with player/club data from rosters
 ```
 Source: `load_retired_players(conn)` + `load_player_career_stats(conn, player_id)`. `ovr_start` is the player's overall in their first recorded season; `potential_tier` from `calculate_potential_tier()`.
 
-**`champion` / `recap`**
+**`champion`** and **`recap`** — separate beats, separate payloads, both use the generic fallback renderer (no new TSX component in this spec; payload enrichment happens so a future subplan can add ceremony components if desired)
+
+`champion` payload:
 ```json
-{
-  "payload": {
-    "champion": { "club_name": "Thunder Bay Bolts", "wins": 10, "losses": 2, "draws": 0, "title_count": 1 }
-  }
-}
+{ "payload": { "champion": { "club_name": "Thunder Bay Bolts", "wins": 10, "losses": 2, "draws": 0, "title_count": 1 } } }
 ```
-Source: season outcome + club trophies count.
+Source: season outcome + `load_club_trophies` count for that club.
+
+`recap` payload:
+```json
+{ "payload": { "standings": [ { "rank": 1, "club_name": "Thunder Bay Bolts", "wins": 10, "losses": 2, "draws": 0, "points": 30, "is_player_club": true } ] } }
+```
+Source: `load_standings(conn, season_id)` + club name lookup.
 
 **`schedule_reveal`**
 ```json
@@ -93,18 +97,24 @@ Source: season outcome + club trophies count.
 Source: `next_season.scheduled_matches` (already available in `_build_beat_response`). `prediction` from `voice_pregame.py`'s framing line for the player's opening fixture.
 
 **`recruitment`** (Signing Day)
+
+**State-machine clarification:** The `recruitment` beat is shown in two states driven by `can_recruit`:
+- `can_recruit = true` → "Sign Best Rookie" CTA renders (handled by existing Offseason.tsx, not a ceremony component)
+- `can_recruit = false` (after signing is complete) → `SigningDay` ceremony component renders
+
+`SigningDay` is therefore a **results reveal**, not a live signing flow. The `payload.signings` reflects all signings completed at the moment of the request (the player's pick plus any AI signings that occurred during the draft pool resolution).
+
 ```json
 {
   "payload": {
-    "signings": [
-      { "name": "Kwame Asante", "ovr": 71, "role": "Thrower", "age": 17, "is_player_signing": true }
-    ],
-    "total_slots": 8,
-    "filled": 3
+    "player_signing": { "name": "Kwame Asante", "ovr": 71, "role": "Thrower", "age": 17 },
+    "other_signings": [
+      { "name": "Taylor Osei", "club_name": "Lakeside Lions", "ovr": 68 }
+    ]
   }
 }
 ```
-Source: current draft pool / roster state — built incrementally as the player signs.
+Source: `signed_player_id` from state → player record from rosters; other signings from roster diffs post-draft. If no AI draft data is available (v1 flow), `other_signings` is an empty list — `SigningDay` renders just the player's pick.
 
 **`staff_carousel`**
 
@@ -137,16 +147,14 @@ Award type → emoji map:
 - Green accent color (`#10b981`)
 
 #### `CoachingCarousel.tsx`
-- `stages = Math.max(1, payload.moves.length)`
-- If `payload.moves` is empty → renders a one-stage "No staff movement this off-season" card (not a full ceremony, but handled gracefully)
-- Otherwise each stage: departure/arrival pair card with `→` between them
+- **Dead code note:** `staff_carousel` is not a real beat key (see §1.1). This component never fires under the current offseason pipeline. No changes to this component in this spec. It will render gracefully if somehow invoked with an empty or absent `payload` (the existing body-text fallback handles this).
 
 #### `SigningDay.tsx`
-- Uses `payload.signings`, `payload.total_slots`, `payload.filled`
-- `stages = payload.total_slots`
-- Progress bar fills as `filled / total_slots`
-- Player's own signings get a cyan highlight ring (`#22d3ee`), other clubs' signings are muted
-- Pending slots show as a dashed placeholder card ("N prospects still deciding…")
+- Results-reveal ceremony; shown only after `can_recruit = false` (signing complete)
+- `stages = 1 + payload.other_signings.length` — stage 1 is the player's own pick (always present), subsequent stages reveal each AI club's signing
+- Stage 1: large highlighted card for the player's signing (`payload.player_signing`), cyan border (`#22d3ee`), "Your pick" eyebrow
+- Subsequent stages: muted cards for each `other_signings` entry
+- If `payload.other_signings` is empty (v1 flow), the ceremony is a single-stage reveal of the player's pick only
 
 #### `NewSeasonEve.tsx`
 - `stages = 2`
@@ -196,7 +204,7 @@ Replace the hardcoded stub with real queries:
 Data sources:
 - `hero.season_1`: first season's standings row for this club (from `standings` table, earliest `season_id` for this club). `avg_ovr` is best-effort: query `player_season_stats` for that season; if no historical OVR data exists (new save or old schema), omit the field — the hero renders without it rather than showing 0
 - `hero.current`: latest season's standings row + current roster average OVR
-- `timeline`: assembled from `league_records` (record broken events), `club_trophies` (championships), `hall_of_fame` (inductions), `awards` table (season awards for this club's players). `event_type` maps to a weight: `championship` → `"championship"`, `hof` → `"hof"`, `award` → `"award"`, `playoff` → `"milestone"`, everything else → `"standard"`
+- `timeline`: assembled from `league_records` (records broken by a player whose `holder_id` appears in this club's alumni or current roster → `event_type: "record"`), `club_trophies` (championships → `"championship"`), `hall_of_fame` (inductions of players from this club → `"hof"`), `awards` table (season awards for this club's players → `"award"`). First win derived from `match_records` (earliest `winner_club_id = club_id` → `"standard"`). `weight` field mirrors `event_type` name except `milestone` (used for playoff events if tracked)
 - `alumni`: `load_retired_players(conn)` filtered to players whose last club was this club_id, joined with `player_career_stats`
 - `banners`: `load_club_trophies(conn)` filtered to this club, plus distinct award wins
 
@@ -227,6 +235,8 @@ Data sources:
 
 ### 2.2 Frontend: `MyProgramView.tsx`
 
+**Non-self club behaviour:** `MyProgramView` accepts any `clubId` prop (including non-player clubs opened via the League directory modal). All data — hero, timeline, alumni, banners — reflects that club's history. `hero.current` uses that club's latest standings row and roster, not the player's. The "next banner" placeholder in `BannerShelf` is **omitted for non-self clubs** — it only makes sense as a motivational prompt on the player's own program page.
+
 #### Hero Strip
 Two side-by-side cards using `data.hero`:
 - Left card ("How it started"): season label kicker, club name, W-L-D record, Avg OVR — plain dark card
@@ -252,12 +262,23 @@ SVG-based tree. Renders vertically, growing downward. Spec:
 | `milestone` | 16px (r=8) | Playoff run |
 | `standard` | 12px (r=6) | First win, rivalry win |
 
+**Dot sizes by event_type weight (updated — adds `record`):**
+| weight | diameter | example events |
+|---|---|---|
+| `championship` | 32px (r=16) | League title |
+| `hof` | 24px (r=12) | Hall of Fame induction |
+| `award` | 20px (r=10) | Season award (MVP, Top Rookie, etc.) |
+| `record` | 18px (r=9) | League record broken by a player from this club |
+| `milestone` | 16px (r=8) | Playoff run |
+| `standard` | 12px (r=6) | First win, rivalry win |
+
 **Colors by event_type:**
 | event_type | dot fill | branch color |
 |---|---|---|
 | `championship` | radial `#f97316 → #9a3412` | `#f97316` |
 | `hof` | `#065f46` / border `#34d399` | `#10b981` |
 | `award` | `#d97706` / border `#fbbf24` | `#eab308` |
+| `record` | `#0369a1` / border `#38bdf8` | `#0ea5e9` |
 | `milestone` | `#7c3aed` / border `#a78bfa` | `#8b5cf6` |
 | `standard` | `#3b82f6` / border `#60a5fa` | `#3b82f6` |
 
@@ -267,7 +288,7 @@ SVG-based tree. Renders vertically, growing downward. Spec:
 - Season label: HTML div, right-aligned, left of trunk, vertically centered on trunk node
 - Milestone label: HTML div, `transform: translateX(-50%)`, positioned below dot (dot_center_y + dot_radius + 4px)
 
-**Season grouping:** Timeline events are grouped by season. The gap between season rows is fixed at 68px regardless of milestone count — seasons spread vertically by time, not by density. Multiple milestones in the same season spread horizontally along the branch (wider branch = bigger season).
+**Season grouping:** Timeline events are grouped by season. The gap between season rows is fixed at 68px regardless of milestone count — seasons spread vertically by time, not by density. Multiple milestones in the same season spread horizontally along the branch with a **fixed 56px center-to-center pitch** between dots. Dot radius varies by weight but center spacing is always 56px, so branch line segments are computed as `(prev_cx + prev_r, cy) → (next_cx - next_r, cy)` with 56px between centers.
 
 **Implementation note:** The tree is rendered as a single `<svg>` element with computed dimensions (height = num_seasons × 68 + padding), with HTML label divs absolutely positioned on top in a `position:relative` wrapper.
 
@@ -320,12 +341,18 @@ List from `data.rivalries` sorted by total meetings desc: Club A vs Club B, tota
 
 ---
 
+## Verification
+
+Build/test gates (`npm run build` + `python -m pytest -q`) are required as always. Visual work is verified manually in browser preview after each ceremony component lands. Payload shapes for all enriched beats are covered by server-level tests asserting the `payload` key exists with the correct top-level structure.
+
+---
+
 ## Acceptance Criteria (per 00-MAIN.md)
 
 ### Subplan 15
 - [ ] Awards Night: per-award cards reveal one at a time, real player names and stats
 - [ ] Graduation: per-senior career arc cards (OVR arc, peak stats, potential tier outlook)
-- [ ] Coaching Carousel: departure/arrival pairs; gracefully skipped if no moves
+- [ ] Coaching Carousel: component renders gracefully when invoked with empty or absent payload (current dead-code state — beat key not produced by backend; full implementation deferred to a future subplan)
 - [ ] Signing Day: prospect cards reveal one-by-one, progress bar fills, player's signing highlighted
 - [ ] New Season Eve: fixtures list + voice-template prediction headline, "Start the Season" CTA
 - [ ] All ceremonies: spacebar skip works, reduced-motion cuts instantly
