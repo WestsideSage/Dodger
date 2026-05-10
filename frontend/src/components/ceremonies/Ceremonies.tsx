@@ -1,16 +1,90 @@
 import { CeremonyShell } from './CeremonyShell';
 
-export function AwardsNight({ beat, onComplete }: { beat: any, onComplete: () => void }) {
+const AWARD_ICON: Record<string, string> = {
+  mvp: '🏆',
+  top_rookie: '⚡',
+  best_defender: '🛡️',
+  most_improved: '📈',
+  championship: '🥇',
+};
+
+const AWARD_COLOR: Record<string, string> = {
+  mvp: '#f97316',
+  top_rookie: '#eab308',
+  best_defender: '#3b82f6',
+  most_improved: '#10b981',
+  championship: '#f97316',
+};
+
+const TIER_COLOR: Record<string, string> = {
+  Elite: '#10b981',
+  High: '#3b82f6',
+  Solid: '#94a3b8',
+  Limited: '#64748b',
+  Unknown: '#475569',
+};
+
+export function AwardsNight({ beat, onComplete }: { beat: any; onComplete: () => void }) {
+  const awards: any[] = beat.payload?.awards ?? [];
+
+  if (awards.length === 0) {
+    return (
+      <CeremonyShell
+        title={beat.title}
+        eyebrow="Awards"
+        description="The league honors the season's finest."
+        stages={1}
+        renderStage={() => (
+          <div style={{ textAlign: 'center', color: '#94a3b8' }}>
+            {typeof beat.body === 'string' ? beat.body : 'No awards this season.'}
+          </div>
+        )}
+        onComplete={onComplete}
+      />
+    );
+  }
+
   return (
-    <CeremonyShell 
-      title={beat.title} 
-      eyebrow="Ceremony" 
+    <CeremonyShell
+      title={beat.title}
+      eyebrow="Awards Night"
       description="The league gathers to honor the season's best."
-      stages={2}
+      stages={awards.length}
       renderStage={(stage) => (
-        <div style={{ textAlign: 'center' }}>
-          {stage >= 1 && <div className="fade-in" style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>{beat.body[0]}</div>}
-          {stage >= 2 && <div className="fade-in" style={{ fontSize: '2rem', color: '#f97316', fontWeight: 800 }}>{beat.body.slice(1).join(' ')}</div>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '480px', margin: '0 auto' }}>
+          {awards.slice(0, stage).map((award: any, i: number) => {
+            const color = AWARD_COLOR[award.award_type] ?? '#f97316';
+            const icon = AWARD_ICON[award.award_type] ?? '🏅';
+            const isLatest = i === stage - 1;
+            return (
+              <div
+                key={i}
+                className="fade-in"
+                style={{
+                  border: `1px solid ${isLatest ? color : '#334155'}`,
+                  borderRadius: '8px',
+                  padding: '1rem',
+                  background: isLatest ? `${color}11` : '#0f172a',
+                  opacity: isLatest ? 1 : 0.6,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem',
+                }}
+              >
+                <span style={{ fontSize: '2rem' }}>{icon}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: isLatest ? color : '#e2e8f0' }}>
+                    {award.player_name}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                    {award.club_name} · {award.career_elims} career elims
+                    {award.ovr ? ` · OVR ${award.ovr}` : ''}
+                  </div>
+                </div>
+                {!isLatest && <span style={{ color: '#475569' }}>✓</span>}
+              </div>
+            );
+          })}
         </div>
       )}
       onComplete={onComplete}
@@ -18,16 +92,66 @@ export function AwardsNight({ beat, onComplete }: { beat: any, onComplete: () =>
   );
 }
 
-export function Graduation({ beat, onComplete }: { beat: any, onComplete: () => void }) {
+export function Graduation({ beat, onComplete }: { beat: any; onComplete: () => void }) {
+  const retirees: any[] = beat.payload?.retirees ?? [];
+
+  if (retirees.length === 0) {
+    return (
+      <CeremonyShell
+        title={beat.title}
+        eyebrow="Graduation"
+        description="Farewell to departing veterans."
+        stages={1}
+        renderStage={() => (
+          <div style={{ textAlign: 'center', color: '#94a3b8' }}>
+            {typeof beat.body === 'string' ? beat.body : 'No retirements this off-season.'}
+          </div>
+        )}
+        onComplete={onComplete}
+      />
+    );
+  }
+
   return (
-    <CeremonyShell 
-      title={beat.title} 
-      eyebrow="Ceremony" 
-      description="Saying goodbye to departing seniors."
-      stages={1}
+    <CeremonyShell
+      title={beat.title}
+      eyebrow="Graduation"
+      description="Saying goodbye to departing veterans."
+      stages={retirees.length}
       renderStage={(stage) => (
-        <div style={{ textAlign: 'center' }}>
-          {stage >= 1 && <div className="fade-in" style={{ fontSize: '1.25rem' }}>{beat.body.join(' ')}</div>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '480px', margin: '0 auto' }}>
+          {retirees.slice(0, stage).map((r: any, i: number) => {
+            const isLatest = i === stage - 1;
+            const tierColor = TIER_COLOR[r.potential_tier] ?? '#475569';
+            return (
+              <div
+                key={i}
+                className="fade-in"
+                style={{
+                  border: `1px solid ${isLatest ? '#10b981' : '#334155'}`,
+                  borderRadius: '8px',
+                  padding: '1rem',
+                  background: '#0f172a',
+                  opacity: isLatest ? 1 : 0.55,
+                }}
+              >
+                <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '0.35rem' }}>
+                  {r.name}
+                </div>
+                {r.ovr_final ? (
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.35rem' }}>
+                    OVR {r.ovr_final}
+                  </div>
+                ) : null}
+                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
+                  {r.career_elims} career elims · {r.championships} titles · {r.seasons_played} seasons
+                </div>
+                <div style={{ fontSize: '0.7rem', color: tierColor, fontWeight: 600 }}>
+                  {r.potential_tier} potential
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
       onComplete={onComplete}
@@ -52,16 +176,72 @@ export function CoachingCarousel({ beat, onComplete }: { beat: any, onComplete: 
   );
 }
 
-export function SigningDay({ beat, onComplete }: { beat: any, onComplete: () => void }) {
+export function SigningDay({ beat, onComplete }: { beat: any; onComplete: () => void }) {
+  const playerSigning = beat.payload?.player_signing ?? null;
+  const otherSignings: any[] = beat.payload?.other_signings ?? [];
+  const totalStages = 1 + otherSignings.length;
+
   return (
-    <CeremonyShell 
-      title={beat.title} 
-      eyebrow="Ceremony" 
-      description="The nation's top prospects make their commitments."
-      stages={1}
+    <CeremonyShell
+      title={beat.title}
+      eyebrow="Signing Day"
+      description="The nation's top prospects have made their commitments."
+      stages={totalStages}
       renderStage={(stage) => (
-        <div style={{ textAlign: 'center' }}>
-          {stage >= 1 && <div className="fade-in" style={{ fontSize: '1.5rem', color: '#22d3ee' }}>{beat.body.join(' ')}</div>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '480px', margin: '0 auto' }}>
+          {/* Stage 1: player's pick */}
+          {stage >= 1 && playerSigning && (
+            <div
+              className="fade-in"
+              style={{
+                border: '2px solid #22d3ee',
+                borderRadius: '8px',
+                padding: '1.25rem',
+                background: '#083344',
+              }}
+            >
+              <div style={{ fontSize: '0.65rem', color: '#22d3ee', fontWeight: 700, letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
+                YOUR PICK
+              </div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#e2e8f0', marginBottom: '0.25rem' }}>
+                {playerSigning.name}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                OVR {playerSigning.ovr}
+                {playerSigning.age ? ` · Age ${playerSigning.age}` : ''}
+                {playerSigning.role ? ` · ${playerSigning.role}` : ''}
+              </div>
+            </div>
+          )}
+
+          {/* Subsequent stages: AI signings */}
+          {otherSignings.slice(0, stage - 1).map((s: any, i: number) => (
+            <div
+              key={i}
+              className="fade-in"
+              style={{
+                border: '1px solid #334155',
+                borderRadius: '6px',
+                padding: '0.75rem 1rem',
+                background: '#0f172a',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <div>
+                <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{s.name}</span>
+                <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '0.5rem' }}>→ {s.club_name}</span>
+              </div>
+              <span style={{ color: '#64748b', fontSize: '0.75rem' }}>OVR {s.ovr}</span>
+            </div>
+          ))}
+
+          {!playerSigning && (
+            <div style={{ textAlign: 'center', color: '#94a3b8' }}>
+              {typeof beat.body === 'string' ? beat.body : 'Signing complete.'}
+            </div>
+          )}
         </div>
       )}
       onComplete={onComplete}
@@ -69,17 +249,68 @@ export function SigningDay({ beat, onComplete }: { beat: any, onComplete: () => 
   );
 }
 
-export function NewSeasonEve({ beat, onComplete }: { beat: any, onComplete: () => void }) {
+export function NewSeasonEve({ beat, onComplete }: { beat: any; onComplete: () => void }) {
+  const fixtures: any[] = beat.payload?.fixtures ?? [];
+  const prediction: string = beat.payload?.prediction ?? '';
+  const seasonLabel: string = beat.payload?.season_label ?? '';
+
   return (
-    <CeremonyShell 
-      title={beat.title} 
-      eyebrow="Ceremony" 
-      description="A new season is upon us."
+    <CeremonyShell
+      title={beat.title}
+      eyebrow={seasonLabel ? `Season ${seasonLabel}` : 'New Season'}
+      description="A new chapter begins."
       stages={2}
       renderStage={(stage) => (
-        <div style={{ textAlign: 'center' }}>
-          {stage >= 1 && <div className="fade-in" style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>{beat.body[0]}</div>}
-          {stage >= 2 && <div className="fade-in" style={{ fontSize: '2rem', color: '#10b981', fontWeight: 800 }}>{beat.body.slice(1).join(' ')}</div>}
+        <div style={{ width: '100%', maxWidth: '520px', margin: '0 auto' }}>
+          {/* Stage 1: fixture list */}
+          {stage >= 1 && (
+            <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '1rem' }}>
+              {fixtures.length === 0 ? (
+                <div style={{ color: '#94a3b8', textAlign: 'center' }}>
+                  {typeof beat.body === 'string' ? beat.body : 'Schedule not available.'}
+                </div>
+              ) : (
+                fixtures.map((f: any, i: number) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      gap: '0.5rem',
+                      alignItems: 'center',
+                      padding: '0.4rem 0.6rem',
+                      borderRadius: '4px',
+                      background: f.is_player_match ? '#1c1009' : 'transparent',
+                      border: f.is_player_match ? '1px solid #f97316' : '1px solid transparent',
+                    }}
+                  >
+                    <span style={{ color: '#475569', fontSize: '0.65rem', width: '3rem', flexShrink: 0 }}>
+                      Wk {f.week}
+                    </span>
+                    <span style={{ color: f.is_player_match ? '#fb923c' : '#94a3b8', fontSize: '0.8rem', flex: 1 }}>
+                      {f.home} vs {f.away}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Stage 2: prediction */}
+          {stage >= 2 && prediction && (
+            <div
+              className="fade-in"
+              style={{
+                borderLeft: '3px solid #f97316',
+                paddingLeft: '1rem',
+                color: '#cbd5e1',
+                fontSize: '0.9rem',
+                fontStyle: 'italic',
+                lineHeight: 1.5,
+              }}
+            >
+              {prediction}
+            </div>
+          )}
         </div>
       )}
       onComplete={onComplete}
