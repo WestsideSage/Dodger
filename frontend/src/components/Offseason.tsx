@@ -8,13 +8,14 @@ interface OffseasonBeat {
   total_beats: number;
   key: string;
   title: string;
-  body: string[];
+  body: string;
   state: string;
   can_advance: boolean;
   can_recruit: boolean;
   can_begin_season: boolean;
   signed_player_id: string;
   signed_player?: { id: string; name: string; overall: number; age: number } | null;
+  payload?: Record<string, any>;
 }
 
 export function Offseason() {
@@ -71,7 +72,7 @@ export function Offseason() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <PageHeader eyebrow={`Offseason Beat ${beat.beat_index + 1}/${beat.total_beats}`} title={beat.title} />
       <div className="dm-panel">
-        {beat.body.map((line: string, i: number) => <p key={i}>{line}</p>)}
+        {beat.body.split('\n').map((line: string, i: number) => <p key={i}>{line}</p>)}
         {beat.can_advance && <ActionButton onClick={advance}>Continue</ActionButton>}
         {beat.can_begin_season && <ActionButton onClick={beginSeason}>Start New Season</ActionButton>}
       </div>
