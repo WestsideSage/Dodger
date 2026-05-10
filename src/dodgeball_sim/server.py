@@ -38,6 +38,8 @@ from dodgeball_sim.persistence import (
     load_club_trophies,
     load_retired_players,
     load_player_career_stats,
+    load_hall_of_fame,
+    load_rivalry_records,
 )
 from dodgeball_sim.awards import compute_match_mvp
 from dodgeball_sim.career_state import CareerState, advance
@@ -2042,11 +2044,89 @@ def get_history_my_program(club_id: str, conn = Depends(get_db)):
 @app.get("/api/history/league")
 def get_history_league(conn = Depends(get_db)):
     clubs = load_clubs(conn)
+
+    # Directory
+    directory = [{"club_id": c.club_id, "name": c.name} for c in clubs.values()]
+
+    # Dynasty rankings: championship count + longest win streak per club
+    all_trophies = load_club_trophies(conn)
+    trophy_counts: dict = {}
+    for t in all_trophies:
+        if t["trophy_type"] == "championship":
+            trophy_counts[t["club_id"]] = trophy_counts.get(t["club_id"], 0) + 1
+
+    # Longest win streak per club from match_records
+    streak_map: dict = {}
+    for c_id in clubs:
+        rows = conn.execute(
+            """
+            SELECT winner_club_id FROM match_records
+            WHERE home_club_id = ? OR away_club_id = ?
+            ORDER BY season_id, week
+            """,
+            (c_id, c_id),
+        ).fetchall()
+        best = cur = 0
+        for row in rows:
+            if row["winner_club_id"] == c_id:
+                cur += 1
+                best = max(best, cur)
+            else:
+                cur = 0
+        streak_map[c_id] = best
+
+    dynasty_rankings = sorted(
+        [
+            {
+                "club_id": c_id,
+                "club_name": clubs[c_id].name,
+                "championships": trophy_counts.get(c_id, 0),
+                "longest_win_streak": streak_map.get(c_id, 0),
+            }
+            for c_id in clubs
+        ],
+        key=lambda r: (-r["championships"], -r["longest_win_streak"], r["club_name"]),
+    )
+
+    # Hall of Fame
+    hof = []
+    for entry in load_hall_of_fame(conn):
+        cs = entry.get("career_summary") or {}
+        player_name = cs.get("player_name", entry["player_id"])
+        hof.append({
+            "player_id": entry["player_id"],
+            "player_name": player_name,
+            "induction_season": entry["induction_season"],
+            "career_elims": int(cs.get("total_eliminations", 0)),
+            "championships": int(cs.get("championships", 0)),
+            "seasons_played": int(cs.get("seasons_played", 0)),
+        })
+
+    # Rivalries
+    rivalries = []
+    for r in load_rivalry_records(conn):
+        rv = r.get("rivalry") or {}
+        a_id = r["club_a_id"]
+        b_id = r["club_b_id"]
+        a_wins = int(rv.get("a_wins", 0))
+        b_wins = int(rv.get("b_wins", 0))
+        draws = int(rv.get("draws", 0))
+        rivalries.append({
+            "club_a": clubs[a_id].name if a_id in clubs else a_id,
+            "club_b": clubs[b_id].name if b_id in clubs else b_id,
+            "a_wins": a_wins,
+            "b_wins": b_wins,
+            "draws": draws,
+            "meetings": a_wins + b_wins + draws,
+        })
+    rivalries.sort(key=lambda r: -r["meetings"])
+
     return {
-        "directory": [{"club_id": c.club_id, "name": c.name} for c in clubs.values()],
-        "dynasty_rankings": [],
+        "directory": directory,
+        "dynasty_rankings": dynasty_rankings,
         "records": load_league_records(conn),
-        "hof": []
+        "hof": hof,
+        "rivalries": rivalries,
     }
 
 
