@@ -35,6 +35,9 @@ from dodgeball_sim.persistence import (
     save_season_outcome,
     set_state,
     load_league_records,
+    load_club_trophies,
+    load_retired_players,
+    load_player_career_stats,
 )
 from dodgeball_sim.awards import compute_match_mvp
 from dodgeball_sim.career_state import CareerState, advance
@@ -1833,13 +1836,208 @@ def offseason_begin_season(conn = Depends(get_db)):
 
 @app.get("/api/history/my-program")
 def get_history_my_program(club_id: str, conn = Depends(get_db)):
-    # Very basic placeholder logic for testing and UI layout.
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+    current_roster = rosters.get(club_id, [])
+
+    # Hero: first and latest completed season for this club
+    all_seasons = conn.execute(
+        """
+        SELECT season_id, wins, losses, draws, points
+        FROM season_standings WHERE club_id = ?
+        ORDER BY season_id ASC
+        """,
+        (club_id,),
+    ).fetchall()
+
+    hero: dict = {}
+    if all_seasons:
+        def _standing_hero(row):
+            return {
+                "season_label": row["season_id"],
+                "wins": row["wins"],
+                "losses": row["losses"],
+                "draws": row["draws"],
+            }
+
+        trophies = load_club_trophies(conn)
+        champ_count = sum(
+            1 for t in trophies
+            if t["club_id"] == club_id and t["trophy_type"] == "championship"
+        )
+        avg_ovr = (
+            round(sum(p.overall() for p in current_roster) / len(current_roster), 1)
+            if current_roster else 0
+        )
+        hero["season_1"] = _standing_hero(all_seasons[0])
+        current = _standing_hero(all_seasons[-1])
+        current["avg_ovr"] = avg_ovr
+        current["championships"] = champ_count
+        hero["current"] = current
+
+    # Timeline events
+    timeline = []
+
+    # First win
+    first_win = conn.execute(
+        """
+        SELECT season_id, week FROM match_records
+        WHERE winner_club_id = ?
+        ORDER BY season_id ASC, week ASC
+        LIMIT 1
+        """,
+        (club_id,),
+    ).fetchone()
+    if first_win:
+        timeline.append({
+            "season": first_win["season_id"],
+            "week": first_win["week"],
+            "event_type": "standard",
+            "label": "First Win",
+            "weight": "standard",
+        })
+
+    # Championships
+    for t in load_club_trophies(conn):
+        if t["club_id"] == club_id and t["trophy_type"] == "championship":
+            timeline.append({
+                "season": t["season_id"],
+                "week": None,
+                "event_type": "championship",
+                "label": "Champions",
+                "weight": "championship",
+            })
+
+    # Awards won by this club's players
+    award_rows = conn.execute(
+        "SELECT season_id, award_type, player_id FROM season_awards WHERE club_id = ?",
+        (club_id,),
+    ).fetchall()
+    for row in award_rows:
+        label_map = {
+            "mvp": "MVP Award",
+            "top_rookie": "Top Rookie",
+            "best_defender": "Best Defender",
+            "most_improved": "Most Improved",
+            "championship": "Championship Award",
+        }
+        timeline.append({
+            "season": row["season_id"],
+            "week": None,
+            "event_type": "award",
+            "label": label_map.get(row["award_type"], row["award_type"]),
+            "weight": "award",
+        })
+
+    current_ids = {p.id for p in current_roster}
+    retired_rows = load_retired_players(conn)
+
+    # Build last_club_map: player_id -> last club_id they played for
+    last_club_rows = conn.execute(
+        """
+        SELECT ps.player_id, ps.club_id
+        FROM player_season_stats ps
+        INNER JOIN (
+            SELECT player_id, MAX(season_id) AS max_season
+            FROM player_season_stats
+            GROUP BY player_id
+        ) latest ON ps.player_id = latest.player_id AND ps.season_id = latest.max_season
+        """
+    ).fetchall()
+    last_club_map = {row["player_id"]: row["club_id"] for row in last_club_rows}
+
+    # Hall of Fame inductees from this club
+    for entry in conn.execute(
+        "SELECT player_id, induction_season FROM hall_of_fame ORDER BY induction_season"
+    ).fetchall():
+        if last_club_map.get(entry["player_id"]) == club_id or entry["player_id"] in current_ids:
+            # find player name
+            player_name = entry["player_id"]
+            for r in retired_rows:
+                if r["player_id"] == entry["player_id"] and r.get("player"):
+                    player_name = r["player"].name
+                    break
+            for p in current_roster:
+                if p.id == entry["player_id"]:
+                    player_name = p.name
+                    break
+            timeline.append({
+                "season": entry["induction_season"],
+                "week": None,
+                "event_type": "hof",
+                "label": f"HoF: {player_name}",
+                "weight": "hof",
+            })
+
+    # Records set by players from this club
+    for rec in conn.execute(
+        "SELECT record_type, holder_id, record_value, set_in_season FROM league_records"
+    ).fetchall():
+        if last_club_map.get(rec["holder_id"]) == club_id or rec["holder_id"] in current_ids:
+            timeline.append({
+                "season": rec["set_in_season"],
+                "week": None,
+                "event_type": "record",
+                "label": f"Record: {rec['record_type']}",
+                "weight": "record",
+            })
+
+    # Sort timeline by season then week (None last in week)
+    timeline.sort(key=lambda e: (e["season"], e["week"] or 999))
+
+    # Alumni (retired players whose last known club was this one)
+    alumni = []
+    for r in retired_rows:
+        if last_club_map.get(r["player_id"]) != club_id:
+            continue
+        p = r.get("player")
+        if p is None:
+            continue
+        career = load_player_career_stats(conn, r["player_id"])
+        alumni.append({
+            "id": r["player_id"],
+            "name": p.name,
+            "seasons_played": int((career or {}).get("seasons_played", 0)),
+            "career_elims": int((career or {}).get("total_eliminations", 0)),
+            "championships": int((career or {}).get("championships", 0)),
+            "ovr_final": float(r.get("overall", round(p.overall(), 1))),
+            "potential_tier": calculate_potential_tier(p.traits.potential),
+        })
+
+    # Banners
+    banners = []
+    for t in load_club_trophies(conn):
+        if t["club_id"] != club_id:
+            continue
+        if t["trophy_type"] == "championship":
+            banners.append({
+                "type": "championship",
+                "season": t["season_id"],
+                "label": "Champions",
+            })
+    for row in award_rows:
+        label_map = {
+            "mvp": "MVP Award",
+            "top_rookie": "Top Rookie",
+            "best_defender": "Best Defender",
+            "most_improved": "Most Improved",
+        }
+        if row["award_type"] in label_map:
+            banners.append({
+                "type": "award",
+                "season": row["season_id"],
+                "label": label_map[row["award_type"]],
+            })
+    banners.sort(key=lambda b: b["season"])
+
     return {
         "club_id": club_id,
-        "timeline": [{"year": 2026, "event": "Club founded."}],
-        "alumni": [],
-        "banners": []
+        "hero": hero,
+        "timeline": timeline,
+        "alumni": alumni,
+        "banners": banners,
     }
+
 
 @app.get("/api/history/league")
 def get_history_league(conn = Depends(get_db)):
