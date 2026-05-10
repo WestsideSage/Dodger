@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { SaveInfo, SaveListResponse, ClubOption } from '../types';
+import { IdentityStep } from './new-game/IdentityStep';
+import { CoachStep } from './new-game/CoachStep';
+import { StartingRecruitmentStep } from './new-game/StartingRecruitmentStep';
 
 interface SaveMenuProps {
   onSaveLoaded: () => void;
 }
 
-type View = 'list' | 'new';
+type View = 'list' | 'new' | 'takeover' | 'build_identity' | 'build_coach' | 'build_roster';
 
 export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
   const [view, setView] = useState<View>('list');
@@ -20,6 +23,10 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
   const [newClubId, setNewClubId] = useState('aurora');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  
+  // Build from scratch state
+  const [buildIdentity, setBuildIdentity] = useState({ save_name: '', club_name: '', city: '', colors: '#22d3ee,#1e293b' });
+  const [buildCoach, setBuildCoach] = useState({ coach_name: '', coach_backstory: 'Tactical Mastermind' });
 
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -120,6 +127,34 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
       onSaveLoaded();
     } catch (e) {
       setCreateError(e instanceof Error ? e.message : 'Failed to create save');
+      setCreating(false);
+    }
+  }
+
+  async function handleBuildFromScratch(rosterIds: string[]) {
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const res = await fetch('/api/saves/build-from-scratch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          save_name: buildIdentity.save_name,
+          club_name: buildIdentity.club_name,
+          city: buildIdentity.city,
+          colors: buildIdentity.colors,
+          coach_name: buildCoach.coach_name,
+          coach_backstory: buildCoach.coach_backstory,
+          roster_player_ids: rosterIds
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.detail || 'Failed to create custom save');
+      }
+      onSaveLoaded();
+    } catch (e) {
+      setCreateError(e instanceof Error ? e.message : 'Failed to create custom save');
       setCreating(false);
     }
   }
@@ -339,6 +374,29 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
             )}
 
             {view === 'new' && (
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button
+                  onClick={() => setView('takeover')}
+                  style={{
+                    flex: 1, padding: '2rem 1rem', background: '#0f172a', border: '1px solid #334155', borderRadius: '4px', color: '#e2e8f0', cursor: 'pointer', textAlign: 'center'
+                  }}
+                >
+                  <h3 style={{ margin: '0 0 0.5rem', color: '#22d3ee' }}>Take Over a Program</h3>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#94a3b8' }}>Select an existing franchise and lead them to glory.</p>
+                </button>
+                <button
+                  onClick={() => setView('build_identity')}
+                  style={{
+                    flex: 1, padding: '2rem 1rem', background: '#0f172a', border: '1px solid #334155', borderRadius: '4px', color: '#e2e8f0', cursor: 'pointer', textAlign: 'center'
+                  }}
+                >
+                  <h3 style={{ margin: '0 0 0.5rem', color: '#f97316' }}>Build from Scratch</h3>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#94a3b8' }}>Define a custom identity, coach, and recruit your starting 10.</p>
+                </button>
+              </div>
+            )}
+
+            {view === 'takeover' && (
               <form
                 onSubmit={handleCreate}
                 data-testid="new-game-form"
@@ -453,29 +511,38 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                   <p style={{ fontSize: '0.875rem', color: '#fb7185', margin: 0 }}>{createError}</p>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={creating}
-                  data-testid="create-save-btn"
-                  style={{
-                    borderRadius: '4px',
-                    background: '#f97316',
-                    border: '1px solid #ea6c0a',
-                    padding: '0.625rem 1.25rem',
-                    fontSize: '0.8125rem',
-                    fontFamily: 'var(--font-display)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.075em',
-                    color: '#fff',
-                    cursor: creating ? 'not-allowed' : 'pointer',
-                    opacity: creating ? 0.5 : 1,
-                    fontWeight: 600,
-                  }}
-                >
-                  {creating ? 'Creating…' : 'Start Career'}
-                </button>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <button type="button" onClick={() => setView('new')} style={{ padding: '0.625rem 1.25rem', background: '#334155', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Back</button>
+                  <button
+                    type="submit"
+                    disabled={creating}
+                    data-testid="create-save-btn"
+                    style={{
+                      flex: 1,
+                      borderRadius: '4px',
+                      background: '#f97316',
+                      border: '1px solid #ea6c0a',
+                      padding: '0.625rem 1.25rem',
+                      fontSize: '0.8125rem',
+                      fontFamily: 'var(--font-display)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.075em',
+                      color: '#fff',
+                      cursor: creating ? 'not-allowed' : 'pointer',
+                      opacity: creating ? 0.5 : 1,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {creating ? 'Creating…' : 'Start Career'}
+                  </button>
+                </div>
               </form>
             )}
+
+            {view === 'build_identity' && <IdentityStep identity={buildIdentity} setIdentity={setBuildIdentity} onNext={() => setView('build_coach')} />}
+            {view === 'build_coach' && <CoachStep coach={buildCoach} setCoach={setBuildCoach} onBack={() => setView('build_identity')} onNext={() => setView('build_roster')} />}
+            {view === 'build_roster' && <StartingRecruitmentStep onCommit={handleBuildFromScratch} onBack={() => setView('build_coach')} creating={creating} />}
+            {createError && view.startsWith('build_') && <p style={{ fontSize: '0.875rem', color: '#fb7185', marginTop: '1rem' }}>{createError}</p>}
           </div>
         </div>
       </div>

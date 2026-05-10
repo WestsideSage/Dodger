@@ -351,6 +351,17 @@ class NewSaveRequest(BaseModel):
     root_seed: int = 20260426
 
 
+class BuildFromScratchRequest(BaseModel):
+    save_name: str
+    club_name: str
+    city: str
+    colors: str
+    coach_name: str
+    coach_backstory: str
+    roster_player_ids: list[str]
+    root_seed: int = 20260426
+
+
 class MatchReplayResponse(BaseModel):
     match_id: str
     season_id: str
@@ -1496,6 +1507,101 @@ def api_new_save(req: NewSaveRequest):
         initialize_curated_manager_career(conn, req.club_id, req.root_seed)
     finally:
         conn.close()
+    _active_save_path = path
+    return {"status": "ok", "path": str(path)}
+
+
+@app.get("/api/saves/starting-prospects")
+def api_starting_prospects():
+    from dodgeball_sim.recruitment import generate_prospect_pool
+    from dodgeball_sim.config import DEFAULT_SCOUTING_CONFIG
+    from dodgeball_sim.rng import DeterministicRNG
+    rng = DeterministicRNG(12345)
+    pool = generate_prospect_pool(2026, rng, DEFAULT_SCOUTING_CONFIG)
+    return {
+        "prospects": [
+            {
+                "player_id": p.player_id, 
+                "name": p.name, 
+                "hometown": p.hometown, 
+                "public_archetype": p.public_archetype_guess, 
+                "public_ovr_band": p.public_ratings_band["ovr"]
+            } 
+            for p in pool
+        ]
+    }
+
+
+@app.post("/api/saves/build-from-scratch")
+def api_build_from_scratch(req: BuildFromScratchRequest):
+    global _active_save_path
+    SAVES_DIR.mkdir(exist_ok=True)
+    safe_name = "".join(c for c in req.save_name if c.isalnum() or c in "-_ ").strip() or "save"
+    path = SAVES_DIR / f"{safe_name}.db"
+    if path.exists():
+        raise HTTPException(status_code=409, detail=f"Save '{safe_name}' already exists.")
+    
+    from dodgeball_sim.league import Club
+    from dodgeball_sim.models import CoachPolicy
+    club_id = safe_name.lower().replace(" ", "_")
+    custom_club = Club(
+        club_id=club_id,
+        name=req.club_name,
+        colors=req.colors,
+        home_region=req.city,
+        founded_year=2026,
+        tagline=f"{req.city} • {req.coach_name}"
+    )
+
+    from dodgeball_sim.recruitment import generate_prospect_pool
+    from dodgeball_sim.config import DEFAULT_SCOUTING_CONFIG
+    from dodgeball_sim.rng import DeterministicRNG
+    rng = DeterministicRNG(12345)
+    pool = generate_prospect_pool(2026, rng, DEFAULT_SCOUTING_CONFIG)
+    roster_map = {p.player_id: p for p in pool}
+    from dodgeball_sim.models import Player, PlayerRatings, PlayerTraits
+    custom_roster = []
+    for pid in req.roster_player_ids:
+        if pid in roster_map:
+            prospect = roster_map[pid]
+            custom_roster.append(Player(
+                id=prospect.player_id,
+                name=prospect.name,
+                age=prospect.age,
+                club_id=club_id,
+                newcomer=True,
+                ratings=PlayerRatings(
+                    accuracy=prospect.hidden_ratings["accuracy"],
+                    power=prospect.hidden_ratings["power"],
+                    dodge=prospect.hidden_ratings["dodge"],
+                    catch=prospect.hidden_ratings["catch"],
+                    stamina=prospect.hidden_ratings["stamina"],
+                ).apply_bounds(),
+                traits=PlayerTraits(
+                    potential=min(100.0, max(70.0, max(prospect.hidden_ratings.values()) + 8.0)),
+                    growth_curve=50.0,
+                    consistency=0.5,
+                    pressure=0.5,
+                ),
+            ))
+
+    if len(custom_roster) < 6:
+        raise HTTPException(status_code=400, detail="Must select at least 6 prospects.")
+
+    conn = connect(path)
+    try:
+        initialize_curated_manager_career(
+            conn, 
+            club_id, 
+            req.root_seed, 
+            custom_club=custom_club, 
+            custom_roster=custom_roster
+        )
+        set_state(conn, "coach_backstory", req.coach_backstory)
+        conn.commit()
+    finally:
+        conn.close()
+    
     _active_save_path = path
     return {"status": "ok", "path": str(path)}
 

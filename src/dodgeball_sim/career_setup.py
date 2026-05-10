@@ -6,8 +6,8 @@ from typing import List
 from .career_state import CareerState, CareerStateCursor
 from .config import DEFAULT_SCOUTING_CONFIG
 from .franchise import create_season
-from .league import Conference, League
 from .models import Player, PlayerRatings, PlayerTraits
+from .league import Conference, League, Club
 from .persistence import (
     create_schema,
     get_state,
@@ -112,6 +112,8 @@ def initialize_curated_manager_career(
     conn: sqlite3.Connection,
     selected_club_id: str,
     root_seed: int,
+    custom_club: Club | None = None,
+    custom_roster: List[Player] | None = None,
 ) -> CareerStateCursor:
     """Create a fresh Manager career using the curated league without importing UI code."""
     root_seed = normalize_root_seed(root_seed)
@@ -120,6 +122,9 @@ def initialize_curated_manager_career(
         conn.execute(f"DELETE FROM {table}")
 
     clubs = curated_clubs()
+    if custom_club:
+        clubs.append(custom_club)
+
     selected_ids = {club.club_id for club in clubs}
     if selected_club_id not in selected_ids:
         raise ValueError(f"Unknown curated club: {selected_club_id}")
@@ -130,8 +135,11 @@ def initialize_curated_manager_career(
             club.name,
             derive_seed(root_seed, "roster", club.club_id),
         )
-        for club in clubs
+        for club in clubs if club.club_id != selected_club_id or custom_roster is None
     }
+    if custom_roster is not None:
+        rosters[selected_club_id] = custom_roster
+
     for club in clubs:
         save_club(conn, club, rosters[club.club_id])
         save_lineup_default(conn, club.club_id, [player.id for player in rosters[club.club_id]])
