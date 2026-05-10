@@ -5,6 +5,7 @@ import { ActionButton, PageHeader, StatusMessage } from './ui';
 import { CredibilityStrip } from './dynasty/CredibilityStrip';
 import { ProspectCard } from './dynasty/ProspectCard';
 import { StaffMarketModal } from './dynasty/StaffMarketModal';
+import { HistorySubTab } from './dynasty/HistorySubTab';
 
 const DEPARTMENT_LABELS: Record<string, string> = {
   tactics: 'Tactics',
@@ -122,10 +123,7 @@ export function DynastyOffice() {
       </div>
 
       {activeSubTab === 'history' && (
-        <div className="dm-panel">
-          <h3>Program History</h3>
-          <p>The history of the {data.player_club_name} dynasty is still being written. Results will appear here in future seasons.</p>
-        </div>
+        <HistorySubTab clubId={data.player_club_id} />
       )}
 
       {activeSubTab === 'recruit' && (

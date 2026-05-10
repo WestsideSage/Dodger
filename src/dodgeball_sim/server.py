@@ -34,6 +34,7 @@ from dodgeball_sim.persistence import (
     save_scheduled_matches,
     save_season_outcome,
     set_state,
+    load_league_records,
 )
 from dodgeball_sim.awards import compute_match_mvp
 from dodgeball_sim.career_state import CareerState, advance
@@ -1827,6 +1828,27 @@ def offseason_begin_season(conn = Depends(get_db)):
             "offseason_beat_index": new_cursor.offseason_beat_index,
             "match_id": new_cursor.match_id,
         },
+    }
+
+
+@app.get("/api/history/my-program")
+def get_history_my_program(club_id: str, conn = Depends(get_db)):
+    # Very basic placeholder logic for testing and UI layout.
+    return {
+        "club_id": club_id,
+        "timeline": [{"year": 2026, "event": "Club founded."}],
+        "alumni": [],
+        "banners": []
+    }
+
+@app.get("/api/history/league")
+def get_history_league(conn = Depends(get_db)):
+    clubs = load_clubs(conn)
+    return {
+        "directory": [{"club_id": c.club_id, "name": c.name} for c in clubs.values()],
+        "dynasty_rankings": [],
+        "records": load_league_records(conn),
+        "hof": []
     }
 
 
