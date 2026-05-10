@@ -1668,6 +1668,162 @@ _RECRUITMENT_INDEX = OFFSEASON_CEREMONY_BEATS.index("recruitment")
 _SCHEDULE_REVEAL_INDEX = OFFSEASON_CEREMONY_BEATS.index("schedule_reveal")
 
 
+def _build_beat_payload(
+    beat_key: str,
+    *,
+    awards: list,
+    clubs: dict,
+    rosters: dict,
+    standings: list,
+    ret_rows: list,
+    season: Any,
+    season_outcome: Any,
+    next_preview: Any,
+    signed_player_id: str,
+    conn,
+) -> dict:
+    """Build structured payload dict for a given beat key."""
+
+    def _club_name(club_id: str) -> str:
+        c = clubs.get(club_id)
+        return c.name if c else club_id
+
+    def _find_player(player_id: str):
+        for roster in rosters.values():
+            for p in roster:
+                if p.id == player_id:
+                    return p
+        return None
+
+    if beat_key == "awards":
+        result = []
+        for award in awards:
+            p = _find_player(award.player_id)
+            career = load_player_career_stats(conn, award.player_id)
+            result.append({
+                "player_name": p.name if p else award.player_id,
+                "club_name": _club_name(award.club_id),
+                "award_type": award.award_type,
+                "career_elims": int((career or {}).get("total_eliminations", 0)),
+                "ovr": int(round(p.overall())) if p else 0,
+            })
+        return {"awards": result}
+
+    if beat_key == "retirements":
+        retired_by_id = {r["player_id"]: r.get("player") for r in load_retired_players(conn)}
+        retirees = []
+        for row in ret_rows:
+            pid = row.get("player_id", "")
+            career = load_player_career_stats(conn, pid)
+            player_obj = retired_by_id.get(pid)
+            potential = player_obj.traits.potential if player_obj else 0.0
+            retirees.append({
+                "name": row.get("player_name", pid),
+                "ovr_final": float(row.get("overall", 0)),
+                "career_elims": int((career or {}).get("total_eliminations", 0)),
+                "championships": int((career or {}).get("championships", 0)),
+                "seasons_played": int((career or {}).get("seasons_played", 0)),
+                "potential_tier": calculate_potential_tier(potential),
+            })
+        return {"retirees": retirees}
+
+    if beat_key == "champion":
+        if season_outcome and season_outcome.champion_club_id:
+            trophies = load_club_trophies(conn)
+            title_count = sum(
+                1 for t in trophies
+                if t["club_id"] == season_outcome.champion_club_id
+                and t["trophy_type"] == "championship"
+            )
+            row = next(
+                (s for s in standings if s.club_id == season_outcome.champion_club_id),
+                None,
+            )
+            return {
+                "champion": {
+                    "club_name": _club_name(season_outcome.champion_club_id),
+                    "wins": row.wins if row else 0,
+                    "losses": row.losses if row else 0,
+                    "draws": row.draws if row else 0,
+                    "title_count": title_count,
+                }
+            }
+        return {}
+
+    if beat_key == "recap":
+        player_club_id = get_state(conn, "player_club_id") or ""
+        return {
+            "standings": [
+                {
+                    "rank": i + 1,
+                    "club_name": _club_name(row.club_id),
+                    "wins": row.wins,
+                    "losses": row.losses,
+                    "draws": row.draws,
+                    "points": row.points,
+                    "is_player_club": row.club_id == player_club_id,
+                }
+                for i, row in enumerate(standings)
+            ]
+        }
+
+    if beat_key == "recruitment":
+        player_signing = None
+        if signed_player_id:
+            p = _find_player(signed_player_id)
+            if p:
+                player_signing = {
+                    "name": p.name,
+                    "ovr": int(round(p.overall())),
+                    "age": p.age,
+                }
+        return {"player_signing": player_signing, "other_signings": []}
+
+    if beat_key == "schedule_reveal":
+        if next_preview is None:
+            return {"fixtures": [], "season_label": "", "prediction": ""}
+        player_club_id = get_state(conn, "player_club_id") or ""
+        fixtures = [
+            {
+                "week": m.week,
+                "home": _club_name(m.home_club_id),
+                "away": _club_name(m.away_club_id),
+                "is_player_match": (
+                    m.home_club_id == player_club_id or m.away_club_id == player_club_id
+                ),
+            }
+            for m in next_preview.scheduled_matches
+        ]
+        prediction = ""
+        player_match = next(
+            (
+                m for m in next_preview.scheduled_matches
+                if m.home_club_id == player_club_id or m.away_club_id == player_club_id
+            ),
+            None,
+        )
+        if player_match:
+            try:
+                from dodgeball_sim.rng import DeterministicRNG, derive_seed
+                from dodgeball_sim.voice_pregame import render_matchup_framing
+                root_seed = stored_root_seed(conn)
+                rng = DeterministicRNG(derive_seed(root_seed, "schedule_reveal_prediction"))
+                prediction = render_matchup_framing(
+                    _club_name(player_match.home_club_id),
+                    _club_name(player_match.away_club_id),
+                    rng,
+                )
+            except Exception:
+                prediction = ""
+        return {
+            "season_label": str(next_preview.year) if next_preview else "",
+            "fixtures": fixtures,
+            "prediction": prediction,
+        }
+
+    return {}
+
+
 def _build_beat_response(conn, cursor):
     """Build the full offseason beat payload from current cursor + DB."""
     season_id = get_state(conn, "active_season_id")
@@ -1720,6 +1876,19 @@ def _build_beat_response(conn, cursor):
         hof_payload_json=hof_json,
         rookie_preview_payload_json=rookie_preview_json,
     )
+    payload = _build_beat_payload(
+        beat.key,
+        awards=awards,
+        clubs=clubs,
+        rosters=rosters,
+        standings=standings,
+        ret_rows=ret_rows,
+        season=season,
+        season_outcome=season_outcome,
+        next_preview=next_preview,
+        signed_player_id=signed_player_id,
+        conn=conn,
+    )
     state = cursor.state.value
     is_recruitment = OFFSEASON_CEREMONY_BEATS[beat_index] == "recruitment"
     is_last = beat_index >= _SCHEDULE_REVEAL_INDEX
@@ -1745,6 +1914,7 @@ def _build_beat_response(conn, cursor):
         "can_recruit": can_recruit,
         "can_begin_season": can_begin_season,
         "signed_player_id": signed_player_id,
+        "payload": payload,
     }
 
 
