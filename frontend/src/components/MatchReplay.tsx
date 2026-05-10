@@ -27,24 +27,23 @@ function playerLabel(name: string): string {
   return `${first}. ${last}`;
 }
 
-function assignPositions(
-  ids: string[],
-  xMin: number,
-  xMax: number,
-  yMin: number,
-  yMax: number
-): Map<string, Vec2> {
-  const n = ids.length;
-  if (n === 0) return new Map();
-  const cols = n <= 2 ? n : Math.ceil(n / 2);
-  const rows = Math.ceil(n / cols);
-  const xStep = cols > 1 ? (xMax - xMin) / (cols - 1) : 0;
-  const yStep = rows > 1 ? (yMax - yMin) / (rows - 1) : 0;
+function getFormationPositions(ids: string[], side: 'left' | 'right', courtWidth: number, courtHeight: number): Map<string, Vec2> {
   const map = new Map<string, Vec2>();
+  if (ids.length === 0) return map;
+  
+  const hMid = courtHeight / 2;
+  const vGap = courtHeight / 3.5;
+  
+  const layoutX = {
+    left: [courtWidth / 2 - 45, courtWidth / 2 - 45, courtWidth / 4 + 10, courtWidth / 4 + 10, 45, 45],
+    right: [courtWidth / 2 + 45, courtWidth / 2 + 45, 3 * courtWidth / 4 - 10, 3 * courtWidth / 4 - 10, courtWidth - 45, courtWidth - 45]
+  };
+  
+  const layoutY = [hMid - vGap, hMid + vGap, hMid - vGap, hMid + vGap, hMid - vGap, hMid + vGap];
+  
   ids.forEach((id, i) => {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    map.set(id, { x: xMin + col * xStep, y: yMin + row * yStep });
+    const idx = i % 6;
+    map.set(id, { x: layoutX[side][idx], y: layoutY[idx] });
   });
   return map;
 }
@@ -59,9 +58,6 @@ const resolutionColor = (r: string | null) =>
     : r === 'dodged'
     ? '#a3e635'
     : '#f97316';
-
-const resolutionLabel = (r: string | null) =>
-  r === 'eliminated' ? 'ELIMINATED' : r === 'caught' ? 'CAUGHT' : r === 'dodged' ? 'DODGED' : 'RESOLVED';
 
 const resolutionActionLabel = (r: string | null) =>
   r === 'eliminated' ? 'OUT' : r === 'caught' ? 'CATCH' : r === 'dodged' ? 'DODGE' : '';
@@ -488,151 +484,23 @@ function EventCard({
   );
 }
 
-// ── Proof Panel ────────────────────────────────────────────────────────────
+// ── Play-by-Play Panel ──────────────────────────────────────────────────────
 
-function ProofPanel({
-  proof,
-  currentEventType,
-  matchResult,
+function PlayByPlayPanel({
+  events,
+  currentIndex,
 }: {
-  proof: ReplayProofEvent | null;
-  currentEventType: string;
-  matchResult: string | null;
+  events: ReplayProofEvent[];
+  currentIndex: number;
 }) {
-  // Game end — show match result state
-  if (currentEventType === 'game_end' || currentEventType === 'match_end') {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {matchResult && (
-          <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 6, padding: '12px 16px', textAlign: 'center' }}>
-            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', letterSpacing: 2, marginBottom: 6 }}>FINAL RESULT</div>
-            <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 20, color: '#f97316', letterSpacing: 1 }}>{matchResult.toUpperCase()}</div>
-          </div>
-        )}
-        {proof && (
-          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#475569', letterSpacing: 1, textAlign: 'center' }}>
-            Last throw: {proof.thrower_name} → {proof.target_name}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  if (!proof) {
-    return (
-      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#475569', textAlign: 'center', padding: 24 }}>
-        No proof data for this event.
-      </div>
-    );
-  }
-
-  const resColor = resolutionColor(proof.resolution);
-  const resLabel = resolutionLabel(proof.resolution);
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Participants */}
-      <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 6, padding: '10px 12px' }}>
-        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#475569', letterSpacing: 2, marginBottom: 8 }}>
-          PARTICIPANTS
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      {events.slice(0, currentIndex + 1).map((ev, i) => (
+        <div key={i} className="dm-feed-item" style={{ background: '#0f172a', border: '1px solid #1e293b', padding: '0.75rem', borderRadius: '4px', fontSize: '0.875rem' }}>
+          <span className="dm-time" style={{ color: '#64748b', fontFamily: 'var(--font-mono-data)', marginRight: '0.5rem', fontSize: '0.75rem' }}>TICK {ev.tick}</span>
+          <span style={{ color: '#e2e8f0' }}>{ev.summary}</span>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#f97316', letterSpacing: 1 }}>THROWER</span>
-            <span style={{ fontFamily: 'Oswald, sans-serif', fontSize: 14, color: '#e2e8f0', letterSpacing: 0.5 }}>{proof.thrower_name}</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#06b6d4', letterSpacing: 1 }}>TARGET</span>
-            <span style={{ fontFamily: 'Oswald, sans-serif', fontSize: 14, color: '#e2e8f0', letterSpacing: 0.5 }}>{proof.target_name}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Resolution */}
-      <div
-        style={{
-          background: `${resColor}10`,
-          border: `1px solid ${resColor}33`,
-          borderRadius: 6,
-          padding: '10px 14px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-        }}
-      >
-        <div
-          style={{
-            fontFamily: 'Oswald, sans-serif',
-            fontSize: 22,
-            color: resColor,
-            letterSpacing: 2,
-            lineHeight: 1,
-          }}
-        >
-          {resLabel}
-        </div>
-        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#94a3b8', lineHeight: 1.4, flex: 1 }}>
-          {proof.summary}
-        </div>
-      </div>
-
-      {/* Proof tags */}
-      {proof.proof_tags.length > 0 && (
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
-          {proof.proof_tags.map((tag) => (
-            <span
-              key={tag}
-              style={{
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: 9,
-                color: '#64748b',
-                background: '#1e293b',
-                padding: '2px 6px',
-                borderRadius: 4,
-                letterSpacing: 0.5,
-              }}
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Dice rolls */}
-      {Object.keys(proof.rolls).length > 0 && (
-        <div>
-          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#475569', letterSpacing: 2, marginBottom: 6 }}>DICE ROLLS</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 5 }}>
-            {Object.entries(proof.rolls).map(([k, v]) => (
-              <div key={k} style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 4, padding: '4px 8px', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>
-                <span style={{ color: '#475569' }}>{k}: </span>
-                <span style={{ color: '#f97316' }}>{typeof v === 'number' ? v.toFixed(2) : v}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Odds */}
-      {Object.keys(proof.odds).length > 0 && (
-        <div>
-          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#475569', letterSpacing: 2, marginBottom: 6 }}>ODDS</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 5 }}>
-            {Object.entries(proof.odds).map(([k, v]) => (
-              <div key={k} style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 4, padding: '4px 8px', fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>
-                <span style={{ color: '#475569' }}>{k}: </span>
-                <span style={{ color: '#06b6d4' }}>{typeof v === 'number' ? `${(v * 100).toFixed(0)}%` : v}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {proof.detail && (
-        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#64748b', lineHeight: 1.5, borderTop: '1px solid #1e293b', paddingTop: 8 }}>
-          {proof.detail}
-        </div>
-      )}
+      ))}
     </div>
   );
 }
@@ -712,13 +580,20 @@ function KeyPlaysPanel({ data, currentIndex, onJump }: { data: MatchReplayRespon
 export default function MatchReplay({ data, onContinue }: { data: MatchReplayResponse; onContinue: () => void }) {
   const [eventIndex, setEventIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playSpeed, setPlaySpeed] = useState<1 | 2 | 4>(1);
-  const [activeTab, setActiveTab] = useState<'proof' | 'keyplays' | 'stats'>('proof');
+  const [playSpeed, setPlaySpeed] = useState<'Fast' | 'Normal' | 'Slow'>('Normal');
+  const [activeTab, setActiveTab] = useState<'pbp' | 'keyplays' | 'stats'>('pbp');
   const [flashTargetId, setFlashTargetId] = useState<string | null>(null);
   const [activeResolution, setActiveResolution] = useState<string | null>(null);
   const [ballAnimKey, setBallAnimKey] = useState('ball-init');
 
   const totalEvents = data.events.length;
+
+  useEffect(() => {
+    if (playSpeed === 'Fast') {
+        setEventIndex(totalEvents - 1);
+        setIsPlaying(false);
+    }
+  }, [playSpeed, totalEvents]);
 
   // Player registry from proof events
   const playerRegistry = useMemo(() => {
@@ -747,10 +622,8 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
   }, [playerRegistry, data.home_club_id]);
 
   const positions = useMemo(() => {
-    const pad = 28;
-    const mid = COURT_W / 2;
-    const homePos = assignPositions(homeIds, pad + PLAYER_R, mid - 30, 40, COURT_H - 40);
-    const awayPos = assignPositions(awayIds, mid + 30, COURT_W - pad - PLAYER_R, 40, COURT_H - 40);
+    const homePos = getFormationPositions(homeIds, 'left', COURT_W, COURT_H);
+    const awayPos = getFormationPositions(awayIds, 'right', COURT_W, COURT_H);
     return new Map([...homePos, ...awayPos]);
   }, [homeIds, awayIds]);
 
@@ -823,14 +696,15 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
       const t = setTimeout(() => setIsPlaying(false), 0);
       return () => clearTimeout(t);
     }
-    const t = setTimeout(() => setEventIndex((i) => i + 1), 900 / playSpeed);
+    const speedDivisor = playSpeed === 'Normal' ? 3 : 1;
+    const t = setTimeout(() => setEventIndex((i) => i + 1), 900 / speedDivisor);
     return () => clearTimeout(t);
   }, [isPlaying, eventIndex, playSpeed, totalEvents]);
 
   const stepBack = useCallback(() => { setIsPlaying(false); setEventIndex((i) => Math.max(0, i - 1)); }, []);
   const stepForward = useCallback(() => { setIsPlaying(false); setEventIndex((i) => Math.min(totalEvents - 1, i + 1)); }, [totalEvents]);
   const togglePlay = useCallback(() => setIsPlaying((p) => !p), []);
-  const cycleSpeed = useCallback(() => setPlaySpeed((s) => (s === 1 ? 2 : s === 2 ? 4 : 1)), []);
+  const cycleSpeed = useCallback(() => setPlaySpeed((s) => (s === 'Normal' ? 'Fast' : s === 'Fast' ? 'Slow' : 'Normal')), []);
 
   const jumpToKeyEvent = useCallback(() => {
     const kp = data.key_play_indices;
@@ -840,7 +714,7 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
     setIsPlaying(false);
   }, [data.key_play_indices, eventIndex]);
 
-  const jumpTo = useCallback((i: number) => { setEventIndex(i); setIsPlaying(false); setActiveTab('proof'); }, []);
+  const jumpTo = useCallback((i: number) => { setEventIndex(i); setIsPlaying(false); setActiveTab('pbp'); }, []);
 
   const progress = totalEvents > 1 ? eventIndex / (totalEvents - 1) : 0;
   const isKeyPlay = data.key_play_indices.includes(eventIndex);
@@ -901,7 +775,7 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
 
             <button onClick={stepForward} disabled={eventIndex >= totalEvents - 1} style={{ background: 'transparent', border: '1px solid #334155', borderRadius: 4, color: eventIndex >= totalEvents - 1 ? '#334155' : '#94a3b8', padding: '4px 10px', cursor: eventIndex >= totalEvents - 1 ? 'default' : 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>→</button>
 
-            <button onClick={cycleSpeed} style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 4, color: '#f97316', padding: '4px 10px', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, letterSpacing: 1 }}>{playSpeed}×</button>
+            <button onClick={cycleSpeed} style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 4, color: '#f97316', padding: '4px 10px', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, letterSpacing: 1 }}>{playSpeed}</button>
 
             {/* Scrubber */}
             <div
@@ -948,8 +822,8 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
         {/* Right: tabbed analysis */}
         <div className="dm-replay-sidebar">
           <div style={{ display: 'flex', borderBottom: '1px solid #1e293b', padding: '0 4px' }}>
-            {(['proof', 'keyplays', 'stats'] as const).map((tab) => {
-              const labels = { proof: 'PROOF', keyplays: 'KEY PLAYS', stats: 'REPORT' };
+            {(['pbp', 'keyplays', 'stats'] as const).map((tab) => {
+              const labels = { pbp: 'PLAY-BY-PLAY', keyplays: 'KEY PLAYS', stats: 'REPORT' };
               const isActive = activeTab === tab;
               return (
                 <button
@@ -964,11 +838,10 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-            {activeTab === 'proof' && (
-              <ProofPanel
-                proof={currentProof}
-                currentEventType={currentEvent?.event_type ?? ''}
-                matchResult={data.report?.winner_name ?? data.winner_name ?? null}
+            {activeTab === 'pbp' && (
+              <PlayByPlayPanel
+                events={data.proof_events}
+                currentIndex={eventIndex}
               />
             )}
             {activeTab === 'keyplays' && <KeyPlaysPanel data={data} currentIndex={eventIndex} onJump={jumpTo} />}

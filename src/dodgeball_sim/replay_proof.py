@@ -26,24 +26,22 @@ def event_label(event: ThrowEvent, name_map: Mapping[str, str]) -> str:
     resolution = str(outcome.get("resolution", "throw"))
     thrower = _player_name(actors.get("thrower"), name_map)
     target = _player_name(actors.get("target"), name_map)
-    context = event.get("context") or {}
-    sync = context.get("sync_context") if isinstance(context, Mapping) else None
-    rush = context.get("rush_context") if isinstance(context, Mapping) else None
+    
+    from dodgeball_sim.voice_playbyplay import render_play
+    from dodgeball_sim.rng import DeterministicRNG
+    rng = DeterministicRNG(hash(f"{thrower}_{target}_{resolution}_{event.get('tick', 0)}") % (2**63))
+    
     if resolution == "hit":
-        if isinstance(sync, Mapping) and sync.get("is_synced"):
-            return f"A synced attack connects! {thrower} eliminates {target}."
-        if isinstance(rush, Mapping) and rush.get("active"):
-            return f"Despite rushing, {thrower} lands a hit on {target}."
-        return f"{thrower} targets {target} and scores a clean hit."
+        return render_play("throw", thrower, target, rng)
     if resolution == "failed_catch":
-        return f"{target} attempts to catch {thrower}'s throw but fumbles. Player out."
+        return render_play("throw", thrower, target, rng) + " The catch is fumbled and they're out."
     if resolution == "catch":
-        return f"{target} anticipates {thrower}'s throw and makes the catch."
+        return render_play("catch", target, thrower, rng)
     if resolution == "dodged":
-        return f"{target} successfully dodges {thrower}'s attempt."
+        return render_play("dodge", target, thrower, rng)
     if resolution == "miss":
-        return f"{thrower} targets {target} but misses."
-    return f"{thrower} targets {target}. {resolution.replace('_', ' ').title()}."
+        return render_play("throw", thrower, target, rng) + " It misses wide."
+    return render_play("action", thrower, target, rng)
 
 
 def event_detail(event: ThrowEvent, name_map: Mapping[str, str]) -> str:

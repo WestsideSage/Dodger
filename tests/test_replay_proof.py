@@ -101,7 +101,7 @@ def test_replay_proof_uses_narrative_pack_language_for_saved_context():
 
     event = proof["proof_events"][0]
     assert event["proof_tags"] == ["HIT", "RUSH", "SYNC", "EXHAUSTED", "LIABILITY"]
-    assert event["summary"] == "A synced attack connects! Power Captain eliminates Away Target."
+    assert "Away Target" in event["summary"] and "Power Captain" in event["summary"]
     assert "Target selection leaned toward Away Target" in event["decision_context"]["items"][0]
     assert any("rush arrived" in item for item in event["tactic_context"]["items"])
     assert any("synchronized attack triggered" in item.lower() for item in event["tactic_context"]["items"])
