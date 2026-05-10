@@ -78,9 +78,15 @@ def _policy_for_intent(policy: CoachPolicy, intent: str) -> dict[str, float]:
     return {key: round(float(value), 2) for key, value in values.items()}
 
 
+from dodgeball_sim.voice_pregame import render_matchup_framing
+from dodgeball_sim.rng import DeterministicRNG, derive_seed
+
+...
+
 def build_command_center_state(conn: sqlite3.Connection) -> dict[str, Any]:
     season_id = get_state(conn, "active_season_id")
     player_club_id = get_state(conn, "player_club_id")
+    root_seed = get_state(conn, "root_seed") or "1"
     if not season_id or not player_club_id:
         raise ValueError("No active season or player club")
 
@@ -104,6 +110,7 @@ def build_command_center_state(conn: sqlite3.Connection) -> dict[str, Any]:
     return {
         "season_id": season_id,
         "week": week,
+        "root_seed": int(root_seed),
         "player_club_id": player_club_id,
         "player_club": clubs[player_club_id],
         "opponent": clubs.get(opponent_id) if opponent_id else None,
@@ -125,6 +132,10 @@ def build_default_weekly_plan(state: Mapping[str, Any], intent: str = "Win Now")
     tactics = _policy_for_intent(club.coach_policy, intent)
     warnings = _lineup_warnings(list(state["roster"]), lineup["player_ids"], intent, tactics)
     recommendations = _staff_recommendations(heads, intent, opponent.name if opponent else "the next opponent")
+    
+    rng = DeterministicRNG(derive_seed(state.get("root_seed", 1), "framing", state["season_id"], str(state["week"])))
+    opponent_name = opponent.name if opponent else "TBD"
+    
     return {
         "season_id": state["season_id"],
         "week": state["week"],
@@ -146,7 +157,7 @@ def build_default_weekly_plan(state: Mapping[str, Any], intent: str = "Win Now")
             "opponent_record": "0-0",
             "last_meeting": "None",
             "key_matchup": "TBD",
-            "framing_line": "A tough matchup against a conference rival.",
+            "framing_line": render_matchup_framing(club.name, opponent_name, rng),
         },
     }
 

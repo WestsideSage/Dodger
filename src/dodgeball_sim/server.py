@@ -1172,6 +1172,13 @@ def simulate_command_center_week(update: WeeklyCommandPlanUpdate | None = None, 
         cursor = advance(cursor, CareerState.SEASON_COMPLETE_OFFSEASON_BEAT, week=0, match_id=None)
     save_career_state_cursor(conn, cursor)
     conn.commit()
+    from dodgeball_sim.voice_aftermath import render_headline
+    from dodgeball_sim.rng import DeterministicRNG, derive_seed
+    
+    root_seed_val = get_state(conn, "root_seed") or "1"
+    rng = DeterministicRNG(derive_seed(int(root_seed_val), "headline", season_id, str(record.week)))
+    headline = render_headline(dashboard['result'], "expected", rng)
+
     return {
         "status": "success",
         "message": f"Simulated Week {record.week} command plan.",
@@ -1179,7 +1186,7 @@ def simulate_command_center_week(update: WeeklyCommandPlanUpdate | None = None, 
         "dashboard": dashboard,
         "next_state": cursor.state.value,
         "aftermath": {
-            "headline": f"{dashboard['result']} vs {dashboard['opponent_name']}",
+            "headline": headline,
             "match_card": {
                 "home_club_id": record.home_club_id,
                 "away_club_id": record.away_club_id,
