@@ -1,49 +1,54 @@
-# Subplan 14 (STUB): History Sub-Tab (My Program + League Toggle)
+# Subplan 14: History Sub-Tab (My Program + League Toggle)
 
-> **Status:** STUB. Detailed task breakdown authored after Wave 2 ships. Read `../00-MAIN.md` first.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development. Read `../00-MAIN.md` first.
 
-**Goal:** Flesh out the `History` sub-tab in Dynasty Office (stubbed in Subplan 08). Two views: `My Program` (your team's arc — "how it started ↔ how it finished") and `League` (every program's arc, dynasty rankings, all-time records, Hall of Fame).
+**Goal:** Flesh out the `History` sub-tab in Dynasty Office (stubbed in Subplan 08). Two views: `My Program` (your team's arc) and `League` (every program's arc, dynasty rankings, all-time records, Hall of Fame).
 
-**Dependencies:** Subplan 08 (sub-tab structure exists). Parallel-safe with 10, 11, 12, 13, 15. Subplan 09 deep-links from Standings into League view here.
+**Dependencies:** Subplan 08. Parallel-safe with 10, 11, 12, 13, 15.
 
-**Acceptance criteria:**
+**Acceptance criteria (from 00-MAIN.md):**
+- Toggle: `My Program | League` in the `History` sub-tab.
+- My Program view:
+  - Hero strip: "How it started ↔ How it finished" cards.
+  - Milestone timeline (horizontal): beads for first win, awards, rivalry wins.
+  - Alumni lineage: departed players listed forever.
+  - Banner shelf: championships and awards rendered as visual trophies.
+- League view:
+  - Program directory: every team, clickable to their My-Program view.
+  - Dynasty rankings: most championships, longest win streak.
+  - All-time league records & Hall of Fame.
+- **Auto-population:** All entries auto-generate from sim history. Departed players persist forever.
 
-**Sub-tab structure:**
-- Within Dynasty Office's `History` sub-tab, a toggle: `My Program | League`.
+---
 
-**My Program view:**
-- Hero strip: side-by-side "How it started ↔ How it finished" cards.
-  - Left: Year 1 — starting roster (with photos/initials), starting OVR, starting Credibility grade, coach backstory tile from Subplan 13.
-  - Right: Today — current roster, current OVR, current Credibility grade, lifetime W/L across all played seasons.
-- Milestone timeline (horizontal): beads marking first win, first conference championship, signing of a now-elite recruit, awards, broken records, rivalry-shifting wins.
-- Alumni lineage: every departed player listed forever — peak attributes, awards under your tenure, championship years, the recruiting cycle they came from.
-- Banner shelf: championships and major awards rendered as visual trophies/banners across the top.
+- [ ] **Step 1: Write backend tests for History endpoints**
 
-**League view:**
-- Program directory: every team in the league. Click any team → opens THAT team's My-Program-style view (same template).
-- Dynasty rankings: most championships all-time, longest win streak, most Elite-tier players developed.
-- All-time league records: per-match, per-season, per-career. Each record shows player + program + when set; updates visibly as records break.
-- Hall of Fame: peak players from any program across history. Filterable by era / program.
-- Rivalries directory: top historical rivalries league-wide, ranked by intensity / closeness.
+Create `tests/test_dynasty_history.py` testing `/api/history/my-program` and `/api/history/league`. Ensure `alumni` and `timeline` data are present. Run, fail.
 
-**Auto-population (CRITICAL):**
-- All entries auto-generate from sim event history. No manual logging.
-- Departed players persist forever in alumni lineage (no garbage collection).
-- Records update on each match completion.
-- Banners append on championship wins.
+- [ ] **Step 2: Implement History Data Layer**
 
-**Files anticipated:**
-- `frontend/src/components/dynasty/HistorySubTab.tsx` (replace stub from Subplan 08)
-- New: `frontend/src/components/dynasty/history/MyProgramView.tsx`
-- New: `frontend/src/components/dynasty/history/LeagueView.tsx`
-- New: `frontend/src/components/dynasty/history/MilestoneTimeline.tsx`
-- New: `frontend/src/components/dynasty/history/AlumniLineage.tsx`
-- New: `frontend/src/components/dynasty/history/BannerShelf.tsx`
-- New: `frontend/src/components/dynasty/history/ProgramDirectory.tsx`
-- New: `frontend/src/components/dynasty/history/HallOfFame.tsx`
-- `src/dodgeball_sim/career.py`, `src/dodgeball_sim/career_state.py` (alumni persistence — verify departed players survive offseason cleanup)
-- `src/dodgeball_sim/records.py`, `src/dodgeball_sim/awards.py`, `src/dodgeball_sim/rivalries.py` (existing — wire into history endpoints)
-- `src/dodgeball_sim/meta.py` (cross-program meta history)
-- `src/dodgeball_sim/server.py` (new endpoints: `/api/history/my-program`, `/api/history/league`, `/api/history/program/{club_id}`)
+In `src/dodgeball_sim/server.py`, add the `/api/history/` endpoints.
+Query `career_state`, `awards`, `match_records`, and retired players from the DB. Pass tests. Commit.
 
-**Verification gates:** build + pytest green; tests confirm departed players persist across season transitions; tests for record auto-update; manual smoke confirms a multi-season save renders rich History data.
+- [ ] **Step 3: Create MyProgram Components**
+
+Create `frontend/src/components/dynasty/history/MyProgramView.tsx`.
+Create sub-components: `MilestoneTimeline.tsx`, `AlumniLineage.tsx`, `BannerShelf.tsx`.
+Use JSX structure to visually represent the horizontal timeline and banner shelf. Commit.
+
+- [ ] **Step 4: Create League Components**
+
+Create `frontend/src/components/dynasty/history/LeagueView.tsx`, `ProgramDirectory.tsx`, `HallOfFame.tsx`. Commit.
+
+- [ ] **Step 5: Wire History Sub-Tab**
+
+Update `frontend/src/components/dynasty/HistorySubTab.tsx` (the stub from Subplan 08).
+Add the toggle state for `My Program` vs `League`. Render the respective components. Commit.
+
+- [ ] **Step 6: Cross-cutting principle check**
+
+Run `npm run build` & `pytest -q`.
+Verify NO manual logging inputs are present (it's entirely read-only auto-population).
+```bash
+git commit --amend --no-edit
+```

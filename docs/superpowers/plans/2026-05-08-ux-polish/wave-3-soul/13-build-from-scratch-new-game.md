@@ -1,40 +1,50 @@
-# Subplan 13 (STUB): Build-From-Scratch New Game Flow
+# Subplan 13: Build-From-Scratch New Game Flow
 
-> **Status:** STUB. Detailed task breakdown authored after Wave 2 ships. Read `../00-MAIN.md` first.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development. Read `../00-MAIN.md` first.
 
 **Goal:** Replace the single-input new save flow (name + preset club) with a two-path entry: `Take Over a Program` (fast, polished current flow) and `Build a Program From Scratch` (custom identity → coach → recruit-your-starting-roster mini-game).
 
-**Dependencies:** Subplan 08 (recruiting verb set must exist — Build From Scratch reuses the same verbs as a tutorial). Parallel-safe with 10, 11, 12, 14, 15.
+**Dependencies:** Subplan 08 (recruiting verb set must exist). Parallel-safe with 10, 11, 12, 14, 15.
 
-**Acceptance criteria:**
+**Acceptance criteria (from 00-MAIN.md):**
+- **Take Over a Program path:** Pick from preset clubs (existing flow). Optional rename/recolor. Optional coach backstory tile (affects starting Credibility). ~60 seconds end-to-end.
+- **Build a Program From Scratch path:**
+  - Identity step: club name, abbreviation, primary/secondary colors, city, conference.
+  - Coach step: your name, backstory tile.
+  - Roster step (mini-game): ~30 prospects shown. Player uses Scout/Contact/Visit verbs with a generous one-shot slot budget to pick 10 prospects. Chosen prospects become Year-1 roster.
+- Estimated ~10-15 minutes for the full path. The mini-game IS the recruiting tutorial.
 
-**Take Over a Program path:**
-- Pick from preset clubs (existing flow).
-- Optional: rename the club, recolor (palette picker).
-- Optional: pick a coach backstory tile (e.g., `Local Hero`, `Unknown`, `Disgraced Rival`) — affects starting Program Credibility.
-- ~60 seconds end-to-end. Direct path to Match Week.
+---
 
-**Build a Program From Scratch path:**
-- Identity step: club name, abbreviation, primary/secondary colors, city, conference assignment (or `Independent`).
-- Coach step: your name, coach backstory tile.
-- Roster step (the hero of this path): a starting recruitment mini-game using the Subplan 08 verb set.
-  - ~30 prospects shown with partially revealed attributes.
-  - Player must pick 10 to commit to the program.
-  - Apply Scout / Contact / Visit / Promise verbs to influence which prospects accept (with a generous starting slot budget specifically for new-game).
-  - On commit, the chosen prospects enter the save as the year-1 roster, deliberately weaker than preset clubs (this is the rebuild fantasy).
-- Estimated ~10-15 minutes for the full path. The mini-game IS the recruiting tutorial — by the end of the flow the player has used every verb at least once.
+- [ ] **Step 1: Write backend tests for new save endpoints**
 
-**Files anticipated:**
-- `frontend/src/components/SaveMenu.tsx` (substantial rewrite — currently jumps to game on club pick; now branches to two paths)
-- New: `frontend/src/components/new-game/TakeOverPath.tsx`
-- New: `frontend/src/components/new-game/BuildFromScratchPath.tsx`
-- New: `frontend/src/components/new-game/IdentityStep.tsx`
-- New: `frontend/src/components/new-game/CoachStep.tsx`
-- New: `frontend/src/components/new-game/StartingRecruitmentStep.tsx`
-- `src/dodgeball_sim/persistence.py` (extended save creation that accepts custom club identity)
-- `src/dodgeball_sim/career_setup.py` (extended career setup to accept custom roster)
-- `src/dodgeball_sim/identity.py` (custom identity persistence)
-- `src/dodgeball_sim/server.py` (new endpoint: `/api/saves/build-from-scratch` accepting full custom-club + chosen-roster payload)
-- `src/dodgeball_sim/recruitment.py` (one-shot starting-recruitment slot budget separate from in-season weekly budget)
+Create `tests/test_new_game_flow.py`:
+```python
+def test_build_from_scratch_endpoint():
+    # Test POST /api/saves/build-from-scratch payload
+    # Assert custom roster is saved, custom club is created, state is Pre-Match
+```
+Run, fail.
 
-**Verification gates:** build + pytest green; new endpoint tested for happy-path + validation errors (duplicate club name, invalid color, roster size mismatch); manual smoke confirms both paths reach Match Week with correct save state.
+- [ ] **Step 2: Add Mini-Game Endpoints**
+
+In `src/dodgeball_sim/server.py`, add `/api/saves/starting-prospects` which generates a one-shot prospect pool of 30 players.
+Implement `/api/saves/build-from-scratch` which accepts the final selection of 10 players, creates the custom club in the DB, inserts the players, and initializes the manager career. Pass tests. Commit.
+
+- [ ] **Step 3: Create UI Steps**
+
+Create `frontend/src/components/new-game/IdentityStep.tsx` and `CoachStep.tsx` with forms for Name, City, Colors, and Coach Backstory.
+Create `frontend/src/components/new-game/StartingRecruitmentStep.tsx`. This renders a simplified `ProspectCard` list, uses local state for a generous slot budget (e.g. 15 Scouts, 20 Contacts), and a "Commit Roster (X/10)" button. Commit.
+
+- [ ] **Step 4: Rewrite SaveMenu.tsx**
+
+In `frontend/src/components/SaveMenu.tsx`, create the initial branching screen: two large cards ("Take Over a Program" vs "Build a Program from Scratch").
+Route the paths appropriately. "Take Over" flows into the existing preset selector. Commit.
+
+- [ ] **Step 5: Cross-cutting principle check**
+
+Run `npm run build` & `pytest -q`.
+Verify the mini-game uses qualitative labels (grades) for Fit, not floats. Ensure the save creates correctly.
+```bash
+git commit --amend --no-edit
+```

@@ -1,36 +1,58 @@
-# Subplan 12 (STUB): Match Replay Commentary + Player Positioning Fix
+# Subplan 12: Match Replay Commentary + Player Positioning Fix
 
-> **Status:** STUB. Detailed task breakdown authored after Wave 2 ships. Read `../00-MAIN.md` first.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development. Read `../00-MAIN.md` first.
 
 **Goal:** Replace the "Proof" tab with a "Play-by-Play" tab rendered from the voice library. Fix the player-dot positioning bug that splits each team into 3-top + 3-bottom (creating visual ambiguity about which team is on which side of the court). Implement three speeds.
 
 **Dependencies:** Subplan 10 (voice library, specifically `voice_playbyplay.py`). Parallel-safe with 11, 13, 14, 15.
 
-**Acceptance criteria:**
-
-**Commentary:**
+**Acceptance criteria (from 00-MAIN.md):**
 - "Proof" tab renamed to "Play-by-Play" and rendered from `voice_playbyplay.py` templates.
 - Each event in the existing event stream maps to one or more templated commentary lines.
 - Tab visually styled like a sports broadcast feed (timestamp + line of prose), NOT a debug log.
 - Resolution states (`eliminated`, `caught`, `dodged`) no longer surface as raw labels; they're embedded in the prose.
-
-**Player positioning:**
 - Each team's players cluster on their own half of the court (left vs. right), facing center.
-- Layout for 6 players per team: NOT 3-cols × 2-rows in the team's half (which creates the 3-top/3-bottom ambiguity), but a clearer formation that reads as one cluster facing the centerline.
-- Specific layout to implement: 2 players forward (closer to centerline), 2 mid, 2 back. Vertically centered in the team's half. Each team's "facing direction" is implied by spacing density (denser toward centerline).
-- Court still split horizontally as today, but with strong visual separators (centerline, possibly half-tinting) so the left/right team identity is unambiguous regardless of jersey color.
-- The bug at `MatchReplay.tsx:30-50` (`assignPositions` doing `cols = ceil(n/2), rows = ceil(n/cols)`) is the root cause. Replace with explicit per-team formation logic.
-
-**Three speeds:**
+- Specific layout to implement: 2 players forward, 2 mid, 2 back. Vertically centered in the team's half.
+- Court still split horizontally as today, but with strong visual separators.
+- The bug at `MatchReplay.tsx:30-50` (`assignPositions` doing `cols = ceil(n/2), rows = ceil(n/cols)`) is replaced with explicit per-team formation logic.
 - Speed selector (Fast / Normal / Slow) on the matchup card (Subplan 05) AND inside the replay (toggleable mid-match).
-- Fast: skip viz entirely, jump to result with the Subplan 11 transition beat.
-- Normal: animation runs at ~3x real-tick speed; commentary lines appear faster.
-- Slow: real-time per-tick; commentary paces with the action.
+- Fast: skip viz entirely, jump to result. Normal: ~3x real-tick. Slow: real-time.
 
-**Files anticipated:**
-- `frontend/src/components/MatchReplay.tsx` (rewrite positioning + tab labels + speed handling)
-- `src/dodgeball_sim/replay_proof.py` (may need restructure — the data is fine; the labels need work)
-- `src/dodgeball_sim/voice_playbyplay.py` (consumed here)
-- `frontend/src/types.ts` (extend ReplayProofEvent type if voice rendering is server-side)
+---
 
-**Verification gates:** build + pytest green; manual smoke confirms commentary reads like a broadcaster, player clusters are unambiguous, all three speeds work and are switchable mid-match.
+- [ ] **Step 1: Test & Backend for Replay Commentary**
+
+In `tests/test_voice_library.py` or `test_replay_proof.py`, assert that the `proof_events` list returns a `commentary` string for each play instead of raw resolution logic.
+Update `src/dodgeball_sim/replay_proof.py` to use `render_play` from `voice_playbyplay.py`. Commit.
+
+- [ ] **Step 2: Rewrite Player Positioning Logic**
+
+In `frontend/src/components/MatchReplay.tsx`, find `assignPositions` (around line 30).
+Rewrite to explicit 2-2-2 formation for 6 players:
+```tsx
+const getFormationPositions = (count: number, side: 'left' | 'right', courtWidth: number, courtHeight: number) => {
+  // Explicit logic to place players in 2 forward, 2 mid, 2 back
+  // Left team ranges from x=0 to courtWidth/2. Right team ranges from courtWidth/2 to courtWidth.
+}
+```
+Commit.
+
+- [ ] **Step 3: Create Play-by-Play Tab**
+
+In `frontend/src/components/MatchReplay.tsx`, rename "Proof" to "Play-by-Play".
+Map the event sequence into a stylized feed: `<div className="dm-feed-item"><span className="dm-time">{tick}</span> {commentary}</div>`.
+Remove old raw labels. Commit.
+
+- [ ] **Step 4: Implement Three-Speed Replay Logic**
+
+In `MatchReplay.tsx`, add a speed toggle state: `const [speedMultiplier, setSpeedMultiplier] = useState(1);`.
+Update the replay interval/timeout to use `baseInterval / speedMultiplier` (where Normal = 3, Slow = 1).
+Wire the Fast option to instantly skip to `onComplete()`. Commit.
+
+- [ ] **Step 5: Cross-cutting principle check**
+
+Run `npm run build` & `pytest -q`.
+Verify NO floats in the Play-by-Play UI. Verify visual layout creates clear left/right separation.
+```bash
+git commit --amend --no-edit
+```
