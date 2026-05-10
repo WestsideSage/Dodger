@@ -1,6 +1,7 @@
 import { MatchupCard } from './match-week/MatchupCard';
 import { WeeklyChecklist } from './match-week/WeeklyChecklist';
 import { ProgramStatusStrip } from './match-week/ProgramStatusStrip';
+import { SimTransition } from './match-week/SimTransition';
 import { Headline } from './match-week/aftermath/Headline';
 import { MatchCard as AftermathMatchCard } from './match-week/aftermath/MatchCard';
 import { PlayerGrowthBlock } from './match-week/aftermath/PlayerGrowthBlock';
@@ -28,6 +29,8 @@ export function MatchWeek({
   const [localIntent, setLocalIntent] = useState<string | undefined>(undefined);
   const [result, setResult] = useState<CommandCenterSimResponse | null>(null);
   const [revealStage, setRevealStage] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isAdvancingWeek, setIsAdvancingWeek] = useState(false);
 
   const selectedIntent = localIntent ?? data?.plan.intent ?? 'Win Now';
 
@@ -66,6 +69,7 @@ export function MatchWeek({
 
   const simulate = () => {
     setError(null);
+    setIsTransitioning(true);
     fetch('/api/command-center/simulate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -77,10 +81,28 @@ export function MatchWeek({
       })
       .then((payload: CommandCenterSimResponse) => {
         setResult(payload);
-        onSimComplete?.();
         return load();
       })
-      .catch(err => setError(err.message));
+      .catch(err => {
+        setError(err.message);
+        setIsTransitioning(false);
+      });
+  };
+
+  const handleSimTransitionComplete = () => {
+    setIsTransitioning(false);
+    onSimComplete?.();
+  };
+
+  const handleAdvanceWeek = () => {
+    setIsAdvancingWeek(true);
+    setTimeout(() => {
+        setRevealStage(0);
+        setResult(null); 
+        load(); 
+        onAdvanceWeek?.();
+        setIsAdvancingWeek(false);
+    }, 400); // brief fade transition for advancing week
   };
 
   useEffect(() => {
@@ -188,12 +210,7 @@ export function MatchWeek({
 
         {revealStage >= 5 && (
           <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center' }}>
-            <ActionButton variant="primary" onClick={() => { 
-                setRevealStage(0);
-                setResult(null); 
-                load(); 
-                onAdvanceWeek?.(); 
-            }}>
+            <ActionButton variant="primary" onClick={handleAdvanceWeek}>
               Advance to Next Week
             </ActionButton>
           </div>
@@ -202,13 +219,13 @@ export function MatchWeek({
     );
   };
 
-  const renderOffseasonMode = () => (
-    <div data-testid="match-week-offseason">
+  if (isTransitioning) return <SimTransition onComplete={handleSimTransitionComplete} isFast={false} />;
+
+  if (mode === 'offseason') return (
+    <div data-testid="match-week-offseason" className={isAdvancingWeek ? 'fade-out' : ''}>
       <Offseason />
     </div>
   );
-
-  if (mode === 'offseason') return renderOffseasonMode();
   if (mode === 'post-sim') return renderPostSimMode();
   return renderPreSimMode();
 }
