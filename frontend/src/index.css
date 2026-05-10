@@ -954,6 +954,9 @@ input {
   font-variant-numeric: tabular-nums;
 }
 
+.dm-desktop-only { display: inline; }
+.dm-mobile-only  { display: none; }
+
 .dm-display {
   font-family: var(--font-display);
   text-transform: uppercase;
@@ -1188,6 +1191,9 @@ input {
     width: calc(100% - 2rem);
     opacity: 0.18;
   }
+
+  .dm-desktop-only { display: none; }
+  .dm-mobile-only  { display: inline; }
 
   .dm-hub-score-strip,
   .dm-hub-action-grid {

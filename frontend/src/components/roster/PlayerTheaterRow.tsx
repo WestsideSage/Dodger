@@ -8,7 +8,7 @@ export function PlayerTheaterRow({ player, starter }: { player: Player, starter:
     <tr style={{ background: starter ? 'rgba(34,211,238,0.06)' : undefined }}>
       <td style={{ padding: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#475569' }}>#{player.id.split('_')[1]}</div>
+          <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#475569' }}>#{parseInt(player.id.split('_').at(-1) ?? '0', 10) + 1}</div>
           <div>
             <div style={{ fontWeight: 700, fontSize: '1rem' }}>
                 {player.name}

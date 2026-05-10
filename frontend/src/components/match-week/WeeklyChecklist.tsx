@@ -1,23 +1,70 @@
-import { useState } from 'react';
 import { ActionButton } from '../ui';
 
-export function WeeklyChecklist({ plan: _plan, onAcceptPlan }: { plan: any, onAcceptPlan: () => void }) {
-  const [toast, setToast] = useState<string | null>(null);
-
-  const handleAccept = () => {
-    // Basic diff logic for Wave 2
-    const diff = ["Tactic updated", "Lineup optimized"];
-    setToast(`Plan accepted: ${diff.join(', ')}`);
-    onAcceptPlan();
-    setTimeout(() => setToast(null), 3000);
-  };
+export function WeeklyChecklist({ plan, onAcceptPlan }: { plan: any; onAcceptPlan: () => void }) {
+  const warnings: string[] = plan?.warnings ?? [];
+  const recommendations: Array<{ department: string; text: string }> = plan?.recommendations ?? [];
+  const lineupSummary: string | undefined = plan?.lineup?.summary;
+  const starterNames: string[] = (plan?.lineup?.players ?? []).slice(0, 6).map((p: any) => p.name);
 
   return (
     <div className="dm-panel" style={{ flex: 6 }}>
-      <h3>Weekly Checklist</h3>
-      {toast && <div style={{ padding: '0.5rem', background: '#10b981', color: 'white', marginBottom: '1rem' }}>{toast}</div>}
-      <ActionButton onClick={handleAccept}>Accept Recommended Plan</ActionButton>
-      {/* Checklist items here */}
+      <div className="dm-panel-header">
+        <p className="dm-kicker">Pre-Game</p>
+        <h3 className="dm-panel-title">Weekly Checklist</h3>
+      </div>
+
+      <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+        {/* Lineup status */}
+        <div>
+          <p className="dm-kicker" style={{ marginBottom: '0.375rem' }}>Lineup</p>
+          {starterNames.length > 0 ? (
+            <p style={{ fontSize: '0.8125rem', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
+              {starterNames.join(' · ')}
+            </p>
+          ) : lineupSummary ? (
+            <p style={{ fontSize: '0.8125rem', color: '#94a3b8', margin: 0 }}>{lineupSummary}</p>
+          ) : null}
+        </div>
+
+        {/* Readiness / warnings */}
+        <div>
+          <p className="dm-kicker" style={{ marginBottom: '0.375rem' }}>Readiness</p>
+          {warnings.length === 0 ? (
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+              <span style={{ color: '#10b981', flexShrink: 0, fontSize: '0.875rem' }}>✓</span>
+              <span style={{ fontSize: '0.8125rem', color: '#10b981' }}>
+                Lineup and tactics are aligned. Squad is ready for match day.
+              </span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+              {warnings.map((w, i) => (
+                <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                  <span style={{ color: '#f59e0b', flexShrink: 0, fontSize: '0.875rem' }}>!</span>
+                  <span style={{ fontSize: '0.8125rem', color: '#cbd5e1', lineHeight: 1.4 }}>{w}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Top staff recommendation */}
+        {recommendations.length > 0 && (
+          <div style={{ borderTop: '1px solid #1e293b', paddingTop: '0.75rem' }}>
+            <p className="dm-kicker" style={{ marginBottom: '0.375rem', fontSize: '0.625rem' }}>
+              {recommendations[0].department} Dept.
+            </p>
+            <p style={{ fontSize: '0.8125rem', color: '#94a3b8', margin: 0, lineHeight: 1.4 }}>
+              {recommendations[0].text}
+            </p>
+          </div>
+        )}
+
+        <div style={{ borderTop: '1px solid #1e293b', paddingTop: '0.75rem' }}>
+          <ActionButton variant="accent" onClick={onAcceptPlan}>Confirm Plan</ActionButton>
+        </div>
+      </div>
     </div>
   );
 }

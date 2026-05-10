@@ -208,8 +208,6 @@ def _lineup_warnings(roster: list[Player], player_ids: list[str], intent: str, t
         warnings.append(f"{weak_starters[0].name} is a weak starter and may be targeted.")
     if tactics.get("rush_frequency", 0.0) > 0.75:
         warnings.append("Heavy rush pressure is creating extreme fatigue risk. Consider rotating your front line more often.")
-    if not warnings:
-        warnings.append("Lineup and tactical intent are well-aligned. The squad is ready for match day.")
     return warnings
 
 
