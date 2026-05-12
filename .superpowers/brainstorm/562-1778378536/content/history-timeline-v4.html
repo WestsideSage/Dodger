@@ -1,0 +1,132 @@
+<h2>Milestone Timeline — Season-grouped</h2>
+<p class="subtitle">Events cluster by season. Empty seasons show a gap on the line. Season headers span their group.</p>
+
+<div class="section">
+  <div class="mockup">
+    <div class="mockup-header">Program Timeline — 4 Seasons</div>
+    <div class="mockup-body" style="overflow-x:auto;padding:0.5rem 0 1rem">
+      <div style="min-width:700px;padding:0 1.5rem">
+
+        <!--
+          Layout rows (top → bottom):
+          1. Event labels (above line)
+          2. Dot row + line threading through
+          3. Season header chips (below line)
+        -->
+
+        <!-- ROW 1: Event labels above -->
+        <div style="display:flex;align-items:flex-end;height:2.5rem;margin-bottom:0">
+
+          <!-- Season 1 group: 1 dot -->
+          <div style="display:flex;flex:0 0 auto">
+            <div style="width:72px;text-align:center;font-size:0.58rem;color:#60a5fa">First Win</div>
+          </div>
+
+          <!-- Gap: Season 1→2 (empty season 2 represented as space) -->
+          <div style="flex:1;min-width:60px"></div>
+
+          <!-- Season 3 group: 3 dots -->
+          <div style="display:flex;flex:0 0 auto">
+            <div style="width:72px;text-align:center;font-size:0.58rem;color:#a78bfa">Playoff Run</div>
+            <div style="width:72px;text-align:center;font-size:0.58rem;color:#fbbf24">MVP Award</div>
+            <div style="width:88px;text-align:center;font-size:0.6rem;color:#fb923c;font-weight:800">🏆 Champions</div>
+          </div>
+
+          <!-- Gap: Season 3→4 -->
+          <div style="flex:0 0 32px"></div>
+
+          <!-- Season 4 group: 1 dot -->
+          <div style="display:flex;flex:0 0 auto">
+            <div style="width:80px;text-align:center;font-size:0.58rem;color:#34d399">HoF: Reyes</div>
+          </div>
+
+        </div>
+
+        <!-- ROW 2: Line + Dots -->
+        <div style="position:relative;display:flex;align-items:center;height:44px">
+
+          <!-- The line threads through all dot centers -->
+          <div style="position:absolute;left:0;right:0;top:50%;height:2px;transform:translateY(-50%);z-index:0;
+                      background:linear-gradient(90deg,#1e293b 0%,#334155 10%,#475569 40%,#334155 90%,#1e293b 100%)"></div>
+
+          <!-- Season 1: 1 dot -->
+          <div style="display:flex;align-items:center;flex:0 0 auto;position:relative;z-index:1">
+            <div style="width:72px;display:flex;justify-content:center;align-items:center">
+              <div style="width:12px;height:12px;border-radius:50%;background:#3b82f6;border:2px solid #60a5fa;flex-shrink:0"></div>
+            </div>
+          </div>
+
+          <!-- Gap (empty Season 2 — longer stretch of line, no dots) -->
+          <div style="flex:1;min-width:60px;position:relative;z-index:1;display:flex;align-items:center;justify-content:center">
+            <!-- Season 2 tick mark on the line -->
+            <div style="width:1px;height:10px;background:#334155;position:absolute"></div>
+          </div>
+
+          <!-- Season 3: 3 dots -->
+          <div style="display:flex;align-items:center;flex:0 0 auto;position:relative;z-index:1">
+            <div style="width:72px;display:flex;justify-content:center;align-items:center">
+              <div style="width:16px;height:16px;border-radius:50%;background:#7c3aed;border:2px solid #a78bfa;flex-shrink:0"></div>
+            </div>
+            <div style="width:72px;display:flex;justify-content:center;align-items:center">
+              <div style="width:20px;height:20px;border-radius:50%;background:#d97706;border:2px solid #fbbf24;flex-shrink:0"></div>
+            </div>
+            <div style="width:88px;display:flex;justify-content:center;align-items:center">
+              <div style="width:32px;height:32px;border-radius:50%;background:radial-gradient(circle,#f97316,#c2410c);border:3px solid #fb923c;flex-shrink:0;box-shadow:0 0 16px #f9731699"></div>
+            </div>
+          </div>
+
+          <!-- Gap Season 3→4 -->
+          <div style="flex:0 0 32px;position:relative;z-index:1"></div>
+
+          <!-- Season 4: 1 dot -->
+          <div style="display:flex;align-items:center;flex:0 0 auto;position:relative;z-index:1">
+            <div style="width:80px;display:flex;justify-content:center;align-items:center">
+              <div style="width:24px;height:24px;border-radius:50%;background:#065f46;border:2px solid #34d399;flex-shrink:0;box-shadow:0 0 8px #10b98155"></div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ROW 3: Season header chips below -->
+        <div style="display:flex;align-items:flex-start;height:2rem;margin-top:0">
+
+          <!-- Season 1 chip -->
+          <div style="flex:0 0 auto">
+            <div style="width:72px;display:flex;justify-content:center">
+              <span style="font-size:0.6rem;background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0.1rem 0.35rem;color:#64748b;white-space:nowrap">Season 1</span>
+            </div>
+          </div>
+
+          <!-- Season 2 chip — empty season, centered in gap -->
+          <div style="flex:1;min-width:60px;display:flex;justify-content:center;align-items:flex-start">
+            <span style="font-size:0.6rem;background:#0f172a;border:1px dashed #1e293b;border-radius:3px;padding:0.1rem 0.35rem;color:#334155;white-space:nowrap;font-style:italic">Season 2 — quiet</span>
+          </div>
+
+          <!-- Season 3 chip spanning 3 dots -->
+          <div style="flex:0 0 auto">
+            <div style="width:232px;display:flex;justify-content:center">
+              <span style="font-size:0.6rem;background:#1e293b;border:1px solid #f97316;border-radius:3px;padding:0.1rem 0.5rem;color:#fb923c;white-space:nowrap;font-weight:700">Season 3 — Championship Run</span>
+            </div>
+          </div>
+
+          <!-- Gap -->
+          <div style="flex:0 0 32px"></div>
+
+          <!-- Season 4 chip -->
+          <div style="flex:0 0 auto">
+            <div style="width:80px;display:flex;justify-content:center">
+              <span style="font-size:0.6rem;background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0.1rem 0.35rem;color:#64748b;white-space:nowrap">Season 4</span>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <p class="subtitle" style="margin-top:1rem">
+    Seasons with no milestones show a "quiet" chip and an empty stretch of line — time still passes, the program is still moving.
+    Championship seasons get an orange-border chip label. The gap between Season 1 and Season 3 makes the breakthrough feel earned.
+  </p>
+</div>

@@ -17,12 +17,15 @@ type MatchWeekMode = 'pre-sim' | 'post-sim' | 'offseason';
 
 export function MatchWeek({
   mode,
+  onOpenReplay,
+  persistedResult,
   onSimComplete,
   onAdvanceWeek,
 }: {
   onOpenReplay?: (matchId: string) => void;
   mode: MatchWeekMode;
-  onSimComplete?: () => void;
+  persistedResult?: CommandCenterSimResponse | null;
+  onSimComplete?: (result: CommandCenterSimResponse) => void;
   onAdvanceWeek?: () => void;
 }) {
   const { data, setData, error, setError, loading, setLoading } = useApiResource<CommandCenterResponse>('/api/command-center');
@@ -31,6 +34,7 @@ export function MatchWeek({
   const [revealStage, setRevealStage] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isAdvancingWeek, setIsAdvancingWeek] = useState(false);
+  const [planConfirmed, setPlanConfirmed] = useState(false);
 
   const selectedIntent = localIntent ?? data?.plan.intent ?? 'Win Now';
 
@@ -49,7 +53,7 @@ export function MatchWeek({
       .finally(() => setLoading(false));
   };
 
-  const savePlan = (intent = selectedIntent) => {
+  const savePlan = (intent = selectedIntent, confirm = false) => {
     setError(null);
     return fetch('/api/command-center/plan', {
       method: 'POST',
@@ -63,6 +67,7 @@ export function MatchWeek({
       .then((payload: CommandCenterResponse) => {
         setData(payload);
         setLocalIntent(undefined);
+        setPlanConfirmed(confirm);
       })
       .catch(err => setError(err.message));
   };
@@ -91,7 +96,13 @@ export function MatchWeek({
 
   const handleSimTransitionComplete = () => {
     setIsTransitioning(false);
-    onSimComplete?.();
+    if (result) {
+      onSimComplete?.(result);
+    }
+    const matchId = result?.dashboard?.match_id;
+    if (matchId && onOpenReplay) {
+      onOpenReplay(matchId);
+    }
   };
 
   const handleAdvanceWeek = () => {
@@ -99,6 +110,7 @@ export function MatchWeek({
     setTimeout(() => {
         setRevealStage(0);
         setResult(null); 
+        setPlanConfirmed(false);
         load(); 
         onAdvanceWeek?.();
         setIsAdvancingWeek(false);
@@ -106,11 +118,12 @@ export function MatchWeek({
   };
 
   useEffect(() => {
-    if (mode !== 'post-sim' || !result?.aftermath) return;
+    const activeResult = result ?? persistedResult;
+    if (mode !== 'post-sim' || !activeResult?.aftermath) return;
     if (revealStage >= 5) return;
     const t = setTimeout(() => setRevealStage(prev => prev + 1), 1000);
     return () => clearTimeout(t);
-  }, [revealStage, mode, result]);
+  }, [revealStage, mode, result, persistedResult]);
 
   useEffect(() => {
     if (mode !== 'post-sim') return;
@@ -132,7 +145,16 @@ export function MatchWeek({
     if (!data) return null;
 
     const plan = data.plan;
-    const isSimReady = data.plan.warnings?.length === 0;
+    const hasValidLineup = (data.plan.lineup?.player_ids?.length ?? 0) >= 6;
+    const hasTactics = Boolean(data.plan.tactics && Object.keys(data.plan.tactics).length > 0);
+    const isSimReady = planConfirmed && hasValidLineup && hasTactics;
+    const disabledReason = !hasValidLineup
+      ? 'Set a valid six-player lineup before simulating.'
+      : !hasTactics
+      ? 'Choose a tactic before simulating.'
+      : !planConfirmed
+      ? 'Confirm the staff plan before simulating.'
+      : undefined;
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }} data-testid="weekly-command-center">
@@ -157,6 +179,7 @@ export function MatchWeek({
               value={selectedIntent}
               onChange={(event) => {
                 setLocalIntent(event.target.value);
+                setPlanConfirmed(false);
                 savePlan(event.target.value);
               }}
               style={{
@@ -179,10 +202,10 @@ export function MatchWeek({
           </label>
         </div>
 
-        <MatchupCard plan={data.plan} onSimulate={simulate} disabled={!isSimReady} />
+        <MatchupCard plan={data.plan} onSimulate={simulate} disabled={!isSimReady} disabledReason={disabledReason} />
         
         <div style={{ display: 'flex', gap: '1.25rem' }}>
-          <WeeklyChecklist plan={data.plan} onAcceptPlan={() => savePlan()} />
+          <WeeklyChecklist plan={data.plan} onAcceptPlan={() => savePlan(selectedIntent, true)} planConfirmed={planConfirmed} />
           <ProgramStatusStrip />
         </div>
       </div>
@@ -190,13 +213,14 @@ export function MatchWeek({
   };
 
   const renderPostSimMode = () => {
-    if (!result?.aftermath) return (
+    const activeResult = result ?? persistedResult;
+    if (!activeResult?.aftermath) return (
       <div className="dm-panel">
         <p>Processing results...</p>
       </div>
     );
 
-    const { aftermath } = result;
+    const { aftermath } = activeResult;
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }} data-testid="match-week-post-sim">

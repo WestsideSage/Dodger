@@ -1,0 +1,155 @@
+<h2>Ceremony Designs — All 5 Surfaces</h2>
+<p class="subtitle">Each ceremony uses the existing <code>CeremonyShell</code> (spacebar skip, reduced-motion) but gets a unique card layout and pacing.</p>
+
+<div class="section">
+  <h3>🏆 Awards Night</h3>
+  <p class="subtitle">One card reveals per award. Stage spotlight: dim background, orange glow on active card.</p>
+  <div class="mockup">
+    <div class="mockup-header">Awards Night — 2 of 5 revealed</div>
+    <div class="mockup-body" style="display:flex;flex-direction:column;gap:0.6rem">
+      <div style="background:#1e293b;border:1px solid #f97316;border-radius:6px;padding:0.9rem;display:flex;align-items:center;gap:1rem;box-shadow:0 0 16px #f9731644">
+        <div style="font-size:2.5rem">🏆</div>
+        <div style="flex:1">
+          <div style="font-size:0.65rem;color:#f97316;text-transform:uppercase;letter-spacing:0.07em">MVP of the Season</div>
+          <div style="font-size:1.2rem;font-weight:800;color:#f1f5f9">Marcus Reyes</div>
+          <div style="font-size:0.8rem;color:#94a3b8">Thunder Bay Bolts · 94 elims · OVR 88 ↑5</div>
+        </div>
+        <div style="font-size:1.5rem;color:#f97316">✓</div>
+      </div>
+      <div style="background:#1e293b;border:1px solid #eab308;border-radius:6px;padding:0.9rem;display:flex;align-items:center;gap:1rem;box-shadow:0 0 12px #eab30833">
+        <div style="font-size:2.5rem">⚡</div>
+        <div style="flex:1">
+          <div style="font-size:0.65rem;color:#eab308;text-transform:uppercase;letter-spacing:0.07em">Top Rookie</div>
+          <div style="font-size:1.2rem;font-weight:800;color:#f1f5f9">Deja Collins</div>
+          <div style="font-size:0.8rem;color:#94a3b8">Lakeside Lions · 61 elims · OVR 74 ↑12</div>
+        </div>
+        <div style="font-size:1.5rem;color:#eab308">✓</div>
+      </div>
+      <div style="background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:0.9rem;display:flex;align-items:center;gap:1rem;opacity:0.5">
+        <div style="font-size:2.5rem;filter:grayscale(1)">🛡️</div>
+        <div><div style="font-size:0.65rem;color:#475569;text-transform:uppercase;letter-spacing:0.07em">Best Defender — revealing…</div></div>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:0.5rem;font-size:0.8rem;color:#64748b">Backend: <code>awards_payload: [{player_name, club_name, award_type, career_elims, ovr, ovr_delta}]</code></p>
+</div>
+
+<div class="section">
+  <h3>🎓 Graduation</h3>
+  <p class="subtitle">One card per departing senior. Shows their growth arc with you: starting OVR → peak OVR → final OVR, career elims, seasons served. Simple "outlook" line from their potential tier.</p>
+  <div class="mockup">
+    <div class="mockup-header">Graduation — Departing Seniors</div>
+    <div class="mockup-body" style="display:flex;flex-direction:column;gap:0.6rem">
+      <div style="background:#1e293b;border:1px solid #10b981;border-radius:6px;padding:0.9rem">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div style="font-size:0.65rem;color:#10b981;text-transform:uppercase;letter-spacing:0.07em">Captain · 4 Seasons</div>
+            <div style="font-size:1.15rem;font-weight:800;color:#f1f5f9">Marcus Reyes</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:0.7rem;color:#64748b">OVR arc</div>
+            <div style="font-size:0.95rem;color:#94a3b8">62 → <span style="color:#10b981;font-weight:700">88</span></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:1.5rem;margin-top:0.6rem;font-size:0.78rem;color:#94a3b8">
+          <span>📊 311 career elims</span>
+          <span>🏆 1 championship</span>
+          <span>🔥 Peak OVR 88 (Yr 4)</span>
+        </div>
+        <div style="margin-top:0.5rem;font-size:0.78rem;color:#10b981;font-style:italic">Elite potential — projected pro-level career.</div>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:0.5rem;font-size:0.8rem;color:#64748b">Backend: <code>retirements_payload: [{name, seasons_with_club, ovr_start, ovr_peak, ovr_final, career_elims, championships, potential_tier}]</code></p>
+</div>
+
+<div class="section">
+  <h3>📋 Coaching Carousel</h3>
+  <p class="subtitle">Staff departure → replacement reveal, one card pair per movement. Skipped entirely if no staff movement (as per spec).</p>
+  <div class="mockup">
+    <div class="mockup-header">Coaching Carousel</div>
+    <div class="mockup-body" style="display:flex;flex-direction:column;gap:0.6rem">
+      <div style="background:#1e293b;border:1px solid #334155;border-radius:6px;padding:0.75rem;display:flex;gap:1rem;align-items:center">
+        <div style="flex:1;text-align:center">
+          <div style="font-size:0.65rem;color:#ef4444;text-transform:uppercase">Departing</div>
+          <div style="font-size:1rem;font-weight:700;color:#f1f5f9">Coach Bill Torres</div>
+          <div style="font-size:0.75rem;color:#94a3b8">Ridgewood Rockets</div>
+        </div>
+        <div style="font-size:1.5rem;color:#475569">→</div>
+        <div style="flex:1;text-align:center">
+          <div style="font-size:0.65rem;color:#10b981;text-transform:uppercase">Incoming</div>
+          <div style="font-size:1rem;font-weight:700;color:#f1f5f9">Coach Sandra Vance</div>
+          <div style="font-size:0.75rem;color:#94a3b8">Hired from free pool · Rating B+</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:0.5rem;font-size:0.8rem;color:#64748b">Backend: <code>carousel_payload: [{departing_name, departing_club, incoming_name, incoming_rating}]</code> — empty list = ceremony skipped.</p>
+</div>
+
+<div class="section">
+  <h3>✍️ Signing Day</h3>
+  <p class="subtitle">Prospects commit one by one. Tension meter fills as each signing resolves. Your signings get a highlight ring.</p>
+  <div class="mockup">
+    <div class="mockup-header">Signing Day — 3 of 8 committed</div>
+    <div class="mockup-body" style="display:flex;flex-direction:column;gap:0.5rem">
+      <div style="margin-bottom:0.5rem">
+        <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase;margin-bottom:0.25rem">Class signed</div>
+        <div style="background:#0f172a;border-radius:4px;height:8px;overflow:hidden">
+          <div style="background:linear-gradient(90deg,#22d3ee,#3b82f6);width:37%;height:100%;border-radius:4px;transition:width 0.4s"></div>
+        </div>
+        <div style="font-size:0.7rem;color:#22d3ee;margin-top:0.2rem">3 / 8 spots filled</div>
+      </div>
+      <div style="background:#1e293b;border:2px solid #22d3ee;border-radius:6px;padding:0.75rem;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:0.65rem;color:#22d3ee;text-transform:uppercase">YOUR SIGNING ✓</div>
+          <div style="font-size:1rem;font-weight:700;color:#f1f5f9">Kwame Asante</div>
+          <div style="font-size:0.75rem;color:#94a3b8">OVR 71 · Thrower · Age 17</div>
+        </div>
+        <div style="font-size:1.75rem">🎯</div>
+      </div>
+      <div style="background:#1e293b;border:1px solid #334155;border-radius:6px;padding:0.75rem;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase">Signed — Lakeside Lions</div>
+          <div style="font-size:1rem;font-weight:700;color:#94a3b8">Taylor Osei</div>
+          <div style="font-size:0.75rem;color:#64748b">OVR 68 · Catcher · Age 18</div>
+        </div>
+      </div>
+      <div style="background:#0f172a;border:1px dashed #334155;border-radius:6px;padding:0.75rem;opacity:0.5;text-align:center;font-size:0.8rem;color:#475569">5 prospects still deciding…</div>
+    </div>
+  </div>
+  <p style="margin-top:0.5rem;font-size:0.8rem;color:#64748b">Backend: <code>signings_payload: [{name, ovr, role, age, signed_by_player_club}]</code> built incrementally as advance is pressed.</p>
+</div>
+
+<div class="section">
+  <h3>🌅 New Season Eve</h3>
+  <p class="subtitle">Schedule reveal: first 6 fixtures animate in, then a voice-template prediction headline. "Start the Season" is the only CTA.</p>
+  <div class="mockup">
+    <div class="mockup-header">New Season Eve — Season 2027</div>
+    <div class="mockup-body" style="display:flex;flex-direction:column;gap:0.5rem">
+      <div style="font-size:0.8rem;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.25rem">Opening Week Fixtures</div>
+      <div style="display:flex;flex-direction:column;gap:0.35rem">
+        <div style="background:#1e293b;border-left:3px solid #f97316;padding:0.5rem 0.75rem;border-radius:0 4px 4px 0;display:flex;justify-content:space-between">
+          <span style="color:#f97316;font-weight:700">Week 1 · YOUR MATCH</span>
+          <span style="color:#94a3b8">Thunder Bay vs Lakeside</span>
+        </div>
+        <div style="background:#1e293b;border-left:3px solid #334155;padding:0.5rem 0.75rem;border-radius:0 4px 4px 0;display:flex;justify-content:space-between">
+          <span style="color:#94a3b8">Week 1</span>
+          <span style="color:#94a3b8">Ridgewood vs Eastport</span>
+        </div>
+        <div style="background:#1e293b;border-left:3px solid #334155;padding:0.5rem 0.75rem;border-radius:0 4px 4px 0;display:flex;justify-content:space-between">
+          <span style="color:#94a3b8">Week 1</span>
+          <span style="color:#94a3b8">Crestfall vs Westmere</span>
+        </div>
+      </div>
+      <div style="margin-top:0.75rem;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:0.75rem">
+        <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase;margin-bottom:0.25rem">Season Prediction</div>
+        <div style="font-size:1rem;color:#f1f5f9;font-style:italic">"Thunder Bay enters as defending champions — but three rivals quietly upgraded their rosters this off-season."</div>
+      </div>
+      <div style="text-align:center;margin-top:0.75rem">
+        <button class="mock-button" style="background:#f97316;color:#fff;border:none;font-weight:700;font-size:1rem">Start the Season</button>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:0.5rem;font-size:0.8rem;color:#64748b">Backend: <code>schedule_payload: [{week, home, away, is_player_match}]</code> + prediction headline from <code>voice_pregame.py</code>.</p>
+</div>

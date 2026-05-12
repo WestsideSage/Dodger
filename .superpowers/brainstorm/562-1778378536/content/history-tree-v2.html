@@ -1,0 +1,116 @@
+<h2>Program Tree — v2</h2>
+<p class="subtitle">SVG-drawn trunk and branch lines. Empty seasons show on the trunk with no branch. Lines clearly connect every node.</p>
+
+<div class="section">
+  <div class="mockup">
+    <div class="mockup-header">Program History — Thunder Bay Bolts (Seasons 1–4)</div>
+    <div class="mockup-body">
+
+      <div style="position:relative;width:460px;height:360px;margin:0 auto">
+
+        <svg width="460" height="360" style="position:absolute;left:0;top:0;overflow:visible">
+          <defs>
+            <radialGradient id="cg" cx="40%" cy="35%">
+              <stop offset="0%" stop-color="#f97316"/>
+              <stop offset="100%" stop-color="#9a3412"/>
+            </radialGradient>
+            <filter id="glow-orange">
+              <feGaussianBlur stdDeviation="3" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <filter id="glow-green">
+              <feGaussianBlur stdDeviation="2.5" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <!-- ══ TRUNK — thick, runs the full height ══ -->
+          <line x1="90" y1="36" x2="90" y2="316" stroke="#475569" stroke-width="3" stroke-linecap="round"/>
+
+          <!-- ══ SEASON 1 (cy=65) — one small milestone ══ -->
+          <!-- Trunk node -->
+          <circle cx="90" cy="65" r="6" fill="#1e293b" stroke="#64748b" stroke-width="2"/>
+          <!-- Branch line: trunk node edge → First Win dot edge -->
+          <line x1="96" y1="65" x2="118" y2="65" stroke="#3b82f6" stroke-width="1.5" opacity="0.7"/>
+          <!-- First Win dot (r=6) -->
+          <circle cx="124" cy="65" r="6" fill="#3b82f6" stroke="#60a5fa" stroke-width="2"/>
+
+          <!-- ══ SEASON 2 (cy=140) — EMPTY ══ -->
+          <!-- Trunk node: dashed ring to signal "nothing branched here" -->
+          <circle cx="90" cy="140" r="5" fill="#0f172a" stroke="#334155" stroke-width="1.5" stroke-dasharray="3 2"/>
+          <!-- Tiny dead-end stub so it's obvious there's nothing -->
+          <line x1="95" y1="140" x2="110" y2="140" stroke="#1e293b" stroke-width="1.5" stroke-dasharray="3 2" opacity="0.8"/>
+
+          <!-- ══ SEASON 3 (cy=215) — CHAMPIONSHIP RUN ══ -->
+          <!-- Trunk node: glowing orange, larger -->
+          <circle cx="90" cy="215" r="8" fill="#c2410c" stroke="#fb923c" stroke-width="2.5" filter="url(#glow-orange)"/>
+          <!-- Continuous branch line from trunk through all three dots -->
+          <!-- Segment 1: trunk edge → Playoff dot left edge -->
+          <line x1="98" y1="215" x2="116" y2="215" stroke="#f97316" stroke-width="2" opacity="0.6"/>
+          <!-- Segment 2: Playoff right edge → MVP left edge -->
+          <line x1="132" y1="215" x2="174" y2="215" stroke="#f97316" stroke-width="2" opacity="0.6"/>
+          <!-- Segment 3: MVP right edge → Championship left edge -->
+          <line x1="194" y1="215" x2="236" y2="215" stroke="#f97316" stroke-width="2" opacity="0.6"/>
+          <!-- Playoff dot (r=8) -->
+          <circle cx="124" cy="215" r="8" fill="#7c3aed" stroke="#a78bfa" stroke-width="2"/>
+          <!-- MVP dot (r=10) -->
+          <circle cx="184" cy="215" r="10" fill="#d97706" stroke="#fbbf24" stroke-width="2"/>
+          <!-- Championship dot (r=16, glowing) -->
+          <circle cx="252" cy="215" r="16" fill="url(#cg)" stroke="#fb923c" stroke-width="3" filter="url(#glow-orange)"/>
+
+          <!-- ══ SEASON 4 (cy=290) — one notable milestone ══ -->
+          <!-- Trunk node -->
+          <circle cx="90" cy="290" r="6" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+          <!-- Branch line -->
+          <line x1="96" y1="290" x2="112" y2="290" stroke="#10b981" stroke-width="1.5" opacity="0.7"/>
+          <!-- HoF dot (r=12) -->
+          <circle cx="124" cy="290" r="12" fill="#065f46" stroke="#34d399" stroke-width="2" filter="url(#glow-green)"/>
+
+          <!-- Present trailing dot -->
+          <circle cx="90" cy="328" r="3" fill="#334155" opacity="0.5"/>
+        </svg>
+
+        <!-- ── Season labels (right-aligned, left of trunk) ── -->
+        <div style="position:absolute;left:0;width:80px;text-align:right;top:57px;font-size:0.6rem;color:#64748b;white-space:nowrap">Season 1</div>
+        <div style="position:absolute;left:0;width:80px;text-align:right;top:132px;font-size:0.6rem;color:#334155;font-style:italic;white-space:nowrap">Season 2</div>
+        <div style="position:absolute;left:0;width:80px;text-align:right;top:207px;font-size:0.6rem;color:#fb923c;font-weight:700;white-space:nowrap">Season 3</div>
+        <div style="position:absolute;left:0;width:80px;text-align:right;top:282px;font-size:0.6rem;color:#64748b;white-space:nowrap">Season 4</div>
+
+        <!-- ── S2 empty label ── -->
+        <div style="position:absolute;left:115px;top:133px;font-size:0.55rem;color:#334155;font-style:italic;white-space:nowrap">— no milestones</div>
+
+        <!-- ── S1 milestone labels (below dots) ── -->
+        <div style="position:absolute;left:124px;top:76px;transform:translateX(-50%);font-size:0.55rem;color:#60a5fa;white-space:nowrap">First Win</div>
+
+        <!-- ── S3 milestone labels ── -->
+        <div style="position:absolute;left:124px;top:228px;transform:translateX(-50%);font-size:0.55rem;color:#a78bfa;white-space:nowrap">Playoff</div>
+        <div style="position:absolute;left:184px;top:230px;transform:translateX(-50%);font-size:0.55rem;color:#fbbf24;white-space:nowrap">MVP</div>
+        <div style="position:absolute;left:252px;top:236px;transform:translateX(-50%);font-size:0.6rem;color:#fb923c;font-weight:700;white-space:nowrap">🏆 Champions</div>
+
+        <!-- ── S4 milestone label ── -->
+        <div style="position:absolute;left:124px;top:307px;transform:translateX(-50%);font-size:0.55rem;color:#34d399;white-space:nowrap">HoF: Reyes</div>
+
+        <!-- Present -->
+        <div style="position:absolute;left:100px;top:322px;font-size:0.55rem;color:#334155;font-style:italic">Present…</div>
+
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:1rem">
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center">
+      <div style="display:flex;align-items:center;gap:0.5rem">
+        <svg width="20" height="12"><line x1="0" y1="6" x2="20" y2="6" stroke="#475569" stroke-width="3" stroke-linecap="round"/></svg>
+        <span style="font-size:0.75rem;color:#94a3b8">Trunk (always present)</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.5rem">
+        <svg width="20" height="12"><line x1="0" y1="6" x2="20" y2="6" stroke="#334155" stroke-width="1.5" stroke-dasharray="3 2"/></svg>
+        <span style="font-size:0.75rem;color:#94a3b8">Empty season stub</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.5rem">
+        <svg width="20" height="12"><line x1="0" y1="6" x2="20" y2="6" stroke="#f97316" stroke-width="2" opacity="0.7"/></svg>
+        <span style="font-size:0.75rem;color:#94a3b8">Branch (connects nodes)</span>
+      </div>
+    </div>
+  </div>
+</div>

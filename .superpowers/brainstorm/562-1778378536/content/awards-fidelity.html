@@ -1,0 +1,68 @@
+<h2>Awards Night — Which fidelity level?</h2>
+<p class="subtitle">The spec requires "per-player award cards with season stats." How deep should we go?</p>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Card-per-award (full spec)</h3>
+      <p>Each award gets its own reveal card. Player name, award type, key stat that won it, team. Stagger-animated one at a time on screen. ~3–5 cards for a typical season.</p>
+      <div class="mockup" style="margin-top:0.75rem">
+        <div class="mockup-header">Awards Night — Stage 2 of 4</div>
+        <div class="mockup-body" style="display:flex;flex-direction:column;gap:0.6rem">
+          <div style="background:#1e293b;border:1px solid #f97316;border-radius:6px;padding:0.75rem;display:flex;align-items:center;gap:1rem">
+            <div style="font-size:2rem">🏆</div>
+            <div>
+              <div style="font-size:0.65rem;color:#f97316;text-transform:uppercase;letter-spacing:0.05em">MVP of the Season</div>
+              <div style="font-size:1.1rem;font-weight:700;color:#f1f5f9">Marcus Reyes</div>
+              <div style="font-size:0.75rem;color:#94a3b8">Thunder Bay Bolts · 94 elims · OVR 88</div>
+            </div>
+          </div>
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:6px;padding:0.75rem;display:flex;align-items:center;gap:1rem;opacity:0.4">
+            <div style="font-size:2rem">⚡</div>
+            <div>
+              <div style="font-size:0.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em">Top Rookie</div>
+              <div style="font-size:1.1rem;font-weight:700;color:#f1f5f9">Deja Collins</div>
+              <div style="font-size:0.75rem;color:#94a3b8">… (revealing next)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pros-cons" style="margin-top:0.5rem">
+        <div class="pros"><h4>Pros</h4><ul><li>Matches spec exactly</li><li>Dramatic pacing</li><li>Highlights player names players know</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>More backend work (structured award payload)</li><li>More frontend cards to animate</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Rich list reveal</h3>
+      <p>All awards on one pane, revealed as a styled list. Each line fades in individually. Simpler — still a real upgrade from current stub — but less cinematic.</p>
+      <div class="mockup" style="margin-top:0.75rem">
+        <div class="mockup-header">Awards Night</div>
+        <div class="mockup-body" style="display:flex;flex-direction:column;gap:0.5rem">
+          <div style="font-size:1.25rem;font-weight:700;color:#f97316;margin-bottom:0.25rem">Season Awards</div>
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid #334155;padding-bottom:0.35rem">
+            <span style="color:#f1f5f9">MVP of the Season</span><span style="color:#94a3b8">Marcus Reyes (Thunder Bay)</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid #334155;padding-bottom:0.35rem">
+            <span style="color:#f1f5f9">Top Rookie</span><span style="color:#94a3b8">Deja Collins (Lakeside)</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid #334155;padding-bottom:0.35rem">
+            <span style="color:#f1f5f9">Best Defender</span><span style="color:#94a3b8">T. Okonkwo (Ridgewood)</span>
+          </div>
+        </div>
+      </div>
+      <div class="pros-cons" style="margin-top:0.5rem">
+        <div class="pros"><h4>Pros</h4><ul><li>Simpler to implement</li><li>Still real data, real names</li><li>Works with current body-string payload</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Less dramatic than Option A</li><li>Doesn't match the "stage spotlight" spec language</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:1rem">Your choice here determines how much backend restructuring we do for all 5 ceremonies (Awards, Graduation, Signing Day, NewSeasonEve, CoachingCarousel).</p>

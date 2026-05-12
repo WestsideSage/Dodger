@@ -31,7 +31,7 @@ export function Standings() {
   const leader = rows[0];
 
   const handleRowClick = (teamId: string) => {
-    window.location.hash = `?tab=dynasty&subtab=history&team_id=${teamId}`;
+    window.location.assign(`#?tab=dynasty&subtab=history&team_id=${teamId}`);
   };
 
   return (
@@ -64,10 +64,10 @@ export function Standings() {
                    <span className="dm-desktop-only">Points</span>
                    <span className="dm-mobile-only">Pts</span>
                 </th>
-                <th style={{ textAlign: 'right' }}>PCT</th>
-                <th style={{ textAlign: 'right' }}>GB</th>
+                <th style={{ textAlign: 'right' }}>Win Rate</th>
+                <th style={{ textAlign: 'right' }}>Games Back</th>
                 <th style={{ textAlign: 'right' }}>
-                   <span className="dm-desktop-only">Differential</span>
+                   <span className="dm-desktop-only">Elim Differential</span>
                    <span className="dm-mobile-only">Diff</span>
                 </th>
               </tr>
@@ -145,12 +145,12 @@ export function Standings() {
                       {row.points}
                     </td>
 
-                    {/* PCT */}
+                    {/* Win rate */}
                     <td className="dm-data" style={{ textAlign: 'right', color: '#cbd5e1' }}>
                       {winPct}
                     </td>
 
-                    {/* GB */}
+                    {/* Games back */}
                     <td className="dm-data" style={{ textAlign: 'right', color: '#64748b' }}>
                       {gamesBack}
                     </td>
