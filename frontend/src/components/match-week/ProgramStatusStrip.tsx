@@ -25,9 +25,9 @@ export function ProgramStatusStrip() {
             {/* W-L-D row */}
             <div style={{ display: 'flex', gap: '1.5rem' }}>
               {[
-                { label: 'W', value: userRow.wins, color: '#10b981' },
-                { label: 'L', value: userRow.losses, color: '#f43f5e' },
-                { label: 'D', value: userRow.draws, color: '#94a3b8' },
+                { label: 'Wins', value: userRow.wins, color: '#10b981' },
+                { label: 'Losses', value: userRow.losses, color: '#f43f5e' },
+                { label: 'Ties', value: userRow.draws, color: '#94a3b8' },
               ].map(({ label, value, color }) => (
                 <div key={label} style={{ textAlign: 'center' }}>
                   <div className="dm-data" style={{ fontSize: '1.5rem', fontWeight: 800, color, lineHeight: 1 }}>{value}</div>

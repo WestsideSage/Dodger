@@ -5,7 +5,7 @@ import { Standings } from './components/LeagueContext';
 import { Roster } from './components/Roster';
 import { SaveMenu } from './components/SaveMenu';
 import MatchReplay from './components/MatchReplay';
-import type { MatchReplayResponse } from './types';
+import type { CommandCenterSimResponse, MatchReplayResponse } from './types';
 
 type Screen = 'loading' | 'menu' | 'game' | 'offseason';
 type Tab = 'command' | 'dynasty' | 'roster' | 'standings';
@@ -39,6 +39,7 @@ function App() {
   const [screen, setScreen] = useState<Screen>('loading');
   const [activeTab, setActiveTab] = useState<Tab>(tabFromUrl);
   const [postSimThisSession, setPostSimThisSession] = useState(false);
+  const [postSimResult, setPostSimResult] = useState<CommandCenterSimResponse | null>(null);
   const [commandReplay, setCommandReplay] = useState<MatchReplayResponse | null>(null);
   const [commandReplayLoading, setCommandReplayLoading] = useState(false);
 
@@ -176,13 +177,20 @@ function App() {
           {!commandReplay && !commandReplayLoading && effectiveActiveTab === 'command' && (
             <MatchWeek
               onOpenReplay={openCommandReplay}
+              persistedResult={postSimResult}
               mode={
                 screen === 'offseason' ? 'offseason'
                 : postSimThisSession ? 'post-sim'
                 : 'pre-sim'
               }
-              onSimComplete={() => setPostSimThisSession(true)}
-              onAdvanceWeek={() => setPostSimThisSession(false)}
+              onSimComplete={(payload) => {
+                setPostSimResult(payload);
+                setPostSimThisSession(true);
+              }}
+              onAdvanceWeek={() => {
+                setPostSimResult(null);
+                setPostSimThisSession(false);
+              }}
             />
           )}
           {!commandReplay && !commandReplayLoading && effectiveActiveTab === 'dynasty' && <DynastyOffice />}

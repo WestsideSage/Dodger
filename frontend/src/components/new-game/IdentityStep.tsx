@@ -9,6 +9,13 @@ const COLOR_PRESETS = [
   { label: 'Amber', primary: '#f59e0b', secondary: '#1e293b' },
 ];
 
+type ProgramIdentity = {
+  save_name: string;
+  club_name: string;
+  city: string;
+  colors: string;
+};
+
 function colorsToValue(primary: string, secondary: string) {
   return `${primary},${secondary}`;
 }
@@ -40,12 +47,15 @@ export function IdentityStep({
   setIdentity,
   onNext,
 }: {
-  identity: any;
-  setIdentity: (v: any) => void;
+  identity: ProgramIdentity;
+  setIdentity: (v: ProgramIdentity) => void;
   onNext: () => void;
 }) {
   const currentPrimary = identity.colors?.split(',')[0] ?? '#22d3ee';
   const currentSecondary = identity.colors?.split(',')[1] ?? '#0f172a';
+  const selectedPreset = COLOR_PRESETS.find(
+    preset => identity.colors === colorsToValue(preset.primary, preset.secondary)
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -121,19 +131,16 @@ export function IdentityStep({
           })}
         </div>
 
-        {/* Live preview swatch */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#94a3b8', fontSize: '0.75rem' }}>
           <div style={{ display: 'flex', borderRadius: '4px', overflow: 'hidden', width: '48px', height: '24px', flexShrink: 0 }}>
             <div style={{ flex: 1, background: currentPrimary }} />
             <div style={{ flex: 1, background: currentSecondary }} />
           </div>
-          <input
-            type="text"
-            value={identity.colors}
-            onChange={e => setIdentity({ ...identity, colors: e.target.value })}
-            placeholder="#22d3ee,#0f172a"
-            style={{ ...inputStyle, fontSize: '0.75rem', color: '#64748b', flex: 1 }}
-          />
+          <span>
+            {selectedPreset
+              ? `${selectedPreset.label} kit selected`
+              : 'Custom kit selected'}
+          </span>
         </div>
       </Field>
 

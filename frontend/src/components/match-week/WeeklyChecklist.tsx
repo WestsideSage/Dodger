@@ -1,10 +1,19 @@
+import type { CommandCenterPlan } from '../../types';
 import { ActionButton } from '../ui';
 
-export function WeeklyChecklist({ plan, onAcceptPlan }: { plan: any; onAcceptPlan: () => void }) {
+export function WeeklyChecklist({
+  plan,
+  onAcceptPlan,
+  planConfirmed,
+}: {
+  plan: CommandCenterPlan;
+  onAcceptPlan: () => void;
+  planConfirmed: boolean;
+}) {
   const warnings: string[] = plan?.warnings ?? [];
   const recommendations: Array<{ department: string; text: string }> = plan?.recommendations ?? [];
   const lineupSummary: string | undefined = plan?.lineup?.summary;
-  const starterNames: string[] = (plan?.lineup?.players ?? []).slice(0, 6).map((p: any) => p.name);
+  const starterNames: string[] = (plan?.lineup?.players ?? []).slice(0, 6).map(player => player.name);
 
   return (
     <div className="dm-panel" style={{ flex: 6 }}>
@@ -49,6 +58,20 @@ export function WeeklyChecklist({ plan, onAcceptPlan }: { plan: any; onAcceptPla
           )}
         </div>
 
+        <div>
+          <p className="dm-kicker" style={{ marginBottom: '0.375rem' }}>Plan Status</p>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+            <span style={{ color: planConfirmed ? '#10b981' : '#f59e0b', flexShrink: 0, fontSize: '0.875rem' }}>
+              {planConfirmed ? 'OK' : '!'}
+            </span>
+            <span style={{ fontSize: '0.8125rem', color: planConfirmed ? '#10b981' : '#cbd5e1', lineHeight: 1.4 }}>
+              {planConfirmed
+                ? 'Staff plan is confirmed. Risk notes stay visible but do not block match day.'
+                : 'Confirm the staff plan to unlock match simulation.'}
+            </span>
+          </div>
+        </div>
+
         {/* Top staff recommendation */}
         {recommendations.length > 0 && (
           <div style={{ borderTop: '1px solid #1e293b', paddingTop: '0.75rem' }}>
@@ -62,7 +85,9 @@ export function WeeklyChecklist({ plan, onAcceptPlan }: { plan: any; onAcceptPla
         )}
 
         <div style={{ borderTop: '1px solid #1e293b', paddingTop: '0.75rem' }}>
-          <ActionButton variant="accent" onClick={onAcceptPlan}>Confirm Plan</ActionButton>
+          <ActionButton variant={planConfirmed ? 'ghost' : 'accent'} onClick={onAcceptPlan}>
+            {planConfirmed ? 'Plan Confirmed' : 'Confirm Plan'}
+          </ActionButton>
         </div>
       </div>
     </div>

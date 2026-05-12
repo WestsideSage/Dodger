@@ -1,7 +1,18 @@
 import { useState } from 'react';
+import type { CommandCenterPlan } from '../../types';
 import { ActionButton } from '../ui';
 
-export function MatchupCard({ plan, onSimulate, disabled }: { plan: any; onSimulate: () => void; disabled: boolean }) {
+export function MatchupCard({
+  plan,
+  onSimulate,
+  disabled,
+  disabledReason,
+}: {
+  plan: CommandCenterPlan;
+  onSimulate: () => void;
+  disabled: boolean;
+  disabledReason?: string;
+}) {
   const [speed, setSpeed] = useState<'Fast' | 'Normal' | 'Slow'>('Normal');
   const details = plan.matchup_details ?? {
     opponent_record: '—', last_meeting: 'None', key_matchup: 'TBD', framing_line: 'Matchup pending.',
@@ -62,7 +73,7 @@ export function MatchupCard({ plan, onSimulate, disabled }: { plan: any; onSimul
             </select>
           </label>
           {disabled && (
-            <span style={{ fontSize: '0.75rem', color: '#f59e0b' }}>Review warnings before simulating.</span>
+            <span style={{ fontSize: '0.75rem', color: '#f59e0b' }}>{disabledReason ?? 'Confirm the plan before simulating.'}</span>
           )}
         </div>
       </div>

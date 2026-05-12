@@ -588,13 +588,6 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
 
   const totalEvents = data.events.length;
 
-  useEffect(() => {
-    if (playSpeed === 'Fast') {
-        setEventIndex(totalEvents - 1);
-        setIsPlaying(false);
-    }
-  }, [playSpeed, totalEvents]);
-
   // Player registry from proof events
   const playerRegistry = useMemo(() => {
     const reg = new Map<string, PlayerInfo>();
@@ -704,7 +697,16 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
   const stepBack = useCallback(() => { setIsPlaying(false); setEventIndex((i) => Math.max(0, i - 1)); }, []);
   const stepForward = useCallback(() => { setIsPlaying(false); setEventIndex((i) => Math.min(totalEvents - 1, i + 1)); }, [totalEvents]);
   const togglePlay = useCallback(() => setIsPlaying((p) => !p), []);
-  const cycleSpeed = useCallback(() => setPlaySpeed((s) => (s === 'Normal' ? 'Fast' : s === 'Fast' ? 'Slow' : 'Normal')), []);
+  const cycleSpeed = useCallback(() => {
+    setPlaySpeed((speed) => {
+      const nextSpeed = speed === 'Normal' ? 'Fast' : speed === 'Fast' ? 'Slow' : 'Normal';
+      if (nextSpeed === 'Fast') {
+        setEventIndex(totalEvents - 1);
+        setIsPlaying(false);
+      }
+      return nextSpeed;
+    });
+  }, [totalEvents]);
 
   const jumpToKeyEvent = useCallback(() => {
     const kp = data.key_play_indices;
