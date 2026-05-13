@@ -442,7 +442,7 @@ def test_dynasty_office_prospect_pool_matches_persisted_pool():
     from dodgeball_sim.recruitment import generate_prospect_pool
     from dodgeball_sim.rng import DeterministicRNG, derive_seed
     from dodgeball_sim.config import DEFAULT_SCOUTING_CONFIG
-    from dodgeball_sim.dynasty_office import _class_year_from_season
+    from dodgeball_sim.recruiting_office import _class_year_from_season
 
     conn = _career_conn()
     state = build_dynasty_office_state(conn)
@@ -476,7 +476,7 @@ def test_dynasty_office_fallback_pool_matches_scouting_center_seed():
     from dodgeball_sim.recruitment import generate_prospect_pool
     from dodgeball_sim.rng import DeterministicRNG, derive_seed
     from dodgeball_sim.config import DEFAULT_SCOUTING_CONFIG
-    from dodgeball_sim.dynasty_office import _class_year_from_season
+    from dodgeball_sim.recruiting_office import _class_year_from_season
 
     conn = _career_conn()
     state = build_dynasty_office_state(conn)
