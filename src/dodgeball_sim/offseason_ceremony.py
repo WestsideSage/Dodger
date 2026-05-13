@@ -475,7 +475,7 @@ def begin_next_season(
     next_season = create_next_manager_season(clubs, root_seed, next_number, season.year + 1)
     prior_season_num = cursor.season_number or 1
 
-    _apply_scouting_carry_forward(conn, prior_season_num)
+    apply_scouting_carry_forward(conn, prior_season_num)
     save_season(conn, next_season)
     save_season_format(conn, next_season.season_id, PLAYOFF_FORMAT)
     set_state(conn, "active_season_id", next_season.season_id)
@@ -498,7 +498,7 @@ def begin_next_season(
     return new_cursor
 
 
-def _apply_scouting_carry_forward(conn: sqlite3.Connection, prior_class_year: int) -> None:
+def apply_scouting_carry_forward(conn: sqlite3.Connection, prior_class_year: int) -> None:
     from .config import DEFAULT_SCOUTING_CONFIG
     from .persistence import load_scouting_state, save_scouting_state
     from .scouting_center import apply_carry_forward_decay
@@ -777,4 +777,5 @@ __all__ = [
     "begin_next_season",
     "build_offseason_ceremony_beat",
     "create_next_manager_season",
+    "apply_scouting_carry_forward",
 ]

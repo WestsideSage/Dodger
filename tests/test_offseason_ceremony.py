@@ -76,3 +76,51 @@ def test_offseason_dev_path_loads_department_head_and_applies_modifier():
     assert avg_ovr_hired >= avg_ovr_base, (
         f"Expected hired ({avg_ovr_hired:.2f}) >= base ({avg_ovr_base:.2f})"
     )
+
+
+def test_apply_scouting_carry_forward_is_importable():
+    from dodgeball_sim.offseason_ceremony import apply_scouting_carry_forward
+    assert callable(apply_scouting_carry_forward)
+
+
+def test_apply_scouting_carry_forward_decays_verified_to_known(tmp_path):
+    """Prospects that were VERIFIED become KNOWN after carry-forward."""
+    from dodgeball_sim.offseason_ceremony import apply_scouting_carry_forward
+    from dodgeball_sim.persistence import (
+        connect, create_schema, load_scouting_state, save_scouting_state,
+    )
+    from dodgeball_sim.scouting_center import ScoutingState, ScoutingTier
+
+    db_path = tmp_path / "test.db"
+    conn = connect(db_path)
+    create_schema(conn)
+
+    player_id = "prospect_1_001"
+    # Insert a minimal prospect_pool row so the function can iterate
+    conn.execute(
+        """INSERT INTO prospect_pool
+           (player_id, class_year, name, age, hometown,
+            hidden_ratings_json, hidden_trajectory, hidden_traits_json,
+            public_archetype_guess, public_ratings_band_json, is_signed)
+           VALUES (?, 1, 'Test Player', 18, 'Somewhere',
+            '{}', 'NORMAL', '[]', 'Sharpshooter', '{"ovr":[50,60]}', 0)""",
+        (player_id,),
+    )
+    initial_state = ScoutingState(
+        player_id=player_id,
+        ratings_tier=ScoutingTier.VERIFIED.value,
+        archetype_tier=ScoutingTier.VERIFIED.value,
+        traits_tier=ScoutingTier.UNKNOWN.value,
+        trajectory_tier=ScoutingTier.UNKNOWN.value,
+        scout_points={"ratings": 100, "archetype": 100, "traits": 0, "trajectory": 0},
+        last_updated_week=1,
+    )
+    save_scouting_state(conn, initial_state)
+    conn.commit()
+
+    apply_scouting_carry_forward(conn, prior_class_year=1)
+
+    decayed = load_scouting_state(conn, player_id)
+    assert decayed is not None
+    assert decayed.ratings_tier == ScoutingTier.KNOWN.value
+    assert decayed.archetype_tier == ScoutingTier.KNOWN.value
