@@ -1,11 +1,14 @@
-"""Match orchestration helpers shared between use_cases.py and server.py.
+"""Match orchestration helpers used by use_cases.py.
 
-These helpers were extracted from server.py so that use_cases.py can import
-them without creating a circular import (server.py -> use_cases.py ->
-server.py).
+Extracted from server.py so that use_cases.py can import them without
+creating a circular import. server.py still retains local definitions of
+several helpers (_advance_playoffs_if_needed etc.) for its own endpoints;
+those are separate copies, not imports from this module.
 
-SimulateWeekError is defined here to avoid a further circular dependency
-when server.py imports it from use_cases.py.
+SimulateWeekError is defined here rather than in use_cases.py because
+match_orchestration imports from persistence/game_loop (not use_cases),
+so placing the error class here avoids a use_cases → match_orchestration
+→ use_cases circular import.
 """
 from __future__ import annotations
 
