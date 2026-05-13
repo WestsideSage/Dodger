@@ -399,6 +399,7 @@ export interface RetirementsBeatPayload {
 }
 
 export interface ChampionBeatPayload {
+    // `champion` is absent when the season ended without a champion (backend returns `{}`)
     champion?: { club_name: string; wins: number; losses: number; draws: number; title_count: number };
 }
 

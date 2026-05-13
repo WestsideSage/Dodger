@@ -94,7 +94,7 @@ export function Offseason() {
       />
 
       <article className="dm-panel command-offseason-feature">
-        <p className="dm-kicker">{(beat.key as string).replaceAll('_', ' ')}</p>
+        <p className="dm-kicker">{beat.key.replaceAll('_', ' ')}</p>
         <h3>{beat.title}</h3>
         <div className="command-offseason-copy">
           {bodyLines.length === 0 ? (
