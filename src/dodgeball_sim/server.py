@@ -81,13 +81,14 @@ from dodgeball_sim.command_center import (
     build_command_center_state,
     build_default_weekly_plan,
     build_post_week_dashboard,
+    refresh_weekly_plan_context,
 )
 from dodgeball_sim.dynasty_office import (
     build_dynasty_office_state,
     hire_staff_candidate,
     save_recruiting_promise,
-    _recent_match_item,
 )
+from dodgeball_sim.league_memory import recent_match_item
 
 app = FastAPI(title="Dodgeball Manager API")
 
@@ -531,7 +532,7 @@ def get_standings(conn = Depends(get_db)) -> StandingsResponse:
     return {
         "season_id": season_id,
         "standings": rows,
-        "recent_matches": [_recent_match_item(row, clubs) for row in recent]
+        "recent_matches": [recent_match_item(row, clubs) for row in recent]
     }
 
 
@@ -596,6 +597,7 @@ def _command_center_payload(conn) -> CommandCenterResponse:
     club = state["player_club"]
     existing = load_weekly_command_plan(conn, state["season_id"], state["week"], state["player_club_id"])
     plan = existing or build_default_weekly_plan(state)
+    plan = refresh_weekly_plan_context(plan, state)
     history = _sanitized_command_history(conn, state["season_id"])
     latest_dashboard = history[-1]["dashboard"] if history else None
     return {
@@ -1093,6 +1095,7 @@ def simulate_command_center_week(update: WeeklyCommandPlanUpdate | None = None, 
     state = build_command_center_state(conn)
     existing = load_weekly_command_plan(conn, state["season_id"], state["week"], state["player_club_id"])
     plan = existing or build_default_weekly_plan(state, intent=(update.intent if update else None) or "Win Now")
+    plan = refresh_weekly_plan_context(plan, state)
     if update is not None:
         if update.intent and update.intent != plan.get("intent"):
             plan = build_default_weekly_plan(state, intent=update.intent)
@@ -1195,6 +1198,9 @@ def simulate_command_center_week(update: WeeklyCommandPlanUpdate | None = None, 
     root_seed_val = get_state(conn, "root_seed") or "1"
     rng = DeterministicRNG(derive_seed(int(root_seed_val), "headline", season_id, str(record.week)))
     headline = render_headline(dashboard['result'], "expected", rng)
+    box = record.result.box_score["teams"]
+    home_survivors = int(box[record.home_club_id]["totals"]["living"])
+    away_survivors = int(box[record.away_club_id]["totals"]["living"])
 
     return {
         "status": "success",
@@ -1208,8 +1214,8 @@ def simulate_command_center_week(update: WeeklyCommandPlanUpdate | None = None, 
                 "home_club_id": record.home_club_id,
                 "away_club_id": record.away_club_id,
                 "winner_club_id": record.result.winner_team_id,
-                "home_survivors": 0, # placeholder, should extract from dashboard logic
-                "away_survivors": 0,
+                "home_survivors": home_survivors,
+                "away_survivors": away_survivors,
             },
             "player_growth_deltas": [],
             "standings_shift": [],

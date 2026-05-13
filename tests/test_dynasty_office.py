@@ -530,3 +530,78 @@ def test_save_recruiting_promise_accepts_current_roster_player():
     updated = save_recruiting_promise(conn, target_id, "development_priority")
 
     assert updated["recruiting"]["active_promises"][0]["player_id"] == target_id
+
+
+# ---------------------------------------------------------------------------
+# Sub-module importability and contract tests
+# ---------------------------------------------------------------------------
+
+def test_recruiting_office_module_is_importable():
+    from dodgeball_sim.recruiting_office import build_recruiting_state
+    assert callable(build_recruiting_state)
+
+
+def test_league_memory_module_is_importable():
+    from dodgeball_sim.league_memory import build_league_memory_state
+    assert callable(build_league_memory_state)
+
+
+def test_staff_market_module_is_importable():
+    from dodgeball_sim.staff_market import build_staff_market_state
+    assert callable(build_staff_market_state)
+
+
+def test_build_recruiting_state_returns_expected_keys():
+    from dodgeball_sim.recruiting_office import build_recruiting_state
+    from dodgeball_sim.persistence import get_state, load_command_history
+
+    conn = _career_conn()
+    season_id = get_state(conn, "active_season_id")
+    player_club_id = get_state(conn, "player_club_id")
+    history = load_command_history(conn, season_id)
+
+    result = build_recruiting_state(
+        conn,
+        season_id=season_id,
+        player_club_id=player_club_id,
+        root_seed=20260426,
+        history=history,
+    )
+    assert "credibility" in result
+    assert "prospects" in result
+    assert "budget" in result
+    assert "active_promises" in result
+
+
+def test_build_league_memory_state_returns_expected_keys():
+    from dodgeball_sim.league_memory import build_league_memory_state
+    from dodgeball_sim.persistence import get_state, load_clubs
+
+    conn = _career_conn()
+    season_id = get_state(conn, "active_season_id")
+    clubs = load_clubs(conn)
+
+    result = build_league_memory_state(conn, season_id=season_id, clubs=clubs)
+    assert "records" in result
+    assert "awards" in result
+    assert "rivalries" in result
+    assert "recent_matches" in result
+
+
+def test_build_staff_market_state_returns_expected_keys():
+    from dodgeball_sim.staff_market import build_staff_market_state
+    from dodgeball_sim.persistence import get_state
+
+    conn = _career_conn()
+    season_id = get_state(conn, "active_season_id")
+    player_club_id = get_state(conn, "player_club_id")
+
+    result = build_staff_market_state(
+        conn,
+        season_id=season_id,
+        player_club_id=player_club_id,
+        root_seed=20260426,
+    )
+    assert "current_staff" in result
+    assert "candidates" in result
+    assert "recent_actions" in result
