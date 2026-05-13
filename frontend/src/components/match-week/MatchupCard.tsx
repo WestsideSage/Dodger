@@ -15,7 +15,7 @@ export function MatchupCard({
 }) {
   const [speed, setSpeed] = useState<'Fast' | 'Normal' | 'Slow'>('Normal');
   const details = plan.matchup_details ?? {
-    opponent_record: '—', last_meeting: 'None', key_matchup: 'TBD', framing_line: 'Matchup pending.',
+    opponent_record: 'No record', last_meeting: 'None', key_matchup: 'Opponent file unavailable.', framing_line: 'Matchup report unavailable.',
   };
 
   return (
@@ -46,7 +46,7 @@ export function MatchupCard({
         </div>
 
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', paddingTop: '0.25rem' }}>
-          <ActionButton variant="primary" disabled={disabled} onClick={onSimulate}>
+          <ActionButton variant="primary" disabled={disabled} onClick={onSimulate} data-testid="simulate-command-week">
             Simulate Match
           </ActionButton>
           <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>

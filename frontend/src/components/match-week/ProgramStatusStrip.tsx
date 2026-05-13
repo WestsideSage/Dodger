@@ -13,7 +13,7 @@ export function ProgramStatusStrip() {
     : '#64748b';
 
   return (
-    <div className="dm-panel" style={{ flex: 4 }}>
+    <div className="dm-panel command-program-status">
       <div className="dm-panel-header">
         <p className="dm-kicker">Program</p>
         <h3 className="dm-panel-title">Status</h3>
@@ -59,7 +59,7 @@ export function ProgramStatusStrip() {
             </div>
           </>
         ) : (
-          <p style={{ fontSize: '0.8125rem', color: '#64748b', margin: 0 }}>Loading…</p>
+          <p style={{ fontSize: '0.8125rem', color: '#64748b', margin: 0 }}>Loading...</p>
         )}
 
         {/* Quick nav */}
@@ -76,7 +76,7 @@ export function ProgramStatusStrip() {
               onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = '#94a3b8'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = '#64748b'; }}
             >
-              <span style={{ fontSize: '0.5rem' }}>▶</span>{label}
+              <span style={{ fontSize: '0.5rem' }}>&gt;</span>{label}
             </a>
           ))}
         </div>

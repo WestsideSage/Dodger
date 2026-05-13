@@ -1,4 +1,6 @@
-export function PlayerGrowthBlock({ deltas }: { deltas: any[] }) {
+import type { Aftermath } from '../../../types';
+
+export function PlayerGrowthBlock({ deltas }: { deltas: Aftermath['player_growth_deltas'] }) {
   return (
     <div className="dm-panel">
       <p className="dm-kicker">Player Development</p>

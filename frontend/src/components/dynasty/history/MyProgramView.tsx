@@ -12,12 +12,36 @@ interface HeroSeason {
   championships?: number;
 }
 
+interface TimelineEvent {
+  season: string;
+  week: number | null;
+  event_type: string;
+  label: string;
+  weight: string;
+}
+
+interface AlumnusEntry {
+  id: string;
+  name: string;
+  seasons_played: number;
+  career_elims: number;
+  championships: number;
+  ovr_final: number;
+  potential_tier: string;
+}
+
+interface BannerEntry {
+  type: string;
+  season: string;
+  label: string;
+}
+
 interface ProgramData {
   club_id: string;
   hero: { season_1?: HeroSeason; current?: HeroSeason };
-  timeline: any[];
-  alumni: any[];
-  banners: any[];
+  timeline: TimelineEvent[];
+  alumni: AlumnusEntry[];
+  banners: BannerEntry[];
 }
 
 function HeroCard({ data, label, highlight }: { data: HeroSeason; label: string; highlight: boolean }) {

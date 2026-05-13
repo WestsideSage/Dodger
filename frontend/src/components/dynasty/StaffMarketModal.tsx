@@ -1,6 +1,9 @@
 import { ActionButton } from '../ui';
+import type { DynastyOfficeResponse } from '../../types';
 
-export function StaffMarketModal({ candidates, onHire, onClose }: { candidates: any[], onHire: (id: string) => void, onClose: () => void }) {
+type StaffCandidate = DynastyOfficeResponse['staff_market']['candidates'][number];
+
+export function StaffMarketModal({ candidates, onHire, onClose }: { candidates: StaffCandidate[], onHire: (id: string) => void, onClose: () => void }) {
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div className="dm-panel" style={{ width: '600px', maxHeight: '80vh', overflowY: 'auto' }}>

@@ -31,3 +31,17 @@ Claude agents should read root `AGENTS.md` first. This file is only a short Clau
 - `CoachPolicy` has 8 fields.
 - The offseason Recruitment Day key is `recruitment`.
 - New player-facing work should target the web app.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues (`WestsideSage/Dodger`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default canonical label strings (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context repo — `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.

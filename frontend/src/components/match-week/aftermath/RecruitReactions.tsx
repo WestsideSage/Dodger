@@ -1,4 +1,6 @@
-export function RecruitReactions({ reactions }: { reactions: any[] }) {
+import type { Aftermath } from '../../../types';
+
+export function RecruitReactions({ reactions }: { reactions: Aftermath['recruit_reactions'] }) {
   return (
     <div className="dm-panel">
       <p className="dm-kicker">Recruit Reactions</p>

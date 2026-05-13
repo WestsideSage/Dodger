@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import type { RosterResponse } from '../types';
+import type { CommandCenterResponse, RosterResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
 import { PageHeader, StatChip, StatusMessage } from './ui';
 import { PlayerTheaterRow } from './roster/PlayerTheaterRow';
@@ -60,7 +60,7 @@ export function Roster() {
   const fetchPlan = () => {
     fetch('/api/command-center')
       .then(r => r.json())
-      .then((d: any) => setPlanContext({
+      .then((d: CommandCenterResponse) => setPlanContext({
         intent: d.plan.intent,
         dev_focus: d.plan.department_orders?.dev_focus ?? 'BALANCED',
       }));

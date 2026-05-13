@@ -26,5 +26,17 @@ def test_aftermath_payload_structure():
         assert 'headline' in data['aftermath']
         assert 'player_growth_deltas' in data['aftermath']
         assert 'recruit_reactions' in data['aftermath']
+        match_card = data['aftermath']['match_card']
+        stored_match = conn.execute(
+            """
+            SELECT home_survivors, away_survivors
+            FROM match_records
+            WHERE match_id = ?
+            """,
+            (data['dashboard']['match_id'],),
+        ).fetchone()
+        assert stored_match is not None
+        assert match_card['home_survivors'] == stored_match['home_survivors']
+        assert match_card['away_survivors'] == stored_match['away_survivors']
     finally:
         app.dependency_overrides.clear()

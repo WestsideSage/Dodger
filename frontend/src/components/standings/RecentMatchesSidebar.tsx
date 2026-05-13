@@ -1,4 +1,6 @@
-export function RecentMatchesSidebar({ matches }: { matches: any[] }) {
+import type { RecentMatchSummary } from '../../types';
+
+export function RecentMatchesSidebar({ matches }: { matches: RecentMatchSummary[] }) {
   if (!matches || matches.length === 0) return null;
   
   return (
