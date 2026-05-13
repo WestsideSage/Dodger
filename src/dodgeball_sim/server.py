@@ -90,18 +90,14 @@ from dodgeball_sim.dynasty_office import (
 )
 from dodgeball_sim.league_memory import recent_match_item
 from dodgeball_sim.match_orchestration import (
-    SimulateWeekError as _SimulateWeekError,
     _advance_playoffs_if_needed,
-    _apply_command_plan_to_match,
     _choose_next_user_match_after_automation,
-    _choose_user_match,
+    _regular_season_complete,
     _regular_season_matches,
     _simulate_ai_matches as _simulate_ai_playoff_matches,
     _standings_with_all_clubs,
-    _validate_match_rosters,
-    _regular_season_complete,
 )
-from dodgeball_sim.use_cases import SimulateWeekError, simulate_week as _simulate_week_use_case
+from dodgeball_sim.use_cases import SimulateWeekError, simulate_week as _simulate_week
 
 app = FastAPI(title="Dodgeball Manager API")
 
@@ -881,35 +877,6 @@ def _advance_playoffs_if_needed(conn, season: Season, clubs: dict[str, Any], pla
         return season
 
 
-def _choose_next_user_match_after_automation(
-    conn,
-    season: Season,
-    clubs: dict[str, Any],
-    player_club_id: str,
-) -> tuple[Season, list[ScheduledMatch], str]:
-    season = _advance_playoffs_if_needed(conn, season, clubs, player_club_id)
-    completed = load_completed_match_ids(conn, season.season_id)
-    chosen, stop_reason = _choose_user_match(season, completed, player_club_id)
-    if chosen:
-        return season, chosen, stop_reason
-
-    ai_regular_pending = [
-        match
-        for match in _regular_season_matches(season)
-        if match.match_id not in completed
-        and player_club_id not in (match.home_club_id, match.away_club_id)
-    ]
-    if ai_regular_pending:
-        _simulate_ai_playoff_matches(conn, ai_regular_pending, clubs, player_club_id, season.season_id)
-        recompute_regular_season_standings(conn, season)
-        conn.commit()
-        season = load_season(conn, season.season_id)
-        season = _advance_playoffs_if_needed(conn, season, clubs, player_club_id)
-        completed = load_completed_match_ids(conn, season.season_id)
-        chosen, stop_reason = _choose_user_match(season, completed, player_club_id)
-    return season, chosen, stop_reason
-
-
 @app.get("/api/dynasty-office", response_model=dict[str, Any])
 def get_dynasty_office(conn = Depends(get_db)) -> dict[str, Any]:
     try:
@@ -1078,163 +1045,15 @@ def _run_simulation_command(conn, command: SimCommand) -> SimResponse:
     }
 
 
-def _apply_command_plan_to_match(conn, plan: dict[str, Any], match_id: str, club_id: str) -> None:
-    clubs = load_clubs(conn)
-    club = clubs.get(club_id)
-    if club is None:
-        raise HTTPException(status_code=404, detail="Club not found")
-    tactics = plan.get("tactics", {})
-    policy_values = club.coach_policy.as_dict()
-    for key in policy_values:
-        if key in tactics:
-            policy_values[key] = max(0.0, min(1.0, float(tactics[key])))
-    updated_club = dataclasses.replace(club, coach_policy=CoachPolicy(**policy_values))
-    save_club(conn, updated_club, load_club_roster(conn, club_id))
-    lineup_ids = plan.get("lineup", {}).get("player_ids") or []
-    if lineup_ids:
-        save_match_lineup_override(conn, match_id, club_id, list(lineup_ids))
-
-
 @app.post("/api/command-center/simulate", response_model=CommandCenterSimResponse)
 def simulate_command_center_week(update: WeeklyCommandPlanUpdate | None = None, conn = Depends(get_db)) -> CommandCenterSimResponse:
-    player_club_id = get_state(conn, "player_club_id")
-    season_id = get_state(conn, "active_season_id")
-    if not player_club_id or not season_id:
-        raise HTTPException(status_code=400, detail="No active season or club")
-    cursor = load_career_state_cursor(conn)
-    if cursor.state != CareerState.SEASON_ACTIVE_PRE_MATCH:
-        raise HTTPException(status_code=409, detail="Command center simulation requires season_active_pre_match.")
-
-    state = build_command_center_state(conn)
-    existing = load_weekly_command_plan(conn, state["season_id"], state["week"], state["player_club_id"])
-    plan = existing or build_default_weekly_plan(state, intent=(update.intent if update else None) or "Win Now")
-    plan = refresh_weekly_plan_context(plan, state)
-    if update is not None:
-        if update.intent and update.intent != plan.get("intent"):
-            plan = build_default_weekly_plan(state, intent=update.intent)
-        if update.department_orders:
-            plan["department_orders"] = {**plan["department_orders"], **update.department_orders}
-        if update.tactics:
-            plan["tactics"] = {**plan["tactics"], **{key: max(0.0, min(1.0, float(value))) for key, value in update.tactics.items() if key in plan["tactics"]}}
-        if update.lineup_player_ids:
-            plan["lineup"]["player_ids"] = update.lineup_player_ids
-    save_weekly_command_plan(conn, plan)
-
-    season = load_season(conn, season_id)
-    clubs = load_clubs(conn)
-    season, chosen, stop_reason = _choose_next_user_match_after_automation(conn, season, clubs, player_club_id)
-    if not chosen:
-        if stop_reason == "season_complete":
-            cursor = advance(cursor, CareerState.SEASON_COMPLETE_OFFSEASON_BEAT, week=0, match_id=None)
-            save_career_state_cursor(conn, cursor)
-            conn.commit()
-            return {
-                "status": "success",
-                "message": "Season complete. Offseason review is ready.",
-                "plan": plan,
-                "dashboard": state.get("latest_dashboard")
-                or {
-                    "season_id": season_id,
-                    "week": state["week"],
-                    "match_id": None,
-                    "opponent_name": "Season complete",
-                    "result": "Season Complete",
-                    "lanes": [],
-                },
-                "next_state": cursor.state.value,
-                "aftermath": {
-                    "headline": "Season Complete",
-                    "match_card": None,
-                    "player_growth_deltas": [],
-                    "standings_shift": [],
-                    "recruit_reactions": [],
-                }
-            }
-        raise HTTPException(status_code=409, detail=f"No user match available: {stop_reason}")
-
-    scheduled = chosen[0]
-    completed = load_completed_match_ids(conn, season_id)
-    week_matches = [
-        match
-        for match in sorted(season.matches_for_week(scheduled.week), key=lambda item: item.match_id)
-        if match.match_id not in completed
-    ]
-    _apply_command_plan_to_match(conn, plan, scheduled.match_id, player_club_id)
-    rosters = load_all_rosters(conn)
-    root_seed = normalize_root_seed(get_state(conn, "root_seed", "1"), default_on_invalid=True)
-    if ensure_ai_rosters_playable(conn, clubs, rosters, root_seed, season_id, player_club_id):
-        rosters = load_all_rosters(conn)
-    _validate_match_rosters(week_matches, rosters)
-    difficulty = get_state(conn, "difficulty", "pro") or "pro"
-    records = [
-        simulate_scheduled_match(
+    try:
+        return _simulate_week(
             conn,
-            scheduled=week_match,
-            clubs=clubs,
-            rosters=rosters,
-            root_seed=root_seed,
-            difficulty=difficulty,
+            update=update.model_dump(exclude_none=True) if update else None,
         )
-        for week_match in week_matches
-    ]
-    record = next(item for item in records if item.match_id == scheduled.match_id)
-    recompute_regular_season_standings(conn, season)
-    dashboard = build_post_week_dashboard(conn, plan, record)
-    save_command_history_record(
-        conn,
-        {
-            "season_id": season_id,
-            "week": record.week,
-            "match_id": record.match_id,
-            "opponent_club_id": record.away_club_id if record.home_club_id == player_club_id else record.home_club_id,
-            "intent": plan["intent"],
-            "plan": plan,
-            "dashboard": dashboard,
-        },
-    )
-    season = load_season(conn, season.season_id)
-    season, next_chosen, _stop_reason = _choose_next_user_match_after_automation(conn, season, clubs, player_club_id)
-    if next_chosen:
-        cursor = dataclasses.replace(
-            cursor,
-            state=CareerState.SEASON_ACTIVE_PRE_MATCH,
-            week=next_chosen[0].week,
-            match_id=None,
-        )
-    else:
-        cursor = advance(cursor, CareerState.SEASON_COMPLETE_OFFSEASON_BEAT, week=0, match_id=None)
-    save_career_state_cursor(conn, cursor)
-    conn.commit()
-    from dodgeball_sim.voice_aftermath import render_headline
-    from dodgeball_sim.rng import DeterministicRNG, derive_seed
-    
-    root_seed_val = get_state(conn, "root_seed") or "1"
-    rng = DeterministicRNG(derive_seed(int(root_seed_val), "headline", season_id, str(record.week)))
-    headline = render_headline(dashboard['result'], "expected", rng)
-    box = record.result.box_score["teams"]
-    home_survivors = int(box[record.home_club_id]["totals"]["living"])
-    away_survivors = int(box[record.away_club_id]["totals"]["living"])
-
-    return {
-        "status": "success",
-        "message": f"Simulated Week {record.week} command plan.",
-        "plan": plan,
-        "dashboard": dashboard,
-        "next_state": cursor.state.value,
-        "aftermath": {
-            "headline": headline,
-            "match_card": {
-                "home_club_id": record.home_club_id,
-                "away_club_id": record.away_club_id,
-                "winner_club_id": record.result.winner_team_id,
-                "home_survivors": home_survivors,
-                "away_survivors": away_survivors,
-            },
-            "player_growth_deltas": [],
-            "standings_shift": [],
-            "recruit_reactions": [],
-        }
-    }
+    except SimulateWeekError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
 
 
 @app.post("/api/sim", response_model=SimResponse)
