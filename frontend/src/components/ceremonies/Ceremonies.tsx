@@ -171,23 +171,6 @@ export function Graduation({ beat, onComplete }: { beat: RetirementsBeat; onComp
   );
 }
 
-export function CoachingCarousel({ beat, onComplete }: { beat: OffseasonBeat, onComplete: () => void }) {
-  return (
-    <CeremonyShell 
-      title={beat.title} 
-      eyebrow="Ceremony" 
-      description="Staff movements across the league."
-      stages={1}
-      renderStage={(stage) => (
-        <div style={{ textAlign: 'center' }}>
-          {stage >= 1 && <div className="fade-in" style={{ fontSize: '1.25rem' }}>{beat.body}</div>}
-        </div>
-      )}
-      onComplete={onComplete}
-    />
-  );
-}
-
 export function SigningDay({ beat, onComplete }: { beat: RecruitmentBeat; onComplete: () => void }) {
   const playerSigning = beat.payload.player_signing;
   const otherSignings = beat.payload.other_signings;

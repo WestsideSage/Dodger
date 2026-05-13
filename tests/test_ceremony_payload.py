@@ -163,3 +163,21 @@ def test_development_payload_is_empty_dict():
         conn=conn,
     )
     assert result == {}
+
+
+def test_rookie_class_preview_payload_is_empty_dict():
+    conn = _empty_conn()
+    result = _build_beat_payload(
+        "rookie_class_preview",
+        awards=[],
+        clubs={},
+        rosters={},
+        standings=[],
+        ret_rows=[],
+        season=None,
+        season_outcome=None,
+        next_preview=None,
+        signed_player_id="",
+        conn=conn,
+    )
+    assert result == {}
