@@ -23,14 +23,12 @@ from .recruiting_office import (
     MAX_ACTIVE_PROMISES,
     PROMISE_OPTIONS,
     PROMISE_STATE_KEY,
+    _class_year_from_season,
     build_recruiting_state,
 )
 from .recruitment import generate_prospect_pool
 from .rng import DeterministicRNG, derive_seed
 from .staff_market import STAFF_ACTION_STATE_KEY, build_staff_market_state
-
-# Re-export constants that existing tests import from this module
-from .recruiting_office import _class_year_from_season, _grade  # noqa: F401
 
 
 def _ensure_dynasty_keys(conn: sqlite3.Connection) -> None:
@@ -252,7 +250,6 @@ def _current_prospect_pool(conn: sqlite3.Connection) -> list[Any]:
     season_id = get_state(conn, "active_season_id")
     if not season_id:
         return []
-    from .recruiting_office import _class_year_from_season
     class_year = _class_year_from_season(season_id)
     persisted = load_prospect_pool(conn, class_year)
     if persisted:
