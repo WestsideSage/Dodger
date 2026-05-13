@@ -150,3 +150,29 @@ def test_post_week_dashboard_copy_is_player_facing_not_raw_tuning_output():
     assert not any(has_unresolved_token(text) for text in visible_copy)
     assert not any("setting:" in text.lower() for text in visible_copy)
     assert not any("target-stars" in text.lower() for text in visible_copy)
+
+
+def test_build_matchup_details_is_importable():
+    from dodgeball_sim.matchup_details import build_matchup_details
+    assert callable(build_matchup_details)
+
+
+def test_build_matchup_details_no_opponent():
+    from dodgeball_sim.matchup_details import build_matchup_details
+    from dodgeball_sim.persistence import connect, create_schema
+    import sqlite3
+
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+
+    result = build_matchup_details(
+        conn,
+        season_id="s1",
+        player_club_id="aurora",
+        opponent_id=None,
+        rosters={},
+    )
+    assert result["opponent_record"] == "0-0"
+    assert result["last_meeting"] == "None"
+    assert "Season schedule complete" in result["key_matchup"]
