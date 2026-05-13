@@ -16,6 +16,7 @@ from .persistence import (
     get_state,
 )
 from .franchise import MatchRecord
+from .matchup_details import build_matchup_details
 
 
 INTENTS = ("Win Now", "Develop Youth", "Preserve Health", "Evaluate Lineup", "Prepare For Playoffs")
@@ -78,10 +79,8 @@ def _policy_for_intent(policy: CoachPolicy, intent: str) -> dict[str, float]:
     return {key: round(float(value), 2) for key, value in values.items()}
 
 
-from dodgeball_sim.voice_pregame import render_matchup_framing
 from dodgeball_sim.rng import DeterministicRNG, derive_seed
-
-...
+from dodgeball_sim.voice_pregame import render_matchup_framing
 
 def build_command_center_state(conn: sqlite3.Connection) -> dict[str, Any]:
     season_id = get_state(conn, "active_season_id")
@@ -115,6 +114,7 @@ def build_command_center_state(conn: sqlite3.Connection) -> dict[str, Any]:
         "player_club": clubs[player_club_id],
         "opponent": clubs.get(opponent_id) if opponent_id else None,
         "upcoming_match": upcoming,
+        "matchup_details": build_matchup_details(conn, season_id=season_id, player_club_id=player_club_id, opponent_id=opponent_id, rosters=rosters),
         "roster": list(rosters.get(player_club_id, [])),
         "default_lineup": load_lineup_default(conn, player_club_id),
         "department_heads": load_department_heads(conn),
@@ -134,7 +134,14 @@ def build_default_weekly_plan(state: Mapping[str, Any], intent: str = "Win Now")
     recommendations = _staff_recommendations(heads, intent, opponent.name if opponent else "the next opponent")
     
     rng = DeterministicRNG(derive_seed(state.get("root_seed", 1), "framing", state["season_id"], str(state["week"])))
-    opponent_name = opponent.name if opponent else "TBD"
+    opponent_name = opponent.name if opponent else "Season complete"
+    matchup_details = {
+        "opponent_record": "No record",
+        "last_meeting": "None",
+        "key_matchup": "No opponent file available.",
+        **dict(state.get("matchup_details") or {}),
+        "framing_line": render_matchup_framing(club.name, opponent_name, rng),
+    }
     
     return {
         "season_id": state["season_id"],
@@ -153,13 +160,17 @@ def build_default_weekly_plan(state: Mapping[str, Any], intent: str = "Win Now")
         "lineup": lineup,
         "tactics": tactics,
         "history_count": len(state.get("history", [])),
-        "matchup_details": {
-            "opponent_record": "0-0",
-            "last_meeting": "None",
-            "key_matchup": "TBD",
-            "framing_line": render_matchup_framing(club.name, opponent_name, rng),
-        },
+        "matchup_details": matchup_details,
     }
+
+
+def refresh_weekly_plan_context(plan: Mapping[str, Any], state: Mapping[str, Any]) -> dict[str, Any]:
+    refreshed = dict(plan)
+    refreshed["matchup_details"] = {
+        **dict(refreshed.get("matchup_details") or {}),
+        **dict(state.get("matchup_details") or {}),
+    }
+    return refreshed
 
 
 def _staff_recommendations(heads: list[dict[str, Any]], intent: str, opponent_name: str) -> list[dict[str, str]]:
