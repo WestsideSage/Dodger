@@ -72,13 +72,42 @@ export interface SimResponse {
     next_state?: string | null;
 }
 
+export interface MatchStartContext {
+    config_version: string;
+    difficulty: string;
+    meta_patch: Record<string, unknown> | null;
+    team_policies: Record<string, Record<string, number>>;
+}
+
+export interface MatchEndContext {
+    reason: string;
+}
+
+export interface ThrowContext {
+    tick: number;
+    thrower_selection: Record<string, unknown>;
+    target_selection: Record<string, unknown>;
+    difficulty: string;
+    policy_snapshot: Record<string, number>;
+    chemistry_delta: number;
+    meta_patch: Record<string, unknown> | null;
+    rush_context: Record<string, unknown>;
+    sync_context: { is_synced: boolean; sync_modifier: number };
+    calc: Record<string, unknown>;
+    fatigue: Record<string, unknown>;
+    catch_decision: Record<string, unknown> | null;
+    pressure_context: Record<string, unknown>;
+}
+
+export type ReplayEventContext = MatchStartContext | MatchEndContext | ThrowContext;
+
 export interface ReplayEvent {
     index: number;
     tick: number;
-    event_type: string;
+    event_type: 'match_start' | 'match_end' | 'throw';
     phase: string;
     actors: Record<string, string>;
-    context: Record<string, unknown>;
+    context: ReplayEventContext;
     probabilities: Record<string, number>;
     rolls: Record<string, number>;
     outcome: Record<string, string | number | null>;
@@ -171,7 +200,14 @@ export interface StandingRow {
 export interface StandingsResponse {
     season_id: string;
     standings: StandingRow[];
-    recent_matches?: any[];
+    recent_matches?: RecentMatchSummary[];
+}
+
+export interface RecentMatchSummary {
+    match_id: string;
+    week: number;
+    summary: string;
+    winner_name: string;
 }
 
 export interface ScheduleRow {
@@ -316,6 +352,63 @@ export interface Aftermath {
         interest_delta: string;
         evidence: string;
     }>;
+}
+
+export interface OffseasonAward {
+    player_name: string;
+    club_name: string;
+    award_type: string;
+    career_elims: number;
+    ovr: number;
+}
+
+export interface OffseasonRetiree {
+    name: string;
+    ovr_final: number;
+    career_elims: number;
+    championships: number;
+    seasons_played: number;
+    potential_tier: string;
+}
+
+export interface OffseasonSigning {
+    name: string;
+    ovr: number;
+    age?: number;
+    role?: string;
+    club_name?: string;
+}
+
+export interface OffseasonFixture {
+    week: number;
+    home: string;
+    away: string;
+    is_player_match: boolean;
+}
+
+export interface OffseasonBeatPayload {
+    awards?: OffseasonAward[];
+    retirees?: OffseasonRetiree[];
+    player_signing?: OffseasonSigning | null;
+    other_signings?: OffseasonSigning[];
+    fixtures?: OffseasonFixture[];
+    prediction?: string;
+    season_label?: string;
+}
+
+export interface OffseasonBeat {
+    beat_index: number;
+    total_beats: number;
+    key: string;
+    title: string;
+    body: string;
+    state: string;
+    can_advance: boolean;
+    can_recruit: boolean;
+    can_begin_season: boolean;
+    signed_player_id: string;
+    signed_player?: { id: string; name: string; overall: number; age: number } | null;
+    payload?: OffseasonBeatPayload;
 }
 
 export interface CommandCenterSimResponse {
