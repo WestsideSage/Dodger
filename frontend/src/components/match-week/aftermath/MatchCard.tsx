@@ -1,6 +1,7 @@
 import { Badge } from '../../ui';
+import type { Aftermath } from '../../../types';
 
-export function MatchCard({ data }: { data: any }) {
+export function MatchCard({ data }: { data: Aftermath['match_card'] }) {
   if (!data) return null;
   return (
     <div className="dm-panel">

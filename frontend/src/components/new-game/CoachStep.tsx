@@ -15,14 +15,19 @@ const ARCHETYPES: Record<string, { tagline: string; description: string }> = {
   },
 };
 
+export interface CoachForm {
+  coach_name: string;
+  coach_backstory: string;
+}
+
 export function CoachStep({
   coach,
   setCoach,
   onNext,
   onBack,
 }: {
-  coach: any;
-  setCoach: (v: any) => void;
+  coach: CoachForm;
+  setCoach: (v: CoachForm) => void;
   onNext: () => void;
   onBack: () => void;
 }) {

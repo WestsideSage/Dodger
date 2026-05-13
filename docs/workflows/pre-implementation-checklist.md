@@ -4,7 +4,8 @@ Complete this before implementation work:
 
 - Read `AGENTS.md`.
 - Read `docs/specs/MILESTONES.md` for milestone work.
-- Confirm worktree path and branch.
+- Confirm the active path is `C:\GPT5-Projects\Dodgeball Simulator`, not the retired `C:\GPT5-Projects\Dodgeball Simulator.worktrees\...` checkout.
+- Confirm repo path and branch.
 - Confirm the branch starts from the intended base, normally `develop`.
 - Confirm the path is a normal Windows path such as `C:\GPT5-Projects\...`, not a WSL `/mnt/c/...` path.
 - Bootstrap missing worktree dependencies without waiting for Maurice:

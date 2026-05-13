@@ -1,34 +1,41 @@
-# Git Worktree Playbook
+# Retired Worktree Playbook
 
-Dodgeball Manager uses Git worktrees so Codex, Claude, Gemini, and review work can happen in separate folders without sharing one dirty working tree.
+The external `.worktrees` repo is retired for Dodgeball Manager.
 
-## Folder Layout
+## Current Source Of Truth
 
-- Main repo: `C:\GPT5-Projects\Dodgeball Simulator`
-- Codex: `C:\GPT5-Projects\Dodgeball Simulator.worktrees\codex`
-- Claude: `C:\GPT5-Projects\Dodgeball Simulator.worktrees\claude`
-- Gemini: `C:\GPT5-Projects\Dodgeball Simulator.worktrees\gemini`
-- Review: `C:\GPT5-Projects\Dodgeball Simulator.worktrees\review`
+- Active repo: `C:\GPT5-Projects\Dodgeball Simulator`
+- Retired stale checkout: `C:\GPT5-Projects\Dodgeball Simulator.worktrees\...`
 
-## Branch Rules
+Do not use the retired `.worktrees` folders for implementation, verification, planning truth, or handoff state unless Maurice explicitly re-authorizes that exact checkout for a recovery task.
 
-- `main` is the stable baseline. Do not do active implementation there.
-- `develop` is the integration branch for upcoming milestone work.
-- Agents branch from `develop` unless Maurice gives a different base.
-- Audit branches stay read-only unless Maurice explicitly authorizes implementation.
+If a task references files from the retired checkout, treat those files as historical reference only. Inspect the current main repo first, then port only the relevant changes by adapting them to the current source, tests, and docs.
 
-## Agent Assignments
+## Current Branch Workflow
 
-- Codex implementation: `feature/codex-next-task`
-- Claude planning/architecture: `audit/claude-planning`
-- Gemini research/spec: `audit/gemini-research`
-- Review/integration: `review/integration`
+- `main` is the active local source of truth unless Maurice names another branch.
+- Create a normal branch in the main repo when the task needs isolation.
+- Keep standard Windows paths as the default working environment.
+- Do not set up new worktrees under `/mnt/c/...`.
+- Do not recreate `C:\GPT5-Projects\Dodgeball Simulator.worktrees` as a default workflow.
 
-## Per-Worktree Dependency Bootstrap
+Start each task from the active repo:
 
-Each agent owns dependency setup inside its assigned worktree. Maurice should not need to visit every branch or folder to prepare dependencies.
+```powershell
+cd "C:\GPT5-Projects\Dodgeball Simulator"
+git status --short
+git branch --show-current
+```
 
-Run this from the agent's worktree when `.venv` is missing, Python tests cannot find project dependencies, or pytest is unavailable:
+For a branch:
+
+```powershell
+git switch -c feature/<scope>
+```
+
+## Dependency Bootstrap
+
+Run this from the active repo when `.venv` is missing, Python tests cannot find project dependencies, or pytest is unavailable:
 
 ```powershell
 py -3 -m venv .venv
@@ -37,14 +44,13 @@ python -m pip install -U pip
 python -m pip install -e '.[dev]'
 ```
 
-Run this from the frontend folder when `frontend/node_modules/` is missing or frontend checks cannot find packages:
+Run this from `frontend/` when frontend dependencies are missing:
 
 ```powershell
-cd frontend
 npm install
 ```
 
-Then verify:
+Then verify as needed:
 
 ```powershell
 python -m pytest -q
@@ -53,62 +59,14 @@ npm run lint
 npm run build
 ```
 
-The expected model is shared system runtimes, separate dependencies per worktree:
+## If A Stale Worktree Has Valuable Work
 
-- Shared: Windows Python launcher (`py`) or `python`, Node 20.19+ or 22.12+, and npm.
-- Per worktree: `.venv/`, editable Python install, `frontend/node_modules/`.
-
-Agents may install per-worktree dependencies by default. They should not use `sudo`, upgrade system runtimes, or change global Node/Python configuration unless Maurice explicitly authorizes it.
-
-## Start A New Task Branch
-
-From the main repo or review worktree:
-
-```powershell
-git switch develop
-git pull --ff-only
-git switch -c feature/<scope>
-```
-
-For an additional worktree:
-
-```powershell
-git worktree add "../Dodgeball Simulator.worktrees/<agent-or-task>" -b feature/<scope> develop
-```
-
-## Switch Branches Safely
-
-Before switching:
-
-```powershell
-git status --short
-```
-
-If there are unrelated edits, stop and write a handoff. Do not stash or revert someone else's work unless Maurice explicitly asks.
-
-## Sync From Develop
-
-```powershell
-git fetch origin
-git switch develop
-git pull --ff-only
-git switch <task-branch>
-git merge develop
-```
-
-If there is no remote or fetch is unavailable, merge from the local `develop` branch.
-
-## Merge Finished Work
-
-Use the review worktree for integration:
-
-```powershell
-git switch review/integration
-git merge develop
-git merge --no-ff <task-branch>
-```
-
-Run the relevant Python tests and frontend checks. If the merge changes match outcomes, verify golden logs and document the reason.
+1. Stop editing in the stale checkout.
+2. Record its path, branch, and `git status --short`.
+3. Inspect the active main repo for the same files and current behavior.
+4. Port the smallest relevant changes into `C:\GPT5-Projects\Dodgeball Simulator`.
+5. Re-run verification from the active repo.
+6. Do not delete, clean, reset, or overwrite the stale checkout unless Maurice explicitly asks.
 
 ## Avoid Generated Files
 
@@ -121,15 +79,3 @@ Do not commit:
 - logs, screenshots, videos, and `output/`
 
 Lockfiles, source fixtures, migrations, specs, tests, and golden logs are source-controlled unless there is a clear reason not to track them.
-
-## If The Wrong Tree Gets Dirty
-
-1. Stop editing.
-2. Record `pwd`, branch, and `git status --short`.
-3. If the work is valuable, make a temporary branch from that exact state.
-4. Move the change by committing/cherry-picking, or write a handoff for another agent.
-5. Do not delete, clean, reset, or overwrite files to hide the mistake.
-
-## Remote Use
-
-If a remote exists, use normal pull/push only after confirming the target branch. If no remote exists, follow `docs/workflows/remote-setup.md`.

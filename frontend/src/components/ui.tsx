@@ -1,4 +1,4 @@
-import type { KeyboardEvent, ReactNode } from 'react';
+import type { HTMLAttributes, KeyboardEvent, ReactNode } from 'react';
 
 export type Tone = 'neutral' | 'accent' | 'success' | 'warning' | 'danger' | 'info';
 
@@ -31,8 +31,8 @@ const toneKickerColor: Record<Tone, string> = {
   info: '#8b5cf6',
 };
 
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`dm-panel ${className}`}>{children}</div>;
+export function Card({ children, className = '', ...props }: { children: ReactNode; className?: string } & HTMLAttributes<HTMLDivElement>) {
+  return <div {...props} className={`dm-panel ${className}`}>{children}</div>;
 }
 
 export function Tile({ children, className = '', style, as: Component = 'div', ...rest }: { children: ReactNode; className?: string; style?: React.CSSProperties; as?: React.ElementType; disabled?: boolean } & React.HTMLAttributes<HTMLElement>) {

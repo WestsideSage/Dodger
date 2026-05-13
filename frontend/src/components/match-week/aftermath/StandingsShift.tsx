@@ -1,4 +1,6 @@
-export function StandingsShift({ shifts }: { shifts: any[] }) {
+import type { Aftermath } from '../../../types';
+
+export function StandingsShift({ shifts }: { shifts: Aftermath['standings_shift'] }) {
   return (
     <div className="dm-panel">
       <p className="dm-kicker">League Table Shifts</p>
