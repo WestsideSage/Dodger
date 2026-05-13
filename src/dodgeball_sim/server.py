@@ -89,14 +89,7 @@ from dodgeball_sim.dynasty_office import (
     save_recruiting_promise,
 )
 from dodgeball_sim.league_memory import recent_match_item
-from dodgeball_sim.match_orchestration import (
-    _advance_playoffs_if_needed,
-    _choose_next_user_match_after_automation,
-    _regular_season_complete,
-    _regular_season_matches,
-    _simulate_ai_matches as _simulate_ai_playoff_matches,
-    _standings_with_all_clubs,
-)
+from dodgeball_sim.match_orchestration import _choose_next_user_match_after_automation
 from dodgeball_sim.use_cases import SimulateWeekError, simulate_week as _simulate_week
 
 app = FastAPI(title="Dodgeball Manager API")
@@ -1123,6 +1116,9 @@ def recruiting_sign(prospect_id: str, conn = Depends(get_db)):
 
 
 def _validate_match_rosters(chosen, rosters) -> None:
+    # HTTP-specific copy: raises HTTPException. match_orchestration has a
+    # parallel copy that raises SimulateWeekError for use in use_cases.py.
+    # If validation logic changes, update both copies.
     for scheduled in chosen:
         for club_id in (scheduled.home_club_id, scheduled.away_club_id):
             if len(rosters.get(club_id, ())) < 1:
