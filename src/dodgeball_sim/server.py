@@ -89,6 +89,19 @@ from dodgeball_sim.dynasty_office import (
     save_recruiting_promise,
 )
 from dodgeball_sim.league_memory import recent_match_item
+from dodgeball_sim.match_orchestration import (
+    SimulateWeekError as _SimulateWeekError,
+    _advance_playoffs_if_needed,
+    _apply_command_plan_to_match,
+    _choose_next_user_match_after_automation,
+    _choose_user_match,
+    _regular_season_matches,
+    _simulate_ai_matches as _simulate_ai_playoff_matches,
+    _standings_with_all_clubs,
+    _validate_match_rosters,
+    _regular_season_complete,
+)
+from dodgeball_sim.use_cases import SimulateWeekError, simulate_week as _simulate_week_use_case
 
 app = FastAPI(title="Dodgeball Manager API")
 
