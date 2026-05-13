@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any, Dict
 
+from .event_types import EventContext
+
 
 @dataclass(frozen=True)
 class MatchEvent:
@@ -12,7 +14,7 @@ class MatchEvent:
     event_type: str
     phase: str
     actors: Dict[str, Any]
-    context: Dict[str, Any]
+    context: EventContext  # was Dict[str, Any]
     probabilities: Dict[str, float]
     rolls: Dict[str, float]
     outcome: Dict[str, Any]
