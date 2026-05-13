@@ -447,9 +447,9 @@ function EventCard({
   isKeyPlay: boolean;
 }) {
   const borderColor =
-    eventType === 'throw_resolved' || eventType === 'throw'
+    eventType === 'throw'
       ? '#f97316'
-      : eventType === 'game_start' || eventType === 'game_end'
+      : eventType === 'match_start' || eventType === 'match_end'
       ? '#06b6d4'
       : '#334155';
 
@@ -641,7 +641,7 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
     return new Set([...scoreState.home_eliminated_player_ids, ...scoreState.away_eliminated_player_ids]);
   }, [scoreState]);
 
-  const isThrowEvent = (currentEvent?.event_type as string) === 'throw_resolved' || currentEvent?.event_type === 'throw';
+  const isThrowEvent = currentEvent?.event_type === 'throw';
   const throwerId = isThrowEvent && currentProof ? currentProof.thrower_id : null;
   const targetId = isThrowEvent && currentProof ? currentProof.target_id : null;
 
@@ -649,7 +649,7 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
   const matchIsComplete = useMemo(() => {
     for (let i = 0; i <= eventIndex; i++) {
       const et = data.events[i]?.event_type;
-      if ((et as string) === 'game_end' || et === 'match_end') return true;
+      if (et === 'match_end') return true;
     }
     return false;
   }, [data.events, eventIndex]);

@@ -95,8 +95,10 @@ export interface ThrowContext {
     sync_context: { is_synced: boolean; sync_modifier: number };
     calc: Record<string, unknown>;
     fatigue: Record<string, unknown>;
-    catch_decision: Record<string, unknown> | null;
-    pressure_context: Record<string, unknown>;
+    pressure_active: boolean;
+    pressure_reason?: string;
+    pressure_modifier?: number;
+    catch_decision?: Record<string, unknown> | null;
 }
 
 export type ReplayEventContext = MatchStartContext | MatchEndContext | ThrowContext;

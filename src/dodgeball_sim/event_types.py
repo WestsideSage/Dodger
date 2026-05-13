@@ -1,11 +1,5 @@
-from __future__ import annotations
-
 from typing import Any, Dict, Optional, Union
-
-try:
-    from typing import TypedDict
-except ImportError:
-    from typing_extensions import TypedDict
+from typing import NotRequired, TypedDict
 
 
 class MatchStartContext(TypedDict):
@@ -31,8 +25,10 @@ class ThrowContext(TypedDict):
     sync_context: Dict[str, Any]
     calc: Dict[str, Any]
     fatigue: Dict[str, Any]
-    catch_decision: Optional[Dict[str, Any]]
-    pressure_context: Dict[str, Any]
+    pressure_active: bool
+    pressure_reason: NotRequired[str]
+    pressure_modifier: NotRequired[float]
+    catch_decision: NotRequired[Optional[Dict[str, Any]]]
 
 
 EventContext = Union[MatchStartContext, MatchEndContext, ThrowContext]
