@@ -109,3 +109,57 @@ def test_schedule_reveal_payload_has_fixtures_list():
     )
     assert "fixtures" in result
     assert isinstance(result["fixtures"], list)
+
+
+def test_records_ratified_payload_is_empty_dict():
+    conn = _empty_conn()
+    result = _build_beat_payload(
+        "records_ratified",
+        awards=[],
+        clubs={},
+        rosters={},
+        standings=[],
+        ret_rows=[],
+        season=None,
+        season_outcome=None,
+        next_preview=None,
+        signed_player_id="",
+        conn=conn,
+    )
+    assert result == {}
+
+
+def test_hof_induction_payload_is_empty_dict():
+    conn = _empty_conn()
+    result = _build_beat_payload(
+        "hof_induction",
+        awards=[],
+        clubs={},
+        rosters={},
+        standings=[],
+        ret_rows=[],
+        season=None,
+        season_outcome=None,
+        next_preview=None,
+        signed_player_id="",
+        conn=conn,
+    )
+    assert result == {}
+
+
+def test_development_payload_is_empty_dict():
+    conn = _empty_conn()
+    result = _build_beat_payload(
+        "development",
+        awards=[],
+        clubs={},
+        rosters={},
+        standings=[],
+        ret_rows=[],
+        season=None,
+        season_outcome=None,
+        next_preview=None,
+        signed_player_id="",
+        conn=conn,
+    )
+    assert result == {}

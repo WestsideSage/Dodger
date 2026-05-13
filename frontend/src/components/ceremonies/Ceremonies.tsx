@@ -1,4 +1,16 @@
 import { CeremonyShell } from './CeremonyShell';
+import type {
+  OffseasonAward,
+  OffseasonBeat,
+  OffseasonFixture,
+  OffseasonRetiree,
+  OffseasonSigning,
+} from '../../types';
+
+type AwardsBeat = Extract<OffseasonBeat, { key: 'awards' }>;
+type RetirementsBeat = Extract<OffseasonBeat, { key: 'retirements' }>;
+type RecruitmentBeat = Extract<OffseasonBeat, { key: 'recruitment' }>;
+type ScheduleRevealBeat = Extract<OffseasonBeat, { key: 'schedule_reveal' }>;
 
 const AWARD_ICON: Record<string, string> = {
   mvp: '🏆',
@@ -24,8 +36,8 @@ const TIER_COLOR: Record<string, string> = {
   Unknown: '#475569',
 };
 
-export function AwardsNight({ beat, onComplete }: { beat: any; onComplete: () => void }) {
-  const awards: any[] = beat.payload?.awards ?? [];
+export function AwardsNight({ beat, onComplete }: { beat: AwardsBeat; onComplete: () => void }) {
+  const awards = beat.payload.awards;
 
   if (awards.length === 0) {
     return (
@@ -52,7 +64,7 @@ export function AwardsNight({ beat, onComplete }: { beat: any; onComplete: () =>
       stages={awards.length}
       renderStage={(stage) => (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '480px', margin: '0 auto' }}>
-          {awards.slice(0, stage).map((award: any, i: number) => {
+          {awards.slice(0, stage).map((award: OffseasonAward, i: number) => {
             const color = AWARD_COLOR[award.award_type] ?? '#f97316';
             const icon = AWARD_ICON[award.award_type] ?? '🏅';
             const isLatest = i === stage - 1;
@@ -92,8 +104,8 @@ export function AwardsNight({ beat, onComplete }: { beat: any; onComplete: () =>
   );
 }
 
-export function Graduation({ beat, onComplete }: { beat: any; onComplete: () => void }) {
-  const retirees: any[] = beat.payload?.retirees ?? [];
+export function Graduation({ beat, onComplete }: { beat: RetirementsBeat; onComplete: () => void }) {
+  const retirees = beat.payload.retirees;
 
   if (retirees.length === 0) {
     return (
@@ -120,7 +132,7 @@ export function Graduation({ beat, onComplete }: { beat: any; onComplete: () => 
       stages={retirees.length}
       renderStage={(stage) => (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '480px', margin: '0 auto' }}>
-          {retirees.slice(0, stage).map((r: any, i: number) => {
+          {retirees.slice(0, stage).map((r: OffseasonRetiree, i: number) => {
             const isLatest = i === stage - 1;
             const tierColor = TIER_COLOR[r.potential_tier] ?? '#475569';
             return (
@@ -159,7 +171,7 @@ export function Graduation({ beat, onComplete }: { beat: any; onComplete: () => 
   );
 }
 
-export function CoachingCarousel({ beat, onComplete }: { beat: any, onComplete: () => void }) {
+export function CoachingCarousel({ beat, onComplete }: { beat: OffseasonBeat, onComplete: () => void }) {
   return (
     <CeremonyShell 
       title={beat.title} 
@@ -168,7 +180,7 @@ export function CoachingCarousel({ beat, onComplete }: { beat: any, onComplete: 
       stages={1}
       renderStage={(stage) => (
         <div style={{ textAlign: 'center' }}>
-          {stage >= 1 && <div className="fade-in" style={{ fontSize: '1.25rem' }}>{beat.body.join(' ')}</div>}
+          {stage >= 1 && <div className="fade-in" style={{ fontSize: '1.25rem' }}>{beat.body}</div>}
         </div>
       )}
       onComplete={onComplete}
@@ -176,9 +188,9 @@ export function CoachingCarousel({ beat, onComplete }: { beat: any, onComplete: 
   );
 }
 
-export function SigningDay({ beat, onComplete }: { beat: any; onComplete: () => void }) {
-  const playerSigning = beat.payload?.player_signing ?? null;
-  const otherSignings: any[] = beat.payload?.other_signings ?? [];
+export function SigningDay({ beat, onComplete }: { beat: RecruitmentBeat; onComplete: () => void }) {
+  const playerSigning = beat.payload.player_signing;
+  const otherSignings = beat.payload.other_signings;
   const totalStages = 1 + otherSignings.length;
 
   return (
@@ -215,7 +227,7 @@ export function SigningDay({ beat, onComplete }: { beat: any; onComplete: () => 
           )}
 
           {/* Subsequent stages: AI signings */}
-          {otherSignings.slice(0, stage - 1).map((s: any, i: number) => (
+          {otherSignings.slice(0, stage - 1).map((s: OffseasonSigning, i: number) => (
             <div
               key={i}
               className="fade-in"
@@ -249,10 +261,10 @@ export function SigningDay({ beat, onComplete }: { beat: any; onComplete: () => 
   );
 }
 
-export function NewSeasonEve({ beat, onComplete }: { beat: any; onComplete: () => void }) {
-  const fixtures: any[] = beat.payload?.fixtures ?? [];
-  const prediction: string = beat.payload?.prediction ?? '';
-  const seasonLabel: string = beat.payload?.season_label ?? '';
+export function NewSeasonEve({ beat, onComplete }: { beat: ScheduleRevealBeat; onComplete: () => void }) {
+  const fixtures = beat.payload.fixtures;
+  const prediction: string = beat.payload.prediction;
+  const seasonLabel: string = beat.payload.season_label;
 
   return (
     <CeremonyShell
@@ -270,7 +282,7 @@ export function NewSeasonEve({ beat, onComplete }: { beat: any; onComplete: () =
                   {typeof beat.body === 'string' ? beat.body : 'Schedule not available.'}
                 </div>
               ) : (
-                fixtures.map((f: any, i: number) => (
+                fixtures.map((f: OffseasonFixture, i: number) => (
                   <div
                     key={i}
                     style={{

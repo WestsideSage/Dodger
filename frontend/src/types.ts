@@ -388,20 +388,50 @@ export interface OffseasonFixture {
     is_player_match: boolean;
 }
 
-export interface OffseasonBeatPayload {
-    awards?: OffseasonAward[];
-    retirees?: OffseasonRetiree[];
-    player_signing?: OffseasonSigning | null;
-    other_signings?: OffseasonSigning[];
-    fixtures?: OffseasonFixture[];
-    prediction?: string;
-    season_label?: string;
+// --- Per-beat payload interfaces ---
+
+export interface AwardsBeatPayload {
+    awards: OffseasonAward[];
 }
 
-export interface OffseasonBeat {
+export interface RetirementsBeatPayload {
+    retirees: OffseasonRetiree[];
+}
+
+export interface ChampionBeatPayload {
+    champion?: { club_name: string; wins: number; losses: number; draws: number; title_count: number };
+}
+
+export interface RecapBeatPayload {
+    standings: Array<{
+        rank: number;
+        club_name: string;
+        wins: number;
+        losses: number;
+        draws: number;
+        points: number;
+        is_player_club: boolean;
+    }>;
+}
+
+export interface RecruitmentBeatPayload {
+    player_signing: OffseasonSigning | null;
+    other_signings: OffseasonSigning[];
+}
+
+export interface ScheduleRevealBeatPayload {
+    fixtures: OffseasonFixture[];
+    season_label: string;
+    prediction: string;
+}
+
+// Beats that carry data only in `body` text have empty payloads
+export type EmptyBeatPayload = Record<string, never>;
+
+// Base fields shared by every beat variant
+interface OffseasonBeatBase {
     beat_index: number;
     total_beats: number;
-    key: string;
     title: string;
     body: string;
     state: string;
@@ -410,8 +440,20 @@ export interface OffseasonBeat {
     can_begin_season: boolean;
     signed_player_id: string;
     signed_player?: { id: string; name: string; overall: number; age: number } | null;
-    payload?: OffseasonBeatPayload;
 }
+
+// Discriminated union — `key` is the discriminant
+export type OffseasonBeat =
+    | (OffseasonBeatBase & { key: 'champion'; payload: ChampionBeatPayload })
+    | (OffseasonBeatBase & { key: 'recap'; payload: RecapBeatPayload })
+    | (OffseasonBeatBase & { key: 'awards'; payload: AwardsBeatPayload })
+    | (OffseasonBeatBase & { key: 'records_ratified'; payload: EmptyBeatPayload })
+    | (OffseasonBeatBase & { key: 'hof_induction'; payload: EmptyBeatPayload })
+    | (OffseasonBeatBase & { key: 'development'; payload: EmptyBeatPayload })
+    | (OffseasonBeatBase & { key: 'retirements'; payload: RetirementsBeatPayload })
+    | (OffseasonBeatBase & { key: 'rookie_class_preview'; payload: EmptyBeatPayload })
+    | (OffseasonBeatBase & { key: 'recruitment'; payload: RecruitmentBeatPayload })
+    | (OffseasonBeatBase & { key: 'schedule_reveal'; payload: ScheduleRevealBeatPayload });
 
 export interface CommandCenterSimResponse {
     status: string;
