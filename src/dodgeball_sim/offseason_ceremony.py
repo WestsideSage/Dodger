@@ -33,6 +33,7 @@ from .persistence import (
     save_awards,
     save_career_state_cursor,
     save_club,
+    save_club_trophy,
     save_free_agents,
     save_lineup_default,
     save_player_career_stats,
@@ -299,6 +300,12 @@ def finalize_season(
     }
     save_player_season_stats(conn, season.season_id, season_stats, player_club_map, matches_by_player, newcomers)
     _update_career_summaries(conn, rosters, awards)
+    season_outcome = conn.execute(
+        "SELECT champion_club_id FROM season_outcomes WHERE season_id = ?",
+        (season.season_id,),
+    ).fetchone()
+    if season_outcome and season_outcome["champion_club_id"]:
+        save_club_trophy(conn, season_outcome["champion_club_id"], "championship", season.season_id)
     conn.commit()
 
 
