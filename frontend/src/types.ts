@@ -60,6 +60,7 @@ export interface StatusResponse {
         season_id: string;
         player_club_id: string;
         player_club_name: string | null;
+        season_year: number | null;
     };
 }
 
@@ -157,6 +158,7 @@ export interface ReplayProofEvent {
 export interface TopPerformer {
     player_id: string;
     player_name: string;
+    club_name?: string;
     score: number;
     eliminations_by_throw: number;
     catches_made: number;
@@ -360,7 +362,10 @@ export interface OffseasonAward {
     player_name: string;
     club_name: string;
     award_type: string;
-    career_elims: number;
+    award_name: string;
+    season_stat: number;
+    season_stat_label: string;
+    career_stat: number;
     ovr: number;
 }
 
@@ -411,8 +416,28 @@ export interface RecapBeatPayload {
         losses: number;
         draws: number;
         points: number;
+        diff: number;
         is_player_club: boolean;
     }>;
+}
+
+export interface DevelopmentPlayer {
+    name: string;
+    ovr_before: number;
+    ovr_after: number;
+    delta: number;
+}
+
+export interface DevelopmentBeatPayload {
+    players: DevelopmentPlayer[];
+}
+
+export interface RookieClassPreviewBeatPayload {
+    class_size: number;
+    top_prospects: number;
+    free_agents: number;
+    archetypes: Array<{ name: string; count: number }>;
+    storylines: string[];
 }
 
 export interface RecruitmentBeatPayload {
@@ -450,9 +475,9 @@ export type OffseasonBeat =
     | (OffseasonBeatBase & { key: 'awards'; payload: AwardsBeatPayload })
     | (OffseasonBeatBase & { key: 'records_ratified'; payload: EmptyBeatPayload })
     | (OffseasonBeatBase & { key: 'hof_induction'; payload: EmptyBeatPayload })
-    | (OffseasonBeatBase & { key: 'development'; payload: EmptyBeatPayload })
+    | (OffseasonBeatBase & { key: 'development'; payload: DevelopmentBeatPayload })
     | (OffseasonBeatBase & { key: 'retirements'; payload: RetirementsBeatPayload })
-    | (OffseasonBeatBase & { key: 'rookie_class_preview'; payload: EmptyBeatPayload })
+    | (OffseasonBeatBase & { key: 'rookie_class_preview'; payload: RookieClassPreviewBeatPayload })
     | (OffseasonBeatBase & { key: 'recruitment'; payload: RecruitmentBeatPayload })
     | (OffseasonBeatBase & { key: 'schedule_reveal'; payload: ScheduleRevealBeatPayload });
 
