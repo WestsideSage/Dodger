@@ -21,6 +21,17 @@ function humanize(value: string | undefined) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+function parseKeyMatchup(raw: string) {
+  const parts = raw.split(',').map(s => s.trim());
+  if (parts.length >= 3) {
+    const name = parts[0];
+    const role = parts[1];
+    const ovrMatch = parts[2].match(/(\d+)/);
+    return { name, role, ovr: ovrMatch ? ovrMatch[1] : null };
+  }
+  return { name: raw, role: null, ovr: null };
+}
+
 function resultTone(result: string | undefined) {
   if (result === 'Win') return '#10b981';
   if (result === 'Loss') return '#f43f5e';
@@ -309,7 +320,26 @@ export function PreSimDashboard({
                 <div className="command-verdict command-verdict-compact">
                   {details.framing_line}
                 </div>
-                <p className="command-muted-copy">{details.key_matchup}</p>
+                {(() => {
+                  const threat = parseKeyMatchup(details.key_matchup);
+                  return (
+                    <div className="command-threat-card">
+                      <div className="command-threat-card-icon">⚠️</div>
+                      <div className="command-threat-card-body">
+                        <span className="command-threat-card-kicker">Key Threat</span>
+                        <span className="command-threat-card-name">{threat.name}</span>
+                        {threat.role && <span className="command-threat-card-role">{threat.role}</span>}
+                      </div>
+                      {threat.ovr && (
+                        <div className="command-threat-card-ovr">
+                          <strong>{threat.ovr}</strong>
+                          <span>OVR</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+                <p className="command-field-label" style={{ marginBottom: '0.3rem' }}>Scouting</p>
                 <p className="command-muted-copy">{plan.recommendations[0]?.text ?? 'No recommendation returned.'}</p>
               </div>
               <div>
