@@ -9,6 +9,8 @@ from dodgeball_sim.offseason_ceremony import (
     initialize_manager_offseason,
     OFFSEASON_CEREMONY_BEATS,
 )
+from dodgeball_sim.offseason_presentation import build_beat_payload
+from dodgeball_sim.awards import SeasonAward
 from dodgeball_sim.persistence import (
     create_schema,
     get_state,
@@ -16,6 +18,16 @@ from dodgeball_sim.persistence import (
     load_clubs,
     load_season,
 )
+
+
+def _make_award(award_type, player_id, club_id="team_a"):
+    return SeasonAward(
+        season_id="s1",
+        award_type=award_type,
+        player_id=player_id,
+        club_id=club_id,
+        award_score=1.0,
+    )
 
 
 def _career_conn() -> sqlite3.Connection:
@@ -250,3 +262,72 @@ def test_initialize_manager_offseason_stores_active_beats():
     assert len(active) > 0
     assert "schedule_reveal" in active
     assert active[-1] == "schedule_reveal"
+
+
+def test_awards_payload_has_season_stat_fields():
+    import sqlite3
+    from dodgeball_sim.persistence import create_schema
+
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    conn.commit()
+
+    awards_list = [_make_award("mvp", "p1"), _make_award("best_thrower", "p1")]
+
+    # season=None means season_stats will be {} and stats default to zeros,
+    # but the keys must still exist in the payload.
+    payload = build_beat_payload(
+        "awards",
+        awards=awards_list,
+        clubs={},
+        rosters={},
+        standings=[],
+        ret_rows=[],
+        season=None,
+        season_outcome=None,
+        next_preview=None,
+        signed_player_id="",
+        conn=conn,
+    )
+
+    assert "awards" in payload
+    first = payload["awards"][0]
+    assert "award_name" in first, "award_name missing"
+    assert "season_stat" in first, "season_stat missing"
+    assert "season_stat_label" in first, "season_stat_label missing"
+    assert "career_stat" in first, "career_stat missing"
+    # career_elims renamed to career_stat
+    assert "career_elims" not in first
+
+
+def test_awards_payload_prestige_sort_mvp_first():
+    awards_list = [
+        _make_award("best_newcomer", "p1"),
+        _make_award("best_catcher", "p2"),
+        _make_award("best_thrower", "p3"),
+        _make_award("mvp", "p4"),
+    ]
+    import sqlite3
+    from dodgeball_sim.persistence import create_schema
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+
+    payload = build_beat_payload(
+        "awards",
+        awards=awards_list,
+        clubs={},
+        rosters={},
+        standings=[],
+        ret_rows=[],
+        season=None,
+        season_outcome=None,
+        next_preview=None,
+        signed_player_id="",
+        conn=conn,
+    )
+
+    types = [a["award_type"] for a in payload["awards"]]
+    assert types[0] == "mvp", f"Expected mvp first, got {types}"
+    assert types[-1] == "best_newcomer", f"Expected best_newcomer last, got {types}"
