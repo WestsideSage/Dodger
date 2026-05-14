@@ -67,8 +67,7 @@ export function AwardsNight({ beat, onComplete, acting }: { beat: AwardsBeat; on
                     {awards.slice(0, stage).map((award: OffseasonAward, i: number) => {
                         const color = AWARD_COLOR[award.award_type] ?? '#f97316';
                         const icon = AWARD_ICON[award.award_type] ?? '🏅';
-                        // MVP (index 0) is always highlighted; others are dimmer
-                        const isHighlighted = i === 0;
+                        const isHighlighted = award.award_type === 'mvp';
                         return (
                             <div
                                 key={i}

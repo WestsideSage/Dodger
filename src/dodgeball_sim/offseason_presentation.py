@@ -188,7 +188,6 @@ def build_beat_payload(
         return {}
 
     if beat_key == "recap":
-        player_club_id = get_state(conn, "player_club_id") or ""
         return {
             "standings": [
                 {
@@ -220,7 +219,6 @@ def build_beat_payload(
     if beat_key == "schedule_reveal":
         if next_preview is None:
             return {"fixtures": [], "season_label": "", "prediction": ""}
-        player_club_id = get_state(conn, "player_club_id") or ""
         fixtures = [
             {
                 "week": match.week,
@@ -320,8 +318,9 @@ def build_beat_response(conn: sqlite3.Connection, cursor) -> dict[str, Any]:
     rookie_preview_json = get_state(conn, "offseason_rookie_preview_payload_json")
     player_club_id = get_state(conn, "player_club_id") or ""
 
+    canonical_index = OFFSEASON_CEREMONY_BEATS.index(beat_key)
     beat = build_offseason_ceremony_beat(
-        beat_index=beat_index,
+        beat_index=canonical_index,
         season=season,
         clubs=clubs,
         rosters=rosters,
