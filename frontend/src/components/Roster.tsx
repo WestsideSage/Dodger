@@ -70,7 +70,8 @@ export function Roster() {
       .then((d: CommandCenterResponse) => setPlanContext({
         intent: d.plan.intent,
         dev_focus: d.plan.department_orders?.dev_focus ?? 'BALANCED',
-      }));
+      }))
+      .catch(() => {});
   };
 
   useEffect(() => {

@@ -288,7 +288,12 @@ def finalize_season(
         ).fetchall()
     }
     newcomers = frozenset(player.id for roster in rosters.values() for player in roster if player.newcomer)
-    awards = compute_season_awards(season.season_id, season_stats, player_club_map, newcomers)
+    _outcome_row = conn.execute(
+        "SELECT champion_club_id FROM season_outcomes WHERE season_id = ?",
+        (season.season_id,),
+    ).fetchone()
+    champion_club_id = _outcome_row["champion_club_id"] if _outcome_row else None
+    awards = compute_season_awards(season.season_id, season_stats, player_club_map, newcomers, champion_club_id)
     save_awards(conn, awards)
     matches_by_player = {
         row["player_id"]: row["matches"]
@@ -471,7 +476,10 @@ def sign_best_rookie(
         rosters = load_all_rosters(conn)
         set_state(conn, "offseason_draft_signed_player_id", signed_prospect.id)
         roster = list(rosters.get(player_club_id, []))
-        save_lineup_default(conn, player_club_id, [player.id for player in roster])
+        other_ids = [p.id for p in roster if p.id != signed_prospect.id]
+        # Insert recruit at slot 6 (index 5) so they're an active starter, not bench
+        lineup_ids = other_ids[:5] + [signed_prospect.id] + other_ids[5:]
+        save_lineup_default(conn, player_club_id, lineup_ids)
         conn.commit()
         return signed_prospect
     free_agents = load_free_agents(conn)
@@ -486,7 +494,10 @@ def sign_best_rookie(
     roster.append(signed)
     clubs = load_clubs(conn)
     save_club(conn, clubs[player_club_id], roster)
-    save_lineup_default(conn, player_club_id, [player.id for player in roster])
+    other_ids = [p.id for p in roster if p.id != signed.id]
+    # Insert recruit at slot 6 (index 5) so they're an active starter, not bench
+    lineup_ids = other_ids[:5] + [signed.id] + other_ids[5:]
+    save_lineup_default(conn, player_club_id, lineup_ids)
     save_free_agents(conn, remaining, f"season_{(season_number or 1) + 1}")
     set_state(conn, "offseason_draft_signed_player_id", signed.id)
     conn.commit()

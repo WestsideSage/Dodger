@@ -3,6 +3,7 @@ import type { SaveInfo, SaveListResponse, ClubOption } from '../types';
 import { IdentityStep } from './new-game/IdentityStep';
 import { CoachStep } from './new-game/CoachStep';
 import { StartingRecruitmentStep } from './new-game/StartingRecruitmentStep';
+import { saveApi } from '../api/client';
 
 interface SaveMenuProps {
   onSaveLoaded: () => void;
@@ -34,9 +35,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/saves');
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
-      const data: SaveListResponse = await res.json();
+      const data: SaveListResponse = await saveApi.list();
       setSaves(data.saves);
       setActivePath(data.active_path);
     } catch (e) {
@@ -48,12 +47,9 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
 
   const loadClubs = useCallback(async () => {
     try {
-      const res = await fetch('/api/saves/clubs');
-      if (res.ok) {
-        const data = await res.json();
-        setClubs(data.clubs);
-        if (data.clubs.length > 0) setNewClubId(data.clubs[0].club_id);
-      }
+      const data = await saveApi.clubs();
+      setClubs(data.clubs);
+      if (data.clubs.length > 0) setNewClubId(data.clubs[0].club_id);
     } catch {
       // clubs list is optional; new-game form still works with default
     }
@@ -69,15 +65,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
   async function handleLoad(path: string) {
     setError(null);
     try {
-      const res = await fetch('/api/saves/load', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.detail || 'Load failed');
-      }
+      await saveApi.load(path);
       onSaveLoaded();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load save');
@@ -89,15 +77,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
     setDeleting(path);
     setError(null);
     try {
-      const res = await fetch('/api/saves/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.detail || 'Delete failed');
-      }
+      await saveApi.delete(path);
       await loadSaveList();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete save');
@@ -115,15 +95,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
     setCreating(true);
     setCreateError(null);
     try {
-      const res = await fetch('/api/saves/new', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName.trim(), club_id: newClubId }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.detail || 'Failed to create save');
-      }
+      await saveApi.create({ name: newName.trim(), club_id: newClubId });
       onSaveLoaded();
     } catch (e) {
       setCreateError(e instanceof Error ? e.message : 'Failed to create save');
@@ -135,23 +107,15 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
     setCreating(true);
     setCreateError(null);
     try {
-      const res = await fetch('/api/saves/build-from-scratch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          save_name: buildIdentity.save_name,
-          club_name: buildIdentity.club_name,
-          city: buildIdentity.city,
-          colors: buildIdentity.colors,
-          coach_name: buildCoach.coach_name,
-          coach_backstory: buildCoach.coach_backstory,
-          roster_player_ids: rosterIds
-        }),
+      await saveApi.buildFromScratch({
+        save_name: buildIdentity.save_name,
+        club_name: buildIdentity.club_name,
+        city: buildIdentity.city,
+        colors: buildIdentity.colors,
+        coach_name: buildCoach.coach_name,
+        coach_backstory: buildCoach.coach_backstory,
+        roster_player_ids: rosterIds,
       });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.detail || 'Failed to create custom save');
-      }
       onSaveLoaded();
     } catch (e) {
       setCreateError(e instanceof Error ? e.message : 'Failed to create custom save');

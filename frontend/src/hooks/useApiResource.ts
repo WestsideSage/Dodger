@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { apiGet } from '../api/client';
 
 export function useApiResource<T>(url: string, onLoad?: (data: T) => void) {
   const [data, setData] = useState<T | null>(null);
@@ -8,11 +9,7 @@ export function useApiResource<T>(url: string, onLoad?: (data: T) => void) {
   useEffect(() => {
     let cancelled = false;
 
-    fetch(url)
-      .then(res => {
-        if (!res.ok) throw new Error(`Failed to fetch ${url}`);
-        return res.json();
-      })
+    apiGet<T>(url)
       .then((payload: T) => {
         if (!cancelled) {
           setData(payload);
