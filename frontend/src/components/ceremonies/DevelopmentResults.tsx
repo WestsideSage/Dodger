@@ -1,4 +1,5 @@
 import type { OffseasonBeat } from '../../types';
+import { ActionButton } from '../ui';
 
 type DevelopmentBeat = Extract<OffseasonBeat, { key: 'development' }>;
 
@@ -11,7 +12,7 @@ export function DevelopmentResults({
     onComplete: () => void;
     acting?: boolean;
 }) {
-    const players = beat.payload.players;
+    const players = beat.payload.players.filter(p => p.delta !== 0);
 
     return (
         <section className="command-offseason-shell" data-testid="offseason-development">
@@ -23,7 +24,7 @@ export function DevelopmentResults({
                     Your Roster Progress
                 </h2>
                 <p style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                    {players.length} player{players.length !== 1 ? 's' : ''} on your roster
+                    {players.length} player{players.length !== 1 ? 's' : ''} changed OVR
                 </p>
             </div>
 
@@ -80,13 +81,13 @@ export function DevelopmentResults({
                     <p>Continue to the next offseason beat.</p>
                 </div>
                 <div className="command-action-buttons">
-                    <button
-                        className="dm-btn dm-btn-primary"
+                    <ActionButton
+                        variant="primary"
                         onClick={onComplete}
                         disabled={acting}
                     >
                         {acting ? 'Continuing...' : 'Continue'}
-                    </button>
+                    </ActionButton>
                 </div>
             </div>
         </section>

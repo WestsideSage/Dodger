@@ -1,4 +1,5 @@
 import type { OffseasonBeat } from '../../types';
+import { ActionButton } from '../ui';
 
 type RookieClassPreviewBeat = Extract<OffseasonBeat, { key: 'rookie_class_preview' }>;
 
@@ -78,13 +79,13 @@ export function RookieClassPreview({
                     <p>Continue to Signing Day.</p>
                 </div>
                 <div className="command-action-buttons">
-                    <button
-                        className="dm-btn dm-btn-primary"
+                    <ActionButton
+                        variant="primary"
                         onClick={onComplete}
                         disabled={acting}
                     >
                         {acting ? 'Continuing...' : 'Continue'}
-                    </button>
+                    </ActionButton>
                 </div>
             </div>
         </section>

@@ -367,6 +367,12 @@ export interface OffseasonAward {
     season_stat_label: string;
     career_stat: number;
     ovr: number;
+    extra_stats?: {
+        throw_elims: number;
+        catches: number;
+        times_eliminated: number;
+        matches: number;
+    } | null;
 }
 
 export interface OffseasonRetiree {
