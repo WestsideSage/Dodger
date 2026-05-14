@@ -9,6 +9,7 @@
   },
   "scripts": {
     "e2e": "playwright test",
+    "e2e:diagnose": "playwright test tests/e2e/playable-loop-diagnostics.spec.ts --project=chromium",
     "e2e:ui": "playwright test --ui"
   },
   "keywords": [],

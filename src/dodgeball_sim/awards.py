@@ -25,7 +25,10 @@ _MVP_WEIGHTS = {
     "dodges_successful": 1.5,
     "revivals_caused": 2.0,
     "times_eliminated": -2.0,
+    "clutch_events": 3.0,
 }
+
+_CHAMPIONSHIP_BONUS = 20.0
 
 
 def _mvp_score(stats: PlayerMatchStats) -> float:
@@ -35,7 +38,7 @@ def _mvp_score(stats: PlayerMatchStats) -> float:
         + _MVP_WEIGHTS["dodges_successful"] * stats.dodges_successful
         + _MVP_WEIGHTS["revivals_caused"] * stats.revivals_caused
         + _MVP_WEIGHTS["times_eliminated"] * stats.times_eliminated
-        + stats.clutch_events * 1.0  # clutch bonus
+        + _MVP_WEIGHTS["clutch_events"] * stats.clutch_events
     )
 
 
@@ -44,6 +47,7 @@ def compute_season_awards(
     player_season_stats: Dict[str, PlayerMatchStats],
     player_club_map: Dict[str, str],
     newcomer_player_ids: frozenset,
+    champion_club_id: Optional[str] = None,
 ) -> List[SeasonAward]:
     """Compute all season awards from aggregated per-player stats. Pure.
 
@@ -52,6 +56,7 @@ def compute_season_awards(
         player_season_stats: player_id → summed PlayerMatchStats across all matches.
         player_club_map: player_id → club_id (their club at season end).
         newcomer_player_ids: set of player_ids flagged as newcomers this season.
+        champion_club_id: club_id of the season champion, or None if no champion.
     """
     if not player_season_stats:
         return []
@@ -67,9 +72,19 @@ def compute_season_awards(
 
     awards: List[SeasonAward] = []
 
-    scored = {pid: _mvp_score(stats) for pid, stats in player_season_stats.items()}
+    base_scored = {pid: _mvp_score(stats) for pid, stats in player_season_stats.items()}
+    # Championship bonus: players on the title-winning club get a flat boost.
+    # Stats remain the primary driver; the bonus only tips a close race.
+    scored = {
+        pid: score + (
+            _CHAMPIONSHIP_BONUS
+            if champion_club_id and player_club_map.get(pid) == champion_club_id
+            else 0.0
+        )
+        for pid, score in base_scored.items()
+    }
 
-    # MVP — highest mvp_score overall
+    # MVP — highest mvp_score overall (with optional championship bonus)
     mvp_id = max(scored, key=lambda pid: (scored[pid], pid))
     awards.append(_award("mvp", mvp_id, scored[mvp_id]))
 

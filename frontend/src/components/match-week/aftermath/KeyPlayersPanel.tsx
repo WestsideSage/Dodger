@@ -26,6 +26,11 @@ export function KeyPlayersPanel({ performers }: { performers: TopPerformer[] }) 
               <span>{index + 1}</span>
               <div>
                 <strong>{player.player_name}</strong>
+                {player.club_name && (
+                  <span style={{ fontSize: '0.7rem', color: '#64748b', marginLeft: '0.35rem' }}>
+                    {player.club_name}
+                  </span>
+                )}
                 <p>{statLine(player)}</p>
               </div>
             </article>

@@ -6,6 +6,7 @@ import { CredibilityStrip } from './dynasty/CredibilityStrip';
 import { ProspectCard } from './dynasty/ProspectCard';
 import { StaffMarketModal } from './dynasty/StaffMarketModal';
 import { HistorySubTab } from './dynasty/HistorySubTab';
+import { commandApi, dynastyApi } from '../api/client';
 
 const DEPARTMENT_LABELS: Record<string, string> = {
   tactics: 'Tactics',
@@ -62,15 +63,14 @@ export function DynastyOffice() {
 
   const load = () => {
     setLoading(true);
-    fetch('/api/dynasty-office')
-      .then(res => res.json())
+    dynastyApi.office()
       .then(setData)
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
   };
 
   const fetchPlan = () => {
-    fetch('/api/command-center').then(res => res.json()).then(setPlanContext);
+    commandApi.center().then(setPlanContext);
   };
 
   useEffect(() => {
@@ -83,24 +83,15 @@ export function DynastyOffice() {
 
   const updateDepartmentOrder = (key: string, value: string) => {
     if (!planContext) return;
-    fetch('/api/command-center/plan', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    commandApi.savePlan({
         intent: planContext.plan.intent,
         department_orders: { [key]: value },
-      }),
-    })
-      .then(res => res.json())
+      })
       .then(setPlanContext);
   };
 
   const hireStaff = (id: string) => {
-    fetch('/api/dynasty-office/staff/hire', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ candidate_id: id }),
-    }).then(() => { setShowStaffMarket(false); load(); });
+    dynastyApi.hireStaff(id).then(() => { setShowStaffMarket(false); load(); });
   };
 
   return (

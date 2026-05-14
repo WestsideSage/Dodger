@@ -12,6 +12,7 @@ import type { Aftermath, CommandCenterResponse, CommandCenterSimResponse, MatchR
 import { useApiResource } from '../hooks/useApiResource';
 import { PageHeader, StatusMessage } from './ui';
 import { Offseason } from './Offseason';
+import { commandApi } from '../api/client';
 
 type MatchWeekMode = 'pre-sim' | 'post-sim' | 'offseason';
 
@@ -61,11 +62,7 @@ export function MatchWeek({
 
   const load = (showLoading = false) => {
     if (showLoading) setLoading(true);
-    return fetch('/api/command-center')
-      .then(res => {
-        if (!res.ok) throw new Error('Command center unavailable');
-        return res.json();
-      })
+    return commandApi.center()
       .then((payload: CommandCenterResponse) => {
         setData(payload);
         setLocalIntent(undefined);
@@ -76,15 +73,7 @@ export function MatchWeek({
 
   const savePlan = (intent = selectedIntent, confirm = false) => {
     setError(null);
-    return fetch('/api/command-center/plan', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ intent }),
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Plan save failed');
-        return res.json();
-      })
+    return commandApi.savePlan({ intent })
       .then((payload: CommandCenterResponse) => {
         setData(payload);
         setLocalIntent(undefined);
@@ -96,15 +85,7 @@ export function MatchWeek({
   const simulate = () => {
     setError(null);
     setIsTransitioning(true);
-    fetch('/api/command-center/simulate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ intent: selectedIntent }),
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Command simulation failed');
-        return res.json();
-      })
+    commandApi.simulate({ intent: selectedIntent })
       .then((payload: CommandCenterSimResponse) => {
         setResult(payload);
         return load();
@@ -146,6 +127,10 @@ export function MatchWeek({
     if (mode !== 'post-sim') return;
     const skip = (e: KeyboardEvent | MouseEvent) => {
       if (e.type === 'keydown' && (e as KeyboardEvent).code !== 'Space') return;
+      if (e.type === 'click') {
+        const target = e.target as Element | null;
+        if (target?.closest('.dm-left-nav')) return;
+      }
       setRevealStage(4);
     };
     window.addEventListener('keydown', skip);
@@ -163,11 +148,7 @@ export function MatchWeek({
     if (replayData?.match_id === matchId) return;
 
     let cancelled = false;
-    fetch(`/api/matches/${encodeURIComponent(matchId)}/replay`)
-      .then(res => {
-        if (!res.ok) throw new Error('Replay unavailable');
-        return res.json();
-      })
+    commandApi.replay(matchId)
       .then((payload: MatchReplayResponse) => {
         if (!cancelled) setReplayData(payload);
       })

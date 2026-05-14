@@ -33,6 +33,7 @@ from dodgeball_sim.persistence import (
     load_career_state_cursor,
     load_completed_match_ids,
     load_season,
+    load_standings,
     load_weekly_command_plan,
     save_career_state_cursor,
     save_command_history_record,
@@ -48,6 +49,9 @@ def _build_aftermath(
     dashboard: dict[str, Any],
     record,
     season_id: str,
+    standings_before: list | None = None,
+    standings_after: list | None = None,
+    clubs: dict | None = None,
 ) -> dict[str, Any]:
     """Build the aftermath payload for a simulated week."""
     from dodgeball_sim.rng import DeterministicRNG, derive_seed
@@ -59,6 +63,23 @@ def _build_aftermath(
     box = record.result.box_score["teams"]
     home_survivors = int(box[record.home_club_id]["totals"]["living"])
     away_survivors = int(box[record.away_club_id]["totals"]["living"])
+
+    standings_shift: list[dict] = []
+    if standings_before is not None and standings_after is not None and clubs is not None:
+        before_rank = {row.club_id: (i + 1) for i, row in enumerate(standings_before)}
+        after_rank = {row.club_id: (i + 1) for i, row in enumerate(standings_after)}
+        for club_id, new_rank in after_rank.items():
+            old_rank = before_rank.get(club_id, new_rank)
+            if old_rank != new_rank:
+                club = clubs.get(club_id)
+                standings_shift.append({
+                    "club_id": club_id,
+                    "club_name": club.name if club else club_id,
+                    "old_rank": old_rank,
+                    "new_rank": new_rank,
+                })
+        standings_shift.sort(key=lambda item: item["new_rank"])
+
     return {
         "headline": headline,
         "match_card": {
@@ -69,7 +90,7 @@ def _build_aftermath(
             "away_survivors": away_survivors,
         },
         "player_growth_deltas": [],
-        "standings_shift": [],
+        "standings_shift": standings_shift,
         "recruit_reactions": [],
     }
 
@@ -189,6 +210,9 @@ def simulate_week(
     _validate_match_rosters(week_matches, rosters)
     difficulty = get_state(conn, "difficulty", "pro") or "pro"
 
+    standings_before_raw = load_standings(conn, season_id)
+    standings_before = sorted(standings_before_raw, key=lambda r: (-r.points, -r.elimination_differential, r.club_id))
+
     records = [
         simulate_scheduled_match(
             conn,
@@ -202,6 +226,8 @@ def simulate_week(
     ]
     record = next(item for item in records if item.match_id == scheduled.match_id)
     recompute_regular_season_standings(conn, season)
+    standings_after_raw = load_standings(conn, season_id)
+    standings_after = sorted(standings_after_raw, key=lambda r: (-r.points, -r.elimination_differential, r.club_id))
     dashboard = build_post_week_dashboard(conn, plan, record)
     save_command_history_record(
         conn,
@@ -234,7 +260,7 @@ def simulate_week(
     save_career_state_cursor(conn, cursor)
     conn.commit()
 
-    aftermath = _build_aftermath(conn, dashboard, record, season_id)
+    aftermath = _build_aftermath(conn, dashboard, record, season_id, standings_before, standings_after, clubs)
 
     return {
         "status": "success",

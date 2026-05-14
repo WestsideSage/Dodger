@@ -19,7 +19,7 @@ from .franchise import MatchRecord
 from .matchup_details import build_matchup_details
 
 
-INTENTS = ("Win Now", "Develop Youth", "Preserve Health", "Evaluate Lineup", "Prepare For Playoffs")
+INTENTS = ("Balanced", "Win Now", "Develop Youth", "Preserve Health", "Evaluate Lineup", "Prepare For Playoffs")
 
 DEFAULT_DEPARTMENT_ORDERS = {
     "tactics": "opponent prep",

@@ -33,10 +33,12 @@ export function StartingRecruitmentStep({
   }, []);
 
   const toggleProspect = (id: string) => {
-    const next = new Set(rosterIds);
-    if (next.has(id)) next.delete(id);
-    else if (next.size < 10) next.add(id);
-    setRosterIds(next);
+    setRosterIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else if (next.size < 10) next.add(id);
+      return next;
+    });
   };
 
   const needed = 6 - rosterIds.size;

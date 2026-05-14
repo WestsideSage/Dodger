@@ -6,6 +6,7 @@ import { Roster } from './components/Roster';
 import { SaveMenu } from './components/SaveMenu';
 import MatchReplay from './components/MatchReplay';
 import type { CommandCenterSimResponse, MatchReplayResponse } from './types';
+import { careerApi, commandApi } from './api/client';
 
 type Screen = 'loading' | 'menu' | 'game' | 'offseason';
 type Tab = 'command' | 'dynasty' | 'roster' | 'standings';
@@ -50,14 +51,15 @@ function App() {
   const [postSimResult, setPostSimResult] = useState<CommandCenterSimResponse | null>(null);
   const [commandReplay, setCommandReplay] = useState<MatchReplayResponse | null>(null);
   const [commandReplayLoading, setCommandReplayLoading] = useState(false);
+  const [seasonYear, setSeasonYear] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch('/api/save-state')
-      .then((r) => r.json())
+    careerApi.saveState()
       .then((data) => {
         if (!data.loaded) { setScreen('menu'); return; }
-        return fetch('/api/status').then(r => r.json()).then(status => {
+        return careerApi.status().then(status => {
           const state = status?.state?.state ?? '';
+          setSeasonYear(status?.context?.season_year ?? null);
           setScreen(OFFSEASON_STATES.has(state) ? 'offseason' : 'game');
         });
       })
@@ -73,11 +75,7 @@ function App() {
 
   const openCommandReplay = (matchId: string) => {
     setCommandReplayLoading(true);
-    fetch(`/api/matches/${encodeURIComponent(matchId)}/replay`)
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch match replay');
-        return res.json();
-      })
+    commandApi.replay(matchId)
       .then(setCommandReplay)
       .finally(() => setCommandReplayLoading(false));
   };
@@ -97,7 +95,7 @@ function App() {
   const menuButton = (
     <button
       onClick={() => {
-        fetch('/api/saves/unload', { method: 'POST' })
+        careerApi.unloadSave()
           .finally(() => window.location.reload());
       }}
       title="Back to Save Menu"
@@ -138,7 +136,7 @@ function App() {
       <aside className="dm-left-nav">
         <div className="dm-left-nav-logo">
           <p className="dm-kicker">Dodgeball Manager</p>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', margin: 0 }}>2026</p>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', margin: 0 }}>{seasonYear ?? ''}</p>
         </div>
         <nav style={{ padding: '0.5rem 0', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }} aria-label="Primary">
           {tabs.map(tab => {
@@ -214,8 +212,15 @@ function App() {
                 setPostSimThisSession(true);
               }}
               onAdvanceWeek={() => {
+                const nextState = postSimResult?.next_state ?? '';
                 setPostSimResult(null);
                 setPostSimThisSession(false);
+                if (OFFSEASON_STATES.has(nextState)) {
+                  careerApi.status().then(status => {
+                    setSeasonYear(status?.context?.season_year ?? null);
+                    setScreen('offseason');
+                  }).catch(() => {});
+                }
               }}
             />
           )}
