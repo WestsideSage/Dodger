@@ -36,7 +36,7 @@ const TIER_COLOR: Record<string, string> = {
   Unknown: '#475569',
 };
 
-export function AwardsNight({ beat, onComplete }: { beat: AwardsBeat; onComplete: () => void }) {
+export function AwardsNight({ beat, onComplete, acting }: { beat: AwardsBeat; onComplete: () => void; acting?: boolean }) {
   const awards = beat.payload.awards;
 
   if (awards.length === 0) {
@@ -52,6 +52,7 @@ export function AwardsNight({ beat, onComplete }: { beat: AwardsBeat; onComplete
           </div>
         )}
         onComplete={onComplete}
+        isActing={acting}
       />
     );
   }
@@ -100,11 +101,12 @@ export function AwardsNight({ beat, onComplete }: { beat: AwardsBeat; onComplete
         </div>
       )}
       onComplete={onComplete}
+      isActing={acting}
     />
   );
 }
 
-export function Graduation({ beat, onComplete }: { beat: RetirementsBeat; onComplete: () => void }) {
+export function Graduation({ beat, onComplete, acting }: { beat: RetirementsBeat; onComplete: () => void; acting?: boolean }) {
   const retirees = beat.payload.retirees;
 
   if (retirees.length === 0) {
@@ -120,6 +122,7 @@ export function Graduation({ beat, onComplete }: { beat: RetirementsBeat; onComp
           </div>
         )}
         onComplete={onComplete}
+        isActing={acting}
       />
     );
   }
@@ -167,11 +170,12 @@ export function Graduation({ beat, onComplete }: { beat: RetirementsBeat; onComp
         </div>
       )}
       onComplete={onComplete}
+      isActing={acting}
     />
   );
 }
 
-export function SigningDay({ beat, onComplete }: { beat: RecruitmentBeat; onComplete: () => void }) {
+export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat; onComplete: () => void; acting?: boolean }) {
   const playerSigning = beat.payload.player_signing;
   const otherSignings = beat.payload.other_signings;
   const totalStages = 1 + otherSignings.length;
@@ -240,11 +244,12 @@ export function SigningDay({ beat, onComplete }: { beat: RecruitmentBeat; onComp
         </div>
       )}
       onComplete={onComplete}
+      isActing={acting}
     />
   );
 }
 
-export function NewSeasonEve({ beat, onComplete }: { beat: ScheduleRevealBeat; onComplete: () => void }) {
+export function NewSeasonEve({ beat, onComplete, acting }: { beat: ScheduleRevealBeat; onComplete: () => void; acting?: boolean }) {
   const fixtures = beat.payload.fixtures;
   const prediction: string = beat.payload.prediction;
   const seasonLabel: string = beat.payload.season_label;
@@ -309,6 +314,9 @@ export function NewSeasonEve({ beat, onComplete }: { beat: ScheduleRevealBeat; o
         </div>
       )}
       onComplete={onComplete}
+      actionLabel="Start New Season"
+      actionDescription="The offseason is complete. Start the next season when ready."
+      isActing={acting}
     />
   );
 }

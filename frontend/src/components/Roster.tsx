@@ -26,8 +26,15 @@ function DevFocusChip({
       .then(() => { setOpen(false); onUpdated(); });
   };
 
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = () => setOpen(false);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [open]);
+
   return (
-    <div style={{ position: 'relative', display: 'inline-block' }}>
+    <div style={{ position: 'relative', display: 'inline-block' }} onClick={e => e.stopPropagation()}>
       <button
         onClick={() => setOpen(o => !o)}
         className="dm-kicker"

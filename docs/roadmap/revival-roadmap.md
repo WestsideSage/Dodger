@@ -1,6 +1,6 @@
 # Dodgeball Manager — Revival Roadmap (v2.1)
 
-> Historical archive: this roadmap predates the current V1-V4 milestone state and contains stale details such as old test counts, future modules that now exist, and earlier CoachPolicy assumptions. Use root `AGENTS.md`, `docs/specs/MILESTONES.md`, and the active sprint plan as current authority. Keep this file for product history and long-range inspiration, not implementation instructions.
+> Historical archive: this roadmap predates the current V1-V10 milestone state and contains stale details such as old test counts, future modules that now exist, earlier CoachPolicy assumptions, and obsolete process guidance. Use root `AGENTS.md`, `docs/README.md`, `docs/specs/MILESTONES.md`, and the active plan named there as current authority. Keep this file for product history and long-range inspiration, not implementation instructions.
 
 > v2 established the dynasty spine, Club/Team boundary, stat schema, seed namespaces, event taxonomy, migrations, UI gates, and typed meta patch schema. v2.1 is a cleanup pass: six infrastructure items corrected, Phase 5 split into two milestones, and all cross-phase references normalized.
 

@@ -1,51 +1,26 @@
 # Domain Docs
 
-How the engineering skills should consume this repo's domain documentation when exploring the codebase.
+This repo does not currently use `CONTEXT.md` or ADR files as its primary domain map. Do not start by looking for generic context files.
 
-## Before exploring, read these
+## Read Order
 
-- **`CONTEXT.md`** at the repo root, or
-- **`CONTEXT-MAP.md`** at the repo root if it exists — it points at one `CONTEXT.md` per context. Read each one relevant to the topic.
-- **`docs/adr/`** — read ADRs that touch the area you're about to work in. In multi-context repos, also check `src/<context>/docs/adr/` for context-scoped decisions.
+1. Root `AGENTS.md`
+2. `docs/README.md`
+3. `docs/specs/MILESTONES.md`
+4. The active spec, design-system doc, or plan named by those files
+5. Relevant source and tests
 
-If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The producer skill (`/grill-with-docs`) creates them lazily when terms or decisions actually get resolved.
+## Domain Vocabulary
 
-## File structure
+Use terms from the active repo guidance and code:
 
-Single-context repo (most repos):
+- `Club` is the persistent franchise entity.
+- `Team` is the immutable match-time snapshot.
+- `MatchResult` uses `winner_team_id`.
+- `CareerStateCursor` governs save/resume state.
+- `Match Week` / `Command Center` currently names the weekly management loop. Verify the active component names in source before editing.
+- `Dynasty Office` owns recruiting/program-memory/staff-market surfaces from the thin V8-V10 implementation.
 
-```
-/
-├── CONTEXT.md
-├── docs/adr/
-│   ├── 0001-event-sourced-orders.md
-│   └── 0002-postgres-for-write-model.md
-└── src/
-```
+## Conflict Rule
 
-Multi-context repo (presence of `CONTEXT-MAP.md` at the root):
-
-```
-/
-├── CONTEXT-MAP.md
-├── docs/adr/                          ← system-wide decisions
-└── src/
-    ├── ordering/
-    │   ├── CONTEXT.md
-    │   └── docs/adr/                  ← context-specific decisions
-    └── billing/
-        ├── CONTEXT.md
-        └── docs/adr/
-```
-
-## Use the glossary's vocabulary
-
-When your output names a domain concept (in an issue title, a refactor proposal, a hypothesis, a test name), use the term as defined in `CONTEXT.md`. Don't drift to synonyms the glossary explicitly avoids.
-
-If the concept you need isn't in the glossary yet, that's a signal — either you're inventing language the project doesn't use (reconsider) or there's a real gap (note it for `/grill-with-docs`).
-
-## Flag ADR conflicts
-
-If your output contradicts an existing ADR, surface it explicitly rather than silently overriding:
-
-> _Contradicts ADR-0007 (event-sourced orders) — but worth reopening because…_
+When historical docs disagree with source, root `AGENTS.md`, or `docs/specs/MILESTONES.md`, treat the historical doc as evidence only and document the conflict in your handoff.

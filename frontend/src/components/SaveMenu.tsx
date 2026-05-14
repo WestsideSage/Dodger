@@ -539,7 +539,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
               </form>
             )}
 
-            {view === 'build_identity' && <IdentityStep identity={buildIdentity} setIdentity={setBuildIdentity} onNext={() => setView('build_coach')} />}
+            {view === 'build_identity' && <IdentityStep identity={buildIdentity} setIdentity={setBuildIdentity} onNext={() => setView('build_coach')} onBack={() => setView('new')} />}
             {view === 'build_coach' && <CoachStep coach={buildCoach} setCoach={setBuildCoach} onBack={() => setView('build_identity')} onNext={() => setView('build_roster')} />}
             {view === 'build_roster' && <StartingRecruitmentStep onCommit={handleBuildFromScratch} onBack={() => setView('build_coach')} creating={creating} />}
             {createError && view.startsWith('build_') && <p style={{ fontSize: '0.875rem', color: '#fb7185', marginTop: '1rem' }}>{createError}</p>}

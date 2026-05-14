@@ -16,23 +16,31 @@ const OFFSEASON_STATES = new Set([
   'next_season_ready',
 ]);
 
-const tabs: Array<{ id: Tab; label: string; short: string }> = [
-  { id: 'command', label: 'Match Week', short: 'Week' },
-  { id: 'dynasty', label: 'Dynasty Office', short: 'Program' },
-  { id: 'roster', label: 'Roster', short: 'Team' },
-  { id: 'standings', label: 'Standings', short: 'Table' },
+const tabs: Array<{ id: Tab | string; label: string; short: string; icon?: string }> = [
+  { id: 'command', label: 'Command Center', short: 'Week', icon: '✦' },
+  { id: 'roster', label: 'Roster', short: 'Team', icon: 'users' },
+  { id: 'tactics', label: 'Tactics', short: 'Tact', icon: 'crosshair' },
+  { id: 'training', label: 'Training', short: 'Train', icon: 'activity' },
+  { id: 'scouting', label: 'Scouting', short: 'Scout', icon: 'search' },
+  { id: 'analytics', label: 'Analytics', short: 'Stat', icon: 'bar-chart' },
+  { id: 'dynasty', label: 'Dynasty Office', short: 'Program', icon: 'briefcase' },
+  { id: 'standings', label: 'Standings', short: 'Table', icon: 'list' },
 ];
 
-const tabKickers: Record<Tab, string> = {
+const tabKickers: Record<string, string> = {
   command: 'WAR ROOM',
   dynasty: 'WAR ROOM',
   roster: 'ROSTER LAB',
   standings: 'LEAGUE OFFICE',
+  tactics: 'STRATEGY',
+  training: 'DEVELOPMENT',
+  scouting: 'INTEL',
+  analytics: 'DATA',
 };
 
 function tabFromUrl(): Tab {
   const tab = new URLSearchParams(window.location.search).get('tab');
-  return tabs.some(item => item.id === tab) ? tab as Tab : 'command';
+  return tabs.some(item => item.id === tab && ['command', 'dynasty', 'roster', 'standings'].includes(tab)) ? tab as Tab : 'command';
 }
 
 function App() {
@@ -132,19 +140,37 @@ function App() {
           <p className="dm-kicker">Dodgeball Manager</p>
           <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', margin: 0 }}>2026</p>
         </div>
-        <nav style={{ padding: '0.5rem 0', flex: 1 }} aria-label="Primary">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              className={`dm-nav-item ${effectiveActiveTab === tab.id && !commandReplay && !commandReplayLoading ? 'dm-nav-item-active' : ''}`}
-              onClick={() => { setCommandReplay(null); setActiveTab(tab.id); }}
-            >
-              <span className="dm-nav-dot" />
-              {tab.label}
-            </button>
-          ))}
+        <nav style={{ padding: '0.5rem 0', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }} aria-label="Primary">
+          {tabs.map(tab => {
+            const isSupported = ['command', 'dynasty', 'roster', 'standings'].includes(tab.id);
+            const isActive = effectiveActiveTab === tab.id && !commandReplay && !commandReplayLoading;
+            return (
+              <button
+                key={tab.id}
+                className={`dm-nav-item ${isActive ? 'dm-nav-item-active' : ''}`}
+                onClick={() => {
+                  if (isSupported) {
+                    setCommandReplay(null);
+                    setActiveTab(tab.id as Tab);
+                  }
+                }}
+                style={{ opacity: isSupported ? 1 : 0.4 }}
+              >
+                <span className="dm-nav-dot" />
+                {tab.label}
+              </button>
+            );
+          })}
         </nav>
-        <div style={{ padding: '0.75rem', borderTop: '1px solid #1e293b' }}>
+        <div style={{ padding: '0.75rem', borderTop: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <button
+            className="dm-nav-item"
+            style={{ opacity: 0.4 }}
+            onClick={() => {}}
+          >
+            <span className="dm-nav-dot" />
+            Settings
+          </button>
           {menuButton}
         </div>
       </aside>

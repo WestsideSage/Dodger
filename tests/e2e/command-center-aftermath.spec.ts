@@ -12,7 +12,7 @@ test('Command Center aftermath presents score, replay identity, fallout, and nex
   await page.goto(`${baseUrl}/?tab=command`);
   await expect(page.getByTestId('weekly-command-center')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Confirm Plan' }).click();
+  await page.getByTestId('lock-weekly-plan').click();
   await expect(page.getByTestId('simulate-command-week')).toBeEnabled();
   await page.getByTestId('simulate-command-week').click();
 

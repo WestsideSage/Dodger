@@ -3,10 +3,11 @@
 Complete this before implementation work:
 
 - Read `AGENTS.md`.
+- Read `docs/README.md` when the task touches docs, milestones, workflows, design systems, or cross-agent handoff.
 - Read `docs/specs/MILESTONES.md` for milestone work.
 - Confirm the active path is `C:\GPT5-Projects\Dodgeball Simulator`, not the retired `C:\GPT5-Projects\Dodgeball Simulator.worktrees\...` checkout.
 - Confirm repo path and branch.
-- Confirm the branch starts from the intended base, normally `develop`.
+- Confirm the branch starts from the intended base. New task branches normally start from `develop`; use `main` only when Maurice or the active workflow names it.
 - Confirm the path is a normal Windows path such as `C:\GPT5-Projects\...`, not a WSL `/mnt/c/...` path.
 - Bootstrap missing worktree dependencies without waiting for Maurice:
   - Create/use `.venv`.
@@ -16,7 +17,7 @@ Complete this before implementation work:
 - Do not use `sudo`, upgrade system runtimes, or change global Node/Python configuration without explicit approval.
 - Run baseline tests or document why they cannot run.
 - Inspect `git status --short`.
-- Confirm there are no unrelated changes in the worktree.
+- Identify unrelated changes in the worktree and avoid overwriting them.
 - State the intended files or modules to modify.
 - Keep commits small and coherent.
 - Run relevant tests after changes.

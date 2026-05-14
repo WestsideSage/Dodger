@@ -5,8 +5,9 @@ This file used to be the long-form project constitution for early Phase 0 and Ph
 For current agent instructions, use:
 
 1. Root `AGENTS.md`
-2. `docs/specs/MILESTONES.md`
-3. The active milestone spec or sprint plan
+2. `docs/README.md`
+3. `docs/specs/MILESTONES.md`
+4. The active milestone spec or sprint plan
 
 ## Still-Valid Principles
 

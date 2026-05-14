@@ -1,5 +1,7 @@
 # Gitification Report - Dodgeball Manager
 
+> Historical workflow snapshot: this report records the old external multi-worktree setup from 2026-05-05. That setup is now retired. Use root `AGENTS.md`, `docs/README.md`, and `docs/workflows/git-worktree-playbook.md` for current workflow.
+
 ## Summary
 
 The repository is now organized for multi-agent development. Existing tracked work was preserved in a baseline commit, workflow documentation was added, lightweight hygiene defaults were added, `develop` was created, and four external worktrees were created for Codex, Claude, Gemini, and review/integration work.

@@ -1,4 +1,3 @@
-import { ProgramStatusStrip } from './match-week/ProgramStatusStrip';
 import { SimTransition } from './match-week/SimTransition';
 import { Headline } from './match-week/aftermath/Headline';
 import { MatchScoreHero } from './match-week/aftermath/MatchScoreHero';
@@ -7,10 +6,11 @@ import { AftermathActionBar } from './match-week/aftermath/AftermathActionBar';
 import { ReplayTimeline } from './match-week/aftermath/ReplayTimeline';
 import { KeyPlayersPanel } from './match-week/aftermath/KeyPlayersPanel';
 import { TacticalSummaryCard } from './match-week/aftermath/TacticalSummaryCard';
-import { useState, useEffect, useRef } from 'react';
+import { PreSimDashboard } from './match-week/command-center/PreSimDashboard';
+import { useState, useEffect } from 'react';
 import type { Aftermath, CommandCenterResponse, CommandCenterSimResponse, MatchReplayResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
-import { ActionButton, PageHeader, StatusMessage } from './ui';
+import { PageHeader, StatusMessage } from './ui';
 import { Offseason } from './Offseason';
 
 type MatchWeekMode = 'pre-sim' | 'post-sim' | 'offseason';
@@ -26,7 +26,7 @@ function resolveMatchCardNames({
 }) {
   const playerClubId = currentData?.player_club_id ?? activeResult.plan.player_club_id;
   const playerClubName = currentData?.player_club_name ?? 'Your Club';
-  const opponentName = currentData?.plan.opponent.name ?? activeResult.dashboard.opponent_name ?? 'Opponent';
+  const opponentName = activeResult.dashboard.opponent_name ?? activeResult.plan.opponent.name ?? 'Opponent';
   const homeIsPlayer = matchCard.home_club_id === playerClubId;
 
   return {
@@ -56,7 +56,6 @@ export function MatchWeek({
   const [isAdvancingWeek, setIsAdvancingWeek] = useState(false);
   const [planConfirmed, setPlanConfirmed] = useState(false);
   const [replayData, setReplayData] = useState<MatchReplayResponse | null>(null);
-  const opponentFileRef = useRef<HTMLElement | null>(null);
 
   const selectedIntent = localIntent ?? data?.plan.intent ?? 'Win Now';
 
@@ -127,9 +126,9 @@ export function MatchWeek({
     setIsAdvancingWeek(true);
     setTimeout(() => {
         setRevealStage(0);
-        setResult(null); 
+        setResult(null);
         setPlanConfirmed(false);
-        load(); 
+        load();
         onAdvanceWeek?.();
         setIsAdvancingWeek(false);
     }, 400); // brief fade transition for advancing week
@@ -186,199 +185,22 @@ export function MatchWeek({
     if (error) return <StatusMessage title="Command center unavailable" tone="danger">{error}</StatusMessage>;
     if (!data) return null;
 
-    const plan = data.plan;
-    const hasValidLineup = (data.plan.lineup?.player_ids?.length ?? 0) >= 6;
-    const hasTactics = Boolean(data.plan.tactics && Object.keys(data.plan.tactics).length > 0);
-    const isSimReady = planConfirmed && hasValidLineup && hasTactics;
-    const disabledReason = !hasValidLineup
-      ? 'Set a valid six-player lineup before simulating.'
-      : !hasTactics
-      ? 'Choose a tactic before simulating.'
-      : !planConfirmed
-      ? 'Confirm the staff plan before simulating.'
-      : undefined;
-    const details = plan.matchup_details ?? {
-      opponent_record: 'No record',
-      last_meeting: 'None',
-      key_matchup: 'Opponent file unavailable.',
-      framing_line: data.current_objective,
-    };
-    const starterNames = (plan.lineup?.players ?? []).slice(0, 6).map(player => player.name);
-    const recommendations = plan.recommendations ?? [];
-    const departmentOrders = Object.entries(plan.department_orders ?? {}).slice(0, 6);
-    const planningStepsComplete = [hasValidLineup, hasTactics, planConfirmed].filter(Boolean).length;
-    const departmentCopy: Record<string, string> = {
-      tactics: "Prioritize the next opponent's tendencies.",
-      training: 'Maintain core execution and weekly fundamentals.',
-      conditioning: 'Preserve stamina without overloading the roster.',
-      medical: 'Reduce avoidable injury risk before match day.',
-      scouting: 'Prepare for the upcoming matchup.',
-      culture: 'Keep morale stable during match week.',
-    };
-    const viewScoutingDetail = () => {
-      opponentFileRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      opponentFileRef.current?.focus({ preventScroll: true });
+    const handleIntentChange = (intent: string) => {
+      setLocalIntent(intent);
+      setPlanConfirmed(false);
+      savePlan(intent, false);
     };
 
-    const renderCockpit = () => (
-      <div className="command-home" data-testid="weekly-command-center">
-        <div className="command-home-header-row">
-          <PageHeader
-            eyebrow="War Room / Match Week"
-            title="Command Center"
-            description="Review the matchup, confirm the staff plan, then simulate the week."
-          />
-          <aside className="dm-panel command-home-state-card" aria-label="Current command state">
-            <span>{planConfirmed ? 'Ready' : 'Pending'}</span>
-            <div>
-              <p>{data.player_club_name} - Week {data.week}</p>
-              <strong>{planConfirmed ? 'Plan Accepted' : 'Plan Pending'}</strong>
-            </div>
-          </aside>
-        </div>
-
-        <section className="dm-panel command-home-hero-card" aria-label="Match Week decision">
-          <div className="command-home-hero-copy">
-            <p className="dm-kicker">This Week</p>
-            <h2>{plan.opponent.name}</h2>
-            <p>{details.framing_line}</p>
-            <div className="command-home-hero-stats">
-              <div>
-                <span>Record</span>
-                <strong>{details.opponent_record}</strong>
-              </div>
-              <div>
-                <span>Last Meeting</span>
-                <strong>{details.last_meeting}</strong>
-              </div>
-              <div>
-                <span>Next Match</span>
-                <strong>Week {data.week}</strong>
-              </div>
-            </div>
-          </div>
-
-          <div className="command-home-hero-control">
-            <label className="command-home-intent-field">
-              <span className="dm-kicker">Current Intent</span>
-              <select
-                aria-label="Weekly intent"
-                value={selectedIntent}
-                onChange={(event) => {
-                  setLocalIntent(event.target.value);
-                  setPlanConfirmed(false);
-                  savePlan(event.target.value);
-                }}
-              >
-                {plan.available_intents.map(intent => <option key={intent}>{intent}</option>)}
-              </select>
-            </label>
-
-            <div className="command-home-readiness">
-              <span>{planningStepsComplete} of 3 planning steps confirmed</span>
-              <strong>{planConfirmed ? 'Ready to simulate' : 'Plan pending'}</strong>
-              {disabledReason && <p>{disabledReason}</p>}
-            </div>
-
-            <div className="command-home-hero-actions">
-              <ActionButton variant="primary" disabled={!isSimReady} onClick={simulate} data-testid="simulate-command-week">
-                Simulate Week
-              </ActionButton>
-              <ActionButton variant="secondary" onClick={viewScoutingDetail}>
-                View Detail
-              </ActionButton>
-            </div>
-          </div>
-        </section>
-
-        <div className="command-home-body-grid">
-          <main className="command-home-operations" aria-label="Weekly operations">
-            <section className="dm-panel command-home-panel">
-              <div className="command-section-heading">
-                <p className="dm-kicker">Weekly Operations</p>
-                <h3>Staff orders</h3>
-              </div>
-              <div className="command-home-orders">
-                {departmentOrders.length === 0 ? (
-                  <p className="command-empty-copy">No department orders available.</p>
-                ) : departmentOrders.map(([department, order]) => (
-                  <div key={department}>
-                    <span>{department.replaceAll('_', ' ')}</span>
-                    <strong>{order.replaceAll('_', ' ')}</strong>
-                    <p>{departmentCopy[department] ?? 'Keep the weekly plan aligned with match-day priorities.'}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-          </main>
-
-          <aside className="command-home-rail" aria-label="Command readiness rail">
-            <ProgramStatusStrip />
-
-            <section className="dm-panel command-home-panel command-home-checklist">
-              <div className="command-section-heading">
-                <p className="dm-kicker">Pre-Game</p>
-                <h3>Weekly Checklist</h3>
-              </div>
-              <div className="command-home-checklist-items">
-                <div className={hasValidLineup ? 'is-ready' : 'is-pending'}>
-                  <span>{hasValidLineup ? 'Ready' : 'Pending'}</span>
-                  <strong>Lineup</strong>
-                  <p>{starterNames.length > 0 ? starterNames.join(' - ') : plan.lineup?.summary ?? 'No lineup submitted.'}</p>
-                </div>
-                <div className={planConfirmed ? 'is-ready' : 'is-pending'}>
-                  <span>{planConfirmed ? 'Ready' : 'Pending'}</span>
-                  <strong>Plan Lock</strong>
-                  <p>{planConfirmed ? 'Staff plan is confirmed.' : 'Confirm the staff plan before simulating.'}</p>
-                </div>
-                <div className={hasTactics ? 'is-ready' : 'is-pending'}>
-                  <span>{hasTactics ? 'Ready' : 'Pending'}</span>
-                  <strong>Tactics Prep</strong>
-                  <p>{recommendations[0]?.text ?? 'Attach a tactical package before match day.'}</p>
-                </div>
-              </div>
-              {!planConfirmed && (
-                <ActionButton variant="accent" onClick={() => savePlan(selectedIntent, true)}>
-                  Confirm Plan
-                </ActionButton>
-              )}
-            </section>
-          </aside>
-        </div>
-
-        <section
-          ref={opponentFileRef}
-          tabIndex={-1}
-          className="dm-panel command-home-panel command-home-opponent-file"
-        >
-          <div className="command-section-heading">
-            <p className="dm-kicker">Opponent File</p>
-            <h3>Scouting read</h3>
-          </div>
-          <div className="command-home-scout-grid">
-            <div>
-              <span>Opponent record</span>
-              <strong>{details.opponent_record}</strong>
-            </div>
-            <div>
-              <span>Last meeting</span>
-              <strong>{details.last_meeting}</strong>
-            </div>
-            <div>
-              <span>Key matchup</span>
-              <strong>{details.key_matchup}</strong>
-            </div>
-          </div>
-          {details.key_matchup === 'Opponent file unavailable.' && (
-            <p className="command-home-muted-note">Scouting file will populate after opponent tendencies are available.</p>
-          )}
-        </section>
-      </div>
+    return (
+      <PreSimDashboard
+        data={data}
+        simulate={simulate}
+        onSavePlan={savePlan}
+        selectedIntent={selectedIntent}
+        onIntentChange={handleIntentChange}
+        planConfirmed={planConfirmed}
+      />
     );
-
-    return renderCockpit();
-
   };
 
   const renderPostSimMode = () => {
@@ -399,7 +221,7 @@ export function MatchWeek({
     return (
       <div className="command-post-sim" data-testid="post-week-dashboard">
         <PageHeader eyebrow="WAR ROOM" title="Match Week" description="Review the match result, replay identity, and weekly fallout." />
-        
+
         {revealStage >= 0 && (
           <div className="command-reveal">
             <Headline text={aftermath.headline} />

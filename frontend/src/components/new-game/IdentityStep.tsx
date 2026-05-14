@@ -46,10 +46,12 @@ export function IdentityStep({
   identity,
   setIdentity,
   onNext,
+  onBack,
 }: {
   identity: ProgramIdentity;
   setIdentity: (v: ProgramIdentity) => void;
   onNext: () => void;
+  onBack: () => void;
 }) {
   const currentPrimary = identity.colors?.split(',')[0] ?? '#22d3ee';
   const currentSecondary = identity.colors?.split(',')[1] ?? '#0f172a';
@@ -155,13 +157,16 @@ export function IdentityStep({
         </div>
       )}
 
-      <ActionButton
-        variant="primary"
-        onClick={onNext}
-        disabled={!identity.save_name || !identity.club_name || !identity.city}
-      >
-        Next: Coach Profile
-      </ActionButton>
+      <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <ActionButton variant="secondary" onClick={onBack}>Back</ActionButton>
+        <ActionButton
+          variant="primary"
+          onClick={onNext}
+          disabled={!identity.save_name || !identity.club_name || !identity.city}
+        >
+          Next: Coach Profile
+        </ActionButton>
+      </div>
     </div>
   );
 }
