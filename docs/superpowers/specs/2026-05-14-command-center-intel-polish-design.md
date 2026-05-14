@@ -18,13 +18,22 @@ The bottom of the Opponent Intel panel had two readability problems:
 
 Replace the bare `<p className="command-muted-copy">` that renders `details.key_matchup` with a structured card:
 
-- Red-tinted card container (`rgba(248,113,113,0.07)` bg, `rgba(248,113,113,0.2)` border)
-- Warning icon circle on the left
-- "KEY THREAT" kicker label in red above the player name
-- Player name rendered large (`0.9rem`, bold, `#f8fafc`)
-- Role and OVR as small pill badges below the name (role: muted gray; OVR: cyan)
+Layout: two-column flex row filling the full card width.
 
-The `key_matchup` string from the backend is expected to be in the format `"Name, Role, OVR OVR"`. The card parses it visually by rendering the full string but structured — no backend change required. If the string doesn't follow this format, the card degrades gracefully by just showing the raw text as the name field.
+**Left column (flex: 1):**
+- Red-tinted card container (`rgba(248,113,113,0.07)` bg, `rgba(248,113,113,0.2)` border, `border-radius 6px`)
+- Warning icon circle on the far left (`rgba(248,113,113,0.15)` bg, 36×36px)
+- "KEY THREAT" kicker label in red (`#f87171`) above the player name
+- Player name rendered large (`0.9rem`, bold, `#f8fafc`)
+- Role as a small pill badge below the name (muted gray)
+
+**Right column (flex: 0, separated by a subtle `rgba(248,113,113,0.2)` left border):**
+- OVR value as a large number (`1.6rem`, `font-weight 800`, `#f87171`, monospace)
+- "OVR" label below in muted uppercase (`0.58rem`, `#64748b`)
+
+This replaces the OVR cyan badge that was previously inline with the role badge on the left.
+
+The `key_matchup` string from the backend is expected to be in the format `"Name, Role, OVR OVR"`. The card parses it by rendering name, role, and OVR in their respective positions — no backend change required. If the string doesn't follow this format, the card degrades gracefully by showing the raw text as the name field with the right column hidden.
 
 **New label above scouting note:** Add a small `"SCOUTING"` uppercase kicker label (`color: #64748b`) immediately above the `command-muted-copy` recommendation text so both text blocks have clear identity.
 
