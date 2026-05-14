@@ -586,32 +586,15 @@ def build_offseason_ceremony_beat(
 
     if key == "champion":
         if season_outcome is not None:
-            seed = None
-            for index, row in enumerate(ordered_standings, 1):
-                if row.club_id == season_outcome.champion_club_id:
-                    seed = index
-                    break
-            lines = [
-                f"Champion: {club_name(season_outcome.champion_club_id)}",
-                "Champion source: Playoff final",
-            ]
+            lines = [f"Champion: {club_name(season_outcome.champion_club_id)}"]
             if season_outcome.runner_up_club_id:
                 lines.append(f"Runner-up: {club_name(season_outcome.runner_up_club_id)}")
-            if seed is not None:
-                lines.append(f"Regular-season seed: {seed}")
             body = "\n".join(lines)
         elif not ordered_standings:
             body = "No completed standings are available for this season."
         else:
             champion = ordered_standings[0]
-            body = "\n".join(
-                [
-                    f"Champion: {club_name(champion.club_id)}",
-                    f"Record: {champion.wins}-{champion.losses}-{champion.draws}",
-                    f"Points: {champion.points}",
-                    f"Elimination differential: {champion.elimination_differential:+}",
-                ]
-            )
+            body = f"Champion: {club_name(champion.club_id)}"
         return OffseasonCeremonyBeat(key, "Champion", body)
 
     if key == "recap":
@@ -735,8 +718,8 @@ def build_offseason_ceremony_beat(
             body = "No incoming class data is available yet."
         else:
             lines = [f"Incoming class size: {class_size}"]
-            lines.append(f"Top-band prospects (>= 70 OVR band low): {top_band_depth}")
-            lines.append(f"Free-agent count: {free_agent_count}")
+            lines.append(f"Top prospects (70+ OVR): {top_band_depth}")
+            lines.append(f"Veteran free agents available: {free_agent_count}")
             if archetype_distribution:
                 ordered = sorted(archetype_distribution.items(), key=lambda item: (-item[1], item[0]))
                 lines.append("Archetype distribution: " + ", ".join(f"{name} {count}" for name, count in ordered))
@@ -744,9 +727,7 @@ def build_offseason_ceremony_beat(
                 lines.append("")
                 lines.append("Market storylines:")
                 for storyline in storylines:
-                    lines.append(f"  - {storyline.get('sentence', '')}")
-            lines.append("")
-            lines.append("Continue to Recruitment Day.")
+                    lines.append(f"- {storyline.get('sentence', '')}")
             body = "\n".join(lines)
         return OffseasonCeremonyBeat(key, "Rookie Class Preview", body)
 
