@@ -124,3 +124,45 @@ def test_apply_scouting_carry_forward_decays_verified_to_known(tmp_path):
     assert decayed is not None
     assert decayed.ratings_tier == ScoutingTier.KNOWN.value
     assert decayed.archetype_tier == ScoutingTier.KNOWN.value
+
+
+def test_compute_season_awards_no_duplicate_award_types():
+    """Each award_type appears at most once; a player can win multiple types."""
+    from dodgeball_sim.awards import compute_season_awards
+    from dodgeball_sim.stats import PlayerMatchStats
+
+    stats = {
+        "p1": PlayerMatchStats(eliminations_by_throw=10, catches_made=8, dodges_successful=5),
+        "p2": PlayerMatchStats(eliminations_by_throw=3, catches_made=15, dodges_successful=2),
+        "p3": PlayerMatchStats(eliminations_by_throw=6, catches_made=4, dodges_successful=3),
+    }
+    club_map = {"p1": "team_a", "p2": "team_b", "p3": "team_a"}
+    newcomers = frozenset(["p3"])
+
+    awards = compute_season_awards("s1", stats, club_map, newcomers)
+
+    award_types = [a.award_type for a in awards]
+    assert len(award_types) == len(set(award_types)), f"Duplicate award_type found: {award_types}"
+
+
+def test_compute_season_awards_player_can_win_two_types():
+    """p1 dominates all stats — should win mvp AND best_thrower (different types, not a bug)."""
+    from dodgeball_sim.awards import compute_season_awards
+    from dodgeball_sim.stats import PlayerMatchStats
+
+    stats = {
+        "p1": PlayerMatchStats(eliminations_by_throw=30, catches_made=15, dodges_successful=10),
+        "p2": PlayerMatchStats(eliminations_by_throw=1, catches_made=20, dodges_successful=1),
+    }
+    club_map = {"p1": "team_a", "p2": "team_b"}
+    newcomers = frozenset()
+
+    awards = compute_season_awards("s1", stats, club_map, newcomers)
+
+    winners = {a.award_type: a.player_id for a in awards}
+    assert winners["mvp"] == "p1"
+    assert winners["best_thrower"] == "p1"
+    # p2 dominates catches
+    assert winners["best_catcher"] == "p2"
+    # No newcomers → no best_newcomer award
+    assert "best_newcomer" not in winners
