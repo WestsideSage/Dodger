@@ -147,7 +147,7 @@ def test_hof_induction_payload_is_empty_dict():
     assert result == {}
 
 
-def test_development_payload_is_empty_dict():
+def test_development_payload_has_players_key():
     conn = _empty_conn()
     result = _build_beat_payload(
         "development",
@@ -162,7 +162,8 @@ def test_development_payload_is_empty_dict():
         signed_player_id="",
         conn=conn,
     )
-    assert result == {}
+    assert "players" in result
+    assert result["players"] == []
 
 
 def test_rookie_class_preview_payload_is_empty_dict():
