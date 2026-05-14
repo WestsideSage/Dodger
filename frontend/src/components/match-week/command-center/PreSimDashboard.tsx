@@ -273,9 +273,6 @@ export function PreSimDashboard({
             </div>
           </div>
           <div className="command-control-squad">
-            <div className="command-panel-heading">
-              <p className="command-field-label">Match Card</p>
-            </div>
             <MatchCard
               yourPlayers={activePlayers}
               oppPlayers={plan.opponent_lineup?.players ?? []}
