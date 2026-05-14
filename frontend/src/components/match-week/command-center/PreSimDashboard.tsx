@@ -16,7 +16,9 @@ function pct(value: number | undefined) {
 }
 
 function humanize(value: string | undefined) {
-  return value ? value.replaceAll('_', ' ').toLowerCase() : 'not set';
+  if (!value) return 'Not set';
+  const s = value.replaceAll('_', ' ').toLowerCase();
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 function resultTone(result: string | undefined) {
@@ -160,47 +162,6 @@ export function PreSimDashboard({
       )}
 
       <div className="command-dashboard-main">
-        <section id="command-opponent-file" className="dm-panel command-opponent-file" tabIndex={-1}>
-          <div className="command-panel-heading">
-            <p className="dm-kicker">Opponent Briefing</p>
-            <span>Last: {details.last_meeting}</span>
-          </div>
-          <h2>{plan.opponent.name}</h2>
-          <div className="command-opponent-meta">
-            <span>{details.opponent_record}</span>
-            <em>{details.key_matchup}</em>
-          </div>
-          <div className="command-verdict">
-            {details.framing_line}
-          </div>
-          <div className="command-two-column">
-            <div>
-              <p className="dm-kicker">Staff Reads</p>
-              <ul>
-                {plan.recommendations.slice(0, 3).map(recommendation => (
-                  <li key={`${recommendation.department}-${recommendation.text}`}>
-                    <span>{recommendation.department}</span>
-                    {recommendation.text}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <p className="dm-kicker">Warnings</p>
-              {plan.warnings.length ? (
-                <ul>
-                  {plan.warnings.slice(0, 3).map(warning => (
-                    <li key={warning}><span>Risk</span>{warning}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="command-muted-copy">No command warnings on the current plan.</p>
-              )}
-            </div>
-          </div>
-          <a className="command-secondary-link" href="#command-opponent-file">Opponent file reviewed</a>
-        </section>
-
         <section className="dm-panel command-game-plan">
           <div className="command-panel-heading">
             <div>
@@ -208,13 +169,14 @@ export function PreSimDashboard({
               <h3>Weekly Strategy</h3>
             </div>
             <div className="command-current-plan">
-              <span>Current Plan:</span>
-              <strong>{currentApproach} / {humanize(plan.department_orders?.training)} / {humanize(plan.department_orders?.dev_focus)}</strong>
+              <span>Active Doctrine</span>
+              <strong>{currentApproach}</strong>
+              <p>{isAggressive ? 'Pressure the weak side and accept higher exposure.' : isDefensive ? 'Protect stamina, lower risk, and win possessions.' : 'Keep the plan balanced across pressure, catches, and tempo.'}</p>
             </div>
           </div>
 
           <div className="command-plan-grid">
-            <div>
+            <div className="command-approach-column">
               <p className="command-field-label">Tactical Approach</p>
               <div className="command-approach-grid">
                 {approaches.map(opt => (
@@ -232,58 +194,22 @@ export function PreSimDashboard({
                   </button>
                 ))}
               </div>
-              <div className="command-impact-list">
-                <article>
-                  <span>Win Condition</span>
-                  <strong>{latestDashboard?.lanes?.[1]?.summary ?? 'Force the opponent into the plan you saved.'}</strong>
-                </article>
-                <article>
-                  <span>Risk</span>
-                  <strong>{plan.warnings[0] ?? 'No current command warning.'}</strong>
-                </article>
-                <article>
-                  <span>Best Fit</span>
-                  <strong>{plan.lineup?.summary ?? 'Use the active lineup snapshot.'}</strong>
-                </article>
-              </div>
             </div>
 
-            <div>
-              <p className="command-field-label">Focus Priorities</p>
-              <div className="command-priority-list">
+            <div className="command-priority-column">
+              <p className="command-field-label">Tactical Profile</p>
+              <div className="command-tendency-grid">
                 {[
-                  { label: 'Target Stars', value: plan.tactics?.target_stars },
-                  { label: 'Catch Bias', value: plan.tactics?.catch_bias },
-                  { label: 'Risk Tolerance', value: plan.tactics?.risk_tolerance },
-                  { label: 'Tempo', value: plan.tactics?.tempo },
+                  { label: 'Target Stars', value: plan.tactics?.target_stars, tone: 'pressure' },
+                  { label: 'Catch Bias', value: plan.tactics?.catch_bias, tone: 'control' },
+                  { label: 'Risk', value: plan.tactics?.risk_tolerance, tone: 'risk' },
+                  { label: 'Tempo', value: plan.tactics?.tempo, tone: 'tempo' },
                 ].map(stat => (
-                  <div key={stat.label}>
-                    <div>
-                      <span>{stat.label}</span>
-                      <span>{pct(stat.value)}</span>
-                    </div>
-                    <meter min={0} max={1} value={stat.value ?? 0} />
-                  </div>
+                  <article key={stat.label} className={`command-tendency-card is-${stat.tone}`}>
+                    <span>{stat.label}</span>
+                    <strong>{pct(stat.value)}</strong>
+                  </article>
                 ))}
-              </div>
-
-              <div className="command-orders-grid">
-                <div>
-                  <span>Training Order</span>
-                  <strong>{humanize(plan.department_orders?.training)}</strong>
-                </div>
-                <div>
-                  <span>Development Focus</span>
-                  <strong>{humanize(plan.department_orders?.dev_focus)}</strong>
-                </div>
-                <div>
-                  <span>Medical Order</span>
-                  <strong>{humanize(plan.department_orders?.medical)}</strong>
-                </div>
-                <div>
-                  <span>Scouting Order</span>
-                  <strong>{humanize(plan.department_orders?.scouting)}</strong>
-                </div>
               </div>
             </div>
           </div>
@@ -317,6 +243,27 @@ export function PreSimDashboard({
               </strong>
             </div>
           </div>
+          <div className="command-control-squad">
+            <div className="command-panel-heading">
+              <p className="command-field-label">Starter Readiness</p>
+              <span>{userStanding ? `${userStanding.points} pts` : recentRecord}</span>
+            </div>
+            <div className="command-control-starters">
+              {activePlayers.map((player, index) => (
+                <div key={player.id}>
+                  <span>{index + 1}</span>
+                  <strong>{player.name}</strong>
+                  <small>{Math.round(player.overall)}</small>
+                  <small>{player.stamina === undefined ? 'ready' : `${Math.round(player.stamina)} sta`}</small>
+                </div>
+              ))}
+            </div>
+            <div className="command-control-form">
+              <div><strong>{userStanding?.elimination_differential ?? '-'}</strong><span>Elim Diff</span></div>
+              <div><strong style={{ color: resultTone(latestDashboard?.result) }}>{latestDashboard?.result ?? '-'}</strong><span>Last</span></div>
+              <div><strong>{data.history.length}</strong><span>Plans</span></div>
+            </div>
+          </div>
           {!planConfirmed ? (
             <>
               {!isReadyToLock && (
@@ -346,62 +293,46 @@ export function PreSimDashboard({
             </>
           )}
         </section>
-      </div>
 
-      <div className="command-dashboard-lower">
-        <section className="dm-panel">
-          <div className="command-panel-heading">
-            <p className="dm-kicker">Player Readiness</p>
-            <span>{activePlayers.length}/6 ready</span>
-          </div>
-          <div className="command-player-list">
-            {activePlayers.map((player, index) => (
-              <div key={player.id}>
-                <span>{index + 1}</span>
-                <strong>{player.name}</strong>
-                <small>{Math.round(player.overall)}</small>
-                <small>{player.stamina === undefined ? 'ready' : `${Math.round(player.stamina)} sta`}</small>
+        <div className="command-dashboard-lower">
+          <section id="command-opponent-file" className="dm-panel command-intel-card" tabIndex={-1}>
+            <div className="command-panel-heading">
+              <p className="dm-kicker">Opponent Intel</p>
+              <span>Last: {details.last_meeting}</span>
+            </div>
+            <div className="command-scout-headline">
+              <strong>{plan.opponent.name}</strong>
+              <span>{details.opponent_record}</span>
+            </div>
+            <div className="command-intel-grid">
+              <div>
+                <div className="command-verdict command-verdict-compact">
+                  {details.framing_line}
+                </div>
+                <p className="command-muted-copy">{details.key_matchup}</p>
+                <p className="command-muted-copy">{plan.recommendations[0]?.text ?? 'No recommendation returned.'}</p>
               </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="dm-panel">
-          <div className="command-panel-heading">
-            <p className="dm-kicker">Team Form</p>
-            <span>{userStanding ? `${userStanding.wins}-${userStanding.losses}-${userStanding.draws}` : recentRecord}</span>
-          </div>
-          <div className="command-stat-list">
-            <div><strong>{userStanding?.points ?? '-'}</strong><span>Points</span></div>
-            <div><strong>{userStanding?.elimination_differential ?? '-'}</strong><span>Elim Diff</span></div>
-            <div><strong style={{ color: resultTone(latestDashboard?.result) }}>{latestDashboard?.result ?? '-'}</strong><span>Last Result</span></div>
-            <div><strong>{data.history.length}</strong><span>Plans Saved</span></div>
-          </div>
-        </section>
-
-        <section className="dm-panel">
-          <div className="command-panel-heading">
-            <p className="dm-kicker">Scout Snapshot</p>
-          </div>
-          <p className="command-muted-copy">{details.key_matchup}</p>
-          <p className="command-muted-copy">{plan.recommendations[0]?.text ?? 'No recommendation returned.'}</p>
-          {isAggressive ? (
-            <div className="command-fit-note is-fit"><strong>Plan Fit:</strong> Current approach is aggressive.</div>
-          ) : (
-            <div className="command-fit-note is-warning"><strong>Review:</strong> Compare the current approach against staff recommendations.</div>
-          )}
-        </section>
-
-        <section className="dm-panel">
-          <div className="command-panel-heading">
-            <p className="dm-kicker">Week Timeline</p>
-          </div>
-          <div className="command-week-timeline">
-            <div><strong>Practice</strong><span>{humanize(plan.department_orders?.training)}</span></div>
-            <div><strong>Team Meeting</strong><span>{currentApproach} review</span></div>
-            <div><strong>Match Day</strong><span>vs {plan.opponent.name}</span></div>
-          </div>
-        </section>
+              <div>
+                <div className="command-fit-note">
+                  <strong>Win Condition:</strong> {latestDashboard?.lanes?.[1]?.summary ?? 'Force the opponent into the plan you saved.'}
+                </div>
+                <div className="command-fit-note">
+                  <strong>Best Fit:</strong> {plan.lineup?.summary ?? 'Use the active lineup snapshot.'}
+                </div>
+                {isAggressive ? (
+                  <div className="command-fit-note is-fit"><strong>Plan Fit:</strong> Current approach is aggressive.</div>
+                ) : (
+                  <div className="command-fit-note is-warning"><strong>Review:</strong> Compare the current approach against staff recommendations.</div>
+                )}
+              </div>
+            </div>
+            <div className="command-week-timeline command-week-timeline-inline">
+              <div><strong>Practice</strong><span>{humanize(plan.department_orders?.training)}</span></div>
+              <div><strong>Team Meeting</strong><span>{currentApproach} review</span></div>
+              <div><strong>Match Day</strong><span>vs {plan.opponent.name}</span></div>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );
