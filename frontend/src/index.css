@@ -2094,7 +2094,7 @@ input {
   width: min(100%, 1500px);
   margin: 0 auto;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
   color: #e2e8f0;
   font-family: var(--font-body);
 }
@@ -2105,14 +2105,14 @@ input {
   gap: 1.25rem;
   align-items: flex-start;
   border-bottom: 1px solid #1e293b;
-  padding-bottom: 1rem;
+  padding-bottom: 0.85rem;
 }
 
 .command-dashboard-header h1 {
   margin: 0 0 0.25rem;
   color: #fff;
   font-family: var(--font-display);
-  font-size: clamp(2rem, 4vw, 2.5rem);
+  font-size: clamp(1.85rem, 3.2vw, 2.35rem);
   font-weight: 900;
   letter-spacing: 0;
   line-height: 1;
@@ -2121,7 +2121,7 @@ input {
 
 .command-dashboard-subtitle {
   color: #22d3ee;
-  font-size: clamp(1.1rem, 2vw, 1.5rem);
+  font-size: clamp(1.05rem, 1.8vw, 1.35rem);
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -2161,8 +2161,8 @@ input {
 
 .command-alert-strip {
   display: grid;
-  grid-template-columns: 8rem repeat(3, minmax(0, 1fr));
-  gap: 1rem;
+  grid-template-columns: minmax(7rem, auto) repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
   align-items: stretch;
 }
 
@@ -2181,7 +2181,7 @@ input {
   border: 1px solid rgba(34,211,238,0.24);
   border-left: 3px solid #22d3ee;
   background: rgba(15,23,42,0.72);
-  padding: 0.85rem 1rem;
+  padding: 0.65rem 0.85rem;
 }
 
 .command-alert-strip article:first-of-type {
@@ -2199,20 +2199,47 @@ input {
   display: block;
   margin-top: 0.25rem;
   color: #cbd5e1;
-  font-size: 0.82rem;
-  line-height: 1.4;
+  font-size: 0.78rem;
+  line-height: 1.3;
 }
 
 .command-dashboard-main {
   display: grid;
-  grid-template-columns: minmax(18rem, 1.12fr) minmax(30rem, 1.85fr) minmax(18rem, 1.05fr);
-  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1fr) minmax(16.5rem, 20rem);
+  gap: 1rem;
   align-items: stretch;
 }
 
 .command-dashboard-main > .dm-panel,
 .command-dashboard-lower > .dm-panel {
-  padding: clamp(1rem, 2vw, 1.35rem);
+  padding: clamp(0.85rem, 1.5vw, 1.15rem);
+}
+
+.command-game-plan {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.command-game-plan .command-panel-heading {
+  flex-direction: column;
+}
+
+.command-game-plan .command-current-plan {
+  width: 100%;
+}
+
+.command-opponent-file {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.command-control-tower {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 5.5rem;
 }
 
 .command-panel-heading {
@@ -2220,7 +2247,7 @@ input {
   justify-content: space-between;
   gap: 1rem;
   align-items: flex-start;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .command-panel-heading .dm-kicker {
@@ -2231,7 +2258,7 @@ input {
 .command-game-plan h3 {
   margin: 0.25rem 0 0;
   color: #fff;
-  font-size: 1.35rem;
+  font-size: 1.18rem;
   text-transform: uppercase;
 }
 
@@ -2271,6 +2298,12 @@ input {
   font-weight: 800;
   line-height: 1.35;
   padding: 0.85rem 1rem;
+}
+
+.command-verdict-compact {
+  margin: 0.65rem 0 0;
+  padding: 0.65rem 0.8rem;
+  font-size: 0.82rem;
 }
 
 .command-two-column {
@@ -2340,27 +2373,41 @@ input {
 }
 
 .command-current-plan {
-  max-width: 22rem;
+  width: min(100%, 23rem);
   border: 1px solid #1e293b;
   background: #020617;
-  padding: 0.65rem 0.85rem;
+  padding: 0.55rem 0.7rem;
 }
 
 .command-current-plan strong {
   display: block;
   margin-top: 0.25rem;
   color: #22d3ee;
-  font-size: 0.8rem;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.command-current-plan p {
+  margin: 0.25rem 0 0;
+  color: #94a3b8;
+  font-size: 0.76rem;
+  line-height: 1.3;
 }
 
 .command-plan-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.95fr);
-  gap: 1.5rem;
+  grid-template-columns: minmax(14rem, 0.72fr) minmax(17rem, 1fr);
+  gap: 1rem;
+}
+
+.command-orders-grid {
+  grid-column: 1 / -1;
 }
 
 .command-field-label {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.55rem;
   color: #e2e8f0;
   font-size: 0.75rem;
   font-weight: 900;
@@ -2371,17 +2418,17 @@ input {
 .command-approach-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 
 .command-approach-grid button {
-  min-height: 3.5rem;
+  min-height: 3.6rem;
   border: 1px solid #334155;
   border-radius: 4px;
   background: transparent;
   color: #94a3b8;
   cursor: pointer;
-  padding: 0.75rem;
+  padding: 0.62rem 0.7rem;
   text-align: left;
 }
 
@@ -2397,15 +2444,17 @@ input {
 
 .command-approach-grid span {
   display: block;
+  font-size: 0.9rem;
   font-weight: 900;
   text-transform: uppercase;
 }
 
 .command-approach-grid small {
   display: block;
-  margin-top: 0.25rem;
+  margin-top: 0.18rem;
   color: #94a3b8;
-  line-height: 1.35;
+  font-size: 0.72rem;
+  line-height: 1.28;
 }
 
 .command-impact-list {
@@ -2439,7 +2488,55 @@ input {
 
 .command-priority-list {
   display: grid;
-  gap: 0.9rem;
+  gap: 0.55rem;
+}
+
+.command-tendency-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.command-tendency-card {
+  border: 1px solid rgba(51,65,85,0.74);
+  border-left: 3px solid #64748b;
+  background: rgba(2,6,23,0.3);
+  padding: 0.7rem 0.75rem;
+}
+
+.command-tendency-card span {
+  display: block;
+  color: #64748b;
+  font-family: var(--font-mono-data);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.command-tendency-card strong {
+  display: block;
+  margin-top: 0.25rem;
+  color: #f8fafc;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.command-tendency-card.is-pressure {
+  border-left-color: #22d3ee;
+}
+
+.command-tendency-card.is-control {
+  border-left-color: #10b981;
+}
+
+.command-tendency-card.is-risk {
+  border-left-color: #f43f5e;
+}
+
+.command-tendency-card.is-tempo {
+  border-left-color: #f59e0b;
 }
 
 .command-priority-list > div > div {
@@ -2454,21 +2551,21 @@ input {
 .command-priority-list meter {
   display: block;
   width: 100%;
-  height: 0.45rem;
-  margin-top: 0.35rem;
+  height: 0.34rem;
+  margin-top: 0.28rem;
 }
 
 .command-orders-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.65rem;
-  margin-top: 1.1rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.1rem;
 }
 
 .command-orders-grid div {
   border: 1px solid rgba(51,65,85,0.74);
   background: rgba(2,6,23,0.3);
-  padding: 0.75rem;
+  padding: 0.55rem 0.65rem;
 }
 
 .command-orders-grid strong,
@@ -2479,18 +2576,18 @@ input {
   margin-top: 0.25rem;
   color: #f8fafc;
   font-family: var(--font-display);
-  font-size: 0.92rem;
+  font-size: 0.82rem;
   text-transform: uppercase;
 }
 
 .command-readiness-list > div {
   display: grid;
-  grid-template-columns: 2rem minmax(0, 1fr);
-  gap: 0.75rem;
-  align-items: start;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: center;
   border: 1px solid #334155;
   background: #1e293b;
-  padding: 0.75rem;
+  padding: 0.55rem 0.65rem;
 }
 
 .command-readiness-list > div > span {
@@ -2517,26 +2614,28 @@ input {
 
 .command-readiness-list strong {
   color: #f8fafc;
-  font-size: 0.84rem;
+  font-size: 0.78rem;
 }
 
 .command-readiness-list p {
+  display: none;
   margin: 0.2rem 0 0;
   color: #94a3b8;
-  font-size: 0.75rem;
-  line-height: 1.35;
+  font-size: 0.68rem;
+  line-height: 1.25;
 }
 
 .command-plan-summary {
   display: grid;
-  gap: 0.55rem;
-  margin-top: 1rem;
+  gap: 0.52rem;
+  margin-top: 0.95rem;
 }
 
 .command-plan-summary div {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
+  align-items: baseline;
 }
 
 .command-lock-note {
@@ -2548,6 +2647,7 @@ input {
 
 .command-primary-button {
   width: 100%;
+  margin-top: auto;
   border: 0;
   border-radius: 4px;
   background: #22d3ee;
@@ -2555,7 +2655,7 @@ input {
   cursor: pointer;
   font-weight: 900;
   letter-spacing: 0.08em;
-  padding: 0.95rem;
+  padding: 0.78rem;
   text-transform: uppercase;
 }
 
@@ -2570,9 +2670,12 @@ input {
 }
 
 .command-dashboard-lower {
+  grid-column: 1;
+  grid-row: 2;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  align-items: stretch;
 }
 
 .command-player-list div,
@@ -2610,8 +2713,16 @@ input {
   padding-top: 0.65rem;
 }
 
+.command-stat-list-compact {
+  gap: 0.45rem;
+}
+
+.command-stat-list-compact div {
+  padding-top: 0.45rem;
+}
+
 .command-fit-note {
-  margin-top: 1rem;
+  margin-top: 0.65rem;
   color: #cbd5e1;
   font-size: 0.78rem;
 }
@@ -2624,9 +2735,334 @@ input {
   border-left: 3px solid #f59e0b;
 }
 
-@media (max-width: 1500px) {
+/* Key Threat Card */
+.command-threat-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  background: rgba(248,113,113,0.07);
+  border: 1px solid rgba(248,113,113,0.2);
+  border-radius: 6px;
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.command-threat-card-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(248,113,113,0.15);
+  font-size: 1rem;
+}
+
+.command-threat-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.command-threat-card-kicker {
+  display: block;
+  color: #f87171;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.2rem;
+}
+
+.command-threat-card-name {
+  display: block;
+  color: #f8fafc;
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.command-threat-card-role {
+  display: inline-block;
+  background: rgba(30,41,59,0.8);
+  color: #94a3b8;
+  font-size: 0.62rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.command-threat-card-ovr {
+  flex-shrink: 0;
+  text-align: center;
+  padding-left: 0.85rem;
+  border-left: 1px solid rgba(248,113,113,0.2);
+}
+
+.command-threat-card-ovr strong {
+  display: block;
+  color: #f87171;
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1;
+  font-family: var(--font-mono-data);
+}
+
+.command-threat-card-ovr span {
+  display: block;
+  color: #64748b;
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 0.2rem;
+}
+
+.command-opponent-file,
+.command-dashboard-lower {
+  margin-top: 0.15rem;
+}
+
+.command-scout-headline {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: baseline;
+}
+
+.command-scout-headline strong {
+  color: #f8fafc;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.command-scout-headline span {
+  border-radius: 4px;
+  background: rgba(244,63,94,0.14);
+  color: #fb7185;
+  font-weight: 900;
+  padding: 0.2rem 0.45rem;
+}
+
+.command-intel-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+}
+
+.command-control-squad {
+  margin-top: 1rem;
+  border-top: 1px solid rgba(30,41,59,0.75);
+  padding-top: 1rem;
+}
+
+.command-control-squad .command-panel-heading {
+  margin-bottom: 0.7rem;
+}
+
+.command-control-squad .command-field-label {
+  margin: 0;
+}
+
+.command-control-starters {
+  display: grid;
+  gap: 0;
+}
+
+.command-control-starters div {
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr) 2.15rem 4.2rem;
+  gap: 0.6rem;
+  align-items: baseline;
+  border-top: 1px solid rgba(30,41,59,0.62);
+  padding: 0.48rem 0;
+}
+
+.command-control-starters div:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.command-control-starters span {
+  color: #64748b;
+  font-size: 0.68rem;
+}
+
+.command-control-starters strong {
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-control-starters small {
+  color: #10b981;
+  font-family: var(--font-mono-data);
+  font-size: 0.68rem;
+  text-align: right;
+}
+
+.command-control-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+}
+
+.command-control-form div {
+  border: 1px solid rgba(30,41,59,0.72);
+  background: rgba(2,6,23,0.2);
+  padding: 0.55rem 0.5rem;
+}
+
+.command-control-form strong,
+.command-control-form span {
+  display: block;
+}
+
+.command-control-form strong {
+  color: #f8fafc;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.command-control-form span {
+  color: #64748b;
+  font-family: var(--font-mono-data);
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.command-intel-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.command-week-timeline-inline {
+  grid-template-columns: 1fr;
+  margin-top: auto;
+  padding-top: 0.95rem;
+}
+
+.command-week-timeline-inline div {
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+}
+
+/* === DYNASTY OFFICE === */
+.dynasty-recruit-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem);
+  grid-template-areas:
+    "main credibility"
+    "main staff";
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.dynasty-recruit-main {
+  grid-area: main;
+  min-width: 0;
+}
+
+.dynasty-credibility-card {
+  grid-area: credibility;
+  min-width: 0;
+  padding: 1rem;
+}
+
+.dynasty-staff-room {
+  grid-area: staff;
+  min-width: 0;
+  padding: 1rem;
+}
+
+.dynasty-staff-row {
+  display: grid;
+  grid-template-columns: minmax(5.75rem, 0.85fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: baseline;
+  border-top: 1px solid rgba(30,41,59,0.7);
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+}
+
+.dynasty-staff-row > div:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dynasty-slots-card {
+  margin-bottom: 0.8rem;
+  padding: 0.9rem 1rem;
+}
+
+.dynasty-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+/* === STANDINGS === */
+.standings-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(17rem, 19rem);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.standings-table-panel {
+  min-width: 0;
+}
+
+.standings-table-scroll {
+  overflow-x: auto;
+}
+
+.standings-recent-card {
+  min-width: 0;
+}
+
+@media (min-width: 1540px) {
   .command-dashboard-main {
+    grid-template-columns: minmax(0, 1.7fr) minmax(22rem, 0.7fr);
+  }
+}
+
+@media (max-width: 1360px) {
+  .standings-layout {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1180px) {
+  .command-dashboard-main,
+  .command-dashboard-lower,
+  .command-plan-grid,
+  .command-squad-grid,
+  .command-intel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .command-game-plan,
+  .command-opponent-file,
+  .command-control-tower,
+  .command-dashboard-lower {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .command-control-tower {
+    position: static;
   }
 
   .command-alert-strip {
@@ -2637,13 +3073,30 @@ input {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     text-align: left;
   }
-}
 
-@media (max-width: 1180px) {
-  .command-dashboard-lower,
-  .command-plan-grid {
-    grid-template-columns: 1fr;
+  .dynasty-recruit-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "credibility"
+      "main"
+      "staff";
   }
+
+  .dynasty-staff-room {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem 1rem;
+  }
+
+  .dynasty-staff-room > .dm-kicker,
+  .dynasty-staff-room > button {
+    grid-column: 1 / -1;
+  }
+
+  .dynasty-staff-row {
+    margin-top: 0;
+  }
+
 }
 
 @media (max-width: 720px) {
@@ -2688,7 +3141,9 @@ input {
   .command-dashboard-metrics,
   .command-two-column,
   .command-approach-grid,
-  .command-orders-grid {
+  .command-orders-grid,
+  .command-tendency-grid,
+  .command-week-timeline-inline {
     grid-template-columns: 1fr;
   }
 
@@ -2699,9 +3154,18 @@ input {
     flex-direction: column;
   }
 
+  .command-readiness-list p {
+    display: block;
+  }
+
   .command-current-plan {
     max-width: none;
     width: 100%;
+  }
+
+  .dynasty-slots-grid,
+  .dynasty-staff-room {
+    grid-template-columns: 1fr;
   }
 }
 
