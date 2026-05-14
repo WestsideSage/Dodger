@@ -121,6 +121,16 @@ def build_beat_payload(
                     "season_stat_label": season_stat_label,
                     "career_stat": int((career or {}).get("total_eliminations", 0)),
                     "ovr": int(round(player.overall())) if player else 0,
+                    "extra_stats": (
+                        {
+                            "throw_elims": int(stats.eliminations_by_throw),
+                            "catches": int(stats.catches_made),
+                            "times_eliminated": int(stats.times_eliminated),
+                            "matches": int(stats.matches) if hasattr(stats, "matches") else 0,
+                        }
+                        if award.award_type == "mvp"
+                        else None
+                    ),
                 }
             )
         return {"awards": result}
@@ -315,7 +325,7 @@ def build_beat_response(conn: sqlite3.Connection, cursor) -> dict[str, Any]:
     ret_rows = _load_json_list(conn, "offseason_retirements_json")
     records_json = get_state(conn, "offseason_records_json")
     hof_json = get_state(conn, "offseason_hof_json")
-    rookie_preview_json = get_state(conn, "offseason_rookie_preview_payload_json")
+    rookie_preview_json = get_state(conn, "offseason_rookie_preview_json")
     player_club_id = get_state(conn, "player_club_id") or ""
 
     canonical_index = OFFSEASON_CEREMONY_BEATS.index(beat_key)
