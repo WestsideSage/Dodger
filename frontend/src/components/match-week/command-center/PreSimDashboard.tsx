@@ -132,6 +132,21 @@ export function PreSimDashboard({
   const isDefensive = selectedIntent === 'Preserve Health';
   const threat = parseKeyMatchup(details.key_matchup);
 
+  const roleCounterMap: Record<string, string> = {
+    Tactical: 'Control',
+    Pressure: 'Defensive',
+    Balanced: 'Balanced',
+  };
+
+  const topOvr = activePlayers.length > 0 ? Math.max(...activePlayers.map(p => p.overall)) : 0;
+  const topPlayer = activePlayers.find(p => p.overall === topOvr);
+  const ovrGap = threat.ovr ? parseInt(threat.ovr) - Math.round(topOvr) : null;
+
+  const hasApproachConflict = selectedIntent === 'Win Now' &&
+    (threat.role === 'Tactical' || threat.role === 'Pressure');
+
+  const counterApproach = threat.role ? (roleCounterMap[threat.role] ?? 'Control') : 'Control';
+
   return (
     <div className="command-dashboard" data-testid="weekly-command-center">
       <div className="command-dashboard-header">
@@ -332,6 +347,67 @@ export function PreSimDashboard({
                     <div className="command-threat-card-ovr">
                       <strong>{threat.ovr}</strong>
                       <span>OVR</span>
+                    </div>
+                  )}
+                </div>
+                {/* Key Threat insight rows */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '10px' }}>
+                  {threat.ovr && ovrGap !== null && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '13px', flexShrink: 0 }}>⚡</span>
+                      <span style={{ flex: 1, fontSize: '11px', color: '#94a3b8' }}>
+                        {ovrGap > 0
+                          ? `Outrates your top starter${topPlayer ? ` (${topPlayer.name})` : ''} by +${ovrGap} OVR`
+                          : `Your top starter${topPlayer ? ` (${topPlayer.name})` : ''} covers this threat by +${Math.abs(ovrGap)} OVR`}
+                      </span>
+                      <span style={{
+                        fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em',
+                        padding: '2px 6px', borderRadius: '3px',
+                        background: ovrGap > 0 ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)',
+                        color: ovrGap > 0 ? '#ef4444' : '#10b981',
+                        border: `1px solid ${ovrGap > 0 ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`,
+                        whiteSpace: 'nowrap', flexShrink: 0,
+                      }}>
+                        {ovrGap > 0 ? 'DANGER' : 'COVERED'}
+                      </span>
+                    </div>
+                  )}
+                  {threat.role && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '13px', flexShrink: 0 }}>🎯</span>
+                      <span style={{ flex: 1, fontSize: '11px', color: '#94a3b8' }}>
+                        {hasApproachConflict
+                          ? `Aggressive approach vs. ${threat.role} threat — expect direct pressure`
+                          : `Approach is compatible with this role`}
+                      </span>
+                      <span style={{
+                        fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em',
+                        padding: '2px 6px', borderRadius: '3px',
+                        background: hasApproachConflict ? 'rgba(249,115,22,0.15)' : 'rgba(16,185,129,0.15)',
+                        color: hasApproachConflict ? '#f97316' : '#10b981',
+                        border: `1px solid ${hasApproachConflict ? 'rgba(249,115,22,0.3)' : 'rgba(16,185,129,0.3)'}`,
+                        whiteSpace: 'nowrap', flexShrink: 0,
+                      }}>
+                        {hasApproachConflict ? 'EXPOSED' : 'ALIGNED'}
+                      </span>
+                    </div>
+                  )}
+                  {threat.role && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '13px', flexShrink: 0 }}>🛡️</span>
+                      <span style={{ flex: 1, fontSize: '11px', color: '#94a3b8' }}>
+                        Counter: switch to {counterApproach} to neutralize {threat.role} threats
+                      </span>
+                      <span style={{
+                        fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em',
+                        padding: '2px 6px', borderRadius: '3px',
+                        background: 'rgba(34,211,238,0.1)',
+                        color: '#22d3ee',
+                        border: '1px solid rgba(34,211,238,0.2)',
+                        whiteSpace: 'nowrap', flexShrink: 0,
+                      }}>
+                        COUNTER
+                      </span>
                     </div>
                   )}
                 </div>
