@@ -143,6 +143,12 @@ export function PreSimDashboard({
 
   const counterApproach = threat.role ? (roleCounterMap[threat.role] ?? 'Control') : 'Control';
 
+  const hasFatigueIssue = activePlayers.filter(
+    p => p.stamina !== undefined && p.stamina < 60
+  ).length > 1;
+
+  const hasPlanConflict = hasApproachConflict || hasFatigueIssue;
+
   return (
     <div className="command-dashboard" data-testid="weekly-command-center">
       <div className="command-dashboard-header">
@@ -279,6 +285,32 @@ export function PreSimDashboard({
           </div>
           {!planConfirmed ? (
             <>
+              {/* Smart pre-lock flag */}
+              <div style={{
+                display: 'flex', alignItems: 'flex-start', gap: '10px',
+                padding: '9px 12px', borderRadius: '6px', marginBottom: '10px',
+                background: hasPlanConflict ? 'rgba(249,115,22,0.1)' : 'rgba(16,185,129,0.1)',
+                border: `1px solid ${hasPlanConflict ? 'rgba(249,115,22,0.2)' : 'rgba(16,185,129,0.2)'}`,
+                fontSize: '11px', lineHeight: 1.5,
+              }}>
+                <span>{hasPlanConflict ? '⚠️' : '✓'}</span>
+                <span style={{ color: '#94a3b8' }}>
+                  {hasPlanConflict ? (
+                    <>
+                      <strong style={{ color: '#f1f5f9' }}>Plan conflict:</strong>{' '}
+                      {hasApproachConflict
+                        ? <><em style={{ fontStyle: 'normal', color: '#f97316' }}>Aggressive</em> approach vs. {threat.role} threat — consider {counterApproach}.</>
+                        : <>Multiple starters have low stamina — consider <em style={{ fontStyle: 'normal', color: '#f97316' }}>Preserve Health</em>.</>
+                      }
+                    </>
+                  ) : (
+                    <>
+                      <strong style={{ color: '#f1f5f9' }}>Plan looks solid.</strong>{' '}
+                      {currentApproach} approach aligns with the {threat.role ?? 'opponent'} threat. Stamina is healthy.
+                    </>
+                  )}
+                </span>
+              </div>
               {!isReadyToLock && (
                 <p className="command-lock-note">{itemsRemaining} {itemsRemaining === 1 ? 'item' : 'items'} must be ready before locking the plan.</p>
               )}
