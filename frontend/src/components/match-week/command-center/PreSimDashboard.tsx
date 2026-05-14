@@ -39,11 +39,6 @@ function parseKeyMatchup(raw: string) {
   return { name: raw, role: null, ovr: null };
 }
 
-function resultTone(result: string | undefined) {
-  if (result === 'Win') return '#10b981';
-  if (result === 'Loss') return '#f43f5e';
-  return '#f59e0b';
-}
 
 export function PreSimDashboard({
   data,
