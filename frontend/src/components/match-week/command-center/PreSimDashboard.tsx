@@ -130,6 +130,7 @@ export function PreSimDashboard({
   const currentApproach = intentLabels.get(selectedIntent) ?? selectedIntent;
   const isAggressive = selectedIntent === 'Win Now';
   const isDefensive = selectedIntent === 'Preserve Health';
+  const threat = parseKeyMatchup(details.key_matchup);
 
   return (
     <div className="command-dashboard" data-testid="weekly-command-center">
@@ -320,25 +321,20 @@ export function PreSimDashboard({
                 <div className="command-verdict command-verdict-compact">
                   {details.framing_line}
                 </div>
-                {(() => {
-                  const threat = parseKeyMatchup(details.key_matchup);
-                  return (
-                    <div className="command-threat-card">
-                      <div className="command-threat-card-icon">⚠️</div>
-                      <div className="command-threat-card-body">
-                        <span className="command-threat-card-kicker">Key Threat</span>
-                        <span className="command-threat-card-name">{threat.name}</span>
-                        {threat.role && <span className="command-threat-card-role">{threat.role}</span>}
-                      </div>
-                      {threat.ovr && (
-                        <div className="command-threat-card-ovr">
-                          <strong>{threat.ovr}</strong>
-                          <span>OVR</span>
-                        </div>
-                      )}
+                <div className="command-threat-card">
+                  <div className="command-threat-card-icon">⚠️</div>
+                  <div className="command-threat-card-body">
+                    <span className="command-threat-card-kicker">Key Threat</span>
+                    <span className="command-threat-card-name">{threat.name}</span>
+                    {threat.role && <span className="command-threat-card-role">{threat.role}</span>}
+                  </div>
+                  {threat.ovr && (
+                    <div className="command-threat-card-ovr">
+                      <strong>{threat.ovr}</strong>
+                      <span>OVR</span>
                     </div>
-                  );
-                })()}
+                  )}
+                </div>
                 <p className="command-field-label" style={{ marginBottom: '0.3rem' }}>Scouting</p>
                 <p className="command-muted-copy">{plan.recommendations[0]?.text ?? 'No recommendation returned.'}</p>
               </div>
