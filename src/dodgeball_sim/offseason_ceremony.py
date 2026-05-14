@@ -68,6 +68,31 @@ AI_MIN_PLAYABLE_ROSTER_SIZE = 6
 PLAYER_FREE_AGENT_RESERVE = 6
 
 
+def _parse_json_list(raw: Optional[str]) -> list:
+    try:
+        parsed = json.loads(raw or "[]")
+        return parsed if isinstance(parsed, list) else []
+    except (TypeError, ValueError):
+        return []
+
+
+def compute_active_beats(
+    records_payload_json: Optional[str],
+    hof_payload_json: Optional[str],
+    retirement_rows: List[Dict[str, Any]],
+) -> List[str]:
+    """Return the ordered subset of OFFSEASON_CEREMONY_BEATS that have real content."""
+    _CONDITIONAL = {
+        "records_ratified": lambda: bool(_parse_json_list(records_payload_json)),
+        "hof_induction": lambda: bool(_parse_json_list(hof_payload_json)),
+        "retirements": lambda: bool(retirement_rows),
+    }
+    return [
+        beat for beat in OFFSEASON_CEREMONY_BEATS
+        if beat not in _CONDITIONAL or _CONDITIONAL[beat]()
+    ]
+
+
 @dataclass(frozen=True)
 class OffseasonCeremonyBeat:
     key: str
@@ -408,6 +433,13 @@ def initialize_manager_offseason(
         else 1
     )
     build_rookie_class_preview(conn, season.season_id, next_class_year)
+    # Compute and store the active beat list for this offseason
+    active_beats = compute_active_beats(
+        records_payload_json=get_state(conn, "offseason_records_json"),
+        hof_payload_json=get_state(conn, "offseason_hof_json"),
+        retirement_rows=retirement_rows,
+    )
+    set_state(conn, "offseason_active_beats_json", json.dumps(active_beats))
     set_state(conn, "offseason_initialized_for", season.season_id)
     conn.commit()
     return updated_rosters
@@ -713,9 +745,6 @@ def build_offseason_ceremony_beat(
                 lines.append("Market storylines:")
                 for storyline in storylines:
                     lines.append(f"  - {storyline.get('sentence', '')}")
-            if source == "legacy_free_agents":
-                lines.append("")
-                lines.append("(Legacy save: showing free-agent fallback only.)")
             lines.append("")
             lines.append("Continue to Recruitment Day.")
             body = "\n".join(lines)
@@ -769,6 +798,7 @@ def build_offseason_ceremony_beat(
 __all__ = [
     "OFFSEASON_CEREMONY_BEATS",
     "OffseasonCeremonyBeat",
+    "compute_active_beats",
     "clamp_offseason_beat_index",
     "stored_root_seed",
     "finalize_season",
