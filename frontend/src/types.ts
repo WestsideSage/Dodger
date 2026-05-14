@@ -249,6 +249,15 @@ export interface MatchupDetails {
   framing_line: string;
 }
 
+export interface LineupPlayer {
+    id: string;
+    name: string;
+    overall: number;
+    age?: number;
+    potential?: number;
+    stamina?: number;
+}
+
 export interface CommandCenterPlan {
     season_id: string;
     week: number;
@@ -275,15 +284,11 @@ export interface CommandCenterPlan {
     warnings: string[];
     lineup: {
         player_ids: string[];
-        players: Array<{
-            id: string;
-            name: string;
-            overall: number;
-            age?: number;
-            potential?: number;
-            stamina?: number;
-        }>;
+        players: LineupPlayer[];
         summary: string;
+    };
+    opponent_lineup?: {
+        players: LineupPlayer[];
     };
     tactics: CoachPolicy;
     history_count: number;
