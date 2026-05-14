@@ -14,6 +14,7 @@ from .offseason_ceremony import (
     stored_root_seed,
 )
 from .persistence import (
+    fetch_season_player_stats,
     get_state,
     load_all_rosters,
     load_awards,
@@ -25,6 +26,7 @@ from .persistence import (
     load_season_outcome,
     load_standings,
 )
+from .stats import PlayerMatchStats
 
 
 def load_active_beats(conn: sqlite3.Connection) -> list:
@@ -72,22 +74,52 @@ def build_beat_payload(
 
     if beat_key == "awards":
         _AWARD_PRESTIGE = {
-            "best_newcomer": 0,
-            "best_catcher": 1,
-            "best_thrower": 2,
             "mvp": 3,
+            "best_thrower": 2,
+            "best_catcher": 1,
+            "best_newcomer": 0,
         }
-        sorted_awards = sorted(awards, key=lambda a: _AWARD_PRESTIGE.get(a.award_type, -1))
+        _AWARD_NAME = {
+            "mvp": "MVP",
+            "best_thrower": "Best Thrower",
+            "best_catcher": "Best Catcher",
+            "best_newcomer": "Best Newcomer",
+        }
+        sorted_awards = sorted(
+            awards,
+            key=lambda a: _AWARD_PRESTIGE.get(a.award_type, -1),
+            reverse=True,
+        )
+        season_stats: dict = {}
+        if season is not None:
+            season_stats = fetch_season_player_stats(conn, season.season_id)
+
         result = []
         for award in sorted_awards:
             player = find_player(award.player_id)
             career = load_player_career_stats(conn, award.player_id)
+            stats = season_stats.get(award.player_id, PlayerMatchStats())
+            if award.award_type == "best_thrower":
+                season_stat = stats.eliminations_by_throw
+                season_stat_label = f"{season_stat} throw elims"
+            elif award.award_type == "best_catcher":
+                season_stat = stats.catches_made
+                season_stat_label = f"{season_stat} catches"
+            else:  # mvp, best_newcomer
+                season_stat = stats.eliminations_by_throw + stats.catches_made
+                season_stat_label = f"{season_stat} season elims"
             result.append(
                 {
                     "player_name": player.name if player else award.player_id,
                     "club_name": club_name(award.club_id),
                     "award_type": award.award_type,
-                    "career_elims": int((career or {}).get("total_eliminations", 0)),
+                    "award_name": _AWARD_NAME.get(
+                        award.award_type,
+                        award.award_type.replace("_", " ").title(),
+                    ),
+                    "season_stat": int(season_stat),
+                    "season_stat_label": season_stat_label,
+                    "career_stat": int((career or {}).get("total_eliminations", 0)),
                     "ovr": int(round(player.overall())) if player else 0,
                 }
             )
