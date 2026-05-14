@@ -4,6 +4,8 @@ Date: 2026-05-07
 Role: Adversarial QA Tester
 Worktree / branch: `Dodgeball Simulator.worktrees/codex` / `feature/codex-next-task`
 
+> Historical QA snapshot: the external worktree named above is retired. Use `C:\GPT5-Projects\Dodgeball Simulator` and the current documentation source map for new work.
+
 ## Scope
 
 PHASE_UNDER_TEST: Post V8-V10 Dynasty Office polish and hardening.

@@ -5,6 +5,8 @@
 **Phase completed:** Phase 2 — First Season + Historical Archive
 **Tests:** 22/22 passing
 
+> Historical snapshot: this early handoff predates the current milestone index, git setup, and web-app source of truth. Use root `AGENTS.md`, `docs/README.md`, and `docs/specs/MILESTONES.md` for current orientation.
+
 ---
 
 ## What Was Built This Session

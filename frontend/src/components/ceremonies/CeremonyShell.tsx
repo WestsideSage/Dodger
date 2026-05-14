@@ -7,14 +7,20 @@ export function CeremonyShell({
   description, 
   stages, 
   renderStage, 
-  onComplete 
+  onComplete,
+  actionLabel = 'Continue',
+  actionDescription = 'Continue to the next offseason beat.',
+  isActing = false,
 }: { 
   title: string, 
   eyebrow: string, 
   description: string, 
   stages: number, 
   renderStage: (stage: number) => React.ReactNode, 
-  onComplete: () => void 
+  onComplete: () => void,
+  actionLabel?: string,
+  actionDescription?: string,
+  isActing?: boolean,
 }) {
   const [stage, setStage] = useState(0);
 
@@ -46,8 +52,16 @@ export function CeremonyShell({
          {renderStage(stage)}
       </div>
       {stage >= stages && (
-        <div style={{ textAlign: 'center', marginTop: 'auto', paddingBottom: '2rem' }}>
-          <ActionButton variant="primary" onClick={onComplete}>Continue</ActionButton>
+        <div className="dm-panel command-action-bar" style={{ marginTop: 'auto' }}>
+          <div>
+            <p className="dm-kicker">Ceremony Control</p>
+            <p>{actionDescription}</p>
+          </div>
+          <div className="command-action-buttons">
+            <ActionButton variant="primary" onClick={onComplete} disabled={isActing}>
+              {isActing ? 'Continuing...' : actionLabel}
+            </ActionButton>
+          </div>
         </div>
       )}
     </div>

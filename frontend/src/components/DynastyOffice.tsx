@@ -120,12 +120,24 @@ export function DynastyOffice() {
         }
       />
 
-      <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid #1e293b', paddingBottom: '0.5rem' }}>
+      <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid #1e293b' }}>
         {(['recruit', 'history'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveSubTab(tab)}
-            style={{ background: 'none', border: 'none', color: activeSubTab === tab ? '#22d3ee' : '#64748b', cursor: 'pointer', fontWeight: 700, fontSize: '0.875rem', textTransform: 'uppercase' }}
+            style={{ 
+              background: 'none', 
+              border: 'none', 
+              borderBottom: activeSubTab === tab ? '2px solid #22d3ee' : '2px solid transparent',
+              color: activeSubTab === tab ? '#22d3ee' : '#64748b', 
+              cursor: 'pointer', 
+              fontWeight: 700, 
+              fontSize: '0.875rem', 
+              textTransform: 'uppercase',
+              padding: '0 0.5rem 0.75rem',
+              marginBottom: '-1px',
+              transition: 'color 0.15s, border-color 0.15s'
+            }}
           >
             {tab === 'recruit' ? 'Recruit' : 'History'}
           </button>

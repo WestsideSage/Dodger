@@ -39,8 +39,8 @@ export function Offseason() {
   const recruit = () => act('/api/offseason/recruit');
   const beginSeason = () => act('/api/offseason/begin-season');
 
-  if (beat.key === 'awards') return <AwardsNight beat={beat} onComplete={advance} />;
-  if (beat.key === 'retirements') return <Graduation beat={beat} onComplete={advance} />;
+  if (beat.key === 'awards') return <AwardsNight beat={beat} onComplete={advance} acting={acting} />;
+  if (beat.key === 'retirements') return <Graduation beat={beat} onComplete={advance} acting={acting} />;
   if (beat.key === 'recruitment' && beat.can_recruit) return (
     <section className="command-offseason-shell" data-testid="offseason-recruitment-action">
       <PageHeader
@@ -68,8 +68,8 @@ export function Offseason() {
       </div>
     </section>
   );
-  if (beat.key === 'recruitment') return <SigningDay beat={beat} onComplete={advance} />;
-  if (beat.key === 'schedule_reveal') return <NewSeasonEve beat={beat} onComplete={beginSeason} />;
+  if (beat.key === 'recruitment') return <SigningDay beat={beat} onComplete={advance} acting={acting} />;
+  if (beat.key === 'schedule_reveal') return <NewSeasonEve beat={beat} onComplete={beginSeason} acting={acting} />;
 
   const bodyLines = typeof beat.body === 'string'
     ? beat.body.split('\n').map((line: string) => line.trim()).filter(Boolean)

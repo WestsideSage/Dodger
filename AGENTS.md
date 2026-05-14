@@ -58,14 +58,18 @@ The web app is the supported foundation. `server.py` wraps the domain and persis
 
 ## Milestones
 
-Read `docs/specs/MILESTONES.md` before milestone work.
+Read `docs/README.md` before documentation, milestone, workflow, design-system, or handoff work. Read `docs/specs/MILESTONES.md` before milestone work.
 
 Current orientation:
 
 - V1 season-management foundation shipped 2026-04-26.
 - V2-A through V2-F shipped 2026-04-28.
 - V3 Experience Rebuild shipped 2026-04-29.
-- V4 Web Architecture Foundation shipped 2026-04-29 with the web backend, React app, shared orchestration work, and first-pass parity screens. V5 planning should build on the web app as the primary product surface.
+- V4 Web Architecture Foundation shipped 2026-04-29.
+- V5 Weekly Command Center shipped 2026-05-04.
+- V6 Player Identity and Development Loop shipped 2026-05-05.
+- V7 Watchable Match Proof Loop shipped 2026-05-05.
+- V8-V10 shipped thin on 2026-05-06 through the Dynasty Office. Treat the current work as post-blitz polish and hardening unless `docs/specs/MILESTONES.md` says otherwise.
 
 When adding a milestone, create a focused spec under `docs/specs/`, update `docs/specs/MILESTONES.md`, and add retrospective/learnings documents when it ships.
 
@@ -105,11 +109,12 @@ Do not force the full squad ceremony for small fixes or routine documentation cl
 
 ## Git / Main Repo / Multi-Agent Workflow
 
-Every agent starts by reading this file before touching the repo. For milestone work, also read `docs/specs/MILESTONES.md` and the relevant spec or retrospective handoff.
+Every agent starts by reading this file before touching the repo. For documentation, milestone, workflow, design-system, or handoff work, also read `docs/README.md`. For milestone work, also read `docs/specs/MILESTONES.md` and the relevant spec or active plan.
 
 Current source of truth:
 
 - Active local repo: `C:\GPT5-Projects\Dodgeball Simulator`
+- Documentation front door: `docs/README.md`
 - The old external `.worktrees` checkout at `C:\GPT5-Projects\Dodgeball Simulator.worktrees\...` is retired and stale. Do not use it for implementation, planning truth, verification, or handoff state unless Maurice explicitly re-authorizes it for a specific recovery task.
 - If old `.worktrees` files are referenced, treat them as historical reference only. Port by inspecting diffs and adapting to this repo; never assume those files include current main-repo changes.
 

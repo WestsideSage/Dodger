@@ -3,6 +3,8 @@
 Date: 2026-05-05
 Branch / worktree: `feature/codex-next-task` / `Dodgeball Simulator.worktrees/codex`
 
+> Historical QA snapshot: the external worktree named above is retired. Use `C:\GPT5-Projects\Dodgeball Simulator` and the current documentation source map for new work.
+
 ## Verdict
 
 V7 passes the pre-QA implementation gate. The proof loop is playable in browser, derives evidence from saved match events, and preserves the existing fast result / continue flow.
