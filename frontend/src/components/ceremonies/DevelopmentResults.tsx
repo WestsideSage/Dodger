@@ -40,6 +40,12 @@ export function DevelopmentResults({
                         const deltaColor = improved ? '#10b981' : declined ? '#ef4444' : '#64748b';
                         const deltaLabel = player.delta > 0 ? `+${player.delta}` : `${player.delta}`;
 
+                        const ovrBefore = Math.round(player.ovr_before);
+                        const ovrAfter = Math.round(player.ovr_after);
+                        const ovrDisplay = ovrBefore !== ovrAfter
+                            ? `${ovrBefore} → ${ovrAfter}`
+                            : `${player.ovr_before.toFixed(1)} → ${player.ovr_after.toFixed(1)}`;
+
                         return (
                             <div
                                 key={i}
@@ -55,7 +61,7 @@ export function DevelopmentResults({
                                     {player.name}
                                 </span>
                                 <span style={{ color: '#64748b', fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums' }}>
-                                    {player.ovr_before} → {player.ovr_after}
+                                    {ovrDisplay}
                                 </span>
                                 <span
                                     style={{

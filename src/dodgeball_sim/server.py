@@ -909,10 +909,9 @@ def get_history_my_program(club_id: str, conn = Depends(get_db)):
     for row in award_rows:
         label_map = {
             "mvp": "MVP Award",
-            "top_rookie": "Top Rookie",
-            "best_defender": "Best Defender",
-            "most_improved": "Most Improved",
-            "championship": "Championship Award",
+            "best_thrower": "Best Thrower",
+            "best_catcher": "Best Catcher",
+            "best_newcomer": "Best Newcomer",
         }
         timeline.append({
             "season": row["season_id"],

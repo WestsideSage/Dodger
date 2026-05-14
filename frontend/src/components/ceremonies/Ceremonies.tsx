@@ -408,7 +408,7 @@ export function NewSeasonEve({ beat, onComplete, acting }: { beat: ScheduleRevea
                                                 Wk {f.week}
                                             </span>
                                             <span style={{ color: f.is_player_match ? '#fb923c' : '#94a3b8', fontSize: '0.8rem', flex: 1 }}>
-                                                {f.home} vs {f.away}
+                                                {f.home && f.away ? `${f.home} vs ${f.away}` : 'Bye Week'}
                                             </span>
                                         </div>
                                     ))}

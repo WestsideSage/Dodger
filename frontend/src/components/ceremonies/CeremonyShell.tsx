@@ -46,13 +46,13 @@ export function CeremonyShell({
   }, [stages]);
 
   return (
-    <div className="dm-ceremony" style={{ minHeight: '600px', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div className="dm-ceremony" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <PageHeader eyebrow={eyebrow} title={title} description={description} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
          {renderStage(stage)}
       </div>
       {stage >= stages && (
-        <div className="dm-panel command-action-bar" style={{ marginTop: 'auto' }}>
+        <div className="dm-panel command-action-bar" style={{ position: 'sticky', bottom: '1rem', marginTop: 'auto' }}>
           <div>
             <p className="dm-kicker">Ceremony Control</p>
             <p>{actionDescription}</p>

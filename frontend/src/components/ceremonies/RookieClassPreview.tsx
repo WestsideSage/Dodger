@@ -31,7 +31,7 @@ export function RookieClassPreview({
                     <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Incoming Rookies</div>
                 </div>
                 <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#10b981' }}>{top_prospects}</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: top_prospects > 0 ? '#10b981' : '#64748b' }}>{top_prospects}</div>
                     <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Top Prospects (70+ OVR)</div>
                 </div>
                 <div style={{ textAlign: 'center' }}>
