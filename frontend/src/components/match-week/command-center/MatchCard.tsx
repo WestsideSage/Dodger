@@ -153,7 +153,7 @@ export function MatchCard({ yourPlayers, oppPlayers, yourTeamName, oppTeamName }
                     fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1,
                     color: gap === 0 ? '#475569' : youWin ? '#22d3ee' : '#f43f5e',
                   }}>
-                    {gap === 0 ? 'EVEN' : youWin ? `◀ ${youAbbr} +${Math.abs(gap)}` : `${oppAbbr} +${Math.abs(gap)} ▶`}
+                    {gap === 0 ? 'EVEN' : youWin ? `◀ ${youAbbr} +${Math.abs(gap)}` : `−${Math.abs(gap)} ▶`}
                   </span>
                   <div style={{ position: 'relative', width: '100%', height: '6px', background: '#1e293b', borderRadius: '3px', overflow: 'hidden' }}>
                     {/* Center divider */}
