@@ -2779,7 +2779,10 @@ input {
   color: #f8fafc;
   font-size: 0.9rem;
   font-weight: 700;
-  margin-bottom: 0.25rem;
+}
+
+.command-threat-card-name + .command-threat-card-role {
+  margin-top: 0.25rem;
 }
 
 .command-threat-card-role {
