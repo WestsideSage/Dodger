@@ -9,7 +9,6 @@ from .development import calculate_potential_tier
 from .offseason_ceremony import (
     OFFSEASON_CEREMONY_BEATS,
     build_offseason_ceremony_beat,
-    clamp_offseason_beat_index,
     compute_active_beats,
     create_next_manager_season,
     stored_root_seed,
@@ -53,11 +52,13 @@ def build_beat_payload(
     season_outcome: Any,
     next_preview: Any,
     signed_player_id: str,
-    dev_rows: list = [],
+    dev_rows: Optional[list] = None,
     player_club_id: str = "",
     rookie_preview_json: Optional[str] = None,
     conn: sqlite3.Connection,
 ) -> dict:
+    dev_rows = dev_rows or []
+
     def club_name(club_id: str) -> str:
         club = clubs.get(club_id)
         return club.name if club else club_id
