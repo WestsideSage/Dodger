@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CommandCenterResponse, StandingRow, StandingsResponse } from '../../../types';
+import { MatchCard } from './MatchCard';
 
 const approaches = [
   { id: 'Balanced', label: 'Balanced', desc: 'Even focus on offense and defense.' },
@@ -272,24 +273,14 @@ export function PreSimDashboard({
           </div>
           <div className="command-control-squad">
             <div className="command-panel-heading">
-              <p className="command-field-label">Starter Readiness</p>
-              <span>{userStanding ? `${userStanding.points} pts` : recentRecord}</span>
+              <p className="command-field-label">Match Card</p>
             </div>
-            <div className="command-control-starters">
-              {activePlayers.map((player, index) => (
-                <div key={player.id}>
-                  <span>{index + 1}</span>
-                  <strong>{player.name}</strong>
-                  <small>{Math.round(player.overall)}</small>
-                  <small>{player.stamina === undefined ? 'ready' : `${Math.round(player.stamina)} sta`}</small>
-                </div>
-              ))}
-            </div>
-            <div className="command-control-form">
-              <div><strong>{userStanding?.elimination_differential ?? '-'}</strong><span>Elim Diff</span></div>
-              <div><strong style={{ color: resultTone(latestDashboard?.result) }}>{latestDashboard?.result ?? '-'}</strong><span>Last</span></div>
-              <div><strong>{data.history.length}</strong><span>Plans</span></div>
-            </div>
+            <MatchCard
+              yourPlayers={activePlayers}
+              oppPlayers={plan.opponent_lineup?.players ?? []}
+              yourTeamName={data.player_club_name}
+              oppTeamName={plan.opponent.name}
+            />
           </div>
           {!planConfirmed ? (
             <>
