@@ -198,6 +198,7 @@ def build_beat_payload(
                     "losses": row.losses,
                     "draws": row.draws,
                     "points": row.points,
+                    "diff": row.elimination_differential,
                     "is_player_club": row.club_id == player_club_id,
                 }
                 for index, row in enumerate(standings)
