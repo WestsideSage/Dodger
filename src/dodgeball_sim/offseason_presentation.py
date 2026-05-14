@@ -145,6 +145,24 @@ def build_beat_payload(
             )
         return {"retirees": retirees}
 
+    if beat_key == "development":
+        player_rows = [
+            row for row in dev_rows if row.get("club_id") == player_club_id
+        ]
+        player_rows_sorted = sorted(
+            player_rows, key=lambda r: -abs(float(r.get("delta", 0)))
+        )
+        players = [
+            {
+                "name": row.get("player_name", row.get("player_id", "")),
+                "ovr_before": int(round(float(row.get("before", 0)))),
+                "ovr_after": int(round(float(row.get("after", 0)))),
+                "delta": int(round(float(row.get("delta", 0)))),
+            }
+            for row in player_rows_sorted
+        ]
+        return {"players": players}
+
     if beat_key == "champion":
         if season_outcome and season_outcome.champion_club_id:
             trophies = load_club_trophies(conn)

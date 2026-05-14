@@ -331,3 +331,71 @@ def test_awards_payload_prestige_sort_mvp_first():
     types = [a["award_type"] for a in payload["awards"]]
     assert types[0] == "mvp", f"Expected mvp first, got {types}"
     assert types[-1] == "best_newcomer", f"Expected best_newcomer last, got {types}"
+
+
+def test_development_payload_player_club_only():
+    import sqlite3
+    from dodgeball_sim.persistence import create_schema
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+
+    dev_rows = [
+        {"player_id": "p1", "player_name": "Alice", "club_id": "my_club",
+         "before": 65.4, "after": 67.2, "delta": 1.8},
+        {"player_id": "p2", "player_name": "Bob",   "club_id": "other_club",
+         "before": 70.1, "after": 71.5, "delta": 1.4},
+        {"player_id": "p3", "player_name": "Carol",  "club_id": "my_club",
+         "before": 58.9, "after": 60.0, "delta": 1.1},
+    ]
+
+    payload = build_beat_payload(
+        "development",
+        awards=[],
+        clubs={},
+        rosters={},
+        standings=[],
+        ret_rows=[],
+        season=None,
+        season_outcome=None,
+        next_preview=None,
+        signed_player_id="",
+        dev_rows=dev_rows,
+        player_club_id="my_club",
+        conn=conn,
+    )
+
+    assert "players" in payload
+    names = [p["name"] for p in payload["players"]]
+    assert "Alice" in names
+    assert "Carol" in names
+    assert "Bob" not in names, "Other club player should not appear"
+
+
+def test_development_payload_no_decimals():
+    import sqlite3
+    from dodgeball_sim.persistence import create_schema
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+
+    dev_rows = [
+        {"player_id": "p1", "player_name": "Alice", "club_id": "my_club",
+         "before": 65.4, "after": 67.2, "delta": 1.8},
+    ]
+
+    payload = build_beat_payload(
+        "development",
+        awards=[], clubs={}, rosters={}, standings=[], ret_rows=[],
+        season=None, season_outcome=None, next_preview=None,
+        signed_player_id="", dev_rows=dev_rows, player_club_id="my_club",
+        conn=conn,
+    )
+
+    player = payload["players"][0]
+    assert isinstance(player["ovr_before"], int), "ovr_before must be int"
+    assert isinstance(player["ovr_after"], int), "ovr_after must be int"
+    assert isinstance(player["delta"], int), "delta must be int"
+    assert player["ovr_before"] == 65
+    assert player["ovr_after"] == 67
+    assert player["delta"] == 2  # round(1.8) == 2
