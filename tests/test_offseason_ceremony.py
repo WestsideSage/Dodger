@@ -399,3 +399,39 @@ def test_development_payload_no_decimals():
     assert player["ovr_before"] == 65
     assert player["ovr_after"] == 67
     assert player["delta"] == 2  # round(1.8) == 2
+
+
+def test_rookie_class_preview_payload_structured():
+    import json, sqlite3
+    from dodgeball_sim.persistence import create_schema
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+
+    rookie_json = json.dumps({
+        "class_size": 14,
+        "top_band_depth": 3,
+        "free_agent_count": 6,
+        "archetype_distribution": {"thrower": 8, "catcher": 6},
+        "storylines": [
+            {"sentence": "A blue-chip thrower leads this class."},
+            {"sentence": "Defensive depth is thin this year."},
+        ],
+        "source": "prospect_pool",
+    })
+
+    payload = build_beat_payload(
+        "rookie_class_preview",
+        awards=[], clubs={}, rosters={}, standings=[], ret_rows=[],
+        season=None, season_outcome=None, next_preview=None,
+        signed_player_id="", rookie_preview_json=rookie_json,
+        conn=conn,
+    )
+
+    assert payload["class_size"] == 14
+    assert payload["top_prospects"] == 3
+    assert payload["free_agents"] == 6
+    assert len(payload["archetypes"]) == 2
+    assert payload["archetypes"][0]["name"] == "thrower"  # sorted by count desc
+    assert len(payload["storylines"]) == 2
+    assert payload["storylines"][0] == "A blue-chip thrower leads this class."

@@ -166,7 +166,7 @@ def test_development_payload_has_players_key():
     assert result["players"] == []
 
 
-def test_rookie_class_preview_payload_is_empty_dict():
+def test_rookie_class_preview_payload_has_structured_keys():
     conn = _empty_conn()
     result = _build_beat_payload(
         "rookie_class_preview",
@@ -181,4 +181,11 @@ def test_rookie_class_preview_payload_is_empty_dict():
         signed_player_id="",
         conn=conn,
     )
-    assert result == {}
+    assert "class_size" in result
+    assert "top_prospects" in result
+    assert "free_agents" in result
+    assert "archetypes" in result
+    assert "storylines" in result
+    assert result["class_size"] == 0
+    assert result["archetypes"] == []
+    assert result["storylines"] == []

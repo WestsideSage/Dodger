@@ -260,6 +260,28 @@ def build_beat_payload(
             "prediction": prediction,
         }
 
+    if beat_key == "rookie_class_preview":
+        try:
+            payload_dict = json.loads(rookie_preview_json or "{}") or {}
+        except (TypeError, ValueError):
+            payload_dict = {}
+        archetype_dist: dict = payload_dict.get("archetype_distribution", {}) or {}
+        storylines = [
+            s.get("sentence", "")
+            for s in (payload_dict.get("storylines", []) or [])
+            if s.get("sentence")
+        ]
+        return {
+            "class_size": int(payload_dict.get("class_size", 0)),
+            "top_prospects": int(payload_dict.get("top_band_depth", 0)),
+            "free_agents": int(payload_dict.get("free_agent_count", 0)),
+            "archetypes": sorted(
+                [{"name": k, "count": v} for k, v in archetype_dist.items()],
+                key=lambda x: (-x["count"], x["name"]),
+            ),
+            "storylines": storylines,
+        }
+
     return {}
 
 
