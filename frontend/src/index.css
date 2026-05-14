@@ -2821,6 +2821,53 @@ input {
   margin-top: 0.2rem;
 }
 
+/* Week Timeline Pill Cards */
+.command-week-pills {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.95rem;
+}
+
+.command-week-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: rgba(30,41,59,0.6);
+  border-radius: 6px;
+  padding: 0.7rem 0.75rem;
+}
+
+.command-week-pill.is-matchday {
+  background: rgba(34,211,238,0.08);
+  border: 1px solid rgba(34,211,238,0.25);
+}
+
+.command-week-pill-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.command-week-pill-label {
+  display: block;
+  color: #64748b;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.command-week-pill.is-matchday .command-week-pill-label {
+  color: #22d3ee;
+}
+
+.command-week-pill-value {
+  display: block;
+  color: #f8fafc;
+  font-weight: 600;
+  font-size: 0.74rem;
+}
+
 .command-opponent-file,
 .command-dashboard-lower {
   margin-top: 0.15rem;
