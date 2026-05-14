@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 
 from dodgeball_sim.career_setup import initialize_curated_manager_career
-from dodgeball_sim.offseason_ceremony import initialize_manager_offseason
+from dodgeball_sim.offseason_ceremony import (
+    compute_active_beats,
+    initialize_manager_offseason,
+    OFFSEASON_CEREMONY_BEATS,
+)
 from dodgeball_sim.persistence import (
     create_schema,
+    get_state,
     load_all_rosters,
     load_clubs,
     load_season,
@@ -166,3 +172,81 @@ def test_compute_season_awards_player_can_win_two_types():
     assert winners["best_catcher"] == "p2"
     # No newcomers → no best_newcomer award
     assert "best_newcomer" not in winners
+
+
+def test_compute_active_beats_always_includes_core():
+    active = compute_active_beats(
+        records_payload_json=None,
+        hof_payload_json=None,
+        retirement_rows=[],
+    )
+    core = ["champion", "recap", "awards", "development",
+            "rookie_class_preview", "recruitment", "schedule_reveal"]
+    for key in core:
+        assert key in active, f"'{key}' missing from active beats"
+
+
+def test_compute_active_beats_excludes_empty_conditional():
+    active = compute_active_beats(
+        records_payload_json=None,
+        hof_payload_json=None,
+        retirement_rows=[],
+    )
+    assert "records_ratified" not in active
+    assert "hof_induction" not in active
+    assert "retirements" not in active
+
+
+def test_compute_active_beats_includes_retirements_when_present():
+    active = compute_active_beats(
+        records_payload_json=None,
+        hof_payload_json=None,
+        retirement_rows=[{"player_id": "p1", "player_name": "Bob"}],
+    )
+    assert "retirements" in active
+
+
+def test_compute_active_beats_includes_records_when_present():
+    records_json = json.dumps([{"record_type": "most_elims", "holder_name": "Bob",
+                                 "previous_value": 5.0, "new_value": 10.0, "detail": ""}])
+    active = compute_active_beats(
+        records_payload_json=records_json,
+        hof_payload_json=None,
+        retirement_rows=[],
+    )
+    assert "records_ratified" in active
+
+
+def test_compute_active_beats_preserves_order():
+    records_json = json.dumps([{"record_type": "x", "holder_name": "A",
+                                 "previous_value": 1, "new_value": 2, "detail": ""}])
+    active = compute_active_beats(
+        records_payload_json=records_json,
+        hof_payload_json=None,
+        retirement_rows=[{"player_id": "p1"}],
+    )
+    # records_ratified comes before retirements in the full sequence
+    assert active.index("records_ratified") < active.index("retirements")
+    # schedule_reveal is always last
+    assert active[-1] == "schedule_reveal"
+
+
+def test_initialize_manager_offseason_stores_active_beats():
+    """After init, offseason_active_beats_json is stored and well-formed."""
+    conn = _career_conn()
+    season_id = conn.execute(
+        "SELECT value FROM dynasty_state WHERE key = 'active_season_id'"
+    ).fetchone()["value"]
+    season = load_season(conn, season_id)
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+
+    initialize_manager_offseason(conn, season, clubs, rosters, root_seed=20260426)
+
+    raw = get_state(conn, "offseason_active_beats_json")
+    assert raw is not None, "offseason_active_beats_json not stored"
+    active = json.loads(raw)
+    assert isinstance(active, list)
+    assert len(active) > 0
+    assert "schedule_reveal" in active
+    assert active[-1] == "schedule_reveal"
