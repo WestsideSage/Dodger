@@ -36,9 +36,9 @@ const TIER_COLOR: Record<string, string> = {
 };
 
 export function AwardsNight({ beat, onComplete, acting }: { beat: AwardsBeat; onComplete: () => void; acting?: boolean }) {
-    const awards = beat.payload.awards;
+    const allAwards = beat.payload.awards;
 
-    if (awards.length === 0) {
+    if (allAwards.length === 0) {
         return (
             <CeremonyShell
                 title={beat.title}
@@ -56,52 +56,143 @@ export function AwardsNight({ beat, onComplete, acting }: { beat: AwardsBeat; on
         );
     }
 
+    // MVP is pinned first (prestige sort done on backend), others follow
+    const mvp = allAwards.find((a: OffseasonAward) => a.award_type === 'mvp');
+    const supportingAwards = allAwards.filter((a: OffseasonAward) => a.award_type !== 'mvp');
+    const orderedAwards: OffseasonAward[] = mvp ? [mvp, ...supportingAwards] : allAwards;
+
     return (
         <CeremonyShell
             title={beat.title}
             eyebrow="Awards Night"
             description="The league gathers to honor the season's best."
-            stages={awards.length}
+            stages={orderedAwards.length}
             renderStage={(stage) => (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '480px', margin: '0 auto' }}>
-                    {awards.slice(0, stage).map((award: OffseasonAward, i: number) => {
+                <div style={{ width: '100%', maxWidth: '520px', margin: '0 auto' }}>
+                    {/* MVP Hero Card — revealed at stage 1 */}
+                    {stage >= 1 && orderedAwards[0] && (() => {
+                        const award = orderedAwards[0];
                         const color = AWARD_COLOR[award.award_type] ?? '#f97316';
                         const icon = AWARD_ICON[award.award_type] ?? '🏅';
-                        const isHighlighted = award.award_type === 'mvp';
                         return (
                             <div
-                                key={i}
                                 className="fade-in"
                                 style={{
-                                    border: `1px solid ${isHighlighted ? color : '#334155'}`,
-                                    borderRadius: '8px',
-                                    padding: '1rem',
-                                    background: isHighlighted ? `${color}11` : '#0f172a',
-                                    opacity: isHighlighted ? 1 : 0.65,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '1rem',
+                                    border: `1px solid ${color}`,
+                                    borderRadius: '12px',
+                                    padding: '1.5rem',
+                                    background: 'linear-gradient(135deg, #1c0900 0%, #0f172a 60%)',
+                                    boxShadow: `0 0 40px ${color}33`,
+                                    position: 'relative',
+                                    marginBottom: '0.75rem',
                                 }}
                             >
-                                <span style={{ fontSize: '2rem' }}>{icon}</span>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: '0.65rem', color: isHighlighted ? color : '#475569', fontWeight: 700, letterSpacing: '0.08em', marginBottom: '0.2rem' }}>
-                                        {award.award_name}
+                                {/* Award badge - top right */}
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '1rem',
+                                    right: '1rem',
+                                    background: color,
+                                    color: '#fff',
+                                    padding: '0.2rem 0.6rem',
+                                    borderRadius: '999px',
+                                    fontSize: '0.65rem',
+                                    fontWeight: 800,
+                                    letterSpacing: '0.1em',
+                                }}>
+                                    {icon} {award.award_name.toUpperCase()}
+                                </div>
+
+                                {/* Player name — headline */}
+                                <div style={{
+                                    fontSize: '1.75rem',
+                                    fontWeight: 900,
+                                    color: '#fbbf24',
+                                    lineHeight: 1.1,
+                                    marginBottom: '0.2rem',
+                                    paddingRight: '8rem',
+                                }}>
+                                    {award.player_name}
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '1.25rem' }}>
+                                    {award.club_name}
+                                </div>
+
+                                {/* Stats chips */}
+                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    {award.extra_stats ? (
+                                        <>
+                                            <div style={{ background: '#1e293b', borderRadius: '6px', padding: '0.4rem 0.75rem', textAlign: 'center' }}>
+                                                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: color }}>{award.extra_stats.throw_elims}</div>
+                                                <div style={{ fontSize: '0.6rem', color: '#475569', letterSpacing: '0.06em' }}>THROW ELIMS</div>
+                                            </div>
+                                            <div style={{ background: '#1e293b', borderRadius: '6px', padding: '0.4rem 0.75rem', textAlign: 'center' }}>
+                                                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: color }}>{award.extra_stats.catches}</div>
+                                                <div style={{ fontSize: '0.6rem', color: '#475569', letterSpacing: '0.06em' }}>CATCHES</div>
+                                            </div>
+                                            <div style={{ background: '#1e293b', borderRadius: '6px', padding: '0.4rem 0.75rem', textAlign: 'center' }}>
+                                                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ef4444' }}>{award.extra_stats.times_eliminated}</div>
+                                                <div style={{ fontSize: '0.6rem', color: '#475569', letterSpacing: '0.06em' }}>TIMES OUT</div>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div style={{ background: '#1e293b', borderRadius: '6px', padding: '0.4rem 0.75rem', textAlign: 'center' }}>
+                                            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: color }}>{award.season_stat}</div>
+                                            <div style={{ fontSize: '0.6rem', color: '#475569', letterSpacing: '0.06em' }}>SEASON ELIMS</div>
+                                        </div>
+                                    )}
+                                    <div style={{ background: '#1e293b', borderRadius: '6px', padding: '0.4rem 0.75rem', textAlign: 'center' }}>
+                                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#94a3b8' }}>{award.ovr}</div>
+                                        <div style={{ fontSize: '0.6rem', color: '#475569', letterSpacing: '0.06em' }}>OVR</div>
                                     </div>
-                                    <div style={{ fontSize: '1.05rem', fontWeight: 700, color: isHighlighted ? color : '#e2e8f0' }}>
-                                        {award.player_name}
-                                    </div>
-                                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.15rem' }}>
-                                        {award.club_name} · {award.season_stat_label}
-                                    </div>
-                                    <div style={{ fontSize: '0.7rem', color: '#475569', marginTop: '0.1rem' }}>
-                                        {award.career_stat} career elims{award.ovr ? ` · OVR ${award.ovr}` : ''}
+                                    <div style={{ background: '#1e293b', borderRadius: '6px', padding: '0.4rem 0.75rem', textAlign: 'center' }}>
+                                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#64748b' }}>{award.career_stat}</div>
+                                        <div style={{ fontSize: '0.6rem', color: '#475569', letterSpacing: '0.06em' }}>CAREER ELIMS</div>
                                     </div>
                                 </div>
-                                {!isHighlighted && i < stage - 1 && <span style={{ color: '#475569' }}>✓</span>}
                             </div>
                         );
-                    })}
+                    })()}
+
+                    {/* Supporting awards — grid, revealed one per stage */}
+                    {stage >= 2 && orderedAwards.length > 1 && (
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: `repeat(${Math.min(supportingAwards.length, 3)}, 1fr)`,
+                            gap: '0.5rem',
+                        }}>
+                            {orderedAwards.slice(1, stage).map((award: OffseasonAward, i: number) => {
+                                const color = AWARD_COLOR[award.award_type] ?? '#64748b';
+                                const icon = AWARD_ICON[award.award_type] ?? '🏅';
+                                return (
+                                    <div
+                                        key={i}
+                                        className="fade-in"
+                                        style={{
+                                            border: `1px solid ${color}55`,
+                                            borderRadius: '8px',
+                                            padding: '0.75rem',
+                                            background: '#0f172a',
+                                        }}
+                                    >
+                                        <div style={{ fontSize: '1.25rem', marginBottom: '0.3rem' }}>{icon}</div>
+                                        <div style={{ fontSize: '0.6rem', color, fontWeight: 700, letterSpacing: '0.08em', marginBottom: '0.2rem' }}>
+                                            {award.award_name.toUpperCase()}
+                                        </div>
+                                        <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '0.1rem' }}>
+                                            {award.player_name}
+                                        </div>
+                                        <div style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: '0.3rem' }}>
+                                            {award.club_name}
+                                        </div>
+                                        <div style={{ fontSize: '0.7rem', color: color, fontWeight: 600 }}>
+                                            {award.season_stat_label}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             )}
             onComplete={onComplete}

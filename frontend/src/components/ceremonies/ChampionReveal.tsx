@@ -1,4 +1,5 @@
 import type { OffseasonBeat } from '../../types';
+import { ActionButton } from '../ui';
 
 type ChampionBeat = Extract<OffseasonBeat, { key: 'champion' }>;
 
@@ -70,13 +71,13 @@ export function ChampionReveal({
                     <p>Continue to the next offseason beat.</p>
                 </div>
                 <div className="command-action-buttons">
-                    <button
-                        className="dm-btn dm-btn-primary"
+                    <ActionButton
+                        variant="primary"
                         onClick={onComplete}
                         disabled={acting}
                     >
                         {acting ? 'Continuing...' : 'Continue'}
-                    </button>
+                    </ActionButton>
                 </div>
             </div>
         </section>
