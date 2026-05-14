@@ -3,6 +3,10 @@ import { useApiResource } from '../hooks/useApiResource';
 import type { OffseasonBeat } from '../types';
 import { ActionButton, PageHeader, StatusMessage } from './ui';
 import { AwardsNight, Graduation, SigningDay, NewSeasonEve } from './ceremonies/Ceremonies';
+import { ChampionReveal } from './ceremonies/ChampionReveal';
+import { RecapStandings } from './ceremonies/RecapStandings';
+import { DevelopmentResults } from './ceremonies/DevelopmentResults';
+import { RookieClassPreview } from './ceremonies/RookieClassPreview';
 
 export function Offseason() {
   const { data: beat, error, loading, setData: setBeat, setError } = useApiResource<OffseasonBeat>('/api/offseason/beat');
@@ -39,8 +43,12 @@ export function Offseason() {
   const recruit = () => act('/api/offseason/recruit');
   const beginSeason = () => act('/api/offseason/begin-season');
 
+  if (beat.key === 'champion') return <ChampionReveal beat={beat} onComplete={advance} acting={acting} />;
+  if (beat.key === 'recap') return <RecapStandings beat={beat} onComplete={advance} acting={acting} />;
   if (beat.key === 'awards') return <AwardsNight beat={beat} onComplete={advance} acting={acting} />;
   if (beat.key === 'retirements') return <Graduation beat={beat} onComplete={advance} acting={acting} />;
+  if (beat.key === 'development') return <DevelopmentResults beat={beat} onComplete={advance} acting={acting} />;
+  if (beat.key === 'rookie_class_preview') return <RookieClassPreview beat={beat} onComplete={advance} acting={acting} />;
   if (beat.key === 'recruitment' && beat.can_recruit) return (
     <section className="command-offseason-shell" data-testid="offseason-recruitment-action">
       <PageHeader
@@ -114,7 +122,7 @@ export function Offseason() {
           <div className="command-action-buttons">
             {beat.can_advance && (
               <ActionButton variant="primary" onClick={advance} disabled={acting}>
-                {acting ? 'Continuing...' : 'Continue'}
+                {acting ? 'Advancing...' : 'Continue'}
               </ActionButton>
             )}
             {beat.can_begin_season && (
