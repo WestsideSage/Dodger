@@ -42,7 +42,7 @@ export function RecapStandings({
                     <span>Club</span>
                     <span style={{ textAlign: 'center' }}>W-L-D</span>
                     <span style={{ textAlign: 'right' }}>Pts</span>
-                    <span style={{ textAlign: 'right' }}>Diff</span>
+                    <span style={{ textAlign: 'right' }} title="Elimination differential: players eliminated minus players lost">Elim ±</span>
                 </div>
 
                 {standings.map((row) => (
