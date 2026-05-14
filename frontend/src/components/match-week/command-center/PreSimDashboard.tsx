@@ -10,6 +10,12 @@ const approaches = [
 
 const intentLabels = new Map(approaches.map(approach => [approach.id, approach.label]));
 
+const roleCounterMap: Record<string, string> = {
+  Tactical: 'Control',
+  Pressure: 'Defensive',
+  Balanced: 'Balanced',
+};
+
 function pct(value: number | undefined) {
   if (typeof value !== 'number') return 'n/a';
   return `${Math.round(value * 100)}%`;
@@ -131,12 +137,6 @@ export function PreSimDashboard({
   const isAggressive = selectedIntent === 'Win Now';
   const isDefensive = selectedIntent === 'Preserve Health';
   const threat = parseKeyMatchup(details.key_matchup);
-
-  const roleCounterMap: Record<string, string> = {
-    Tactical: 'Control',
-    Pressure: 'Defensive',
-    Balanced: 'Balanced',
-  };
 
   const topOvr = activePlayers.length > 0 ? Math.max(...activePlayers.map(p => p.overall)) : 0;
   const topPlayer = activePlayers.find(p => p.overall === topOvr);
@@ -351,6 +351,7 @@ export function PreSimDashboard({
                   )}
                 </div>
                 {/* Key Threat insight rows */}
+                {(threat.ovr || threat.role) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '10px' }}>
                   {threat.ovr && ovrGap !== null && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -411,6 +412,7 @@ export function PreSimDashboard({
                     </div>
                   )}
                 </div>
+                )}
                 <p className="command-field-label" style={{ marginBottom: '0.3rem' }}>Scouting</p>
                 <p className="command-muted-copy">{plan.recommendations[0]?.text ?? 'No recommendation returned.'}</p>
               </div>
