@@ -26,7 +26,9 @@ export function MatchCard({ yourPlayers, oppPlayers, yourTeamName, oppTeamName }
     return yourPlayers.slice(0, 6).map((you, i) => {
       const opp = oppPlayers[i];
       const ovrGap = opp ? Math.round(you.overall) - Math.round(opp.overall) : 0;
-      const staGap = opp ? (you.stamina ?? 100) - (opp.stamina ?? 100) : 0;
+      const staGap = opp && you.stamina !== undefined && opp.stamina !== undefined
+        ? you.stamina - opp.stamina
+        : 0;
       return { you, opp, ovrGap, staGap };
     });
   }, [yourPlayers, oppPlayers]);
@@ -136,7 +138,7 @@ export function MatchCard({ yourPlayers, oppPlayers, yourTeamName, oppTeamName }
                 <span style={{ fontSize: '8px', color: '#1e3a4a', letterSpacing: '0.06em', lineHeight: 1 }}>
                   {mode === 'ovr' ? 'OVR' : 'STA'}
                 </span>
-                <span style={{ fontSize: '11px', fontWeight: 700, lineHeight: 1.2, color: hasOpp && youWin ? '#22d3ee' : hasOpp ? '#f43f5e' : '#e2e8f0' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, lineHeight: 1.2, color: !hasOpp ? '#e2e8f0' : gap === 0 ? '#e2e8f0' : youWin ? '#22d3ee' : '#f43f5e' }}>
                   {youVal}
                 </span>
               </div>
@@ -149,9 +151,9 @@ export function MatchCard({ yourPlayers, oppPlayers, yourTeamName, oppTeamName }
                 <>
                   <span style={{
                     fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1,
-                    color: youWin ? '#22d3ee' : '#f43f5e',
+                    color: gap === 0 ? '#475569' : youWin ? '#22d3ee' : '#f43f5e',
                   }}>
-                    {youWin ? `◀ ${youAbbr} +${Math.abs(gap)}` : `${oppAbbr} +${Math.abs(gap)} ▶`}
+                    {gap === 0 ? 'EVEN' : youWin ? `◀ ${youAbbr} +${Math.abs(gap)}` : `${oppAbbr} +${Math.abs(gap)} ▶`}
                   </span>
                   <div style={{ position: 'relative', width: '100%', height: '6px', background: '#1e293b', borderRadius: '3px', overflow: 'hidden' }}>
                     {/* Center divider */}
@@ -181,7 +183,7 @@ export function MatchCard({ yourPlayers, oppPlayers, yourTeamName, oppTeamName }
                     <span style={{ fontSize: '8px', color: '#2d1a1a', letterSpacing: '0.06em', lineHeight: 1 }}>
                       {mode === 'ovr' ? 'OVR' : 'STA'}
                     </span>
-                    <span style={{ fontSize: '11px', fontWeight: 700, lineHeight: 1.2, color: youWin ? '#f43f5e' : '#22d3ee' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, lineHeight: 1.2, color: gap === 0 ? '#e2e8f0' : youWin ? '#f43f5e' : '#22d3ee' }}>
                       {oppVal}
                     </span>
                   </div>
