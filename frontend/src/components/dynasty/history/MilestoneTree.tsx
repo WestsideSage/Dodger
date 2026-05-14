@@ -36,10 +36,10 @@ const EVENT_COLORS: Record<string, EventColors> = {
 };
 
 const TRUNK_X = 90;
-const ROW_HEIGHT = 68;
+const ROW_HEIGHT = 80;
 const V_PAD = 24;
 const FIRST_DOT_GAP = 12;
-const DOT_PITCH = 56;
+const DOT_PITCH = 60;
 
 export function MilestoneTree({ timeline }: MilestoneTreeProps) {
   // Group events by season
@@ -314,9 +314,12 @@ export function MilestoneTree({ timeline }: MilestoneTreeProps) {
                     transform: 'translateX(-50%)',
                     fontSize: '0.55rem',
                     color: dot.colors.stroke,
-                    whiteSpace: 'nowrap',
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
+                    width: DOT_PITCH + 'px',
                     fontWeight: dot.event_type === 'championship' ? 700 : 400,
                     textAlign: 'center',
+                    lineHeight: 1.2,
                   }}
                 >
                   {dot.event_type === 'championship' ? '🏆 ' : ''}{dot.label}

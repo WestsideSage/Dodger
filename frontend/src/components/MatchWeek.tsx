@@ -88,19 +88,14 @@ export function MatchWeek({
     commandApi.simulate({ intent: selectedIntent })
       .then((payload: CommandCenterSimResponse) => {
         setResult(payload);
+        setIsTransitioning(false);
+        onSimComplete?.(payload);
         return load();
       })
       .catch(err => {
         setError(err.message);
         setIsTransitioning(false);
       });
-  };
-
-  const handleSimTransitionComplete = () => {
-    setIsTransitioning(false);
-    if (result) {
-      onSimComplete?.(result);
-    }
   };
 
   const handleAdvanceWeek = () => {
@@ -259,7 +254,7 @@ export function MatchWeek({
     );
   };
 
-  if (isTransitioning) return <SimTransition onComplete={handleSimTransitionComplete} isFast={false} />;
+  if (isTransitioning) return <SimTransition />;
 
   if (mode === 'offseason') return (
     <div data-testid="match-week-offseason" className={isAdvancingWeek ? 'fade-out' : ''}>

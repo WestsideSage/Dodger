@@ -1,16 +1,8 @@
-import { useEffect } from 'react';
-
-export function SimTransition({ onComplete, isFast }: { onComplete: () => void, isFast: boolean }) {
-  useEffect(() => {
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const duration = prefersReducedMotion ? 800 : (isFast ? 1500 : 4000);
-    const t = setTimeout(onComplete, duration);
-    return () => clearTimeout(t);
-  }, [onComplete, isFast]);
-
+export function SimTransition() {
   return (
-    <div className="dm-transition-overlay fade-in" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px' }}>
+    <div className="dm-transition-overlay fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', height: '300px' }}>
       <div className="dm-spinner" style={{ width: '40px', height: '40px', border: '4px solid #334155', borderTop: '4px solid #22d3ee', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+      <p className="dm-kicker" style={{ fontSize: '0.75rem', letterSpacing: '0.2em', color: '#64748b' }}>Simulating…</p>
       <style>{`
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
       `}</style>

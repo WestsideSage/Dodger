@@ -136,7 +136,7 @@ export function PreSimDashboard({
           </div>
           <div>
             <span>Plan Status</span>
-            <strong style={{ color: planStatusColor }}>{planStatus.toUpperCase()}</strong>
+            <strong style={{ color: planStatusColor, whiteSpace: 'nowrap', fontSize: '0.7rem' }}>{planStatus.toUpperCase()}</strong>
           </div>
         </div>
       </div>

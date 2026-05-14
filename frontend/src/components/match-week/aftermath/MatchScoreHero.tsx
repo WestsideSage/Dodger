@@ -46,7 +46,7 @@ function TeamScore({
       }}
     >
       <span className="dm-kicker">{side === 'home' ? 'Home' : 'Away'}</span>
-      <strong style={{ color: accent }}>{name}</strong>
+      <strong style={{ color: accent, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', display: 'block' }} title={name}>{name}</strong>
       <span className="command-score-number">{displayedSurvivors}</span>
       <span className="command-score-detail">{survivors} survivors</span>
       {isWinner && <span className="dm-badge dm-badge-amber command-score-winner-badge">Winner</span>}

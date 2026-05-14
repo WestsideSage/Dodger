@@ -32,10 +32,8 @@ export function FalloutGrid({
         <h3>Front office report</h3>
       </div>
       <div className="command-fallout-grid">
-        <FalloutCard title="Player Development">
-          {playerGrowth.length === 0 ? (
-            <p className="command-empty-copy">No player development changes this week.</p>
-          ) : (
+        {playerGrowth.length > 0 && (
+          <FalloutCard title="Player Development">
             <ul className="command-clean-list">
               {playerGrowth.slice(0, 4).map((item) => (
                 <li key={`${item.player_id}-${item.attribute}`}>
@@ -44,13 +42,11 @@ export function FalloutGrid({
                 </li>
               ))}
             </ul>
-          )}
-        </FalloutCard>
+          </FalloutCard>
+        )}
 
-        <FalloutCard title="League Table">
-          {standingsShift.length === 0 ? (
-            <p className="command-empty-copy">No standings movement this week.</p>
-          ) : (
+        {standingsShift.length > 0 && (
+          <FalloutCard title="League Table">
             <ul className="command-clean-list">
               {standingsShift.slice(0, 4).map((item) => (
                 <li key={item.club_id}>
@@ -59,13 +55,11 @@ export function FalloutGrid({
                 </li>
               ))}
             </ul>
-          )}
-        </FalloutCard>
+          </FalloutCard>
+        )}
 
-        <FalloutCard title="Recruit Reactions">
-          {recruitReactions.length === 0 ? (
-            <p className="command-empty-copy">No recruiting reactions from this match.</p>
-          ) : (
+        {recruitReactions.length > 0 && (
+          <FalloutCard title="Recruit Reactions">
             <ul className="command-clean-list command-clean-list-loose">
               {recruitReactions.slice(0, 3).map((item) => (
                 <li key={item.prospect_id}>
@@ -75,8 +69,12 @@ export function FalloutGrid({
                 </li>
               ))}
             </ul>
-          )}
-        </FalloutCard>
+          </FalloutCard>
+        )}
+
+        {playerGrowth.length === 0 && standingsShift.length === 0 && recruitReactions.length === 0 && (
+          <p className="command-empty-copy" style={{ gridColumn: '1 / -1' }}>No notable fallout from this match.</p>
+        )}
       </div>
     </section>
   );
