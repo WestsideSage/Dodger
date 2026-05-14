@@ -352,10 +352,28 @@ export function PreSimDashboard({
                 )}
               </div>
             </div>
-            <div className="command-week-timeline command-week-timeline-inline">
-              <div><strong>Practice</strong><span>{humanize(plan.department_orders?.training)}</span></div>
-              <div><strong>Team Meeting</strong><span>{currentApproach} review</span></div>
-              <div><strong>Match Day</strong><span>vs {plan.opponent.name}</span></div>
+            <div className="command-week-pills">
+              <div className="command-week-pill">
+                <span className="command-week-pill-icon">🏋️</span>
+                <div>
+                  <span className="command-week-pill-label">Practice</span>
+                  <span className="command-week-pill-value">{humanize(plan.department_orders?.training)}</span>
+                </div>
+              </div>
+              <div className="command-week-pill">
+                <span className="command-week-pill-icon">🎯</span>
+                <div>
+                  <span className="command-week-pill-label">Meeting</span>
+                  <span className="command-week-pill-value">{currentApproach} Review</span>
+                </div>
+              </div>
+              <div className="command-week-pill is-matchday">
+                <span className="command-week-pill-icon">⚡</span>
+                <div>
+                  <span className="command-week-pill-label">Match Day</span>
+                  <span className="command-week-pill-value">vs {plan.opponent.name}</span>
+                </div>
+              </div>
             </div>
           </section>
         </div>
