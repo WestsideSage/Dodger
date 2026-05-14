@@ -157,6 +157,26 @@ def test_build_matchup_details_is_importable():
     assert callable(build_matchup_details)
 
 
+def test_weekly_plan_includes_opponent_lineup():
+    conn = _career_conn()
+    state = build_command_center_state(conn)
+    plan = build_default_weekly_plan(state)
+
+    opponent_lineup = plan.get("opponent_lineup")
+    assert opponent_lineup is not None, "opponent_lineup missing from plan"
+    players = opponent_lineup.get("players", [])
+    assert len(players) <= 6
+    if players:
+        for player in players:
+            assert "id" in player
+            assert "name" in player
+            assert "overall" in player
+            assert "stamina" in player
+        # sorted by overall descending
+        overalls = [p["overall"] for p in players]
+        assert overalls == sorted(overalls, reverse=True)
+
+
 def test_build_matchup_details_no_opponent():
     from dodgeball_sim.matchup_details import build_matchup_details
     from dodgeball_sim.persistence import connect, create_schema
