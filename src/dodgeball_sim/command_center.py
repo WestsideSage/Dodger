@@ -116,6 +116,7 @@ def build_command_center_state(conn: sqlite3.Connection) -> dict[str, Any]:
         "upcoming_match": upcoming,
         "matchup_details": build_matchup_details(conn, season_id=season_id, player_club_id=player_club_id, opponent_id=opponent_id, rosters=rosters),
         "roster": list(rosters.get(player_club_id, [])),
+        "opponent_roster": list(rosters.get(opponent_id, [])) if opponent_id else [],
         "default_lineup": load_lineup_default(conn, player_club_id),
         "department_heads": load_department_heads(conn),
         "history": load_command_history(conn, season_id),
@@ -129,6 +130,11 @@ def build_default_weekly_plan(state: Mapping[str, Any], intent: str = "Win Now")
     opponent = state.get("opponent")
     heads = list(state["department_heads"])
     lineup = _lineup_recommendation(list(state["roster"]), state.get("default_lineup"), intent)
+    opponent_roster = list(state.get("opponent_roster", []))
+    opp_top_six = sorted(opponent_roster, key=lambda p: (-p.overall(), p.id))[:6]
+    opponent_lineup = {
+        "players": [_player_summary(p) for p in opp_top_six],
+    }
     tactics = _policy_for_intent(club.coach_policy, intent)
     warnings = _lineup_warnings(list(state["roster"]), lineup["player_ids"], intent, tactics)
     recommendations = _staff_recommendations(heads, intent, opponent.name if opponent else "the next opponent")
@@ -158,6 +164,7 @@ def build_default_weekly_plan(state: Mapping[str, Any], intent: str = "Win Now")
         "recommendations": recommendations,
         "warnings": warnings,
         "lineup": lineup,
+        "opponent_lineup": opponent_lineup,
         "tactics": tactics,
         "history_count": len(state.get("history", [])),
         "matchup_details": matchup_details,
