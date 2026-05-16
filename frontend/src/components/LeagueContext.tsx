@@ -67,7 +67,10 @@ export function Standings() {
                 </th>
                 <th style={{ textAlign: 'right' }}>Win Rate</th>
                 <th style={{ textAlign: 'right' }}>Games Back</th>
-                <th style={{ textAlign: 'right' }}>
+                <th
+                  style={{ textAlign: 'right' }}
+                  title="Total opponents eliminated minus times your players were eliminated across all matches. Used as a tiebreaker."
+                >
                   <span className="dm-desktop-only">Elim Differential</span>
                   <span className="dm-mobile-only">Diff</span>
                 </th>
