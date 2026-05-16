@@ -8,9 +8,9 @@ export function ReplayTimeline({ lanes }: { lanes: CommandDashboardLane[] }) {
       <section className="dm-panel" data-testid="replay-timeline">
         <div className="command-match-flow-header">
           <p className="dm-kicker">Match Flow</p>
-          <h3 className="dm-panel-title" style={{ margin: 0 }}>How It Unfolded</h3>
+          <h3 className="dm-panel-title">How It Unfolded</h3>
         </div>
-        <p className="command-empty-copy" style={{ padding: '0 1.25rem 1.25rem' }}>
+        <p className="command-empty-copy">
           No match flow notes were logged.
         </p>
       </section>
@@ -21,7 +21,7 @@ export function ReplayTimeline({ lanes }: { lanes: CommandDashboardLane[] }) {
     <section className="dm-panel" data-testid="replay-timeline">
       <div className="command-match-flow-header">
         <p className="dm-kicker">Match Flow</p>
-        <h3 className="dm-panel-title" style={{ margin: 0 }}>How It Unfolded</h3>
+        <h3 className="dm-panel-title">How It Unfolded</h3>
         <span className="command-match-flow-count">
           {beats.length} key moment{beats.length !== 1 ? 's' : ''}
         </span>
