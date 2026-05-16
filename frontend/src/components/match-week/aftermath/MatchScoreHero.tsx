@@ -51,7 +51,6 @@ function TeamScore({
         className="command-score-number"
         style={{
           fontSize: 'clamp(2.8rem, 8vw, 4rem)',
-          opacity: isWinner ? 1 : 0.45,
           textShadow: isWinner
             ? side === 'home'
               ? '0 0 24px rgba(249,115,22,0.6)'
@@ -63,7 +62,19 @@ function TeamScore({
         {displayedSurvivors}
       </span>
       <span className="command-score-detail">{survivors} survivors</span>
-      {isWinner && <span className="dm-badge dm-badge-amber command-score-winner-badge">Winner</span>}
+      {isWinner && (
+        <span
+          className="dm-badge dm-badge-amber command-score-winner-badge"
+          style={{
+            fontSize: '0.7rem',
+            padding: '3px 10px',
+            letterSpacing: '2px',
+            borderWidth: '1px',
+          }}
+        >
+          ★ Winner
+        </span>
+      )}
     </div>
   );
 }

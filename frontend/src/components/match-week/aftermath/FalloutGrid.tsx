@@ -27,7 +27,7 @@ export function FalloutGrid({
         <p className="dm-kicker">Match Fallout</p>
         <h3>What your week caused</h3>
       </div>
-      <div className="command-fallout-grid">
+      <div className="command-fallout-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
         {playerGrowth.length > 0 && (
           <FalloutCard title="Who Grew">
             <ul className="command-clean-list">
