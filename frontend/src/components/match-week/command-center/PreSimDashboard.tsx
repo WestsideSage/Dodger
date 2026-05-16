@@ -148,6 +148,13 @@ export function PreSimDashboard({
   ).length > 1;
 
   const hasPlanConflict = hasApproachConflict || hasFatigueIssue;
+
+  const lastRecord = data.history.length > 0 ? data.history[data.history.length - 1] : null;
+  const lastMatchResult = lastRecord?.dashboard?.result ?? null;
+  const lastMatchIntent = lastRecord?.plan?.intent ?? null;
+  const lastMatchOpponent = lastRecord?.dashboard?.opponent_name ?? null;
+  const showLastMatch = !planConfirmed && lastRecord !== null && data.week > 1;
+
   const nextActionStep = planConfirmed ? 'Step 2 of 2' : 'Step 1 of 2';
   const nextActionTitle = planConfirmed ? 'Simulate the match' : 'Confirm the weekly plan';
   const nextActionDescription = planConfirmed
@@ -194,6 +201,29 @@ export function PreSimDashboard({
             <strong>Readiness</strong>
             <span>{isReadyToLock ? 'Plan can be locked.' : `${itemsRemaining} item${itemsRemaining === 1 ? '' : 's'} need attention.`}</span>
           </article>
+        </div>
+      )}
+
+      {showLastMatch && lastMatchResult && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          padding: '0.6rem 1rem',
+          background: '#0a1628',
+          borderBottom: '1px solid #1e293b',
+          fontSize: '0.75rem',
+          fontFamily: 'var(--font-display)',
+          textTransform: 'uppercase' as const,
+          letterSpacing: '0.08em',
+          color: '#64748b',
+        }}>
+          <span>Last Match</span>
+          <span style={{ color: lastMatchResult === 'Win' ? '#10b981' : lastMatchResult === 'Loss' ? '#f43f5e' : '#94a3b8', fontWeight: 700 }}>
+            {lastMatchResult}
+          </span>
+          {lastMatchOpponent && <span>vs {lastMatchOpponent}</span>}
+          {lastMatchIntent && <span>({humanize(lastMatchIntent)} plan)</span>}
         </div>
       )}
 
