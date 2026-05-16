@@ -199,7 +199,7 @@ export function MatchWeek({
 
     return (
       <div className="command-post-sim" data-testid="post-week-dashboard">
-        <PageHeader eyebrow="WAR ROOM" title="Command Center" description="Review the match result, replay identity, and weekly fallout." />
+        <PageHeader eyebrow="WAR ROOM" title="Command Center" description="Review the result, who performed, and what your week caused." />
 
         {revealStage >= 0 && (
           <div className="command-reveal">
