@@ -68,13 +68,13 @@ Replaces `ReplayTimeline` carousel with a full-width expanded timeline.
 
 ### Behavior
 - No carousel, no arrows, no dot indicators
-- All meaningful events shown in order (not every raw sim tick — backend `lanes` data already groups into phases/beats; only include beats with a description worth showing)
+- Render all **curated replay beats with player-facing descriptions** — not raw sim log spam. Backend `lanes` data already groups into phases/beats; only render beats that have a readable description. If a beat has no description, skip it silently.
 - `maxHeight` with internal scroll when event list is tall
 - Subtle top/bottom fade mask at scroll edges (signals scrollability; must be visible enough to notice, not invisible)
 - Responsive max-height:
   - Desktop ≥ 1024px: `520px–600px`
   - Tablet 768–1023px: `480px`
-  - Mobile < 768px: no internal scroll; events flow vertically at full height
+  - Mobile < 768px: **no internal scroll** — events flow vertically at full height. Nested scroll on mobile is forbidden; do not add it for any reason.
 
 ### Event Card Structure
 Each event is a card containing (left to right):
@@ -180,6 +180,50 @@ Orange is removed from:
 | `frontend/src/components/match-week/aftermath/FalloutGrid.tsx` | Rename section, collapse logic |
 | `frontend/src/components/match-week/aftermath/AftermathActionBar.tsx` | Watch Replay → solid secondary, responsive stacking |
 | `frontend/src/index.css` | Layout classes for Analysis Row, Match Flow hero, orange discipline, responsive rules |
+
+## Missing Data Fallbacks
+
+### Tactical Read
+- If `turning_point` is an empty string or missing: **hide the Tactical Read card entirely**. Do not render it with placeholder text.
+- If `evidence_lanes` is missing or empty: omit the evidence footer. Never invent a lane reference.
+
+### Match Flow score chip
+- If score-at-event data does not exist for a beat: **omit the score chip for that beat**. Use phase context (`EARLY` / `MID` / `LATE`) instead. Do not invent or interpolate scores.
+
+### Week Fallout
+- Collapse rule already covers the all-empty case. Individual sub-sections collapse if their array is empty (no stub cards).
+
+### Key Performers
+- If `top_performers` is empty or `replayForMatch` is unavailable: hide the Key Performers card entirely.
+
+---
+
+## Accessibility
+
+- The Match Flow scroll area must be keyboard-scrollable (`tabindex="0"` on the scroll container, standard arrow-key behavior).
+- The fade mask at scroll edges is a **visual enhancement only** — it cannot be the only scroll indicator. The scroll container must also show a visible scrollbar on keyboard focus or when content overflows (do not `overflow: hidden` the scrollbar on desktop).
+- All interactive buttons (`Watch Replay`, `Advance to Next Week`) must have visible focus states (outline or ring, not just color change).
+- Rank badges and team tags must have sufficient color contrast against their backgrounds.
+
+---
+
+## Acceptance Criteria
+
+- [ ] Page title reads "Week N Debrief" (N = actual week number)
+- [ ] "Command Center" does not appear as a duplicate heading anywhere on the aftermath screen
+- [ ] No carousel controls (arrows, dots, prev/next) anywhere in Match Flow
+- [ ] Match Flow is full-width (spans the full content column, not constrained to a grid column)
+- [ ] Week Fallout section does not render at all when all three sub-sections are empty
+- [ ] Watch Replay button has a solid dark fill — not ghost/outline
+- [ ] Orange appears only in: Advance CTA, player-club rank badge, "Your Club" tag, DECISIVE impact label, winner score box
+- [ ] Stat chips display full words ("5 Catches", "1 Dodge", "Impact Score 8") — never single-letter abbreviations
+- [ ] On mobile (< 768px), Match Flow has no internal scroll container
+- [ ] Tactical Read card is hidden when `turning_point` is missing
+- [ ] Score chips are omitted per-event when score data is unavailable (no invented values)
+- [ ] Match Flow scroll area is keyboard-scrollable on desktop
+- [ ] Advance to Next Week and Watch Replay buttons have visible focus states
+
+---
 
 ## Out of Scope
 
