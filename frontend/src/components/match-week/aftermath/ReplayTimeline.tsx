@@ -16,6 +16,7 @@ export function ReplayTimeline({ lanes }: { lanes: CommandDashboardLane[] }) {
               key={`${lane.title}-${index}`}
               className="command-timeline-item"
               style={{
+                display: 'block',
                 borderLeft: `3px solid ${index === 0 ? '#f97316' : '#334155'}`,
                 borderRadius: '0 4px 4px 0',
                 paddingLeft: '10px',
