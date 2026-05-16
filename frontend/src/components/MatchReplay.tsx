@@ -30,20 +30,21 @@ function playerLabel(name: string): string {
 function getFormationPositions(ids: string[], side: 'left' | 'right', courtWidth: number, courtHeight: number): Map<string, Vec2> {
   const map = new Map<string, Vec2>();
   if (ids.length === 0) return map;
-  
+
   const hMid = courtHeight / 2;
-  const vGap = courtHeight / 3.5;
-  
-  const layoutX = {
-    left: [courtWidth / 2 - 45, courtWidth / 2 - 45, courtWidth / 4 + 10, courtWidth / 4 + 10, 45, 45],
-    right: [courtWidth / 2 + 45, courtWidth / 2 + 45, 3 * courtWidth / 4 - 10, 3 * courtWidth / 4 - 10, courtWidth - 45, courtWidth - 45]
+  const vGap = courtHeight / 3.2;
+
+  // 2-column × 3-row formation: near-center column and back column
+  const colX = {
+    left:  [courtWidth / 2 - 55, courtWidth / 4],
+    right: [courtWidth / 2 + 55, 3 * courtWidth / 4],
   };
-  
-  const layoutY = [hMid - vGap, hMid + vGap, hMid - vGap, hMid + vGap, hMid - vGap, hMid + vGap];
-  
+  const rowY = [hMid - vGap, hMid, hMid + vGap];
+
   ids.forEach((id, i) => {
-    const idx = i % 6;
-    map.set(id, { x: layoutX[side][idx], y: layoutY[idx] });
+    const col = i < 3 ? 0 : 1;
+    const row = i % 3;
+    map.set(id, { x: colX[side][col], y: rowY[row] });
   });
   return map;
 }
