@@ -28,12 +28,12 @@ export function FalloutGrid({
   return (
     <section className="command-fallout" data-testid="fallout-grid">
       <div className="command-section-heading">
-        <p className="dm-kicker">Fallout</p>
-        <h3>Front office report</h3>
+        <p className="dm-kicker">Match Fallout</p>
+        <h3>What your week caused</h3>
       </div>
       <div className="command-fallout-grid">
         {playerGrowth.length > 0 && (
-          <FalloutCard title="Player Development">
+          <FalloutCard title="Who Grew">
             <ul className="command-clean-list">
               {playerGrowth.slice(0, 4).map((item) => (
                 <li key={`${item.player_id}-${item.attribute}`}>
@@ -46,7 +46,7 @@ export function FalloutGrid({
         )}
 
         {standingsShift.length > 0 && (
-          <FalloutCard title="League Table">
+          <FalloutCard title="Standings Shift">
             <ul className="command-clean-list">
               {standingsShift.slice(0, 4).map((item) => (
                 <li key={item.club_id}>
@@ -59,7 +59,7 @@ export function FalloutGrid({
         )}
 
         {recruitReactions.length > 0 && (
-          <FalloutCard title="Recruit Reactions">
+          <FalloutCard title="Prospect Pulse">
             <ul className="command-clean-list command-clean-list-loose">
               {recruitReactions.slice(0, 3).map((item) => (
                 <li key={item.prospect_id}>
