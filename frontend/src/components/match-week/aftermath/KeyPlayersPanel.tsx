@@ -88,11 +88,20 @@ export function KeyPlayersPanel({
                     : isYours
                     ? '2px solid #22d3ee'
                     : undefined,
+                  paddingTop: '10px',
+                  paddingBottom: '10px',
                 }}
               >
-                <span>{index + 1}</span>
+                <span style={{
+                  color: '#475569',
+                  fontSize: '0.7rem',
+                  border: '1px solid #1e293b',
+                  background: 'transparent',
+                }}>
+                  {index + 1}
+                </span>
                 <div>
-                  <strong>{player.player_name}</strong>
+                  <strong style={{ fontSize: '0.9rem', color: '#f1f5f9' }}>{player.player_name}</strong>
                   {isYours && (
                     <span className="dm-badge dm-badge-cyan" style={{ marginLeft: '0.4rem', fontSize: '0.6rem' }}>
                       Your Club
