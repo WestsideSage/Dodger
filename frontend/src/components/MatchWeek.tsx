@@ -10,7 +10,7 @@ import { PreSimDashboard } from './match-week/command-center/PreSimDashboard';
 import { useState, useEffect } from 'react';
 import type { Aftermath, CommandCenterResponse, CommandCenterSimResponse, MatchReplayResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
-import { PageHeader, StatusMessage } from './ui';
+import { StatusMessage } from './ui';
 import { Offseason } from './Offseason';
 import { commandApi } from '../api/client';
 
@@ -210,8 +210,6 @@ export function MatchWeek({
 
     return (
       <div className="command-post-sim" data-testid="post-week-dashboard">
-        <PageHeader eyebrow="WAR ROOM" title={`Week ${activeResult.dashboard.week} Debrief`} />
-
         {revealStage >= 0 && (
           <div className="command-reveal">
             <Headline
@@ -237,7 +235,6 @@ export function MatchWeek({
 
         {revealStage >= 2 && (
           <div className="command-reveal">
-            <ReplayTimeline lanes={activeResult.dashboard.lanes} />
             <div className="command-analysis-row">
               <TacticalSummaryCard
                 turningPoint={replayForMatch?.report.turning_point ?? ''}
@@ -258,6 +255,7 @@ export function MatchWeek({
               standingsShift={aftermath.standings_shift}
               recruitReactions={aftermath.recruit_reactions}
             />
+            <ReplayTimeline lanes={activeResult.dashboard.lanes} />
           </div>
         )}
 

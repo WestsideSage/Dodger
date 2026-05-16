@@ -50,13 +50,11 @@ function TeamScore({
       <span
         className="command-score-number"
         style={{
-          fontSize: 'clamp(2.8rem, 8vw, 4rem)',
           textShadow: isWinner
             ? side === 'home'
-              ? '0 0 24px rgba(249,115,22,0.6)'
-              : '0 0 24px rgba(34,211,238,0.5)'
+              ? '0 0 16px rgba(249,115,22,0.55)'
+              : '0 0 16px rgba(34,211,238,0.45)'
             : 'none',
-          display: 'block',
         }}
       >
         {displayedSurvivors}
@@ -66,10 +64,11 @@ function TeamScore({
         <span
           className="dm-badge dm-badge-amber command-score-winner-badge"
           style={{
-            fontSize: '0.7rem',
-            padding: '3px 10px',
-            letterSpacing: '2px',
+            fontSize: '0.6rem',
+            padding: '2px 8px',
+            letterSpacing: '1.5px',
             borderWidth: '1px',
+            opacity: 0.82,
           }}
         >
           ★ Winner
@@ -110,7 +109,7 @@ export function MatchScoreHero({
       />
       <div className="command-score-center">
         <span className="dm-kicker">Final</span>
-        <span>VS</span>
+        <span className="command-score-vs">VS</span>
       </div>
       <TeamScore
         name={awayTeam}

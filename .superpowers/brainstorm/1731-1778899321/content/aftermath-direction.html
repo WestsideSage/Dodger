@@ -1,0 +1,270 @@
+<style>
+  body { background: #020617; color: #e2e8f0; }
+  .q-title { font-family: 'Oswald', sans-serif; font-size: 1.3rem; letter-spacing: 2px; color: #f97316; text-transform: uppercase; margin-bottom: 0.25rem; }
+  .q-sub { color: #64748b; font-size: 0.85rem; margin-bottom: 1.5rem; }
+
+  /* Mockup shell */
+  .mock-shell {
+    background: #0f172a;
+    border-radius: 8px;
+    overflow: hidden;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    pointer-events: none;
+    user-select: none;
+  }
+  .mock-topbar {
+    background: #1e293b;
+    padding: 6px 12px;
+    font-size: 0.65rem;
+    color: #475569;
+    letter-spacing: 1px;
+    font-family: monospace;
+  }
+
+  /* Option A — Drama-first */
+  .drama-headline {
+    background: linear-gradient(135deg, rgba(249,115,22,0.12) 0%, #0f172a 60%);
+    text-align: center;
+    padding: 18px 12px 14px;
+    border-bottom: 1px solid rgba(249,115,22,0.2);
+  }
+  .drama-headline .eyebrow { font-size: 0.6rem; letter-spacing: 3px; color: #f97316; text-transform: uppercase; margin-bottom: 6px; }
+  .drama-headline .h1 { font-family: 'Oswald', sans-serif; font-size: 1.4rem; font-weight: 700; color: #fff; letter-spacing: 1px; margin-bottom: 4px; }
+  .drama-score-row {
+    display: flex; align-items: center; justify-content: center; gap: 0; padding: 10px 0 8px; border-bottom: 1px solid #1e293b;
+  }
+  .drama-team { flex: 1; text-align: center; }
+  .drama-team .name { font-size: 0.65rem; letter-spacing: 1px; color: #f97316; text-transform: uppercase; margin-bottom: 2px; }
+  .drama-team .score { font-family: 'Oswald', sans-serif; font-size: 2.2rem; font-weight: 700; color: #fff; line-height: 1; }
+  .drama-team .detail { font-size: 0.55rem; color: #64748b; margin-top: 2px; letter-spacing: 1px; }
+  .drama-team.away .name { color: #22d3ee; }
+  .drama-vs { font-family: 'Oswald', sans-serif; font-size: 0.75rem; color: #334155; letter-spacing: 2px; padding: 0 10px; }
+  .drama-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; }
+  .drama-card { background: #1e293b; border-radius: 6px; padding: 8px 10px; }
+  .drama-card .label { font-size: 0.55rem; letter-spacing: 2px; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
+  .drama-card .val { font-size: 0.75rem; color: #cbd5e1; }
+  .drama-cta { margin: 8px 10px; background: #f97316; border-radius: 6px; padding: 8px; text-align: center; font-family: 'Oswald', sans-serif; font-size: 0.75rem; letter-spacing: 2px; color: #fff; }
+
+  /* Option B — Intel-first */
+  .intel-score {
+    display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #1e293b;
+  }
+  .intel-score .team { font-size: 0.7rem; font-family: 'Oswald', sans-serif; letter-spacing: 1px; }
+  .intel-score .score-pair { display: flex; align-items: baseline; gap: 6px; }
+  .intel-score .num { font-size: 1.5rem; font-weight: 700; color: #fff; font-family: 'Oswald', sans-serif; }
+  .intel-score .sep { font-size: 0.75rem; color: #334155; }
+  .intel-score .badge { font-size: 0.55rem; background: rgba(249,115,22,0.15); border: 1px solid rgba(249,115,22,0.3); color: #f97316; border-radius: 4px; padding: 1px 5px; letter-spacing: 1px; margin-left: 6px; }
+  .intel-headline { background: rgba(249,115,22,0.06); border-left: 3px solid #f97316; margin: 8px; border-radius: 0 6px 6px 0; padding: 6px 10px; }
+  .intel-headline .label { font-size: 0.55rem; letter-spacing: 2px; color: #f97316; text-transform: uppercase; margin-bottom: 2px; }
+  .intel-headline .text { font-size: 0.75rem; color: #e2e8f0; }
+  .intel-lanes { margin: 0 8px; display: flex; flex-direction: column; gap: 6px; }
+  .intel-lane { background: #1e293b; border-radius: 6px; padding: 6px 10px; }
+  .intel-lane .label { font-size: 0.55rem; letter-spacing: 2px; color: #22d3ee; text-transform: uppercase; margin-bottom: 2px; }
+  .intel-lane .text { font-size: 0.7rem; color: #94a3b8; }
+  .intel-performers { display: flex; gap: 6px; margin: 8px; }
+  .intel-player { flex: 1; background: #1e293b; border-radius: 6px; padding: 6px 8px; border-left: 2px solid #22d3ee; }
+  .intel-player .name { font-size: 0.65rem; font-weight: 600; color: #f8fafc; }
+  .intel-player .stats { font-size: 0.55rem; color: #64748b; margin-top: 1px; }
+  .intel-cta { margin: 8px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 7px; text-align: center; font-family: 'Oswald', sans-serif; font-size: 0.7rem; letter-spacing: 2px; color: #94a3b8; }
+
+  /* Option C — Narrative-first (scrolling report) */
+  .narr-banner {
+    background: linear-gradient(90deg, rgba(249,115,22,0.15), rgba(6,182,212,0.08));
+    padding: 10px 12px; border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center;
+  }
+  .narr-banner .left .eyebrow { font-size: 0.55rem; letter-spacing: 2px; color: #64748b; text-transform: uppercase; }
+  .narr-banner .left .winner { font-family: 'Oswald', sans-serif; font-size: 0.9rem; color: #f97316; letter-spacing: 1px; }
+  .narr-banner .score-box { text-align: center; }
+  .narr-banner .score-box .nums { font-family: 'Oswald', sans-serif; font-size: 1.4rem; color: #fff; letter-spacing: 2px; }
+  .narr-banner .score-box .vs { font-size: 0.6rem; color: #334155; letter-spacing: 1px; }
+  .narr-body { padding: 8px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .narr-lede { font-size: 0.75rem; color: #94a3b8; font-style: italic; line-height: 1.5; border-left: 2px solid #f97316; padding-left: 8px; }
+  .narr-kp-label { font-size: 0.55rem; letter-spacing: 2px; color: #f59e0b; text-transform: uppercase; margin-bottom: 4px; }
+  .narr-kp-list { display: flex; flex-direction: column; gap: 4px; }
+  .narr-kp-item { background: #1e293b; border-radius: 4px; padding: 5px 8px; font-size: 0.68rem; color: #cbd5e1; }
+  .narr-kp-item .who { font-weight: 600; color: #f8fafc; }
+  .narr-fallout { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .narr-fallout-card { background: #1e293b; border-radius: 6px; padding: 6px 8px; }
+  .narr-fallout-card .label { font-size: 0.55rem; letter-spacing: 1px; color: #64748b; text-transform: uppercase; margin-bottom: 3px; }
+  .narr-fallout-card .item { font-size: 0.65rem; color: #94a3b8; padding: 2px 0; border-bottom: 1px solid #0f172a; }
+  .narr-fallout-card .item:last-child { border-bottom: none; }
+  .narr-cta { margin: 0 0 8px; display: flex; gap: 6px; }
+  .narr-cta .btn-sec { flex: 1; background: #1e293b; border-radius: 6px; padding: 7px; text-align: center; font-family: 'Oswald', sans-serif; font-size: 0.65rem; letter-spacing: 1px; color: #64748b; }
+  .narr-cta .btn-pri { flex: 2; background: #f97316; border-radius: 6px; padding: 7px; text-align: center; font-family: 'Oswald', sans-serif; font-size: 0.7rem; letter-spacing: 1px; color: #fff; }
+
+  /* Cards layout */
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 1rem; }
+  .card { background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; overflow: hidden; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+  .card:hover { border-color: #f97316; }
+  .card.selected { border-color: #f97316; box-shadow: 0 0 0 2px rgba(249,115,22,0.3); }
+  .card-label { background: #1e293b; padding: 8px 12px; display: flex; align-items: center; gap: 8px; }
+  .card-label .letter { width: 20px; height: 20px; border-radius: 50%; background: #0f172a; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; color: #f97316; border: 1px solid #f97316; }
+  .card-label .name { font-size: 0.8rem; font-weight: 600; color: #e2e8f0; }
+  .card-label .desc { font-size: 0.7rem; color: #64748b; margin-left: auto; font-style: italic; }
+  .card-mock { padding: 0; }
+</style>
+
+<p class="q-title">Aftermath Screen — What's the emotional direction?</p>
+<p class="q-sub">All three show the same data. The difference is what you feel when the screen arrives. Click to select.</p>
+
+<div class="cards">
+
+  <!-- Option A: Drama-first -->
+  <div class="card" data-choice="drama" onclick="toggleSelect(this)">
+    <div class="card-label">
+      <div class="letter">A</div>
+      <div class="name">Drama-First</div>
+      <div class="desc">Broadcast moment</div>
+    </div>
+    <div class="card-mock">
+      <div class="mock-shell">
+        <div class="mock-topbar">POST-MATCH · WAR ROOM</div>
+
+        <div class="drama-headline">
+          <div class="eyebrow">Week 6 Result</div>
+          <div class="h1">IRONCLADS HOLD THE FLOOR</div>
+        </div>
+
+        <div class="drama-score-row">
+          <div class="drama-team">
+            <div class="name">★ Northwood</div>
+            <div class="score">4</div>
+            <div class="detail">WIN · 2 ELIM</div>
+          </div>
+          <div class="drama-vs">VS</div>
+          <div class="drama-team away">
+            <div class="name">Lunar Syndicate</div>
+            <div class="score">0</div>
+            <div class="detail">2 ELIM</div>
+          </div>
+        </div>
+
+        <div class="drama-bottom">
+          <div class="drama-card">
+            <div class="label">MVP</div>
+            <div class="val">Avery Voss · 3K 1C</div>
+          </div>
+          <div class="drama-card">
+            <div class="label">Turning Point</div>
+            <div class="val">Voss chain eliminated 3 in 2 throws</div>
+          </div>
+          <div class="drama-card">
+            <div class="label">Standings</div>
+            <div class="val">↑ #3 → #2 in conference</div>
+          </div>
+          <div class="drama-card">
+            <div class="label">Prospect Pulse</div>
+            <div class="val">J. Reeves +12 interest</div>
+          </div>
+        </div>
+
+        <div class="drama-cta">ADVANCE TO NEXT WEEK →</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B: Intel-first -->
+  <div class="card" data-choice="intel" onclick="toggleSelect(this)">
+    <div class="card-label">
+      <div class="letter">B</div>
+      <div class="name">Intel-First</div>
+      <div class="desc">War room debrief</div>
+    </div>
+    <div class="card-mock">
+      <div class="mock-shell">
+        <div class="mock-topbar">POST-MATCH · WAR ROOM</div>
+
+        <div class="intel-score">
+          <div class="team" style="color:#f97316">Northwood Ironclads <span class="badge">WIN</span></div>
+          <div class="score-pair">
+            <span class="num" style="color:#f97316">4</span>
+            <span class="sep">—</span>
+            <span class="num" style="color:#22d3ee">0</span>
+          </div>
+          <div class="team" style="color:#22d3ee; text-align:right">Lunar Syndicate</div>
+        </div>
+
+        <div class="intel-headline">
+          <div class="label">Headline</div>
+          <div class="text">Ironclads held the floor — dominant close-out by Voss sealed the match in round 3.</div>
+        </div>
+
+        <div class="intel-lanes">
+          <div class="intel-lane">
+            <div class="label">Tactics</div>
+            <div class="text">Aggressive approach exposed Syndicate's Tactical formation — 3 of 4 eliminations came from pressure throws.</div>
+          </div>
+          <div class="intel-lane">
+            <div class="label">Fatigue</div>
+            <div class="text">Syndicate's stamina dropped below 50 in round 2, enabling your rushes.</div>
+          </div>
+        </div>
+
+        <div class="intel-performers">
+          <div class="intel-player"><div class="name">Avery Voss</div><div class="stats">3K · 1C · 94 impact</div></div>
+          <div class="intel-player" style="border-color:#475569"><div class="name">Jin Park <span style="color:#475569;font-size:0.55rem">(OPP)</span></div><div class="stats">0K · 1C · 42 impact</div></div>
+        </div>
+
+        <div class="intel-cta">ADVANCE TO NEXT WEEK →</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option C: Narrative-first -->
+  <div class="card" data-choice="narrative" onclick="toggleSelect(this)">
+    <div class="card-label">
+      <div class="letter">C</div>
+      <div class="name">Narrative-First</div>
+      <div class="desc">Match report tone</div>
+    </div>
+    <div class="card-mock">
+      <div class="mock-shell">
+        <div class="mock-topbar">POST-MATCH · WAR ROOM</div>
+
+        <div class="narr-banner">
+          <div class="left">
+            <div class="eyebrow">Week 6 Winner</div>
+            <div class="winner">★ Northwood Ironclads</div>
+          </div>
+          <div class="score-box">
+            <div class="nums">4 — 0</div>
+            <div class="vs">FINAL</div>
+          </div>
+        </div>
+
+        <div class="narr-body">
+          <div class="narr-lede">The Syndicate couldn't answer Voss. After conceding three quick throws, their stamina collapsed and your Aggressive approach ran the table.</div>
+
+          <div>
+            <div class="narr-kp-label">Key Plays</div>
+            <div class="narr-kp-list">
+              <div class="narr-kp-item"><span class="who">Voss</span> eliminated Park with a sideline burn — match swung here.</div>
+              <div class="narr-kp-item"><span class="who">Frost</span> catch converted a revival, breaking Syndicate's rhythm.</div>
+            </div>
+          </div>
+
+          <div class="narr-fallout">
+            <div class="narr-fallout-card">
+              <div class="label">Who Grew</div>
+              <div class="item">Voss +2 THR</div>
+              <div class="item">Frost +1 CTH</div>
+            </div>
+            <div class="narr-fallout-card">
+              <div class="label">Standings</div>
+              <div class="item">↑ #3 → #2</div>
+              <div class="item">Rivals split</div>
+            </div>
+          </div>
+
+          <div class="narr-cta">
+            <div class="btn-sec">Watch Replay</div>
+            <div class="btn-pri">Next Week →</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

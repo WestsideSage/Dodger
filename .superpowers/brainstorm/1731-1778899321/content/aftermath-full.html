@@ -1,0 +1,221 @@
+<style>
+  body { background: #020617; color: #e2e8f0; max-width: 680px; margin: 0 auto; padding: 1rem; }
+  .q-title { font-family: 'Oswald', sans-serif; font-size: 1.1rem; letter-spacing: 2px; color: #f97316; text-transform: uppercase; margin-bottom: 0.2rem; }
+  .q-sub { color: #64748b; font-size: 0.8rem; margin-bottom: 1rem; }
+
+  /* ── Shell ── */
+  .shell { background: #0f172a; border-radius: 10px; overflow: hidden; border: 1px solid #1e293b; font-family: 'Inter', sans-serif; font-size: 0.8rem; }
+  .stage-label { font-size: 0.55rem; letter-spacing: 2px; color: #334155; text-transform: uppercase; padding: 4px 12px 0; font-family: monospace; margin-bottom: -4px; }
+
+  /* ── Stage 0: Headline ── */
+  .headline-banner {
+    background: linear-gradient(110deg, rgba(249,115,22,0.18) 0%, rgba(249,115,22,0.06) 45%, #0f172a 80%);
+    border-bottom: 1px solid rgba(249,115,22,0.25);
+    padding: 18px 20px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .headline-banner::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent 60%, rgba(249,115,22,0.04));
+    pointer-events: none;
+  }
+  .headline-eyebrow { font-size: 0.6rem; letter-spacing: 3px; color: #f97316; text-transform: uppercase; font-family: monospace; margin-bottom: 6px; opacity: 0.8; }
+  .headline-text { font-family: 'Oswald', sans-serif; font-size: 1.7rem; font-weight: 700; color: #fff; letter-spacing: 1px; line-height: 1.1; text-shadow: 0 0 30px rgba(249,115,22,0.35); }
+  .headline-sub { font-size: 0.65rem; color: #94a3b8; margin-top: 6px; letter-spacing: 0.5px; }
+
+  /* ── Stage 1: Score Hero ── */
+  .score-hero {
+    display: flex; align-items: stretch;
+    border-bottom: 1px solid #1e293b;
+  }
+  .score-team {
+    flex: 1; padding: 16px 20px; display: flex; flex-direction: column; gap: 4px;
+  }
+  .score-team.winner { background: rgba(249,115,22,0.07); }
+  .score-team.loser { background: transparent; }
+  .score-team .home-label { font-size: 0.55rem; letter-spacing: 2px; color: #64748b; text-transform: uppercase; font-family: monospace; }
+  .score-team .team-name { font-family: 'Oswald', sans-serif; font-size: 0.9rem; letter-spacing: 1px; color: #f97316; display: flex; align-items: center; gap: 6px; }
+  .score-team.away-team .team-name { color: #22d3ee; }
+  .score-team .big-num { font-family: 'Oswald', sans-serif; font-size: 3.5rem; font-weight: 700; color: #fff; line-height: 1; text-shadow: 0 0 20px rgba(249,115,22,0.5); }
+  .score-team.away-team .big-num { text-shadow: 0 0 20px rgba(34,211,238,0.3); }
+  .score-team .elim-line { font-size: 0.58rem; letter-spacing: 1px; color: #475569; font-family: monospace; }
+  .win-badge { font-size: 0.5rem; background: rgba(249,115,22,0.15); border: 1px solid rgba(249,115,22,0.4); color: #f97316; border-radius: 3px; padding: 1px 5px; letter-spacing: 1px; }
+  .score-center { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 12px; gap: 4px; }
+  .score-center .vs { font-family: 'Oswald', sans-serif; font-size: 1rem; color: #334155; letter-spacing: 2px; }
+  .score-center .final-tag { font-size: 0.5rem; color: #334155; letter-spacing: 2px; font-family: monospace; }
+
+  /* ── Stage 2: 2×2 Intel Grid ── */
+  .intel-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px; padding: 12px; border-bottom: 1px solid #1e293b;
+  }
+  .intel-card { background: #020617; border: 1px solid #1e293b; border-radius: 8px; padding: 10px 12px; }
+  .intel-card .kicker { font-size: 0.55rem; letter-spacing: 2px; color: #64748b; text-transform: uppercase; font-family: monospace; margin-bottom: 5px; }
+  .intel-card .ic-name { font-family: 'Oswald', sans-serif; font-size: 1rem; color: #f8fafc; letter-spacing: 0.5px; }
+  .intel-card .ic-stats { font-size: 0.65rem; color: #64748b; margin-top: 3px; }
+  .ic-stat-chips { display: flex; gap: 5px; margin-top: 4px; flex-wrap: wrap; }
+  .ic-chip { font-size: 0.6rem; font-family: monospace; padding: 2px 6px; border-radius: 3px; }
+  .ic-chip.elim { background: rgba(249,115,22,0.15); color: #f97316; }
+  .ic-chip.catch { background: rgba(34,211,238,0.12); color: #22d3ee; }
+  .ic-chip.dodge { background: rgba(163,230,53,0.12); color: #a3e635; }
+  .intel-card .ic-body { font-size: 0.7rem; color: #94a3b8; line-height: 1.45; }
+  .intel-card .ic-verdict { display: inline-block; margin-top: 4px; font-size: 0.58rem; border-radius: 3px; padding: 2px 6px; letter-spacing: 1px; }
+  .ic-verdict.pos { background: rgba(34,211,238,0.1); color: #22d3ee; }
+  .ic-verdict.neg { background: rgba(248,113,113,0.1); color: #f87171; }
+  .ic-verdict.warn { background: rgba(245,158,11,0.1); color: #f59e0b; }
+  .standings-list { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+  .standings-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.65rem; }
+  .standings-row .club { color: #cbd5e1; font-weight: 600; }
+  .standings-row .shift { font-family: monospace; color: #64748b; }
+  .standings-row .arrow { margin-left: 4px; }
+  .standings-row .up { color: #10b981; }
+  .standings-row .down { color: #f43f5e; }
+
+  /* ── Stage 3: Fallout ── */
+  .fallout { border-bottom: 1px solid #1e293b; }
+  .fallout-heading { padding: 10px 12px 6px; }
+  .fallout-heading .kicker { font-size: 0.55rem; letter-spacing: 2px; color: #64748b; text-transform: uppercase; font-family: monospace; margin-bottom: 2px; }
+  .fallout-heading h3 { font-family: 'Oswald', sans-serif; font-size: 1rem; color: #e2e8f0; letter-spacing: 0.5px; margin: 0; }
+  .fallout-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 12px 12px; }
+  .fallout-card { background: #020617; border: 1px solid #1e293b; border-radius: 8px; padding: 8px 10px; }
+  .fallout-card .kicker { font-size: 0.52rem; letter-spacing: 2px; color: #64748b; text-transform: uppercase; font-family: monospace; margin-bottom: 5px; }
+  .fallout-item { display: flex; justify-content: space-between; align-items: baseline; padding: 3px 0; border-bottom: 1px solid #0f172a; font-size: 0.65rem; }
+  .fallout-item:last-child { border-bottom: none; }
+  .fallout-item .who { color: #e2e8f0; font-weight: 600; }
+  .fallout-item .what { color: #64748b; font-family: monospace; font-size: 0.6rem; }
+  .fallout-item .what.pos { color: #10b981; }
+  .fallout-item .what.up { color: #10b981; }
+  .fallout-item .what.down { color: #f43f5e; }
+
+  /* ── Stage 4: Action Bar ── */
+  .action-bar { padding: 12px; }
+  .action-primary { width: 100%; background: #f97316; border: none; border-radius: 8px; color: #fff; padding: 12px; font-family: 'Oswald', sans-serif; font-size: 0.9rem; letter-spacing: 2px; cursor: pointer; text-align: center; box-shadow: 0 0 20px rgba(249,115,22,0.25); }
+  .action-secondary { width: 100%; background: transparent; border: 1px solid #334155; border-radius: 8px; color: #64748b; padding: 8px; font-family: 'Oswald', sans-serif; font-size: 0.75rem; letter-spacing: 1px; cursor: pointer; text-align: center; margin-top: 6px; }
+
+  .divider { height: 1px; background: #1e293b; margin: 0; }
+</style>
+
+<p class="q-title">Aftermath — Full Layout Preview</p>
+<p class="q-sub">All 5 stages shown stacked — in the game they reveal one at a time over ~5 seconds. Does this feel right?</p>
+
+<div class="shell">
+
+  <!-- Stage 0: Headline Banner -->
+  <div class="stage-label">STAGE 0 — HEADLINE</div>
+  <div class="headline-banner">
+    <div class="headline-eyebrow">Week 6 Result · Conference Match</div>
+    <div class="headline-text">IRONCLADS HOLD THE FLOOR</div>
+    <div class="headline-sub">Northwood Ironclads def. Lunar Syndicate · 4 survivors to 0</div>
+  </div>
+
+  <!-- Stage 1: Score Hero -->
+  <div class="stage-label">STAGE 1 — SCORE</div>
+  <div class="score-hero">
+    <div class="score-team winner">
+      <div class="home-label">Home</div>
+      <div class="team-name">Northwood Ironclads <span class="win-badge">WIN</span></div>
+      <div class="big-num">4</div>
+      <div class="elim-line">ALIVE · 2 ELIM</div>
+    </div>
+    <div class="score-center">
+      <div class="vs">VS</div>
+      <div class="final-tag">FINAL</div>
+    </div>
+    <div class="score-team away-team loser" style="text-align:right">
+      <div class="home-label">Away</div>
+      <div class="team-name" style="justify-content:flex-end">Lunar Syndicate</div>
+      <div class="big-num" style="color:#22d3ee;opacity:0.5">0</div>
+      <div class="elim-line">ALIVE · 6 ELIM</div>
+    </div>
+  </div>
+
+  <!-- Stage 2: 2×2 Intel Grid -->
+  <div class="stage-label">STAGE 2 — INTELLIGENCE (replaces 3 separate panels)</div>
+  <div class="intel-grid">
+
+    <!-- MVP card -->
+    <div class="intel-card" style="border-color:rgba(249,115,22,0.25)">
+      <div class="kicker">★ Match MVP</div>
+      <div class="ic-name">Avery Voss</div>
+      <div class="ic-stats">Northwood Ironclads</div>
+      <div class="ic-stat-chips">
+        <span class="ic-chip elim">3 ELIM</span>
+        <span class="ic-chip catch">1 CATCH</span>
+        <span class="ic-chip dodge">2 DODGE</span>
+      </div>
+    </div>
+
+    <!-- Turning Point card -->
+    <div class="intel-card">
+      <div class="kicker">Turning Point</div>
+      <div class="ic-body">Voss chained three eliminations in two throws — Syndicate's structure collapsed in round 2 before they could adjust.</div>
+      <span class="ic-verdict pos">DOMINANT CLOSE</span>
+    </div>
+
+    <!-- Tactical Read card -->
+    <div class="intel-card">
+      <div class="kicker">Tactical Read</div>
+      <div class="ic-body">Aggressive approach exploited Syndicate's Tactical formation. Stamina dropped below 50 in round 2, enabling sustained pressure throws.</div>
+      <span class="ic-verdict pos">PLAN WORKED</span>
+    </div>
+
+    <!-- Standings card -->
+    <div class="intel-card">
+      <div class="kicker">Standings Shift</div>
+      <div class="standings-list">
+        <div class="standings-row">
+          <span class="club">Northwood Ironclads</span>
+          <span class="shift">#3 → #2 <span class="arrow up">↑</span></span>
+        </div>
+        <div class="standings-row">
+          <span class="club">Lunar Syndicate</span>
+          <span class="shift">#2 → #4 <span class="arrow down">↓</span></span>
+        </div>
+        <div class="standings-row">
+          <span class="club">Crestfall Titans</span>
+          <span class="shift">#4 → #3 <span class="arrow up">↑</span></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Stage 3: Fallout -->
+  <div class="stage-label">STAGE 3 — FALLOUT</div>
+  <div class="fallout">
+    <div class="fallout-heading">
+      <div class="kicker">Match Fallout</div>
+      <h3>What your week caused</h3>
+    </div>
+    <div class="fallout-grid">
+      <div class="fallout-card">
+        <div class="kicker">Who Grew</div>
+        <div class="fallout-item"><span class="who">Avery Voss</span><span class="what pos">THR +2</span></div>
+        <div class="fallout-item"><span class="who">Cass Frost</span><span class="what pos">CTH +1</span></div>
+        <div class="fallout-item"><span class="who">Dex Vale</span><span class="what pos">DOD +1</span></div>
+      </div>
+      <div class="fallout-card">
+        <div class="kicker">Standings</div>
+        <div class="fallout-item"><span class="who">Northwood</span><span class="what up">↑ #3→#2</span></div>
+        <div class="fallout-item"><span class="who">Syndicate</span><span class="what down">↓ #2→#4</span></div>
+        <div class="fallout-item"><span class="who">Titans</span><span class="what up">↑ #4→#3</span></div>
+      </div>
+      <div class="fallout-card">
+        <div class="kicker">Prospect Pulse</div>
+        <div class="fallout-item"><span class="who">J. Reeves</span><span class="what pos">+12 INT</span></div>
+        <div class="fallout-item"><span class="who">M. Osei</span><span class="what pos">+8 INT</span></div>
+        <div class="fallout-item"><span class="who">T. Vance</span><span class="what" style="color:#f59e0b">→ 0</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage 4: Action Bar -->
+  <div class="stage-label">STAGE 4 — ACTION</div>
+  <div class="action-bar">
+    <div class="action-primary">ADVANCE TO NEXT WEEK →</div>
+    <div class="action-secondary">WATCH REPLAY</div>
+  </div>
+
+</div>

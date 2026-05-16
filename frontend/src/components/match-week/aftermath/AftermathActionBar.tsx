@@ -15,17 +15,13 @@ export function AftermathActionBar({
     <div className="command-action-bar" data-testid="after-action-bar">
       {hasReplay && (
         <button onClick={onViewReplay} className="command-action-bar-secondary">
-          WATCH REPLAY
+          VIEW FULL REPLAY
         </button>
       )}
       <button
         onClick={onAdvance}
         disabled={isAdvancing}
-        className="command-action-bar-primary"
-        style={{
-          background: isAdvancing ? '#7c3d12' : '#f97316',
-          cursor: isAdvancing ? 'default' : 'pointer',
-        }}
+        className={`command-action-bar-primary${isAdvancing ? ' is-advancing' : ''}`}
       >
         {isAdvancing ? 'ADVANCING...' : 'ADVANCE TO NEXT WEEK →'}
       </button>

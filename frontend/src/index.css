@@ -362,7 +362,7 @@ textarea:focus-visible {
   border-bottom: 1px solid #1e293b;
   background: rgba(2, 6, 23, 0.80);
   backdrop-filter: blur(8px);
-  padding: 0.875rem 1.25rem;
+  padding: 0.875rem 1.5rem;
   position: sticky;
   top: 0;
   z-index: 10;
@@ -1642,9 +1642,10 @@ textarea:focus-visible {
 .command-post-sim {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0.4rem;
   width: min(100%, 1280px);
-  margin: 0 auto;
+  margin: -0.5rem auto 0;
+  padding-bottom: 1rem;
 }
 
 .command-reveal {
@@ -1728,12 +1729,12 @@ textarea:focus-visible {
 .command-score-team {
   position: relative;
   min-width: 0;
-  min-height: 12rem;
+  min-height: 3.5rem;
   border: 1px solid #1e293b;
   background:
     linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(2, 6, 23, 0.94)),
     #0f172a;
-  padding: clamp(1rem, 3vw, 1.5rem);
+  padding: clamp(0.35rem, 1vw, 0.55rem);
   transition: border-color 180ms ease, opacity 180ms ease, box-shadow 180ms ease;
 }
 
@@ -1742,16 +1743,16 @@ textarea:focus-visible {
 }
 
 .command-score-team-loser {
-  opacity: 0.66;
+  opacity: 0.78;
 }
 
 .command-score-team strong {
   display: block;
   overflow-wrap: anywhere;
-  margin-top: 0.5rem;
+  margin-top: 0.1rem;
   color: #f8fafc;
   font-family: var(--font-display);
-  font-size: clamp(1.4rem, 4vw, 2.25rem);
+  font-size: clamp(0.8rem, 1.6vw, 1rem);
   font-weight: 800;
   letter-spacing: 0;
   line-height: 1;
@@ -1760,10 +1761,10 @@ textarea:focus-visible {
 
 .command-score-number {
   display: block;
-  margin-top: 1rem;
+  margin-top: 0.15rem;
   color: #fff;
   font-family: var(--font-mono-data);
-  font-size: clamp(4rem, 12vw, 7rem);
+  font-size: clamp(1.4rem, 3vw, 2rem);
   font-weight: 900;
   letter-spacing: 0;
   line-height: 0.9;
@@ -1771,8 +1772,8 @@ textarea:focus-visible {
 
 .command-score-detail {
   display: block;
-  margin-top: 0.75rem;
-  color: #94a3b8;
+  margin-top: 0.3rem;
+  color: #cbd5e1;
   font-family: var(--font-mono-data);
   font-size: 0.75rem;
   letter-spacing: 0.12em;
@@ -1780,37 +1781,40 @@ textarea:focus-visible {
 }
 
 .command-score-winner-badge {
-  margin-top: 0.9rem;
+  margin-top: 0.25rem;
 }
 
 .command-score-center {
   display: flex;
-  min-width: 7rem;
+  min-width: 4.5rem;
+  width: 4.5rem;
   align-items: center;
   justify-content: center;
   flex-direction: column;
   gap: 0.35rem;
   background: #020617;
-  padding: 1rem;
+  padding: 1rem 0.75rem;
+  border-left: 1px solid rgba(249, 115, 22, 0.15);
+  border-right: 1px solid rgba(34, 211, 238, 0.15);
 }
 
-.command-score-center span:last-child {
-  color: #334155;
+.command-score-vs {
+  color: #1e293b;
   font-family: var(--font-display);
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: 800;
   letter-spacing: 0.14em;
 }
 
 .command-section-heading {
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.4rem;
 }
 
 .command-section-heading h3 {
-  margin: 0.2rem 0 0;
+  margin: 0.1rem 0 0;
   color: #fff;
   font-family: var(--font-display);
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1818,8 +1822,8 @@ textarea:focus-visible {
 
 .command-analysis-row {
   display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  gap: 1.25rem;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: 1rem;
   align-items: start;
 }
 
@@ -1842,9 +1846,10 @@ textarea:focus-visible {
 .command-match-flow-count {
   font-family: var(--font-mono-data);
   font-size: 0.65rem;
-  color: #475569;
+  color: #64748b;
   letter-spacing: 1px;
   margin-left: auto;
+  align-self: center;
 }
 
 .command-match-flow-scroll-wrap {
@@ -1854,12 +1859,60 @@ textarea:focus-visible {
 .command-match-flow-scroll-wrap::after {
   content: '';
   position: absolute;
-  bottom: 0;
+  bottom: 28px;
   left: 0;
   right: 12px;
-  height: 40px;
-  background: linear-gradient(to bottom, transparent, rgba(15, 23, 42, 0.9));
+  height: 48px;
+  background: linear-gradient(to bottom, transparent, rgba(15, 23, 42, 0.92));
   pointer-events: none;
+}
+
+.command-timeline-collapse-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 1rem;
+  background: #0f172a;
+  border: none;
+  border-bottom: 1px solid #1e293b;
+  cursor: pointer;
+  font-family: var(--font-mono-data);
+  font-size: 0.65rem;
+  letter-spacing: 1px;
+  text-align: left;
+  color: #64748b;
+}
+
+.command-timeline-collapse-bar:hover {
+  background: #1e293b;
+}
+
+.command-timeline-collapse-bar:focus-visible {
+  outline: 2px solid #f97316;
+  outline-offset: -2px;
+}
+
+.command-timeline-collapse-label {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.command-timeline-collapse-icon {
+  font-size: 0.55rem;
+  color: #475569;
+  flex-shrink: 0;
+}
+
+.command-match-flow-scroll-hint {
+  margin: 0;
+  padding: 6px 1.25rem 1rem;
+  font-family: var(--font-mono-data);
+  font-size: 0.6rem;
+  letter-spacing: 1px;
+  color: #475569;
+  text-align: center;
 }
 
 .command-match-flow-scroll {
@@ -1876,7 +1929,7 @@ textarea:focus-visible {
   padding: 0 1.25rem 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.875rem;
+  gap: 1.1rem;
 }
 
 .command-match-flow-event {
@@ -1890,13 +1943,14 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 1.875rem;
+  height: 1.875rem;
   border-radius: 50%;
-  background: #1e293b;
-  color: #64748b;
+  background: #1a2234;
+  border: 1px solid #2d3f58;
+  color: #94a3b8;
   font-family: var(--font-mono-data);
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   font-weight: 700;
   flex-shrink: 0;
   margin-top: 0.1rem;
@@ -1905,10 +1959,10 @@ textarea:focus-visible {
 .command-event-phase {
   display: inline-block;
   font-family: var(--font-mono-data);
-  font-size: 0.55rem;
+  font-size: 0.58rem;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: #475569;
+  color: #64748b;
   margin-bottom: 0.3rem;
 }
 
@@ -1931,7 +1985,7 @@ textarea:focus-visible {
 
 .command-event-items li {
   font-size: 0.72rem;
-  color: #64748b;
+  color: #94a3b8;
   line-height: 1.5;
   padding-left: 0.75rem;
   border-left: 1px solid #1e293b;
@@ -1998,11 +2052,15 @@ textarea:focus-visible {
   line-height: 1.5;
 }
 
+.command-key-players .dm-panel-header {
+  padding: 6px 10px;
+}
+
 .command-key-player-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding: 1rem 1.25rem 1.25rem;
+  gap: 0.2rem;
+  padding: 0.4rem 0.75rem 0.5rem;
 }
 
 .command-key-player {
@@ -2027,14 +2085,11 @@ textarea:focus-visible {
 }
 
 .command-key-player strong {
-  display: block;
-  overflow: hidden;
+  display: inline;
   color: #f8fafc;
   font-family: var(--font-display);
-  font-size: 1rem;
-  text-overflow: ellipsis;
+  font-size: 0.82rem;
   text-transform: uppercase;
-  white-space: nowrap;
 }
 
 .command-key-player p,
@@ -2046,7 +2101,7 @@ textarea:focus-visible {
 }
 
 .command-tactical-card {
-  padding: 1.25rem;
+  padding: 0.85rem;
 }
 
 .command-tactical-card-footer {
@@ -2066,9 +2121,44 @@ textarea:focus-visible {
 }
 
 .command-fallout-card {
-  min-height: 12rem;
-  padding: 1.1rem;
+  padding: 0.3rem 0.5rem;
   transition: border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+
+.command-fallout-standings-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+  font-family: var(--font-mono-data);
+  font-size: 0.58rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.command-fallout-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.65rem 0;
+  border-top: 1px solid #1e293b;
+  color: #475569;
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.command-fallout-empty::before {
+  content: '—';
+  color: #334155;
+  font-style: normal;
+  font-family: var(--font-mono-data);
+  flex-shrink: 0;
+}
+
+.command-clean-list-compact li {
+  padding-top: 0.45rem;
+  gap: 0.5rem;
 }
 
 .command-fallout-card:hover {
@@ -2078,13 +2168,13 @@ textarea:focus-visible {
 }
 
 .command-fallout-card-body {
-  margin-top: 0.85rem;
+  margin-top: 0.15rem;
 }
 
 .command-clean-list {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: 0.15rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -2093,10 +2183,10 @@ textarea:focus-visible {
 .command-clean-list li {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.8rem;
+  gap: 0.5rem;
   align-items: baseline;
   border-top: 1px solid rgba(30,41,59,0.7);
-  padding-top: 0.75rem;
+  padding-top: 0;
 }
 
 .command-clean-list li:first-child {
@@ -2142,15 +2232,17 @@ textarea:focus-visible {
   display: flex;
   gap: 8px;
   align-items: stretch;
-  padding: 12px 16px;
+  justify-content: flex-end;
+  padding: 4px 16px 12px;
 }
 
 .command-action-bar-secondary {
+  flex: 0 0 auto;
   background: #1a2234;
-  border: 1px solid #334155;
+  border: 1px solid #475569;
   border-radius: 8px;
   color: #e2e8f0;
-  padding: 10px 18px;
+  padding: 10px 20px;
   font-family: var(--font-display);
   font-size: 0.75rem;
   letter-spacing: 1px;
@@ -2160,7 +2252,7 @@ textarea:focus-visible {
 
 .command-action-bar-secondary:hover {
   background: #1e293b;
-  border-color: #475569;
+  border-color: #64748b;
 }
 
 .command-action-bar-secondary:focus-visible {
@@ -2169,14 +2261,22 @@ textarea:focus-visible {
 }
 
 .command-action-bar-primary {
-  flex: 1;
+  flex: 0 0 auto;
+  min-width: 210px;
   border: none;
   border-radius: 8px;
+  background: #f97316;
   color: #fff;
-  padding: 10px 16px;
+  padding: 10px 20px;
   font-family: var(--font-display);
   font-size: 0.85rem;
   letter-spacing: 2px;
+  cursor: pointer;
+}
+
+.command-action-bar-primary.is-advancing {
+  background: #7c3d12;
+  cursor: default;
 }
 
 .command-action-bar-primary:focus-visible {
@@ -2253,7 +2353,12 @@ textarea:focus-visible {
 
   .command-score-center {
     min-width: 0;
+    width: auto;
     min-height: 4.5rem;
+    border-left: 0;
+    border-right: 0;
+    border-top: 1px solid rgba(249, 115, 22, 0.15);
+    border-bottom: 1px solid rgba(34, 211, 238, 0.15);
   }
 
   .command-score-team,
@@ -2263,10 +2368,13 @@ textarea:focus-visible {
 
   .command-action-bar {
     flex-direction: column;
+    justify-content: stretch;
   }
 
-  .command-action-bar-secondary {
+  .command-action-bar-secondary,
+  .command-action-bar-primary {
     width: 100%;
+    min-width: 0;
     text-align: center;
   }
 
