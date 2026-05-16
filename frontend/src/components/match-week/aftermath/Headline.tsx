@@ -1,7 +1,62 @@
-export function Headline({ text }: { text: string }) {
+export function Headline({
+  text,
+  week,
+  subtitle,
+}: {
+  text: string;
+  week?: number;
+  subtitle?: string;
+}) {
   return (
-    <div className="dm-panel" style={{ textAlign: 'center', padding: '2rem' }}>
-      <h1 className="dm-headline" style={{ fontSize: '2.5rem', margin: 0 }}>{text}</h1>
+    <div
+      style={{
+        background: 'linear-gradient(110deg, rgba(249,115,22,0.18) 0%, rgba(249,115,22,0.06) 45%, #0f172a 80%)',
+        borderBottom: '1px solid rgba(249,115,22,0.25)',
+        padding: '18px 20px 16px',
+      }}
+    >
+      {week !== undefined && (
+        <div
+          style={{
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: '0.6rem',
+            letterSpacing: '3px',
+            color: '#f97316',
+            textTransform: 'uppercase',
+            marginBottom: '6px',
+            opacity: 0.8,
+          }}
+        >
+          Week {week} Result
+        </div>
+      )}
+      <h1
+        style={{
+          fontFamily: 'Oswald, sans-serif',
+          fontSize: 'clamp(1.4rem, 4vw, 2rem)',
+          fontWeight: 700,
+          color: '#fff',
+          letterSpacing: '1px',
+          lineHeight: 1.1,
+          textShadow: '0 0 30px rgba(249,115,22,0.35)',
+          margin: 0,
+        }}
+      >
+        {text}
+      </h1>
+      {subtitle && (
+        <div
+          style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '0.65rem',
+            color: '#94a3b8',
+            marginTop: '6px',
+            letterSpacing: '0.5px',
+          }}
+        >
+          {subtitle}
+        </div>
+      )}
     </div>
   );
 }
