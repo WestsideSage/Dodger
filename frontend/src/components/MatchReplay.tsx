@@ -497,7 +497,7 @@ function PlayByPlayPanel({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
       {events.slice(0, currentIndex + 1).map((ev, i) => (
         <div key={i} className="dm-feed-item" style={{ background: '#0f172a', border: '1px solid #1e293b', padding: '0.75rem', borderRadius: '4px', fontSize: '0.875rem' }}>
-          <span className="dm-time" style={{ color: '#64748b', fontFamily: 'var(--font-mono-data)', marginRight: '0.5rem', fontSize: '0.75rem' }}>TICK {ev.tick}</span>
+          <span className="dm-time" style={{ color: '#64748b', fontFamily: 'var(--font-mono-data)', marginRight: '0.5rem', fontSize: '0.75rem' }}>PLAY {i + 1}</span>
           <span style={{ color: '#e2e8f0' }}>{ev.summary}</span>
         </div>
       ))}
@@ -816,7 +816,7 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
           {/* Continue */}
           <div style={{ padding: '8px 12px', borderTop: '1px solid #1e293b', background: '#020617' }}>
             <button onClick={onContinue} style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: 6, color: '#94a3b8', padding: '8px', cursor: 'pointer', fontFamily: 'Oswald, sans-serif', fontSize: 13, letterSpacing: 1 }}>
-              {'CONTINUE ->'}
+              {'BACK TO RESULTS'}
             </button>
           </div>
         </div>
@@ -825,7 +825,7 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
         <div className="dm-replay-sidebar">
           <div style={{ display: 'flex', borderBottom: '1px solid #1e293b', padding: '0 4px' }}>
             {(['pbp', 'keyplays', 'stats'] as const).map((tab) => {
-              const labels = { pbp: 'PLAY-BY-PLAY', keyplays: 'KEY PLAYS', stats: 'REPORT' };
+              const labels = { pbp: 'PLAY-BY-PLAY', keyplays: 'KEY PLAYS', stats: 'BOX SCORE' };
               const isActive = activeTab === tab;
               return (
                 <button
