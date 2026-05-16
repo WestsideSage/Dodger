@@ -2,10 +2,12 @@ export function Headline({
   text,
   week,
   subtitle,
+  contextLine,
 }: {
   text: string;
   week?: number;
   subtitle?: string;
+  contextLine?: string;
 }) {
   return (
     <div
@@ -22,7 +24,7 @@ export function Headline({
             fontSize: '0.6rem',
             letterSpacing: '3px',
             color: '#f97316',
-            textTransform: 'uppercase',
+            textTransform: 'uppercase' as const,
             marginBottom: '6px',
             opacity: 0.8,
           }}
@@ -44,7 +46,22 @@ export function Headline({
       >
         {text}
       </h1>
-      {subtitle && (
+      {contextLine && (
+        <p
+          style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '0.8rem',
+            color: '#94a3b8',
+            marginTop: '8px',
+            marginBottom: 0,
+            lineHeight: 1.5,
+            letterSpacing: '0.3px',
+          }}
+        >
+          {contextLine}
+        </p>
+      )}
+      {subtitle && !contextLine && (
         <div
           style={{
             fontFamily: 'Inter, sans-serif',
