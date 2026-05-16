@@ -21,11 +21,15 @@ export function FalloutGrid({
   standingsShift: Aftermath['standings_shift'];
   recruitReactions: Aftermath['recruit_reactions'];
 }) {
+  if (playerGrowth.length === 0 && standingsShift.length === 0 && recruitReactions.length === 0) {
+    return null;
+  }
+
   return (
     <section className="command-fallout" data-testid="fallout-grid">
       <div className="command-section-heading">
-        <p className="dm-kicker">Match Fallout</p>
-        <h3>What your week caused</h3>
+        <p className="dm-kicker">Aftermath</p>
+        <h3>Week Fallout</h3>
       </div>
       <div className="command-fallout-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
         {playerGrowth.length > 0 && (
@@ -81,12 +85,6 @@ export function FalloutGrid({
               })}
             </ul>
           </FalloutCard>
-        )}
-
-        {playerGrowth.length === 0 && standingsShift.length === 0 && recruitReactions.length === 0 && (
-          <p className="command-empty-copy" style={{ gridColumn: '1 / -1' }}>
-            No notable fallout from this match.
-          </p>
         )}
       </div>
     </section>
