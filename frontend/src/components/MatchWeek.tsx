@@ -36,6 +36,17 @@ function resolveMatchCardNames({
   };
 }
 
+function buildContextLine(matchCard: Aftermath['match_card'] | undefined): string | undefined {
+  if (!matchCard) return undefined;
+  if (!matchCard.winner_club_id) return undefined;
+  const homeWins = matchCard.winner_club_id === matchCard.home_club_id;
+  const winnerSurvs = homeWins ? matchCard.home_survivors : matchCard.away_survivors;
+  const loserSurvs = homeWins ? matchCard.away_survivors : matchCard.home_survivors;
+  if (loserSurvs === 0) return `A ${winnerSurvs}–0 shutout that leaves no room for excuses.`;
+  if (winnerSurvs >= loserSurvs * 2) return `A dominant ${winnerSurvs}–${loserSurvs} result.`;
+  return `The final score: ${winnerSurvs}–${loserSurvs}.`;
+}
+
 export function MatchWeek({
   mode,
   onOpenReplay,
@@ -197,30 +208,16 @@ export function MatchWeek({
       ? resolveMatchCardNames({ matchCard: aftermath.match_card, currentData: data, activeResult })
       : null;
 
-    const headlineSubtitle = (() => {
-      const mc = aftermath.match_card;
-      if (!mc || !matchCardNames) return undefined;
-      if (!mc.winner_club_id) {
-        return `${matchCardNames.homeTeam} vs ${matchCardNames.awayTeam} · ${mc.home_survivors} — ${mc.away_survivors}`;
-      }
-      const homeIsWinner = mc.winner_club_id === mc.home_club_id;
-      const winnerName = homeIsWinner ? matchCardNames.homeTeam : matchCardNames.awayTeam;
-      const loserName = homeIsWinner ? matchCardNames.awayTeam : matchCardNames.homeTeam;
-      const winnerSurvs = homeIsWinner ? mc.home_survivors : mc.away_survivors;
-      const loserSurvs = homeIsWinner ? mc.away_survivors : mc.home_survivors;
-      return `${winnerName} def. ${loserName} · ${winnerSurvs} survivors to ${loserSurvs}`;
-    })();
-
     return (
       <div className="command-post-sim" data-testid="post-week-dashboard">
-        <PageHeader eyebrow="WAR ROOM" title="Command Center" description="Review the result, who performed, and what your week caused." />
+        <PageHeader eyebrow="WAR ROOM" title={`Week ${activeResult.dashboard.week} Debrief`} />
 
         {revealStage >= 0 && (
           <div className="command-reveal">
             <Headline
               text={aftermath.headline}
               week={activeResult.dashboard.week}
-              subtitle={headlineSubtitle}
+              contextLine={buildContextLine(aftermath.match_card)}
             />
           </div>
         )}
@@ -239,16 +236,16 @@ export function MatchWeek({
         )}
 
         {revealStage >= 2 && (
-          <div className="command-story-grid command-reveal" data-testid="command-story-grid">
+          <div className="command-reveal">
             <ReplayTimeline lanes={activeResult.dashboard.lanes} />
-            <div className="command-story-side">
-              <KeyPlayersPanel
-                performers={replayForMatch?.report.top_performers ?? []}
-                playerClubName={data?.player_club_name}
-              />
+            <div className="command-analysis-row">
               <TacticalSummaryCard
                 turningPoint={replayForMatch?.report.turning_point ?? ''}
                 evidenceLanes={replayForMatch?.report.evidence_lanes ?? activeResult.dashboard.lanes}
+              />
+              <KeyPlayersPanel
+                performers={replayForMatch?.report.top_performers ?? []}
+                playerClubName={data?.player_club_name}
               />
             </div>
           </div>
