@@ -1831,6 +1831,14 @@ textarea:focus-visible {
   flex-wrap: wrap;
 }
 
+.command-match-flow-header .dm-panel-title {
+  margin: 0;
+}
+
+.command-match-flow-header ~ .command-empty-copy {
+  padding: 0 1.25rem 1.25rem;
+}
+
 .command-match-flow-count {
   font-family: var(--font-mono-data);
   font-size: 0.65rem;
