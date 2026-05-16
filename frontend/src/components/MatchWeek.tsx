@@ -52,7 +52,7 @@ export function MatchWeek({
   const { data, setData, error, setError, loading, setLoading } = useApiResource<CommandCenterResponse>('/api/command-center');
   const [localIntent, setLocalIntent] = useState<string | undefined>(undefined);
   const [result, setResult] = useState<CommandCenterSimResponse | null>(null);
-  const [revealStage, setRevealStage] = useState(0);
+  const [revealStage, setRevealStage] = useState(4);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isAdvancingWeek, setIsAdvancingWeek] = useState(false);
   const [planConfirmed, setPlanConfirmed] = useState(false);
@@ -88,6 +88,7 @@ export function MatchWeek({
     commandApi.simulate({ intent: selectedIntent })
       .then((payload: CommandCenterSimResponse) => {
         setResult(payload);
+        setRevealStage(4);
         setIsTransitioning(false);
         onSimComplete?.(payload);
         return load();
@@ -100,14 +101,14 @@ export function MatchWeek({
 
   const handleAdvanceWeek = () => {
     setIsAdvancingWeek(true);
-    setTimeout(() => {
-        setRevealStage(0);
-        setResult(null);
-        setPlanConfirmed(false);
-        load();
+    setRevealStage(4);
+    setResult(null);
+    setPlanConfirmed(false);
+    load()
+      .finally(() => {
         onAdvanceWeek?.();
         setIsAdvancingWeek(false);
-    }, 400); // brief fade transition for advancing week
+      });
   };
 
   useEffect(() => {
@@ -181,11 +182,13 @@ export function MatchWeek({
 
   const renderPostSimMode = () => {
     const activeResult = result ?? persistedResult;
-    if (!activeResult?.aftermath) return (
-      <div className="dm-panel">
-        <p>Processing results...</p>
-      </div>
-    );
+    if (!activeResult?.aftermath) {
+      return (
+        <StatusMessage title="Processing results">
+          Building the Command Center aftermath.
+        </StatusMessage>
+      );
+    }
 
     const { aftermath } = activeResult;
     const matchId = activeResult.dashboard.match_id;
@@ -196,7 +199,7 @@ export function MatchWeek({
 
     return (
       <div className="command-post-sim" data-testid="post-week-dashboard">
-        <PageHeader eyebrow="WAR ROOM" title="Match Week" description="Review the match result, replay identity, and weekly fallout." />
+        <PageHeader eyebrow="WAR ROOM" title="Command Center" description="Review the match result, replay identity, and weekly fallout." />
 
         {revealStage >= 0 && (
           <div className="command-reveal">
@@ -254,13 +257,16 @@ export function MatchWeek({
     );
   };
 
-  if (isTransitioning) return <SimTransition />;
-
   if (mode === 'offseason') return (
     <div data-testid="match-week-offseason" className={isAdvancingWeek ? 'fade-out' : ''}>
       <Offseason />
     </div>
   );
-  if (mode === 'post-sim') return renderPostSimMode();
-  return renderPreSimMode();
+
+  return (
+    <div className="match-week-shell">
+      {mode === 'post-sim' ? renderPostSimMode() : renderPreSimMode()}
+      {isTransitioning && <SimTransition />}
+    </div>
+  );
 }

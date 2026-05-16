@@ -71,6 +71,15 @@ input {
   font: inherit;
 }
 
+button:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgba(34, 211, 238, 0.9);
+  outline-offset: 2px;
+}
+
 .app-shell {
   background:
     linear-gradient(115deg, rgba(255, 249, 236, 0.94), rgba(243, 238, 226, 0.86)),
@@ -869,6 +878,10 @@ input {
   white-space: nowrap;
 }
 
+.dm-nav-label-short {
+  display: none;
+}
+
 .dm-nav-item:hover {
   border-left-color: #475569;
   background: rgba(30, 41, 59, 0.6);
@@ -1051,6 +1064,16 @@ input {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+}
+
+.dm-helper-copy {
+  color: #94a3b8;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.dm-helper-copy-warning {
+  color: #f59e0b;
 }
 
 /* Two-column desktop layouts used by Hub and CommandCenter. Stack on mobile,
@@ -2159,6 +2182,66 @@ input {
   font-size: 0.8rem;
 }
 
+.command-next-action {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1rem 1.15rem;
+  border-color: rgba(34, 211, 238, 0.22);
+  background:
+    linear-gradient(90deg, rgba(34, 211, 238, 0.08), transparent 55%),
+    rgba(15, 23, 42, 0.86);
+}
+
+.command-next-action-copy {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.command-next-action-step {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  background: rgba(2, 6, 23, 0.48);
+  color: #22d3ee;
+  font-family: var(--font-mono-data);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  padding: 0.25rem 0.45rem;
+  text-transform: uppercase;
+}
+
+.command-next-action h2 {
+  margin: 0;
+  color: #f8fafc;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  text-transform: uppercase;
+}
+
+.command-next-action p {
+  margin: 0.25rem 0 0;
+  color: #cbd5e1;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.command-next-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.command-next-action-buttons .command-primary-button,
+.command-next-action-buttons .command-secondary-button {
+  width: auto;
+  margin-top: 0;
+}
+
 .command-alert-strip {
   display: grid;
   grid-template-columns: minmax(7rem, auto) repeat(3, minmax(0, 1fr));
@@ -3082,6 +3165,96 @@ input {
   min-width: 0;
 }
 
+.standings-desktop-view {
+  display: block;
+}
+
+.standings-compact-view {
+  display: none;
+}
+
+.standings-card-list {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0 1rem 1rem;
+}
+
+.standings-card {
+  width: 100%;
+  border: 1px solid rgba(51, 65, 85, 0.75);
+  background: rgba(2, 6, 23, 0.32);
+  color: #e2e8f0;
+  padding: 0.95rem 1rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.standings-card.is-user-club {
+  border-color: rgba(34, 211, 238, 0.45);
+  box-shadow: inset 2px 0 0 #22d3ee;
+}
+
+.standings-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.standings-card-header h3 {
+  margin: 0.2rem 0 0;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  text-transform: uppercase;
+}
+
+.standings-card-points {
+  text-align: right;
+}
+
+.standings-card-points span,
+.standings-card-stats span {
+  display: block;
+  color: #64748b;
+  font-family: var(--font-mono-data);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.standings-card-points strong {
+  display: block;
+  margin-top: 0.25rem;
+  color: #f8fafc;
+  font-size: 1.15rem;
+}
+
+.standings-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  margin-top: 0.75rem;
+  color: #cbd5e1;
+  font-size: 0.8rem;
+}
+
+.standings-card-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(30, 41, 59, 0.75);
+}
+
+.standings-card-stats strong {
+  display: block;
+  margin-top: 0.2rem;
+  color: #f8fafc;
+  font-size: 0.88rem;
+}
+
 @media (min-width: 1540px) {
   .command-dashboard-main {
     grid-template-columns: minmax(0, 1.7fr) minmax(22rem, 0.7fr);
@@ -3095,6 +3268,19 @@ input {
 }
 
 @media (max-width: 1180px) {
+  .dm-left-nav {
+    width: 11rem;
+  }
+
+  .dm-nav-item {
+    padding: 0.7rem 0.85rem;
+    font-size: 0.76rem;
+  }
+
+  .dm-content {
+    padding: 1.25rem;
+  }
+
   .command-dashboard-main,
   .command-dashboard-lower,
   .command-plan-grid,
@@ -3149,7 +3335,7 @@ input {
 
 }
 
-@media (max-width: 720px) {
+@media (max-width: 960px) {
   .dm-app-shell.flex {
     display: block !important;
   }
@@ -3163,25 +3349,113 @@ input {
 
   .dm-left-nav-logo,
   .dm-left-nav > div:last-child {
-    padding: 0.75rem 1rem;
+    padding: 0.65rem 0.9rem;
   }
 
-  .dm-left-nav nav {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .dm-left-nav-logo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .dm-left-nav nav[aria-label="Primary"] {
+    display: flex !important;
+    flex: none !important;
+    flex-direction: row !important;
+    align-items: stretch;
+    gap: 0.35rem;
+    overflow-x: auto;
+    padding: 0 0.9rem 0.65rem !important;
+    scrollbar-width: none;
+  }
+
+  .dm-left-nav nav[aria-label="Primary"]::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dm-left-nav > div:last-child {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0 0.9rem 0.65rem !important;
+    border-top: 0;
+  }
+
+  .dm-left-nav > div:last-child .dm-nav-item {
+    display: none !important;
   }
 
   .dm-nav-item {
-    min-height: 2.75rem;
-    white-space: normal;
+    width: auto;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 2.25rem;
+    border-left: 0;
+    border-bottom: 2px solid transparent;
+    padding: 0.55rem 0.65rem;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+
+  .dm-nav-item:hover,
+  .dm-nav-item-active {
+    border-left-color: transparent !important;
+    border-bottom-color: #22d3ee !important;
+  }
+
+  .dm-nav-label-full {
+    display: none;
+  }
+
+  .dm-nav-label-short {
+    display: inline;
   }
 
   .dm-broadcast-header {
     position: static;
+    padding: 0.75rem 0.9rem;
+  }
+
+  .dm-workspace {
+    min-height: auto;
   }
 
   .dm-content {
-    padding: 1rem;
+    padding: 0.95rem;
+  }
+
+  .standings-desktop-view {
+    display: none;
+  }
+
+  .standings-compact-view {
+    display: block;
+  }
+
+  .command-next-action {
+    flex-direction: column;
+  }
+
+  .command-next-action-buttons {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .command-next-action-buttons .command-primary-button,
+  .command-next-action-buttons .command-secondary-button {
+    width: 100%;
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .dm-app-shell.flex {
+    display: block !important;
+  }
+
+  .dm-left-nav-logo {
+    padding-bottom: 0.55rem;
   }
 
   .command-dashboard-header {
@@ -3216,6 +3490,21 @@ input {
   .dynasty-slots-grid,
   .dynasty-staff-room {
     grid-template-columns: 1fr;
+  }
+
+  .dm-replay-controls {
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .standings-card-meta,
+  .standings-card-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .standings-card-meta {
+    flex-direction: column;
+    gap: 0.35rem;
   }
 }
 
@@ -3325,6 +3614,24 @@ input {
 }
 
 /* Sim Transition Animations */
+.match-week-shell {
+  position: relative;
+}
+
+.dm-transition-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  min-height: 18rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: color-mix(in srgb, #020617 80%, transparent);
+  backdrop-filter: blur(2px);
+}
+
 .slide-up-out {
   animation: slideUpOut 0.3s ease-out forwards;
 }

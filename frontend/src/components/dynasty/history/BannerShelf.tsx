@@ -1,3 +1,5 @@
+import { formatSeasonLabel } from './formatters';
+
 interface BannerEntry {
   type: string;
   season: string;
@@ -27,7 +29,7 @@ export function BannerShelf({ banners, showNextPlaceholder }: { banners: BannerE
           >
             {b.label}
           </div>
-          <div style={{ fontSize: '0.55rem', color: '#475569' }}>{b.season}</div>
+          <div style={{ fontSize: '0.55rem', color: '#475569' }}>{formatSeasonLabel(b.season)}</div>
         </div>
       ))}
 

@@ -4,7 +4,7 @@ export function RecentMatchesSidebar({ matches }: { matches: RecentMatchSummary[
   if (!matches || matches.length === 0) return null;
   
   return (
-    <div className="dm-panel" style={{ flex: '0 0 300px' }}>
+    <div className="dm-panel standings-recent-card">
       <div className="dm-panel-header">
         <p className="dm-kicker">Around the League</p>
         <h2 className="dm-panel-title" style={{ fontSize: '1rem' }}>Recent Results</h2>

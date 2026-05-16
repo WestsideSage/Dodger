@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { MilestoneTree } from './MilestoneTree';
 import { AlumniLineage } from './AlumniLineage';
 import { BannerShelf } from './BannerShelf';
+import { formatSeasonLabel } from './formatters';
 
 interface HeroSeason {
   season_label: string;
@@ -59,7 +60,7 @@ function HeroCard({ data, label, highlight }: { data: HeroSeason; label: string;
       <div style={{ fontSize: '0.6rem', color: highlight ? '#10b981' : '#475569', fontWeight: 700, marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
         {label}
       </div>
-      <div style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: '0.25rem' }}>{data.season_label}</div>
+      <div style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: '0.25rem' }}>{formatSeasonLabel(data.season_label)}</div>
       <div style={{ fontSize: '1rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '0.25rem' }}>
         {data.wins}–{data.losses}–{data.draws}
       </div>

@@ -27,7 +27,7 @@ export function MatchCard({ yourPlayers, oppPlayers, yourTeamName, oppTeamName }
       const opp = oppPlayers[i];
       const ovrGap = opp ? Math.round(you.overall) - Math.round(opp.overall) : 0;
       const staGap = opp && you.stamina !== undefined && opp.stamina !== undefined
-        ? you.stamina - opp.stamina
+        ? Math.round(you.stamina) - Math.round(opp.stamina)
         : 0;
       return { you, opp, ovrGap, staGap };
     });
@@ -118,8 +118,8 @@ export function MatchCard({ yourPlayers, oppPlayers, yourTeamName, oppTeamName }
         const gap = mode === 'ovr' ? slot.ovrGap : slot.staGap;
         const barWidth = (Math.abs(gap) / maxGap) * 50;
         const youWin = gap > 0;
-        const youVal = mode === 'ovr' ? Math.round(slot.you.overall) : (slot.you.stamina ?? '—');
-        const oppVal = slot.opp ? (mode === 'ovr' ? Math.round(slot.opp.overall) : (slot.opp.stamina ?? '—')) : '—';
+        const youVal = mode === 'ovr' ? Math.round(slot.you.overall) : (slot.you.stamina !== undefined ? Math.round(slot.you.stamina) : '—');
+        const oppVal = slot.opp ? (mode === 'ovr' ? Math.round(slot.opp.overall) : (slot.opp.stamina !== undefined ? Math.round(slot.opp.stamina) : '—')) : '—';
 
         return (
           <div

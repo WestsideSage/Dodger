@@ -277,6 +277,7 @@ class StandingItem(BaseModel):
     points: int
     elimination_differential: int
     is_user_club: bool
+    latest_approach: str | None = None
 
 
 class StandingsResponse(BaseModel):

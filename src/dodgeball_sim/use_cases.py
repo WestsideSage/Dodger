@@ -16,6 +16,7 @@ from dodgeball_sim.command_center import (
     build_post_week_dashboard,
     refresh_weekly_plan_context,
 )
+from dodgeball_sim.ai_program_manager import prepare_ai_plans_for_matches
 from dodgeball_sim.game_loop import (
     recompute_regular_season_standings,
     simulate_scheduled_match,
@@ -212,6 +213,19 @@ def simulate_week(
 
     standings_before_raw = load_standings(conn, season_id)
     standings_before = sorted(standings_before_raw, key=lambda r: (-r.points, -r.elimination_differential, r.club_id))
+    prepare_ai_plans_for_matches(
+        conn,
+        season_id=season_id,
+        season=season,
+        matches=week_matches,
+        clubs=clubs,
+        rosters=rosters,
+        player_club_id=player_club_id,
+        standings_rows=standings_before_raw,
+        apply_plan=_apply_command_plan_to_match,
+        load_plan=load_weekly_command_plan,
+        save_plan=save_weekly_command_plan,
+    )
 
     records = [
         simulate_scheduled_match(

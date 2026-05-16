@@ -4,7 +4,7 @@ type RecruitingCredibility = DynastyOfficeResponse['recruiting']['credibility'];
 
 export function CredibilityStrip({ credibility }: { credibility: RecruitingCredibility }) {
   return (
-    <div className="dm-panel" style={{ minWidth: 0 }}>
+    <div className="dm-panel dynasty-credibility-card">
       <p className="dm-kicker">Program Credibility</p>
       <div style={{ marginTop: '0.4rem', fontSize: '2.4rem', lineHeight: 1, fontWeight: 900, color: '#22d3ee' }}>
         Tier {credibility.grade}

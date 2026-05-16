@@ -42,6 +42,15 @@ export function StartingRecruitmentStep({
   };
 
   const needed = 6 - rosterIds.size;
+  const rosterReady = rosterIds.size >= 6;
+  const rosterFull = rosterIds.size >= 10;
+  const rosterHelp = rosterReady
+    ? rosterFull
+      ? 'Roster ready. Remove one player if you want to swap a selection before committing.'
+      : 'Roster ready. You can commit now or keep scouting up to 10 players.'
+    : rosterIds.size === 0
+    ? 'Choose between 6 and 10 players to continue.'
+    : `Add ${needed} more player${needed === 1 ? '' : 's'} to continue.`;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -62,18 +71,25 @@ export function StartingRecruitmentStep({
       )}
 
       {prospects.length === 0 && !loadError && (
-        <p style={{ color: '#64748b', fontSize: '0.875rem' }}>Loading prospects…</p>
+        <p style={{ color: '#64748b', fontSize: '0.875rem' }}>Loading prospects...</p>
       )}
 
       <div style={{ maxHeight: '360px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.375rem', paddingRight: '0.25rem' }}>
         {prospects.map(p => {
           const selected = rosterIds.has(p.player_id);
+          const canSelect = selected || rosterIds.size < 10;
           const ovrLow = p.public_ovr_band?.[0] ?? '?';
           const ovrHigh = p.public_ovr_band?.[1] ?? '?';
           return (
-            <div
+            <button
               key={p.player_id}
-              onClick={() => toggleProspect(p.player_id)}
+              type="button"
+              role="checkbox"
+              aria-checked={selected}
+              aria-label={`${p.name}, ${p.hometown}, ${p.public_archetype}, overall ${ovrLow}-${ovrHigh}`}
+              onClick={() => {
+                if (canSelect) toggleProspect(p.player_id);
+              }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -82,10 +98,11 @@ export function StartingRecruitmentStep({
                 background: selected ? 'rgba(34,211,238,0.06)' : '#0f172a',
                 border: selected ? '1px solid rgba(34,211,238,0.4)' : '1px solid #1e293b',
                 borderRadius: '4px',
-                cursor: (!selected && rosterIds.size >= 10) ? 'not-allowed' : 'pointer',
-                opacity: (!selected && rosterIds.size >= 10) ? 0.4 : 1,
+                cursor: canSelect ? 'pointer' : 'not-allowed',
+                opacity: canSelect ? 1 : 0.55,
                 transition: 'border-color 0.12s, background 0.12s',
                 flexShrink: 0,
+                textAlign: 'left',
               }}
             >
               <div style={{ minWidth: 0 }}>
@@ -94,37 +111,44 @@ export function StartingRecruitmentStep({
                 </div>
                 <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.125rem' }}>
                   {p.hometown}
-                  {p.public_archetype && <span style={{ color: '#475569' }}> · {p.public_archetype}</span>}
+                  {p.public_archetype && <span style={{ color: '#475569' }}> | {p.public_archetype}</span>}
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, marginLeft: '1rem' }}>
                 <div style={{ textAlign: 'right' }}>
                   <div className="dm-data" style={{ fontWeight: 800, color: selected ? '#22d3ee' : '#94a3b8', fontSize: '0.9375rem' }}>
-                    {ovrLow}–{ovrHigh}
+                    {ovrLow}-{ovrHigh}
                   </div>
                   <div style={{ fontSize: '0.5625rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#475569' }}>OVR</div>
                 </div>
                 <div style={{ width: '18px', height: '18px', borderRadius: '9999px', border: selected ? '2px solid #22d3ee' : '2px solid #334155', background: selected ? 'rgba(34,211,238,0.15)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {selected && <span style={{ color: '#22d3ee', fontSize: '0.625rem', lineHeight: 1 }}>✓</span>}
+                  {selected && <span style={{ color: '#22d3ee', fontSize: '0.625rem', lineHeight: 1 }}>OK</span>}
                 </div>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
 
-      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-        <ActionButton variant="secondary" onClick={onBack} disabled={creating}>Back</ActionButton>
-        <ActionButton
-          variant="primary"
-          onClick={() => onCommit(Array.from(rosterIds))}
-          disabled={rosterIds.size < 6 || creating}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <ActionButton variant="secondary" onClick={onBack} disabled={creating}>Back</ActionButton>
+          <ActionButton
+            variant="primary"
+            onClick={() => onCommit(Array.from(rosterIds))}
+            disabled={rosterIds.size < 6 || creating}
+            aria-describedby="starting-roster-help"
+          >
+            {creating ? 'Creating...' : `Commit Roster (${rosterIds.size}/10)`}
+          </ActionButton>
+        </div>
+        <p
+          id="starting-roster-help"
+          className={`dm-helper-copy ${rosterReady ? '' : 'dm-helper-copy-warning'}`.trim()}
+          style={{ margin: 0 }}
         >
-          {creating ? 'Creating…' : `Commit Roster (${rosterIds.size}/10)`}
-        </ActionButton>
-        {rosterIds.size < 6 && rosterIds.size > 0 && (
-          <span style={{ fontSize: '0.75rem', color: '#f59e0b' }}>Need {needed} more</span>
-        )}
+          {rosterHelp}
+        </p>
       </div>
     </div>
   );
