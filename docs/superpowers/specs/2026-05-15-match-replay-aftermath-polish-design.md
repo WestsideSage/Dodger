@@ -35,11 +35,11 @@ The aftermath renders 5 stages via `revealStage` in `MatchWeek.tsx`. Stage struc
 **Fix:**
 - Replace the plain panel with a full-width gradient banner: `background: linear-gradient(110deg, rgba(249,115,22,0.18) 0%, rgba(249,115,22,0.06) 45%, #0f172a 80%)`.
 - Add a bottom border: `1px solid rgba(249,115,22,0.25)`.
-- Add an eyebrow line above the headline text: `"WEEK {week} RESULT"` in monospace caps, muted orange (`#f97316` at 80% opacity), `letter-spacing: 3px`, `font-size: 0.65rem`. The week number comes from the `Aftermath` data passed from `MatchWeek.tsx` — `aftermath.match_card?.week` or fall back to the dashboard's `week` field.
+- Add an eyebrow line above the headline text: `"WEEK {week} RESULT"` in monospace caps, muted orange (`#f97316` at 80% opacity), `letter-spacing: 3px`, `font-size: 0.65rem`.
 - Headline `<h1>` stays as-is in content; change styling to `font-family: Oswald`, `font-size: clamp(1.4rem, 4vw, 2rem)`, `text-shadow: 0 0 30px rgba(249,115,22,0.35)`.
-- Add a subtitle line below: `"{winnerName} def. {loserName} · {homeSurvivors} survivors to {awaySurvivors}"` derived from `aftermath.match_card`. Font: Inter, `0.65rem`, `#94a3b8`. Hidden if `match_card` is absent.
+- Add a subtitle line below: `"{winnerName} def. {loserName} · {homeSurvivors} survivors to {awaySurvivors}"`. Font: Inter, `0.65rem`, `#94a3b8`. Hidden if any value is absent.
 
-**Prop change:** Add optional `matchCard?: Aftermath['match_card']` prop so Headline can render the subtitle. `MatchWeek.tsx` passes `aftermath.match_card` when rendering Stage 0.
+**Prop changes:** `Headline` receives two new optional props: `week?: number` (from `activeResult.dashboard.week`) and `subtitle?: string` (pre-composed in `MatchWeek.tsx`'s `renderPostSimMode` from the already-computed `matchCardNames` + `aftermath.match_card` survivors). `MatchWeek.tsx` composes the subtitle string before rendering Stage 0 and passes it down.
 
 ### 1.2 `MatchScoreHero.tsx` — Stage 1
 
