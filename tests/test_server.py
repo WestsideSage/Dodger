@@ -133,6 +133,42 @@ def test_league_context_endpoints_return_display_ready_rows():
     assert "items" in news.json()
 
 
+def test_standings_endpoint_surfaces_latest_visible_ai_approach():
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_curated_manager_career(conn, "aurora", root_seed=20260426)
+    conn.execute(
+        """
+        INSERT INTO weekly_command_plans
+            (season_id, week, club_id, intent, plan_json, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "season_1",
+            1,
+            "northwood",
+            "Prepare For Playoffs",
+            '{"season_id":"season_1","week":1,"player_club_id":"northwood","intent":"Prepare For Playoffs"}',
+            "2026-05-15T00:00:00Z",
+        ),
+    )
+    conn.commit()
+
+    def override_db():
+        yield conn
+
+    server.app.dependency_overrides[server.get_db] = override_db
+    try:
+        response = TestClient(server.app).get("/api/standings")
+    finally:
+        server.app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    northwood = next(row for row in response.json()["standings"] if row["club_id"] == "northwood")
+    assert northwood["latest_approach"] == "Prepare For Playoffs"
+
+
 def test_sim_command_endpoint_supports_web_pacing_modes_and_updates_standings():
     conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.row_factory = sqlite3.Row
@@ -154,6 +190,29 @@ def test_sim_command_endpoint_supports_web_pacing_modes_and_updates_standings():
     assert response.status_code == 200
     assert response.json()["simulated_count"] > 0
     assert any(row["wins"] or row["losses"] or row["draws"] for row in standings.json()["standings"])
+
+
+def test_sim_week_persists_ai_weekly_plans_for_non_user_clubs():
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_curated_manager_career(conn, "aurora", root_seed=20260426)
+    conn.commit()
+
+    def override_db():
+        yield conn
+
+    server.app.dependency_overrides[server.get_db] = override_db
+    try:
+        response = TestClient(server.app).post("/api/sim/week")
+    finally:
+        server.app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    rows = conn.execute(
+        "SELECT club_id, intent FROM weekly_command_plans WHERE season_id = 'season_1' AND week = 1"
+    ).fetchall()
+    assert any(row["club_id"] != "aurora" and row["intent"] for row in rows)
 
 
 def test_user_match_enters_report_pending_and_exposes_replay_payload():

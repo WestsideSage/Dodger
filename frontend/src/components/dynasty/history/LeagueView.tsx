@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ProgramModal } from './ProgramModal';
+import { formatRecordLabel, formatSeasonLabel, humanizeHistoryToken } from './formatters';
 
 interface LeagueData {
   directory: { club_id: string; name: string }[];
@@ -8,13 +9,6 @@ interface LeagueData {
   hof: { player_id: string; player_name: string; induction_season: string; career_elims: number; championships: number; seasons_played: number }[];
   rivalries: { club_a: string; club_b: string; a_wins: number; b_wins: number; draws: number; meetings: number }[];
 }
-
-const RECORD_LABEL: Record<string, string> = {
-  most_eliminations_season: 'Most Elims (Season)',
-  most_catches_season: 'Most Catches (Season)',
-  most_eliminations_match: 'Most Elims (Match)',
-  best_win_streak: 'Longest Win Streak',
-};
 
 export function LeagueView() {
   const [data, setData] = useState<LeagueData | null>(null);
@@ -26,11 +20,10 @@ export function LeagueView() {
       .then(setData);
   }, []);
 
-  if (!data) return <div style={{ color: '#475569', padding: '1rem' }}>Loading league history…</div>;
+  if (!data) return <div style={{ color: '#475569', padding: '1rem' }}>Loading league history...</div>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Program Directory */}
       <div className="dm-panel">
         <p className="dm-kicker">Program Directory</p>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -54,7 +47,6 @@ export function LeagueView() {
         </div>
       </div>
 
-      {/* Dynasty Rankings */}
       <div className="dm-panel">
         <p className="dm-kicker">Dynasty Rankings</p>
         {data.dynasty_rankings.length === 0 ? (
@@ -68,30 +60,32 @@ export function LeagueView() {
               >
                 <span style={{ color: '#475569', width: '1.5rem', textAlign: 'right' }}>{i + 1}.</span>
                 <span style={{ flex: 1, color: '#e2e8f0' }}>{r.club_name}</span>
-                <span style={{ color: '#f97316' }}>🏆 {r.championships}</span>
-                <span style={{ color: '#64748b', fontSize: '0.7rem' }}>streak {r.longest_win_streak}</span>
+                <span style={{ color: '#f97316' }}>{r.championships} title{r.championships === 1 ? '' : 's'}</span>
+                <span style={{ color: '#64748b', fontSize: '0.7rem' }}>win streak {r.longest_win_streak}</span>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* All-Time Records + HoF */}
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
         <div className="dm-panel" style={{ flex: 1, minWidth: '240px' }}>
           <p className="dm-kicker">All-Time Records</p>
           {data.records.length === 0 ? (
             <p style={{ color: '#475569', fontSize: '0.8rem' }}>No records set.</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
               {data.records.map((r, i) => (
-                <div key={i} style={{ fontSize: '0.75rem' }}>
-                  <div style={{ color: '#94a3b8' }}>
-                    {RECORD_LABEL[r.record_type] ?? r.record_type}
+                <div key={i} style={{ fontSize: '0.75rem', paddingBottom: '0.55rem', borderBottom: '1px solid rgba(30,41,59,0.7)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'baseline' }}>
+                    <span style={{ color: '#94a3b8' }}>{formatRecordLabel(r.record_type)}</span>
+                    <span style={{ color: '#22d3ee', fontFamily: 'var(--font-mono-data)' }}>{r.record_value}</span>
                   </div>
-                  <div style={{ color: '#e2e8f0' }}>
-                    {r.holder_id} — {r.record_value}
-                    <span style={{ color: '#475569', marginLeft: '0.4rem' }}>{r.set_in_season}</span>
+                  <div style={{ color: '#e2e8f0', marginTop: '0.15rem' }}>
+                    {humanizeHistoryToken(r.holder_id)}
+                  </div>
+                  <div style={{ color: '#475569', marginTop: '0.1rem' }}>
+                    Set in {formatSeasonLabel(r.set_in_season)}
                   </div>
                 </div>
               ))}
@@ -107,9 +101,9 @@ export function LeagueView() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {data.hof.map((h) => (
                 <div key={h.player_id} style={{ fontSize: '0.75rem' }}>
-                  <div style={{ color: '#fbbf24', fontWeight: 700 }}>⭐ {h.player_name}</div>
+                  <div style={{ color: '#fbbf24', fontWeight: 700 }}>{h.player_name}</div>
                   <div style={{ color: '#64748b' }}>
-                    Class of {h.induction_season} · {h.career_elims} elims · {h.championships} titles · {h.seasons_played} seasons
+                    Inducted in {formatSeasonLabel(h.induction_season)} | {h.career_elims} eliminations | {h.championships} titles | {h.seasons_played} seasons
                   </div>
                 </div>
               ))}
@@ -118,11 +112,10 @@ export function LeagueView() {
         </div>
       </div>
 
-      {/* Rivalries */}
       <div className="dm-panel">
         <p className="dm-kicker">Rivalries</p>
         {data.rivalries.length === 0 ? (
-          <p style={{ color: '#475569', fontSize: '0.8rem' }}>No rivalry data yet — rivalries form after multiple meetings.</p>
+          <p style={{ color: '#475569', fontSize: '0.8rem' }}>No rivalry data yet - rivalries form after multiple meetings.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {data.rivalries.slice(0, 5).map((r, i) => (
@@ -139,12 +132,12 @@ export function LeagueView() {
                   fontSize: '0.8rem',
                 }}
               >
-                {i === 0 && <span style={{ color: '#f97316', marginRight: '0.25rem' }}>🔥</span>}
+                {i === 0 && <span style={{ color: '#f97316', marginRight: '0.25rem' }}>Top</span>}
                 <span style={{ flex: 1, color: '#e2e8f0' }}>
                   {r.club_a} vs {r.club_b}
                 </span>
                 <span style={{ color: '#94a3b8', fontSize: '0.7rem' }}>
-                  {r.a_wins}–{r.b_wins}–{r.draws} ({r.meetings} meetings)
+                  {r.a_wins}-{r.b_wins}-{r.draws} ({r.meetings} meetings)
                 </span>
               </div>
             ))}
@@ -152,7 +145,6 @@ export function LeagueView() {
         )}
       </div>
 
-      {/* Modal */}
       {modal && (
         <ProgramModal
           clubId={modal.clubId}

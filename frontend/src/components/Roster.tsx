@@ -107,7 +107,7 @@ export function Roster() {
           <>
             <StatChip label="Avg Age" value={averageAge} />
             <StatChip label="Avg OVR" value={averageOverall} tone="info" />
-            <StatChip label="Trend" value="↑" tone="success" />
+            <StatChip label="Trend" value="UP" tone="success" />
             {planContext && (
               <DevFocusChip
                 current={planContext.dev_focus}

@@ -148,6 +148,13 @@ export function PreSimDashboard({
   ).length > 1;
 
   const hasPlanConflict = hasApproachConflict || hasFatigueIssue;
+  const nextActionStep = planConfirmed ? 'Step 2 of 2' : 'Step 1 of 2';
+  const nextActionTitle = planConfirmed ? 'Simulate the match' : 'Confirm the weekly plan';
+  const nextActionDescription = planConfirmed
+    ? 'The plan is locked. Run the match when you are ready to move the week forward.'
+    : isReadyToLock
+    ? 'The board is ready. Lock the plan to unlock simulation.'
+    : `${itemsRemaining} checklist item${itemsRemaining === 1 ? '' : 's'} still need attention before you can lock the plan.`;
 
   return (
     <div className="command-dashboard" data-testid="weekly-command-center">
@@ -189,6 +196,41 @@ export function PreSimDashboard({
           </article>
         </div>
       )}
+
+      <section className="dm-panel command-next-action" aria-label="Next action">
+        <div className="command-next-action-copy">
+          <span className="command-next-action-step">{nextActionStep}</span>
+          <div>
+            <h2>{nextActionTitle}</h2>
+            <p>{nextActionDescription}</p>
+          </div>
+        </div>
+        <div className="command-next-action-buttons">
+          {!planConfirmed ? (
+            <button
+              type="button"
+              data-testid="lock-weekly-plan-top"
+              aria-label="Confirm Plan"
+              onClick={() => {
+                if (isReadyToLock) onSavePlan(selectedIntent, true);
+              }}
+              disabled={!isReadyToLock}
+              className="command-primary-button"
+            >
+              {isReadyToLock ? 'Confirm Plan' : 'Review Checklist'}
+            </button>
+          ) : (
+            <>
+              <button type="button" data-testid="simulate-command-week-top" onClick={simulate} className="command-primary-button is-live">
+                Simulate Match
+              </button>
+              <button type="button" onClick={() => onSavePlan(selectedIntent, false)} className="command-secondary-button" style={{ marginTop: 0 }}>
+                Unlock Plan
+              </button>
+            </>
+          )}
+        </div>
+      </section>
 
       <div className="command-dashboard-main">
         <section className="dm-panel command-game-plan">

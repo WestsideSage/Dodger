@@ -199,6 +199,7 @@ export interface StandingRow {
     points: number;
     elimination_differential: number;
     is_user_club: boolean;
+    latest_approach?: string | null;
 }
 
 export interface StandingsResponse {

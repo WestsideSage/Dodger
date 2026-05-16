@@ -1,0 +1,128 @@
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .panel-section { background: #0f1923; border: 1px solid #1e2d3d; border-radius: 8px; padding: 14px 16px; }
+  .field-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; color: #64748b; }
+  .section-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .starter-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #0f1923; font-size: 12px; }
+  .starter-row:last-child { border-bottom: none; }
+  .starter-num { color: #475569; font-size: 11px; width: 12px; flex-shrink: 0; }
+  .starter-name { color: #e2e8f0; font-weight: 600; flex: 1; }
+  .starter-ovr-wrap { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+  .starter-ovr { font-size: 12px; color: #22d3ee; font-weight: 700; }
+  .starter-ovr-label { font-size: 9px; color: #334155; letter-spacing: 0.06em; }
+  .starter-sta { font-size: 11px; color: #475569; width: 46px; text-align: right; flex-shrink: 0; }
+  .divider { border: none; border-top: 1px solid #1e2d3d; margin: 10px 0; }
+  .lock-btn {
+    width: 100%; margin-top: 10px; padding: 14px;
+    background: #06b6d4; border: none; border-radius: 6px;
+    font-size: 13px; font-weight: 800; letter-spacing: 0.1em;
+    color: #0a1220; cursor: pointer; text-align: center;
+  }
+  .card-wrapper { padding: 12px; background: #0a1220; border-radius: 6px; margin-bottom: 4px; }
+
+  /* Flag row variants */
+  .flag-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 9px 12px; border-radius: 6px; font-size: 11px; line-height: 1.5;
+  }
+  .flag-warn { background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.2); }
+  .flag-ok   { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.15); }
+  .flag-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .flag-text { color: #94a3b8; }
+  .flag-text strong { color: #f1f5f9; }
+  .flag-text em { font-style: normal; color: #f97316; }
+  .flag-text .ok { color: #10b981; }
+  .pts-label { font-size: 11px; color: #94a3b8; }
+</style>
+
+<h2>What sits above the Lock button?</h2>
+<p class="subtitle">Two options: a smart pre-lock flag, or nothing at all.</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="smart-flag" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="panel-section">
+          <div class="section-heading">
+            <span class="field-label">STARTER READINESS</span>
+            <span class="pts-label">3 pts</span>
+          </div>
+          <div class="starter-row"><span class="starter-num">1</span><strong class="starter-name">Nex Crane</strong><div class="starter-ovr-wrap"><span class="starter-ovr">59</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">70 sta</span></div>
+          <div class="starter-row"><span class="starter-num">2</span><strong class="starter-name">Dex Vale</strong><div class="starter-ovr-wrap"><span class="starter-ovr">58</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">64 sta</span></div>
+          <div class="starter-row"><span class="starter-num">3</span><strong class="starter-name">Cass Frost</strong><div class="starter-ovr-wrap"><span class="starter-ovr">83</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">72 sta</span></div>
+          <div class="starter-row"><span class="starter-num">4</span><strong class="starter-name">Avery Helix</strong><div class="starter-ovr-wrap"><span class="starter-ovr">83</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">71 sta</span></div>
+          <div class="starter-row"><span class="starter-num">5</span><strong class="starter-name">Avery Voss</strong><div class="starter-ovr-wrap"><span class="starter-ovr">85</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">72 sta</span></div>
+          <div class="starter-row"><span class="starter-num">6</span><strong class="starter-name">Ezra Okafor</strong><div class="starter-ovr-wrap"><span class="starter-ovr">75</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">80 sta</span></div>
+          <hr class="divider">
+          <!-- Warning state: plan conflicts with matchup -->
+          <div class="flag-row flag-warn">
+            <span class="flag-icon">⚠️</span>
+            <span class="flag-text"><strong>Plan conflict:</strong> <em>Aggressive</em> approach against a Tactical threat. Your risk exposure is elevated — consider switching to Control.</span>
+          </div>
+          <button class="lock-btn">LOCK WEEKLY PLAN</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Smart pre-lock flag</h3>
+      <p>One line that looks at your actual plan and flags a specific conflict or gives the all-clear. Turns green when the plan looks sound. Requires frontend logic to derive — no new backend data needed.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="smart-flag-ok" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="panel-section">
+          <div class="section-heading">
+            <span class="field-label">STARTER READINESS</span>
+            <span class="pts-label">3 pts</span>
+          </div>
+          <div class="starter-row"><span class="starter-num">1</span><strong class="starter-name">Nex Crane</strong><div class="starter-ovr-wrap"><span class="starter-ovr">59</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">70 sta</span></div>
+          <div class="starter-row"><span class="starter-num">2</span><strong class="starter-name">Dex Vale</strong><div class="starter-ovr-wrap"><span class="starter-ovr">58</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">64 sta</span></div>
+          <div class="starter-row"><span class="starter-num">3</span><strong class="starter-name">Cass Frost</strong><div class="starter-ovr-wrap"><span class="starter-ovr">83</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">72 sta</span></div>
+          <div class="starter-row"><span class="starter-num">4</span><strong class="starter-name">Avery Helix</strong><div class="starter-ovr-wrap"><span class="starter-ovr">83</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">71 sta</span></div>
+          <div class="starter-row"><span class="starter-num">5</span><strong class="starter-name">Avery Voss</strong><div class="starter-ovr-wrap"><span class="starter-ovr">85</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">72 sta</span></div>
+          <div class="starter-row"><span class="starter-num">6</span><strong class="starter-name">Ezra Okafor</strong><div class="starter-ovr-wrap"><span class="starter-ovr">75</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">80 sta</span></div>
+          <hr class="divider">
+          <!-- OK state: plan looks good -->
+          <div class="flag-row flag-ok">
+            <span class="flag-icon">✓</span>
+            <span class="flag-text"><strong class="ok">Plan looks solid.</strong> Control approach aligns with the Tactical threat. Stamina is healthy across all starters.</span>
+          </div>
+          <button class="lock-btn">LOCK WEEKLY PLAN</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A (OK state) — same feature, plan is clean</h3>
+      <p>What the flag looks like when there's nothing to warn about. Green reinforcement instead of dead space — confirms you're good to go.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="removed" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="panel-section">
+          <div class="section-heading">
+            <span class="field-label">STARTER READINESS</span>
+            <span class="pts-label">3 pts</span>
+          </div>
+          <div class="starter-row"><span class="starter-num">1</span><strong class="starter-name">Nex Crane</strong><div class="starter-ovr-wrap"><span class="starter-ovr">59</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">70 sta</span></div>
+          <div class="starter-row"><span class="starter-num">2</span><strong class="starter-name">Dex Vale</strong><div class="starter-ovr-wrap"><span class="starter-ovr">58</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">64 sta</span></div>
+          <div class="starter-row"><span class="starter-num">3</span><strong class="starter-name">Cass Frost</strong><div class="starter-ovr-wrap"><span class="starter-ovr">83</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">72 sta</span></div>
+          <div class="starter-row"><span class="starter-num">4</span><strong class="starter-name">Avery Helix</strong><div class="starter-ovr-wrap"><span class="starter-ovr">83</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">71 sta</span></div>
+          <div class="starter-row"><span class="starter-num">5</span><strong class="starter-name">Avery Voss</strong><div class="starter-ovr-wrap"><span class="starter-ovr">85</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">72 sta</span></div>
+          <div class="starter-row"><span class="starter-num">6</span><strong class="starter-name">Ezra Okafor</strong><div class="starter-ovr-wrap"><span class="starter-ovr">75</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">80 sta</span></div>
+          <hr class="divider">
+          <button class="lock-btn">LOCK WEEKLY PLAN</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Remove it, button moves up</h3>
+      <p>No noise. The starter list ends, divider, button. Everything you needed to decide was already above.</p>
+    </div>
+  </div>
+
+</div>

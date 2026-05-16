@@ -125,12 +125,14 @@ export function ActionButton({
   variant = 'secondary',
   className = '',
   style,
+  type,
   ...props
 }: {
   children: ReactNode;
   variant?: 'primary' | 'accent' | 'secondary' | 'danger' | 'ghost';
   className?: string;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  const disabled = Boolean(props.disabled);
   const baseStyle: React.CSSProperties = {
     display: 'inline-flex',
     minHeight: '2.5rem',
@@ -140,7 +142,8 @@ export function ActionButton({
     padding: '0.375rem 1rem',
     fontSize: '0.6875rem',
     letterSpacing: '0.075em',
-    cursor: 'pointer',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.55 : 1,
     transition: 'all 0.15s',
     textTransform: 'uppercase',
     fontWeight: 600,
@@ -151,6 +154,7 @@ export function ActionButton({
   return (
     <button
       {...props}
+      type={type ?? 'button'}
       className={className}
       style={baseStyle}
     >

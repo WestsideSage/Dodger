@@ -1,0 +1,225 @@
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .panel-section { background: #0f1923; border: 1px solid #1e2d3d; border-radius: 8px; padding: 14px 16px; }
+  .field-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; color: #64748b; }
+  .section-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .divider { border: none; border-top: 1px solid #1e2d3d; margin: 10px 0; }
+  .card-wrapper { padding: 12px; background: #0a1220; border-radius: 6px; }
+  .flag-row { display: flex; align-items: flex-start; gap: 10px; padding: 9px 12px; border-radius: 6px; font-size: 11px; line-height: 1.5; background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.2); }
+  .flag-text { color: #94a3b8; }
+  .flag-text strong { color: #f1f5f9; }
+  .flag-text em { font-style: normal; color: #f97316; }
+  .lock-btn { width: 100%; margin-top: 10px; padding: 14px; background: #06b6d4; border: none; border-radius: 6px; font-size: 13px; font-weight: 800; letter-spacing: 0.1em; color: #0a1220; text-align: center; }
+  .team-label-you { font-size: 10px; font-weight: 700; color: #22d3ee; letter-spacing: 0.08em; }
+  .team-label-opp { font-size: 10px; font-weight: 700; color: #f97316; letter-spacing: 0.08em; }
+  .adv { color: #10b981; font-weight: 700; }
+  .disadv { color: #f43f5e; font-weight: 700; }
+  .even { color: #475569; }
+</style>
+
+<h2>Starter Readiness → Match Card</h2>
+<p class="subtitle">Your starters vs. their starters — head to head. Three layouts.</p>
+
+<div class="cards">
+
+  <!-- Option A: Mirrored rows (boxing match card style) -->
+  <div class="card" data-choice="mirrored" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="panel-section">
+          <div class="section-heading">
+            <span class="team-label-you">NORTHWOOD IRONCLADS</span>
+            <span style="font-size:10px;color:#334155;letter-spacing:0.08em">VS</span>
+            <span class="team-label-opp">LUNAR SYNDICATE</span>
+          </div>
+
+          <!-- Column headers -->
+          <div style="display:grid;grid-template-columns:1fr 28px 1fr;gap:4px;margin-bottom:4px;padding-bottom:5px;border-bottom:1px solid #1e2d3d">
+            <div style="display:flex;gap:16px;justify-content:flex-end">
+              <span style="font-size:9px;color:#334155;letter-spacing:0.1em">STA</span>
+              <span style="font-size:9px;color:#334155;letter-spacing:0.1em">OVR</span>
+              <span style="font-size:9px;color:#334155;letter-spacing:0.1em;min-width:80px;text-align:right">NAME</span>
+            </div>
+            <div></div>
+            <div style="display:flex;gap:16px">
+              <span style="font-size:9px;color:#334155;letter-spacing:0.1em;min-width:80px">NAME</span>
+              <span style="font-size:9px;color:#334155;letter-spacing:0.1em">OVR</span>
+              <span style="font-size:9px;color:#334155;letter-spacing:0.1em">STA</span>
+            </div>
+          </div>
+
+          <!-- Rows -->
+          <div style="display:flex;flex-direction:column;gap:0">
+            <!-- Row 1 - you lose this matchup -->
+            <div style="display:grid;grid-template-columns:1fr 28px 1fr;gap:4px;padding:5px 0;border-bottom:1px solid #0d1a26;align-items:center">
+              <div style="display:flex;align-items:center;gap:10px;justify-content:flex-end">
+                <span style="font-size:10px;color:#475569">70</span>
+                <span style="font-size:12px" class="disadv">59</span>
+                <strong style="font-size:12px;color:#e2e8f0;text-align:right">Nex Crane</strong>
+              </div>
+              <div style="text-align:center;font-size:9px;color:#334155">1</div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <strong style="font-size:12px;color:#94a3b8">Mika Keene</strong>
+                <span style="font-size:12px" class="adv">65</span>
+                <span style="font-size:10px;color:#475569">74</span>
+              </div>
+            </div>
+            <!-- Row 2 - you lose -->
+            <div style="display:grid;grid-template-columns:1fr 28px 1fr;gap:4px;padding:5px 0;border-bottom:1px solid #0d1a26;align-items:center">
+              <div style="display:flex;align-items:center;gap:10px;justify-content:flex-end">
+                <span style="font-size:10px;color:#475569">64</span>
+                <span style="font-size:12px" class="disadv">58</span>
+                <strong style="font-size:12px;color:#e2e8f0">Dex Vale</strong>
+              </div>
+              <div style="text-align:center;font-size:9px;color:#334155">2</div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <strong style="font-size:12px;color:#94a3b8">Rho Vance</strong>
+                <span style="font-size:12px" class="adv">71</span>
+                <span style="font-size:10px;color:#475569">68</span>
+              </div>
+            </div>
+            <!-- Row 3 - you win -->
+            <div style="display:grid;grid-template-columns:1fr 28px 1fr;gap:4px;padding:5px 0;border-bottom:1px solid #0d1a26;align-items:center">
+              <div style="display:flex;align-items:center;gap:10px;justify-content:flex-end">
+                <span style="font-size:10px;color:#475569">72</span>
+                <span style="font-size:12px" class="adv">83</span>
+                <strong style="font-size:12px;color:#e2e8f0">Cass Frost</strong>
+              </div>
+              <div style="text-align:center;font-size:9px;color:#334155">3</div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <strong style="font-size:12px;color:#94a3b8">Lex Dorn</strong>
+                <span style="font-size:12px" class="disadv">70</span>
+                <span style="font-size:10px;color:#475569">65</span>
+              </div>
+            </div>
+            <!-- Row 4 - you win -->
+            <div style="display:grid;grid-template-columns:1fr 28px 1fr;gap:4px;padding:5px 0;border-bottom:1px solid #0d1a26;align-items:center">
+              <div style="display:flex;align-items:center;gap:10px;justify-content:flex-end">
+                <span style="font-size:10px;color:#475569">71</span>
+                <span style="font-size:12px" class="adv">83</span>
+                <strong style="font-size:12px;color:#e2e8f0">Avery Helix</strong>
+              </div>
+              <div style="text-align:center;font-size:9px;color:#334155">4</div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <strong style="font-size:12px;color:#94a3b8">Cas Wren</strong>
+                <span style="font-size:12px" class="disadv">74</span>
+                <span style="font-size:10px;color:#475569">70</span>
+              </div>
+            </div>
+            <!-- Row 5 - you win big -->
+            <div style="display:grid;grid-template-columns:1fr 28px 1fr;gap:4px;padding:5px 0;border-bottom:1px solid #0d1a26;align-items:center">
+              <div style="display:flex;align-items:center;gap:10px;justify-content:flex-end">
+                <span style="font-size:10px;color:#475569">72</span>
+                <span style="font-size:12px" class="adv">85</span>
+                <strong style="font-size:12px;color:#e2e8f0">Avery Voss</strong>
+              </div>
+              <div style="text-align:center;font-size:9px;color:#334155">5</div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <strong style="font-size:12px;color:#94a3b8">Jin Park</strong>
+                <span style="font-size:12px" class="disadv">68</span>
+                <span style="font-size:10px;color:#475569">71</span>
+              </div>
+            </div>
+            <!-- Row 6 - you win -->
+            <div style="display:grid;grid-template-columns:1fr 28px 1fr;gap:4px;padding:5px 0;align-items:center">
+              <div style="display:flex;align-items:center;gap:10px;justify-content:flex-end">
+                <span style="font-size:10px;color:#475569">80</span>
+                <span style="font-size:12px" class="adv">75</span>
+                <strong style="font-size:12px;color:#e2e8f0">Ezra Okafor</strong>
+              </div>
+              <div style="text-align:center;font-size:9px;color:#334155">6</div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <strong style="font-size:12px;color:#94a3b8">Ori Vale</strong>
+                <span style="font-size:12px" class="disadv">63</span>
+                <span style="font-size:10px;color:#475569">66</span>
+              </div>
+            </div>
+          </div>
+
+          <hr class="divider">
+          <div class="flag-row"><span>⚠️</span><span class="flag-text"><strong>Plan conflict:</strong> <em>Aggressive</em> vs. Tactical threat — consider Control.</span></div>
+          <div class="lock-btn">LOCK WEEKLY PLAN</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Mirrored rows</h3>
+      <p>Boxing match card style. Your player on the left facing theirs on the right. OVR colored green/red based on who wins the slot. Position number in the center seam.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Two columns with OVR advantage bar in middle -->
+  <div class="card" data-choice="advantage-bar" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="panel-section">
+          <div class="section-heading">
+            <span class="team-label-you">IRONCLADS</span>
+            <span style="font-size:10px;color:#334155">ADVANTAGE</span>
+            <span class="team-label-opp">SYNDICATE</span>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <!-- Row: you -->
+            <div style="display:grid;grid-template-columns:1fr 120px 1fr;gap:8px;align-items:center">
+              <span style="font-size:12px;color:#94a3b8;text-align:right">Nex Crane <span style="color:#475569;font-size:10px">59</span></span>
+              <div style="position:relative;height:6px;background:#1e293b;border-radius:3px;overflow:hidden">
+                <!-- bar goes to opponent side (they win this slot) -->
+                <div style="position:absolute;right:0;top:0;height:100%;width:52%;background:#f43f5e;border-radius:3px"></div>
+              </div>
+              <span style="font-size:12px;color:#94a3b8">Mika Keene <span style="color:#475569;font-size:10px">65</span></span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 120px 1fr;gap:8px;align-items:center">
+              <span style="font-size:12px;color:#94a3b8;text-align:right">Dex Vale <span style="color:#475569;font-size:10px">58</span></span>
+              <div style="position:relative;height:6px;background:#1e293b;border-radius:3px;overflow:hidden">
+                <div style="position:absolute;right:0;top:0;height:100%;width:55%;background:#f43f5e;border-radius:3px"></div>
+              </div>
+              <span style="font-size:12px;color:#94a3b8">Rho Vance <span style="color:#475569;font-size:10px">71</span></span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 120px 1fr;gap:8px;align-items:center">
+              <span style="font-size:12px;color:#e2e8f0;text-align:right">Cass Frost <span style="color:#22d3ee;font-size:10px">83</span></span>
+              <div style="position:relative;height:6px;background:#1e293b;border-radius:3px;overflow:hidden">
+                <div style="position:absolute;left:0;top:0;height:100%;width:54%;background:#22d3ee;border-radius:3px"></div>
+              </div>
+              <span style="font-size:12px;color:#94a3b8">Lex Dorn <span style="color:#475569;font-size:10px">70</span></span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 120px 1fr;gap:8px;align-items:center">
+              <span style="font-size:12px;color:#e2e8f0;text-align:right">Avery Helix <span style="color:#22d3ee;font-size:10px">83</span></span>
+              <div style="position:relative;height:6px;background:#1e293b;border-radius:3px;overflow:hidden">
+                <div style="position:absolute;left:0;top:0;height:100%;width:53%;background:#22d3ee;border-radius:3px"></div>
+              </div>
+              <span style="font-size:12px;color:#94a3b8">Cas Wren <span style="color:#475569;font-size:10px">74</span></span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 120px 1fr;gap:8px;align-items:center">
+              <span style="font-size:12px;color:#e2e8f0;text-align:right">Avery Voss <span style="color:#22d3ee;font-size:10px">85</span></span>
+              <div style="position:relative;height:6px;background:#1e293b;border-radius:3px;overflow:hidden">
+                <div style="position:absolute;left:0;top:0;height:100%;width:56%;background:#22d3ee;border-radius:3px"></div>
+              </div>
+              <span style="font-size:12px;color:#94a3b8">Jin Park <span style="color:#475569;font-size:10px">68</span></span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 120px 1fr;gap:8px;align-items:center">
+              <span style="font-size:12px;color:#e2e8f0;text-align:right">Ezra Okafor <span style="color:#22d3ee;font-size:10px">75</span></span>
+              <div style="position:relative;height:6px;background:#1e293b;border-radius:3px;overflow:hidden">
+                <div style="position:absolute;left:0;top:0;height:100%;width:54%;background:#22d3ee;border-radius:3px"></div>
+              </div>
+              <span style="font-size:12px;color:#94a3b8">Ori Vale <span style="color:#475569;font-size:10px">63</span></span>
+            </div>
+          </div>
+
+          <hr class="divider">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:#475569;margin-bottom:8px">
+            <span><span style="color:#22d3ee;font-weight:700">4</span> slot advantages</span>
+            <span><span style="color:#f43f5e;font-weight:700">2</span> slot disadvantages</span>
+          </div>
+          <div class="flag-row"><span>⚠️</span><span class="flag-text"><strong>Plan conflict:</strong> <em>Aggressive</em> vs. Tactical threat — consider Control.</span></div>
+          <div class="lock-btn">LOCK WEEKLY PLAN</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Advantage bar in center</h3>
+      <p>A bar between each player pair shows which side "wins" the slot and by how much. Plus a slot tally (4 advantages / 2 disadvantages) at the bottom. More visual, less precise.</p>
+    </div>
+  </div>
+
+</div>

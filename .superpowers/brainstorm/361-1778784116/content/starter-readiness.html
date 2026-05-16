@@ -1,0 +1,175 @@
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .panel-section { background: #0f1923; border: 1px solid #1e2d3d; border-radius: 8px; padding: 14px 16px; }
+  .field-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; color: #64748b; }
+  .section-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .divider { border: none; border-top: 1px solid #1e2d3d; margin: 10px 0; }
+  .card-wrapper { padding: 12px; background: #0a1220; border-radius: 6px; margin-bottom: 4px; }
+  .flag-row { display: flex; align-items: flex-start; gap: 10px; padding: 9px 12px; border-radius: 6px; font-size: 11px; line-height: 1.5; background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.2); }
+  .flag-text { color: #94a3b8; }
+  .flag-text strong { color: #f1f5f9; }
+  .flag-text em { font-style: normal; color: #f97316; }
+  .lock-btn { width: 100%; margin-top: 10px; padding: 14px; background: #06b6d4; border: none; border-radius: 6px; font-size: 13px; font-weight: 800; letter-spacing: 0.1em; color: #0a1220; text-align: center; }
+
+  /* Shared starter row base */
+  .starter-num { color: #475569; font-size: 11px; width: 12px; flex-shrink: 0; }
+  .starter-name { color: #e2e8f0; font-weight: 600; flex: 1; min-width: 0; }
+
+  /* Option A: Column headers */
+  .col-header-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 0 5px 0; border-bottom: 1px solid #1e2d3d; margin-bottom: 2px;
+  }
+  .col-h { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; color: #334155; flex-shrink: 0; }
+  .row-a { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #0d1a26; font-size: 12px; }
+  .row-a:last-child { border-bottom: none; }
+  .ovr-a { font-size: 12px; color: #22d3ee; font-weight: 700; width: 28px; text-align: right; flex-shrink: 0; }
+  .sta-a { font-size: 11px; color: #475569; width: 46px; text-align: right; flex-shrink: 0; }
+
+  /* Option B: Inline badge labels */
+  .row-b { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #0d1a26; font-size: 12px; }
+  .row-b:last-child { border-bottom: none; }
+  .ovr-badge { display: flex; align-items: baseline; gap: 2px; flex-shrink: 0; }
+  .ovr-val { font-size: 12px; color: #22d3ee; font-weight: 700; }
+  .ovr-lbl { font-size: 8px; color: #334155; letter-spacing: 0.08em; font-weight: 700; }
+  .sta-badge { display: flex; align-items: baseline; gap: 2px; flex-shrink: 0; width: 54px; justify-content: flex-end; }
+  .sta-val { font-size: 11px; color: #475569; }
+  .sta-lbl { font-size: 8px; color: #2d3d4d; letter-spacing: 0.06em; font-weight: 700; }
+
+  /* Option C: Stamina bar */
+  .row-c { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #0d1a26; font-size: 12px; }
+  .row-c:last-child { border-bottom: none; }
+  .ovr-c { font-size: 12px; color: #22d3ee; font-weight: 700; flex-shrink: 0; width: 28px; text-align: right; }
+  .sta-bar-wrap { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+  .sta-bar-track { width: 40px; height: 3px; background: #1e293b; border-radius: 2px; }
+  .sta-num { font-size: 10px; color: #475569; width: 20px; text-align: right; }
+
+  /* Header right-side variants */
+  .hdr-pts { font-size: 11px; color: #94a3b8; }
+  .hdr-record { font-size: 11px; color: #94a3b8; letter-spacing: 0.04em; }
+  .hdr-week { font-size: 10px; color: #475569; letter-spacing: 0.08em; }
+</style>
+
+<h2>Starter Readiness — column labeling</h2>
+<p class="subtitle">Three approaches to making OVR and stamina scannable, plus what to do with that header slot.</p>
+
+<div class="cards">
+
+  <!-- A: Column headers -->
+  <div class="card" data-choice="col-headers" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="panel-section">
+          <div class="section-heading">
+            <span class="field-label">STARTER READINESS</span>
+            <span class="hdr-record">1 – 2</span>
+          </div>
+          <div class="col-header-row">
+            <span class="starter-num" style="visibility:hidden">0</span>
+            <span class="starter-name"></span>
+            <span class="col-h" style="width:28px;text-align:right">OVR</span>
+            <span class="col-h" style="width:46px;text-align:right">STA</span>
+          </div>
+          <div class="row-a"><span class="starter-num">1</span><strong class="starter-name">Nex Crane</strong><span class="ovr-a">59</span><span class="sta-a">70</span></div>
+          <div class="row-a"><span class="starter-num">2</span><strong class="starter-name">Dex Vale</strong><span class="ovr-a">58</span><span class="sta-a">64</span></div>
+          <div class="row-a"><span class="starter-num">3</span><strong class="starter-name">Cass Frost</strong><span class="ovr-a">83</span><span class="sta-a">72</span></div>
+          <div class="row-a"><span class="starter-num">4</span><strong class="starter-name">Avery Helix</strong><span class="ovr-a">83</span><span class="sta-a">71</span></div>
+          <div class="row-a"><span class="starter-num">5</span><strong class="starter-name">Avery Voss</strong><span class="ovr-a">85</span><span class="sta-a">72</span></div>
+          <div class="row-a"><span class="starter-num">6</span><strong class="starter-name">Ezra Okafor</strong><span class="ovr-a">75</span><span class="sta-a">80</span></div>
+          <hr class="divider">
+          <div class="flag-row"><span>⚠️</span><span class="flag-text"><strong>Plan conflict:</strong> <em>Aggressive</em> approach vs. Tactical threat — consider Control.</span></div>
+          <div class="lock-btn">LOCK WEEKLY PLAN</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Column headers</h3>
+      <p>A single header row labels both columns. Values are clean numbers with no repeated text. Header slot shows season record (1–2) — simple, factual, easy to parse.</p>
+    </div>
+  </div>
+
+  <!-- B: Inline badge labels -->
+  <div class="card" data-choice="inline-labels" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="panel-section">
+          <div class="section-heading">
+            <span class="field-label">STARTER READINESS</span>
+            <span class="hdr-week">WEEK 4</span>
+          </div>
+          <div class="row-b"><span class="starter-num">1</span><strong class="starter-name">Nex Crane</strong><div class="ovr-badge"><span class="ovr-val">59</span><span class="ovr-lbl">OVR</span></div><div class="sta-badge"><span class="sta-val">70</span><span class="sta-lbl">STA</span></div></div>
+          <div class="row-b"><span class="starter-num">2</span><strong class="starter-name">Dex Vale</strong><div class="ovr-badge"><span class="ovr-val">58</span><span class="ovr-lbl">OVR</span></div><div class="sta-badge"><span class="sta-val">64</span><span class="sta-lbl">STA</span></div></div>
+          <div class="row-b"><span class="starter-num">3</span><strong class="starter-name">Cass Frost</strong><div class="ovr-badge"><span class="ovr-val">83</span><span class="ovr-lbl">OVR</span></div><div class="sta-badge"><span class="sta-val">72</span><span class="sta-lbl">STA</span></div></div>
+          <div class="row-b"><span class="starter-num">4</span><strong class="starter-name">Avery Helix</strong><div class="ovr-badge"><span class="ovr-val">83</span><span class="ovr-lbl">OVR</span></div><div class="sta-badge"><span class="sta-val">71</span><span class="sta-lbl">STA</span></div></div>
+          <div class="row-b"><span class="starter-num">5</span><strong class="starter-name">Avery Voss</strong><div class="ovr-badge"><span class="ovr-val">85</span><span class="ovr-lbl">OVR</span></div><div class="sta-badge"><span class="sta-val">72</span><span class="sta-lbl">STA</span></div></div>
+          <div class="row-b"><span class="starter-num">6</span><strong class="starter-name">Ezra Okafor</strong><div class="ovr-badge"><span class="ovr-val">75</span><span class="ovr-lbl">OVR</span></div><div class="sta-badge"><span class="sta-val">80</span><span class="sta-lbl">STA</span></div></div>
+          <hr class="divider">
+          <div class="flag-row"><span>⚠️</span><span class="flag-text"><strong>Plan conflict:</strong> <em>Aggressive</em> approach vs. Tactical threat — consider Control.</span></div>
+          <div class="lock-btn">LOCK WEEKLY PLAN</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Inline micro-labels</h3>
+      <p>Each number carries its own tiny label — "59 OVR / 70 STA". No header row needed. Header slot shows week number — neutral, doesn't compete with the flag below.</p>
+    </div>
+  </div>
+
+  <!-- C: Stamina as bar -->
+  <div class="card" data-choice="sta-bar" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="panel-section">
+          <div class="section-heading">
+            <span class="field-label">STARTER READINESS</span>
+            <span class="hdr-week">WEEK 4</span>
+          </div>
+          <div class="col-header-row">
+            <span class="starter-num" style="visibility:hidden">0</span>
+            <span class="starter-name"></span>
+            <span class="col-h" style="width:28px;text-align:right">OVR</span>
+            <span class="col-h" style="width:65px;text-align:right">STAMINA</span>
+          </div>
+          <div class="row-c">
+            <span class="starter-num">1</span><strong class="starter-name">Nex Crane</strong>
+            <span class="ovr-c">59</span>
+            <div class="sta-bar-wrap"><div class="sta-bar-track"><div style="width:70%;height:3px;background:#22d3ee;border-radius:2px"></div></div><span class="sta-num">70</span></div>
+          </div>
+          <div class="row-c">
+            <span class="starter-num">2</span><strong class="starter-name">Dex Vale</strong>
+            <span class="ovr-c">58</span>
+            <div class="sta-bar-wrap"><div class="sta-bar-track"><div style="width:64%;height:3px;background:#22d3ee;border-radius:2px"></div></div><span class="sta-num">64</span></div>
+          </div>
+          <div class="row-c">
+            <span class="starter-num">3</span><strong class="starter-name">Cass Frost</strong>
+            <span class="ovr-c">83</span>
+            <div class="sta-bar-wrap"><div class="sta-bar-track"><div style="width:72%;height:3px;background:#22d3ee;border-radius:2px"></div></div><span class="sta-num">72</span></div>
+          </div>
+          <div class="row-c">
+            <span class="starter-num">4</span><strong class="starter-name">Avery Helix</strong>
+            <span class="ovr-c">83</span>
+            <div class="sta-bar-wrap"><div class="sta-bar-track"><div style="width:71%;height:3px;background:#22d3ee;border-radius:2px"></div></div><span class="sta-num">71</span></div>
+          </div>
+          <div class="row-c">
+            <span class="starter-num">5</span><strong class="starter-name">Avery Voss</strong>
+            <span class="ovr-c">85</span>
+            <div class="sta-bar-wrap"><div class="sta-bar-track"><div style="width:72%;height:3px;background:#22d3ee;border-radius:2px"></div></div><span class="sta-num">72</span></div>
+          </div>
+          <div class="row-c">
+            <span class="starter-num">6</span><strong class="starter-name">Ezra Okafor</strong>
+            <span class="ovr-c">75</span>
+            <div class="sta-bar-wrap"><div class="sta-bar-track"><div style="width:80%;height:3px;background:#22d3ee;border-radius:2px"></div></div><span class="sta-num">80</span></div>
+          </div>
+          <hr class="divider">
+          <div class="flag-row"><span>⚠️</span><span class="flag-text"><strong>Plan conflict:</strong> <em>Aggressive</em> approach vs. Tactical threat — consider Control.</span></div>
+          <div class="lock-btn">LOCK WEEKLY PLAN</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — OVR column header + stamina as bar</h3>
+      <p>OVR gets a column header, stamina becomes a mini bar + number. The bar makes fatigue scannable at a glance — low bars are immediately obvious without reading numbers.</p>
+    </div>
+  </div>
+
+</div>

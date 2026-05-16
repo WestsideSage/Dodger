@@ -1,0 +1,154 @@
+<h2>Issue 8 — "Why this matters" flagging</h2>
+<p class="subtitle">How should the best advantage row and worst disadvantage row be called out? Pick the treatment you prefer.</p>
+
+<style>
+  .demo-card {
+    background: #0d1a26;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  .slot-row {
+    display: grid;
+    grid-template-columns: 1fr 36% 1fr;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid #0d1a26;
+  }
+  .slot-row:last-child { border-bottom: none; }
+  .you-side { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+  .opp-side { display: flex; align-items: center; justify-content: flex-start; gap: 4px; }
+  .val { font-size: 11px; font-weight: 700; }
+  .name { font-size: 12px; font-weight: 600; color: #e2e8f0; }
+  .center-col { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 0 8px; }
+  .gap-label { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; }
+  .bar-track { position: relative; width: 100%; height: 6px; background: #1e293b; border-radius: 3px; overflow: visible; }
+  .bar-fill { position: absolute; top: 0; height: 100%; border-radius: 2px; }
+  .bar-center { position: absolute; left: 50%; top: -2px; width: 2px; height: calc(100%+4px); background: #334155; transform: translateX(-50%); z-index: 2; box-shadow: 0 0 0 1px rgba(100,116,139,0.3); border-radius: 1px; }
+</style>
+
+<div class="options">
+
+  <!-- Option A: Inline pill badge -->
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Inline pill on the row</h3>
+      <p>A tiny "KEY EDGE" or "WATCH OUT" badge floats right of the gap label on the standout rows. Minimal footprint, stays inside the existing row grid.</p>
+      <div class="demo-card" onclick="event.stopPropagation()">
+        <!-- best row -->
+        <div class="slot-row" style="background:rgba(34,211,238,0.04);border-radius:4px;">
+          <div class="you-side"><span class="val" style="color:#22d3ee">85</span><span class="name">Avery Voss</span></div>
+          <div class="center-col">
+            <div style="display:flex;align-items:center;gap:4px;">
+              <span class="gap-label" style="color:#22d3ee">◀ IRON +23</span>
+              <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;background:rgba(34,211,238,0.15);color:#22d3ee;border:1px solid rgba(34,211,238,0.3);white-space:nowrap">KEY EDGE</span>
+            </div>
+            <div class="bar-track"><div class="bar-fill" style="width:46%;right:50%;background:#22d3ee"></div><div class="bar-center"></div></div>
+          </div>
+          <div class="opp-side"><span class="name">Wren Vega</span><span class="val" style="color:#f43f5e">62</span></div>
+        </div>
+        <!-- middle row -->
+        <div class="slot-row">
+          <div class="you-side"><span class="val" style="color:#22d3ee">75</span><span class="name">Ezra Okafor</span></div>
+          <div class="center-col">
+            <span class="gap-label" style="color:#22d3ee">◀ IRON +15</span>
+            <div class="bar-track"><div class="bar-fill" style="width:30%;right:50%;background:#22d3ee"></div><div class="bar-center"></div></div>
+          </div>
+          <div class="opp-side"><span class="name">Priya Turner</span><span class="val" style="color:#f43f5e">60</span></div>
+        </div>
+        <!-- worst row -->
+        <div class="slot-row" style="background:rgba(244,63,94,0.04);border-radius:4px;">
+          <div class="you-side"><span class="val" style="color:#f43f5e">58</span><span class="name">Dex Vale</span></div>
+          <div class="center-col">
+            <div style="display:flex;align-items:center;gap:4px;">
+              <span class="gap-label" style="color:#f43f5e">SYND +7 ▶</span>
+              <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;background:rgba(244,63,94,0.15);color:#f43f5e;border:1px solid rgba(244,63,94,0.3);white-space:nowrap">WATCH OUT</span>
+            </div>
+            <div class="bar-track"><div class="bar-fill" style="width:14%;left:50%;background:#f43f5e"></div><div class="bar-center"></div></div>
+          </div>
+          <div class="opp-side"><span class="name">Sloane Sol</span><span class="val" style="color:#22d3ee">65</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B: Left accent border -->
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Left border accent only</h3>
+      <p>A colored left border highlights standout rows silently — no text label. Cleaner, lets the gap number speak. Works well if you trust the user reads the gap values.</p>
+      <div class="demo-card" onclick="event.stopPropagation()">
+        <div class="slot-row" style="border-left:3px solid #22d3ee;padding-left:8px;border-radius:0 4px 4px 0;">
+          <div class="you-side"><span class="val" style="color:#22d3ee">85</span><span class="name">Avery Voss</span></div>
+          <div class="center-col">
+            <span class="gap-label" style="color:#22d3ee">◀ IRON +23</span>
+            <div class="bar-track"><div class="bar-fill" style="width:46%;right:50%;background:#22d3ee"></div><div class="bar-center"></div></div>
+          </div>
+          <div class="opp-side"><span class="name">Wren Vega</span><span class="val" style="color:#f43f5e">62</span></div>
+        </div>
+        <div class="slot-row">
+          <div class="you-side"><span class="val" style="color:#22d3ee">75</span><span class="name">Ezra Okafor</span></div>
+          <div class="center-col">
+            <span class="gap-label" style="color:#22d3ee">◀ IRON +15</span>
+            <div class="bar-track"><div class="bar-fill" style="width:30%;right:50%;background:#22d3ee"></div><div class="bar-center"></div></div>
+          </div>
+          <div class="opp-side"><span class="name">Priya Turner</span><span class="val" style="color:#f43f5e">60</span></div>
+        </div>
+        <div class="slot-row" style="border-left:3px solid #f43f5e;padding-left:8px;border-radius:0 4px 4px 0;">
+          <div class="you-side"><span class="val" style="color:#f43f5e">58</span><span class="name">Dex Vale</span></div>
+          <div class="center-col">
+            <span class="gap-label" style="color:#f43f5e">SYND +7 ▶</span>
+            <div class="bar-track"><div class="bar-fill" style="width:14%;left:50%;background:#f43f5e"></div><div class="bar-center"></div></div>
+          </div>
+          <div class="opp-side"><span class="name">Sloane Sol</span><span class="val" style="color:#22d3ee">65</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option C: Both — border + pill -->
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Border + pill (combined)</h3>
+      <p>Left border for visual scanning, pill for explicit labeling. Most expressive but slightly busier. Good if you want the flags to be impossible to miss.</p>
+      <div class="demo-card" onclick="event.stopPropagation()">
+        <div class="slot-row" style="border-left:3px solid #22d3ee;padding-left:8px;background:rgba(34,211,238,0.04);border-radius:0 4px 4px 0;">
+          <div class="you-side"><span class="val" style="color:#22d3ee">85</span><span class="name">Avery Voss</span></div>
+          <div class="center-col">
+            <div style="display:flex;align-items:center;gap:4px;">
+              <span class="gap-label" style="color:#22d3ee">◀ IRON +23</span>
+              <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;background:rgba(34,211,238,0.15);color:#22d3ee;border:1px solid rgba(34,211,238,0.3);white-space:nowrap">KEY EDGE</span>
+            </div>
+            <div class="bar-track"><div class="bar-fill" style="width:46%;right:50%;background:#22d3ee"></div><div class="bar-center"></div></div>
+          </div>
+          <div class="opp-side"><span class="name">Wren Vega</span><span class="val" style="color:#f43f5e">62</span></div>
+        </div>
+        <div class="slot-row">
+          <div class="you-side"><span class="val" style="color:#22d3ee">75</span><span class="name">Ezra Okafor</span></div>
+          <div class="center-col">
+            <span class="gap-label" style="color:#22d3ee">◀ IRON +15</span>
+            <div class="bar-track"><div class="bar-fill" style="width:30%;right:50%;background:#22d3ee"></div><div class="bar-center"></div></div>
+          </div>
+          <div class="opp-side"><span class="name">Priya Turner</span><span class="val" style="color:#f43f5e">60</span></div>
+        </div>
+        <div class="slot-row" style="border-left:3px solid #f43f5e;padding-left:8px;background:rgba(244,63,94,0.04);border-radius:0 4px 4px 0;">
+          <div class="you-side"><span class="val" style="color:#f43f5e">58</span><span class="name">Dex Vale</span></div>
+          <div class="center-col">
+            <div style="display:flex;align-items:center;gap:4px;">
+              <span class="gap-label" style="color:#f43f5e">SYND +7 ▶</span>
+              <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:10px;background:rgba(244,63,94,0.15);color:#f43f5e;border:1px solid rgba(244,63,94,0.3);white-space:nowrap">WATCH OUT</span>
+            </div>
+            <div class="bar-track"><div class="bar-fill" style="width:14%;left:50%;background:#f43f5e"></div><div class="bar-center"></div></div>
+          </div>
+          <div class="opp-side"><span class="name">Sloane Sol</span><span class="val" style="color:#22d3ee">65</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px">Click to select, then let me know in the terminal.</p>

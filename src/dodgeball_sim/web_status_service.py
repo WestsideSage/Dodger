@@ -21,6 +21,7 @@ from .persistence import (
     load_lineup_default,
     load_season,
     load_standings,
+    load_weekly_command_plan,
     save_club,
 )
 from .view_models import build_schedule_rows, build_wire_items
@@ -126,9 +127,11 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
 
     clubs = load_clubs(conn)
     saved = {row.club_id: row for row in load_standings(conn, season_id)}
+    current_week = current_week_number(conn, season_id)
     rows = []
     for club_id, club in clubs.items():
         row = saved.get(club_id)
+        latest_plan = latest_visible_plan(conn, season_id, current_week, club_id)
         rows.append(
             {
                 "club_id": club_id,
@@ -139,6 +142,7 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
                 "points": row.points if row else 0,
                 "elimination_differential": row.elimination_differential if row else 0,
                 "is_user_club": club_id == player_club_id,
+                "latest_approach": latest_plan["intent"] if latest_plan else None,
             }
         )
     rows.sort(key=lambda item: (-item["points"], -item["elimination_differential"], item["club_id"]))
@@ -159,6 +163,41 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         "standings": rows,
         "recent_matches": [recent_match_item(row, clubs) for row in recent],
     }
+
+
+def current_week_number(conn: sqlite3.Connection, season_id: str) -> int | None:
+    row = conn.execute(
+        "SELECT MIN(week) AS week FROM scheduled_matches WHERE season_id = ?",
+        (season_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    from .persistence import load_season
+    from .game_loop import current_week
+
+    season = load_season(conn, season_id)
+    return current_week(conn, season) or season.total_weeks()
+
+
+def latest_visible_plan(
+    conn: sqlite3.Connection,
+    season_id: str,
+    current_week: int | None,
+    club_id: str,
+) -> dict[str, Any] | None:
+    if current_week is None:
+        return None
+    row = conn.execute(
+        """
+        SELECT plan_json
+        FROM weekly_command_plans
+        WHERE season_id = ? AND club_id = ? AND week <= ?
+        ORDER BY week DESC
+        LIMIT 1
+        """,
+        (season_id, club_id, current_week),
+    ).fetchone()
+    return json.loads(row["plan_json"]) if row else None
 
 
 def build_schedule_payload(conn: sqlite3.Connection) -> dict[str, Any]:

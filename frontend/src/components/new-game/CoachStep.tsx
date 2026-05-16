@@ -32,6 +32,7 @@ export function CoachStep({
   onBack: () => void;
 }) {
   const selected = ARCHETYPES[coach.coach_backstory] ?? ARCHETYPES['Tactical Mastermind'];
+  const coachReady = Boolean(coach.coach_name.trim());
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -42,7 +43,6 @@ export function CoachStep({
         </h2>
       </div>
 
-      {/* Coach name */}
       <div>
         <label style={{ display: 'block', fontSize: '0.6875rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', marginBottom: '0.375rem' }}>
           Coach Name
@@ -65,7 +65,6 @@ export function CoachStep({
         />
       </div>
 
-      {/* Archetype picker */}
       <div>
         <label style={{ display: 'block', fontSize: '0.6875rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', marginBottom: '0.5rem' }}>
           Coaching Archetype
@@ -77,6 +76,7 @@ export function CoachStep({
               <button
                 key={key}
                 type="button"
+                aria-pressed={isSelected}
                 onClick={() => setCoach({ ...coach, coach_backstory: key })}
                 style={{
                   display: 'flex',
@@ -104,24 +104,30 @@ export function CoachStep({
         </div>
       </div>
 
-      {/* Selected summary */}
       {coach.coach_name && (
         <div style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: '4px', padding: '0.75rem 1rem' }}>
           <p style={{ margin: 0, fontSize: '0.8125rem', color: '#94a3b8' }}>
             <span style={{ color: '#f97316', fontWeight: 700 }}>{coach.coach_name}</span>
-            {' · '}
+            {' | '}
             <span style={{ color: '#e2e8f0' }}>{coach.coach_backstory}</span>
-            {' — '}
+            {' - '}
             {selected.description}
           </p>
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '0.75rem' }}>
-        <ActionButton variant="secondary" onClick={onBack}>Back</ActionButton>
-        <ActionButton variant="primary" onClick={onNext} disabled={!coach.coach_name}>
-          Next: Recruit Roster
-        </ActionButton>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <ActionButton variant="secondary" onClick={onBack}>Back</ActionButton>
+          <ActionButton variant="primary" onClick={onNext} disabled={!coachReady} aria-describedby="coach-step-help">
+            Next: Recruit Roster
+          </ActionButton>
+        </div>
+        {!coachReady && (
+          <p id="coach-step-help" className="dm-helper-copy dm-helper-copy-warning" style={{ margin: 0 }}>
+            Enter a coach name to continue.
+          </p>
+        )}
       </div>
     </div>
   );

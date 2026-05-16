@@ -1,0 +1,89 @@
+<h2>Week Timeline — Bottom of Opponent Intel</h2>
+<p class="subtitle">Currently shows "Practice / Team Meeting / Match Day" as a plain vertical list. Which redesign fits the game?</p>
+
+<div class="cards">
+
+  <!-- Option A: Horizontal step strip -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 1.2rem; background: #0a0f1e;">
+      <div style="display: flex; gap: 0; align-items: stretch; font-family: monospace; font-size: 0.78rem;">
+        <div style="flex:1; background: rgba(30,41,59,0.8); border: 1px solid #1e293b; padding: 0.75rem 1rem; text-align:center;">
+          <div style="color:#64748b; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.3rem;">Practice</div>
+          <div style="color:#f8fafc; font-weight:700; font-size:0.8rem;">FUNDAMENTALS</div>
+        </div>
+        <div style="display:flex;align-items:center;padding:0 0.3rem;color:#334155;font-size:0.9rem;">▶</div>
+        <div style="flex:1; background: rgba(30,41,59,0.8); border: 1px solid #1e293b; padding: 0.75rem 1rem; text-align:center;">
+          <div style="color:#64748b; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.3rem;">Team Meeting</div>
+          <div style="color:#f8fafc; font-weight:700; font-size:0.8rem;">AGGRESSIVE REVIEW</div>
+        </div>
+        <div style="display:flex;align-items:center;padding:0 0.3rem;color:#334155;font-size:0.9rem;">▶</div>
+        <div style="flex:1; background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.3); padding: 0.75rem 1rem; text-align:center;">
+          <div style="color:#22d3ee; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.3rem;">Match Day</div>
+          <div style="color:#f8fafc; font-weight:700; font-size:0.8rem;">vs LUNAR SYNDICATE</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Horizontal Step Strip</h3>
+      <p>Three connected boxes with arrows between them, Match Day highlighted in cyan. Reads left-to-right like a week schedule. Fills the full width naturally.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Icon + stat row -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 1.2rem; background: #0a0f1e;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; font-family: monospace; font-size: 0.78rem;">
+        <div style="background: rgba(30,41,59,0.6); border-radius: 6px; padding: 0.7rem 0.9rem; display:flex; gap:0.6rem; align-items:center;">
+          <span style="font-size:1.1rem;">🏋️</span>
+          <div>
+            <div style="color:#64748b; font-size:0.62rem; text-transform:uppercase;">Practice</div>
+            <div style="color:#f8fafc; font-weight:600; font-size:0.75rem;">Fundamentals</div>
+          </div>
+        </div>
+        <div style="background: rgba(30,41,59,0.6); border-radius: 6px; padding: 0.7rem 0.9rem; display:flex; gap:0.6rem; align-items:center;">
+          <span style="font-size:1.1rem;">🎯</span>
+          <div>
+            <div style="color:#64748b; font-size:0.62rem; text-transform:uppercase;">Meeting</div>
+            <div style="color:#f8fafc; font-weight:600; font-size:0.75rem;">Aggressive Review</div>
+          </div>
+        </div>
+        <div style="background: rgba(34,211,238,0.1); border: 1px solid rgba(34,211,238,0.25); border-radius: 6px; padding: 0.7rem 0.9rem; display:flex; gap:0.6rem; align-items:center;">
+          <span style="font-size:1.1rem;">⚡</span>
+          <div>
+            <div style="color:#22d3ee; font-size:0.62rem; text-transform:uppercase;">Match Day</div>
+            <div style="color:#f8fafc; font-weight:600; font-size:0.75rem;">vs Lunar Syndicate</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Icon + Pill Cards</h3>
+      <p>Three equal pill-shaped cards with emoji icons. Rounded, approachable. Match Day gets a cyan tint to signal it's the destination event.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Single accent line -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 1.2rem; background: #0a0f1e;">
+      <div style="border-top: 1px solid #1e293b; padding-top: 0.85rem; font-family: monospace; font-size: 0.78rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.55rem;">
+          <span style="color:#475569; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em;">PRACTICE</span>
+          <span style="color:#cbd5e1; font-weight:600;">Fundamentals</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.55rem;">
+          <span style="color:#475569; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em;">TEAM MEETING</span>
+          <span style="color:#cbd5e1; font-weight:600;">Aggressive Review</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding: 0.55rem 0.65rem; background: rgba(34,211,238,0.07); border-left: 3px solid #22d3ee; border-radius: 0 4px 4px 0;">
+          <span style="color:#22d3ee; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; font-weight:700;">MATCH DAY</span>
+          <span style="color:#f8fafc; font-weight:700;">vs Lunar Syndicate</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Label / Value Rows</h3>
+      <p>Thin key–value rows matching the existing plan summary style. No icons. Match Day gets a cyan left-border accent. Minimal, consistent with the rest of the panel.</p>
+    </div>
+  </div>
+
+</div>

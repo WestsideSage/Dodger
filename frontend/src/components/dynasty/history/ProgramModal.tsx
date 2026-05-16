@@ -45,6 +45,7 @@ export function ProgramModal({ clubId, clubName, onClose }: ProgramModalProps) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#e2e8f0' }}>{clubName}</h2>
           <button
+            aria-label="Close program history"
             onClick={onClose}
             style={{
               background: 'none',
@@ -55,7 +56,7 @@ export function ProgramModal({ clubId, clubName, onClose }: ProgramModalProps) {
               lineHeight: 1,
             }}
           >
-            ✕
+            X
           </button>
         </div>
         <MyProgramView clubId={clubId} isSelf={false} />

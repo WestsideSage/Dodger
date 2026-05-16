@@ -1,0 +1,247 @@
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .panel-section { background: #0f1923; border: 1px solid #1e2d3d; border-radius: 8px; padding: 14px 16px; }
+  .divider { border: none; border-top: 1px solid #1e2d3d; margin: 10px 0; }
+  .card-wrapper { padding: 12px; background: #0a1220; border-radius: 6px; }
+  .flag-row { display: flex; align-items: flex-start; gap: 10px; padding: 9px 12px; border-radius: 6px; font-size: 11px; line-height: 1.5; background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.2); }
+  .flag-text { color: #94a3b8; }
+  .flag-text strong { color: #f1f5f9; }
+  .flag-text em { font-style: normal; color: #f97316; }
+  .lock-btn { width: 100%; margin-top: 10px; padding: 14px; background: #06b6d4; border: none; border-radius: 6px; font-size: 13px; font-weight: 800; letter-spacing: 0.1em; color: #0a1220; text-align: center; }
+
+  /* Header */
+  .mc-header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .team-you { font-size: 10px; font-weight: 700; color: #22d3ee; letter-spacing: 0.08em; }
+  .team-opp { font-size: 10px; font-weight: 700; color: #f43f5e; letter-spacing: 0.08em; text-align: right; }
+
+  /* Net summary strip */
+  .mc-net {
+    background: rgba(34,211,238,0.07); border: 1px solid rgba(34,211,238,0.15);
+    border-radius: 5px; padding: 7px 12px; margin-bottom: 10px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .mc-net-label { font-size: 9px; color: #334155; letter-spacing: 0.1em; font-weight: 700; }
+  .mc-net-value { font-size: 14px; font-weight: 800; color: #22d3ee; }
+  .mc-net-breakdown { font-size: 9px; color: #2d4a52; }
+
+  /* Legend */
+  .mc-legend {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 9px; letter-spacing: 0.05em;
+    padding-bottom: 8px; border-bottom: 1px solid #1e2d3d; margin-bottom: 2px;
+  }
+  .leg-you { color: #164e63; }
+  .leg-opp { color: #4c0519; }
+  .leg-center { color: #1e293b; }
+
+  /* Row */
+  .mc-row {
+    display: grid;
+    grid-template-columns: 1fr 36% 1fr;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid #0d1a26;
+  }
+  .mc-row:last-child { border-bottom: none; }
+
+  .mc-you { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+  .mc-opp { display: flex; align-items: center; justify-content: flex-start; gap: 4px; }
+
+  .mc-name { font-size: 12px; font-weight: 600; color: #e2e8f0; }
+
+  /* Labeled stat pair: tiny label + number stacked */
+  .stat-pair { display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .stat-lbl { font-size: 8px; color: #1e3a4a; letter-spacing: 0.06em; line-height: 1; }
+  .stat-lbl.opp-lbl { color: #2d1a1a; }
+  .stat-val { font-size: 11px; font-weight: 700; line-height: 1.2; }
+  .ovr-win  { color: #22d3ee; }
+  .ovr-lose { color: #f43f5e; }
+  .sta-val  { color: #2d3d4d; font-weight: 500; font-size: 10px; }
+
+  /* Center zone */
+  .mc-center { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 0 8px; }
+
+  .gap-label { font-size: 10px; font-weight: 700; letter-spacing: 0.02em; line-height: 1; }
+  .gap-label.you { color: #22d3ee; }
+  .gap-label.opp { color: #f43f5e; }
+
+  /* Bar track — bars grow FROM center OUTWARD */
+  .mc-bar-wrap {
+    position: relative; width: 100%; height: 6px;
+    background: #1e293b; border-radius: 3px; overflow: hidden;
+  }
+  /* center line — slightly more visible */
+  .mc-bar-wrap::after {
+    content: ''; position: absolute; left: 50%; top: 0;
+    width: 2px; height: 100%; background: #0a1220;
+    transform: translateX(-50%); z-index: 2;
+    box-shadow: 0 0 3px rgba(255,255,255,0.06);
+  }
+  .mc-bar-fill { position: absolute; top: 0; height: 100%; }
+  /* you win: right edge at center (50%), grows LEFT */
+  .bar-you { background: #22d3ee; right: 50%; left: auto; }
+  /* opp wins: left edge at center (50%), grows RIGHT */
+  .bar-opp { background: #f43f5e; left: 50%; right: auto; }
+
+  .mc-tally { display: flex; justify-content: space-between; font-size: 10px; color: #334155; margin-top: 8px; }
+  .tally-you { color: #22d3ee; font-weight: 700; }
+  .tally-opp { color: #f43f5e; font-weight: 700; }
+</style>
+
+<h2>Match Card — all fixes applied</h2>
+<p class="subtitle">Bars extend from center outward. Labeled stat pairs. Net OVR summary. Sharper legend.</p>
+
+<div class="card-wrapper">
+  <div class="panel-section">
+
+    <div class="mc-header">
+      <span class="team-you">NORTHWOOD IRONCLADS</span>
+      <span style="font-size:10px;color:#334155;letter-spacing:0.1em">VS</span>
+      <span class="team-opp">LUNAR SYNDICATE</span>
+    </div>
+
+    <!-- Net OVR summary -->
+    <div class="mc-net">
+      <span class="mc-net-label">STARTER EDGE</span>
+      <span class="mc-net-value">Ironclads +32 net OVR</span>
+      <span class="mc-net-breakdown">(+51 vs −19)</span>
+    </div>
+
+    <!-- Legend -->
+    <div class="mc-legend">
+      <span class="leg-you">◀ IRONCLADS ADVANTAGE</span>
+      <span class="leg-center">Longer bar = bigger starter OVR edge</span>
+      <span class="leg-opp">SYNDICATE ADVANTAGE ▶</span>
+    </div>
+
+    <!-- Slot 1: opp +6 → bar grows RIGHT from center, width 17.6% -->
+    <div class="mc-row">
+      <div class="mc-you">
+        <div class="stat-pair"><span class="stat-lbl">STA</span><span class="sta-val">70</span></div>
+        <div class="stat-pair"><span class="stat-lbl">OVR</span><span class="stat-val ovr-lose">59</span></div>
+        <span class="mc-name">Nex Crane</span>
+      </div>
+      <div class="mc-center">
+        <span class="gap-label opp">−6 ▶</span>
+        <div class="mc-bar-wrap">
+          <div class="mc-bar-fill bar-opp" style="width:17.6%"></div>
+        </div>
+      </div>
+      <div class="mc-opp">
+        <span class="mc-name">Mika Keene</span>
+        <div class="stat-pair"><span class="stat-lbl opp-lbl">OVR</span><span class="stat-val ovr-win">65</span></div>
+        <div class="stat-pair"><span class="stat-lbl opp-lbl">STA</span><span class="sta-val">74</span></div>
+      </div>
+    </div>
+
+    <!-- Slot 2: opp +13 → bar grows RIGHT, width 38.2% -->
+    <div class="mc-row">
+      <div class="mc-you">
+        <div class="stat-pair"><span class="stat-lbl">STA</span><span class="sta-val">64</span></div>
+        <div class="stat-pair"><span class="stat-lbl">OVR</span><span class="stat-val ovr-lose">58</span></div>
+        <span class="mc-name">Dex Vale</span>
+      </div>
+      <div class="mc-center">
+        <span class="gap-label opp">−13 ▶</span>
+        <div class="mc-bar-wrap">
+          <div class="mc-bar-fill bar-opp" style="width:38.2%"></div>
+        </div>
+      </div>
+      <div class="mc-opp">
+        <span class="mc-name">Rho Vance</span>
+        <div class="stat-pair"><span class="stat-lbl opp-lbl">OVR</span><span class="stat-val ovr-win">71</span></div>
+        <div class="stat-pair"><span class="stat-lbl opp-lbl">STA</span><span class="sta-val">68</span></div>
+      </div>
+    </div>
+
+    <!-- Slot 3: you +13 → bar grows LEFT, width 38.2% -->
+    <div class="mc-row">
+      <div class="mc-you">
+        <div class="stat-pair"><span class="stat-lbl">STA</span><span class="sta-val">72</span></div>
+        <div class="stat-pair"><span class="stat-lbl">OVR</span><span class="stat-val ovr-win">83</span></div>
+        <span class="mc-name">Cass Frost</span>
+      </div>
+      <div class="mc-center">
+        <span class="gap-label you">◀ +13</span>
+        <div class="mc-bar-wrap">
+          <div class="mc-bar-fill bar-you" style="width:38.2%"></div>
+        </div>
+      </div>
+      <div class="mc-opp">
+        <span class="mc-name">Lex Dorn</span>
+        <div class="stat-pair"><span class="stat-lbl opp-lbl">OVR</span><span class="stat-val ovr-lose">70</span></div>
+        <div class="stat-pair"><span class="stat-lbl opp-lbl">STA</span><span class="sta-val">65</span></div>
+      </div>
+    </div>
+
+    <!-- Slot 4: you +9 → bar grows LEFT, width 26.5% -->
+    <div class="mc-row">
+      <div class="mc-you">
+        <div class="stat-pair"><span class="stat-lbl">STA</span><span class="sta-val">71</span></div>
+        <div class="stat-pair"><span class="stat-lbl">OVR</span><span class="stat-val ovr-win">83</span></div>
+        <span class="mc-name">Avery Helix</span>
+      </div>
+      <div class="mc-center">
+        <span class="gap-label you">◀ +9</span>
+        <div class="mc-bar-wrap">
+          <div class="mc-bar-fill bar-you" style="width:26.5%"></div>
+        </div>
+      </div>
+      <div class="mc-opp">
+        <span class="mc-name">Cas Wren</span>
+        <div class="stat-pair"><span class="stat-lbl opp-lbl">OVR</span><span class="stat-val ovr-lose">74</span></div>
+        <div class="stat-pair"><span class="stat-lbl opp-lbl">STA</span><span class="sta-val">70</span></div>
+      </div>
+    </div>
+
+    <!-- Slot 5: you +17 → bar grows LEFT, width 50% (MAX) -->
+    <div class="mc-row">
+      <div class="mc-you">
+        <div class="stat-pair"><span class="stat-lbl">STA</span><span class="sta-val">72</span></div>
+        <div class="stat-pair"><span class="stat-lbl">OVR</span><span class="stat-val ovr-win">85</span></div>
+        <span class="mc-name">Avery Voss</span>
+      </div>
+      <div class="mc-center">
+        <span class="gap-label you">◀ +17</span>
+        <div class="mc-bar-wrap">
+          <div class="mc-bar-fill bar-you" style="width:50%"></div>
+        </div>
+      </div>
+      <div class="mc-opp">
+        <span class="mc-name">Jin Park</span>
+        <div class="stat-pair"><span class="stat-lbl opp-lbl">OVR</span><span class="stat-val ovr-lose">68</span></div>
+        <div class="stat-pair"><span class="stat-lbl opp-lbl">STA</span><span class="sta-val">71</span></div>
+      </div>
+    </div>
+
+    <!-- Slot 6: you +12 → bar grows LEFT, width 35.3% -->
+    <div class="mc-row">
+      <div class="mc-you">
+        <div class="stat-pair"><span class="stat-lbl">STA</span><span class="sta-val">80</span></div>
+        <div class="stat-pair"><span class="stat-lbl">OVR</span><span class="stat-val ovr-win">75</span></div>
+        <span class="mc-name">Ezra Okafor</span>
+      </div>
+      <div class="mc-center">
+        <span class="gap-label you">◀ +12</span>
+        <div class="mc-bar-wrap">
+          <div class="mc-bar-fill bar-you" style="width:35.3%"></div>
+        </div>
+      </div>
+      <div class="mc-opp">
+        <span class="mc-name">Ori Vale</span>
+        <div class="stat-pair"><span class="stat-lbl opp-lbl">OVR</span><span class="stat-val ovr-lose">63</span></div>
+        <div class="stat-pair"><span class="stat-lbl opp-lbl">STA</span><span class="sta-val">66</span></div>
+      </div>
+    </div>
+
+    <div class="mc-tally">
+      <span><span class="tally-you">4</span> slot advantages</span>
+      <span><span class="tally-opp">2</span> slot disadvantages</span>
+    </div>
+
+    <hr class="divider">
+    <div class="flag-row"><span>⚠️</span><span class="flag-text"><strong>Plan conflict:</strong> <em>Aggressive</em> approach vs. Tactical threat — consider Control.</span></div>
+    <div class="lock-btn">LOCK WEEKLY PLAN</div>
+
+  </div>
+</div>

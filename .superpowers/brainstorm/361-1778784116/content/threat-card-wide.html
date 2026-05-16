@@ -1,0 +1,160 @@
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .demo-card {
+    background: #0f1923; border: 1px solid #1e2d3d;
+    border-radius: 8px; padding: 14px 16px; width: 100%;
+  }
+  .threat-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em; color: #f97316;
+    margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+  }
+  .threat-label svg { width: 13px; height: 13px; }
+  .threat-name { font-size: 18px; font-weight: 700; color: #f1f5f9; margin: 0 0 4px 0; }
+  .threat-role {
+    font-size: 10px; color: #64748b; background: #1e293b;
+    padding: 2px 6px; border-radius: 3px; letter-spacing: 0.08em; display: inline-block;
+  }
+  .ovr-big { font-size: 28px; font-weight: 800; color: #f43f5e; line-height: 1; }
+  .ovr-label { font-size: 10px; color: #475569; letter-spacing: 0.1em; text-align: right; margin-top: 2px; }
+  .divider { border: none; border-top: 1px solid #1e2d3d; margin: 10px 0; }
+  .pill-text { color: #94a3b8; font-size: 11px; }
+  .pill-text em { color: #f43f5e; font-style: normal; }
+  .pill-text .good { color: #10b981; }
+  .card-wrapper { padding: 12px; background: #0a1220; border-radius: 6px; margin-bottom: 4px; }
+  .caption { font-size: 11px; color: #475569; margin-top: 8px; line-height: 1.5; font-style: italic; }
+  .width-label { font-size: 10px; letter-spacing: 0.1em; color: #334155; margin-bottom: 6px; }
+
+  .insight-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 7px 0; border-bottom: 1px solid #1e2a3a;
+  }
+  .insight-row:last-child { border-bottom: none; }
+  .insight-left { display: flex; align-items: center; gap: 8px; }
+  .insight-icon { font-size: 12px; flex-shrink: 0; }
+  .severity {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+    padding: 2px 7px; border-radius: 3px; flex-shrink: 0;
+  }
+  .sev-danger { color: #f43f5e; background: rgba(244,63,94,0.12); }
+  .sev-exposed { color: #f97316; background: rgba(249,115,22,0.12); }
+  .sev-counter { color: #10b981; background: rgba(16,185,129,0.12); }
+</style>
+
+<h2>Wide-width comparison: the two approaches that actually fill space</h2>
+<p class="subtitle">Both stay visually full at any card width. Pick your preference.</p>
+
+<div class="section">
+  <h3>Option C — Full-width insight rows</h3>
+  <div class="card-wrapper">
+    <div class="width-label">WIDE VIEW (same width as your screenshot)</div>
+    <div class="demo-card">
+      <div class="threat-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        KEY THREAT
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="threat-name">Mika Keene</div>
+          <div class="threat-role">TACTICAL</div>
+        </div>
+        <div style="text-align:right">
+          <div class="ovr-big">65</div>
+          <div class="ovr-label">OVR</div>
+        </div>
+      </div>
+      <hr class="divider">
+      <div class="insight-row">
+        <div class="insight-left">
+          <span class="insight-icon">⚡</span>
+          <span class="pill-text">Outrates your top starter (Avery Voss, 85) by <em>+7 OVR</em></span>
+        </div>
+        <span class="severity sev-danger">DANGER</span>
+      </div>
+      <div class="insight-row">
+        <div class="insight-left">
+          <span class="insight-icon">🎯</span>
+          <span class="pill-text">Tactical role exploits <em>Aggressive</em> approach — expect direct targeting pressure</span>
+        </div>
+        <span class="severity sev-exposed">EXPOSED</span>
+      </div>
+      <div class="insight-row">
+        <div class="insight-left">
+          <span class="insight-icon">🛡️</span>
+          <span class="pill-text"><span class="good">Counter: switch to Control tempo to neutralize Tactical threats</span></span>
+        </div>
+        <span class="severity sev-counter">COUNTER</span>
+      </div>
+    </div>
+  </div>
+  <p class="caption">Left side: icon + descriptive text (can be long). Right side: severity chip pinned to the edge. Space is always consumed by the text — no gaps.</p>
+</div>
+
+<div class="section" style="margin-top:24px">
+  <h3>Hybrid — Gauge right, full-width rows below</h3>
+  <div class="card-wrapper">
+    <div class="width-label">WIDE VIEW</div>
+    <div class="demo-card">
+      <div class="threat-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        KEY THREAT
+      </div>
+      <!-- Header row: name/role left, gauge right -->
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div class="threat-name">Mika Keene</div>
+          <div class="threat-role">TACTICAL</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+          <svg width="60" height="60" viewBox="0 0 72 72">
+            <circle cx="36" cy="36" r="28" fill="none" stroke="#1e293b" stroke-width="6" stroke-dasharray="132 176" stroke-dashoffset="-22" stroke-linecap="round"/>
+            <circle cx="36" cy="36" r="28" fill="none" stroke="#f43f5e" stroke-width="6" stroke-dasharray="86 222" stroke-dashoffset="-22" stroke-linecap="round"/>
+            <text x="36" y="40" text-anchor="middle" fill="#f43f5e" font-size="18" font-weight="800" font-family="Inter">65</text>
+          </svg>
+          <span style="font-size:9px;letter-spacing:0.1em;color:#475569">OVR</span>
+          <span style="font-size:9px;color:#f97316;font-weight:700;letter-spacing:0.06em">HIGH RISK</span>
+        </div>
+      </div>
+      <hr class="divider">
+      <!-- Full-width insight rows below -->
+      <div class="insight-row">
+        <div class="insight-left">
+          <span class="insight-icon">⚡</span>
+          <span class="pill-text">Outrates your top starter (Avery Voss, 85) by <em>+7 OVR</em></span>
+        </div>
+        <span class="severity sev-danger">DANGER</span>
+      </div>
+      <div class="insight-row">
+        <div class="insight-left">
+          <span class="insight-icon">🎯</span>
+          <span class="pill-text">Tactical role exploits <em>Aggressive</em> approach — expect direct targeting pressure</span>
+        </div>
+        <span class="severity sev-exposed">EXPOSED</span>
+      </div>
+      <div class="insight-row">
+        <div class="insight-left">
+          <span class="insight-icon">🛡️</span>
+          <span class="pill-text"><span class="good">Counter: switch to Control tempo to neutralize Tactical threats</span></span>
+        </div>
+        <span class="severity sev-counter">COUNTER</span>
+      </div>
+    </div>
+  </div>
+  <p class="caption">Gauge header absorbs vertical space at the top, rows fill width below. More visual hierarchy — the gauge communicates danger level at a glance, rows explain it.</p>
+</div>
+
+<div class="options" style="margin-top:24px">
+  <div class="option" data-choice="c-rows" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Full-width rows only</h3>
+      <p>Cleaner, flatter. OVR stays as a number top-right. Rows always fill the card.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="hybrid" onclick="toggleSelect(this)">
+    <div class="letter">H</div>
+    <div class="content">
+      <h3>Hybrid (gauge + rows)</h3>
+      <p>More visual punch — arc gauge shows danger level, rows explain it below.</p>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: #060e18; color: #e2e8f0; padding: 24px; }
+
+  .panel-section { background: #0f1923; border: 1px solid #1e2d3d; border-radius: 8px; padding: 14px 16px; max-width: 760px; }
+  .divider { border: none; border-top: 1px solid #1e2d3d; margin: 10px 0; }
+  .flag-row { display: flex; align-items: flex-start; gap: 10px; padding: 9px 12px; border-radius: 6px; font-size: 11px; line-height: 1.5; background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.2); margin-bottom: 10px; }
+  .flag-text { color: #94a3b8; }
+  .flag-text strong { color: #f1f5f9; }
+  .flag-text em { font-style: normal; color: #f97316; }
+  .lock-btn { width: 100%; padding: 14px; background: #06b6d4; border: none; border-radius: 6px; font-size: 13px; font-weight: 800; letter-spacing: 0.1em; color: #0a1220; text-align: center; cursor: pointer; }
+
+  /* ── Header ── */
+  .mc-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
+  }
+  .mc-teams { display: flex; align-items: center; gap: 8px; }
+  .team-you { font-size: 10px; font-weight: 700; color: #22d3ee; letter-spacing: 0.08em; }
+  .team-opp { font-size: 10px; font-weight: 700; color: #f43f5e; letter-spacing: 0.08em; }
+  .vs-sep { font-size: 10px; color: #334155; }
+
+  /* Toggle */
+  .toggle-group { display: flex; background: #0a1220; border: 1px solid #1e2d3d; border-radius: 5px; overflow: hidden; }
+  .toggle-btn {
+    padding: 4px 10px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+    border: none; background: transparent; cursor: pointer; color: #334155; transition: all 0.15s;
+  }
+  .toggle-btn.active { background: #1e2d3d; color: #e2e8f0; }
+
+  /* ── Summary strip ── */
+  .mc-summary {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #0a1220; border: 1px solid #1e2d3d; border-radius: 5px;
+    padding: 8px 12px; margin-bottom: 10px;
+  }
+  .summary-side { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+  .summary-side.right { align-items: flex-end; }
+  .summary-team { font-size: 9px; color: #334155; letter-spacing: 0.1em; }
+  .summary-avg { font-size: 16px; font-weight: 800; line-height: 1; }
+  .summary-avg.you { color: #22d3ee; }
+  .summary-avg.opp { color: #f43f5e; }
+  .summary-center { text-align: center; }
+  .summary-edge-label { font-size: 8px; color: #334155; letter-spacing: 0.1em; }
+  .summary-edge-val { font-size: 11px; font-weight: 700; color: #22d3ee; }
+  .summary-edge-val.opp { color: #f43f5e; }
+
+  /* ── Legend ── */
+  .mc-legend {
+    display: flex; justify-content: space-between;
+    font-size: 9px; padding-bottom: 7px;
+    border-bottom: 1px solid #1e2d3d; margin-bottom: 2px;
+  }
+  .leg-you { color: #164e63; }
+  .leg-opp { color: #4c0519; }
+  .leg-mid { color: #1e293b; }
+
+  /* ── Rows ── */
+  .mc-row {
+    display: grid; grid-template-columns: 1fr 38% 1fr;
+    align-items: center; padding: 6px 0;
+    border-bottom: 1px solid #0d1a26;
+  }
+  .mc-row:last-child { border-bottom: none; }
+  .mc-you { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+  .mc-opp { display: flex; align-items: center; justify-content: flex-start; gap: 6px; }
+  .mc-name { font-size: 12px; font-weight: 600; color: #e2e8f0; }
+  .mc-stat { font-size: 12px; font-weight: 700; }
+  .win  { color: #22d3ee; }
+  .lose { color: #f43f5e; }
+
+  .mc-center { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 0 10px; }
+  .gap-label { font-size: 10px; font-weight: 700; }
+  .gap-label.you { color: #22d3ee; }
+  .gap-label.opp { color: #f43f5e; }
+
+  .mc-bar-wrap {
+    position: relative; width: 100%; height: 6px;
+    background: #1e293b; border-radius: 3px; overflow: hidden;
+  }
+  .mc-bar-wrap::after {
+    content: ''; position: absolute; left: 50%; top: 0;
+    width: 2px; height: 100%; background: #060e18;
+    transform: translateX(-50%); z-index: 2;
+  }
+  .mc-bar-fill { position: absolute; top: 0; height: 100%; border-radius: 3px; }
+  .bar-you { background: #22d3ee; right: 50%; left: auto; }
+  .bar-opp { background: #f43f5e; left: 50%; right: auto; }
+
+  .mc-tally { display: flex; justify-content: space-between; font-size: 10px; color: #334155; margin-top: 8px; }
+  .tally-you { color: #22d3ee; font-weight: 700; }
+  .tally-opp { color: #f43f5e; font-weight: 700; }
+
+  /* hidden in sta mode */
+  .ovr-view { display: contents; }
+  .sta-view { display: none; }
+  body.sta-mode .ovr-view { display: none; }
+  body.sta-mode .sta-view { display: contents; }
+</style>
+</head>
+<body>
+
+<div class="panel-section">
+
+  <!-- Header: teams + toggle -->
+  <div class="mc-header">
+    <div class="mc-teams">
+      <span class="team-you">NORTHWOOD IRONCLADS</span>
+      <span class="vs-sep">VS</span>
+      <span class="team-opp">LUNAR SYNDICATE</span>
+    </div>
+    <div class="toggle-group">
+      <button class="toggle-btn active" onclick="setMode('ovr')">OVR</button>
+      <button class="toggle-btn" onclick="setMode('sta')">STA</button>
+    </div>
+  </div>
+
+  <!-- Summary: avg stat + edge -->
+  <div class="mc-summary">
+    <!-- OVR summary -->
+    <div class="ovr-view summary-side">
+      <span class="summary-team">IRONCLADS AVG</span>
+      <span class="summary-avg you">74</span>
+    </div>
+    <div class="ovr-view summary-center">
+      <div class="summary-edge-label">OVERALL EDGE</div>
+      <div class="summary-edge-val">+32 Ironclads</div>
+    </div>
+    <div class="ovr-view summary-side right">
+      <span class="summary-team">SYNDICATE AVG</span>
+      <span class="summary-avg opp">68</span>
+    </div>
+    <!-- STA summary -->
+    <div class="sta-view summary-side">
+      <span class="summary-team">IRONCLADS AVG</span>
+      <span class="summary-avg you">73</span>
+    </div>
+    <div class="sta-view summary-center">
+      <div class="summary-edge-label">STAMINA EDGE</div>
+      <div class="summary-edge-val">+14 Ironclads</div>
+    </div>
+    <div class="sta-view summary-side right">
+      <span class="summary-team">SYNDICATE AVG</span>
+      <span class="summary-avg opp">70</span>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="mc-legend">
+    <span class="leg-you">◀ IRONCLADS ADVANTAGE</span>
+    <span class="leg-mid">Longer bar = larger OVR mismatch</span>
+    <span class="leg-opp">SYNDICATE ADVANTAGE ▶</span>
+  </div>
+
+  <!--
+    Rows sorted by absolute gap descending (OVR mode):
+    IRON +17  Avery Voss (85) vs Jin Park (68)
+    IRON +13  Cass Frost (83) vs Lex Dorn (70)
+    SYN  +13  Dex Vale (58)   vs Rho Vance (71)
+    IRON +12  Ezra Okafor(75) vs Ori Vale (63)
+    IRON +9   Avery Helix(83) vs Cas Wren (74)
+    SYN  +6   Nex Crane (59)  vs Mika Keene(65)
+
+    Max gap = 17 → scale: 50/17 = 2.94% per pt
+    17→50%  13→38.2%  12→35.3%  9→26.5%  6→17.6%
+
+    STA values (made up but plausible):
+    Avery Voss 72 vs Jin Park 71    → IRON +1   max STA gap = 14
+    Cass Frost 72 vs Lex Dorn 65   → IRON +7
+    Dex Vale 64   vs Rho Vance 68  → SYN  +4
+    Ezra Okafor80 vs Ori Vale 66   → IRON +14  ← MAX
+    Avery Helix71 vs Cas Wren 70   → IRON +1
+    Nex Crane 70  vs Mika Keene 74 → SYN  +4
+
+    STA max=14 → scale: 50/14 = 3.57% per pt
+    14→50%  7→25%  4→14.3%  1→3.6%
+  -->
+
+  <!-- Row 1: IRON +17 OVR, IRON +1 STA -->
+  <div class="mc-row">
+    <div class="mc-you">
+      <span class="mc-name">Avery Voss</span>
+      <span class="mc-stat win ovr-view">85</span>
+      <span class="mc-stat win sta-view">72</span>
+    </div>
+    <div class="mc-center">
+      <span class="gap-label you ovr-view">◀ IRON +17</span>
+      <span class="gap-label you sta-view">◀ IRON +1</span>
+      <div class="mc-bar-wrap">
+        <div class="mc-bar-fill bar-you ovr-view" style="width:50%"></div>
+        <div class="mc-bar-fill bar-you sta-view" style="width:3.6%"></div>
+      </div>
+    </div>
+    <div class="mc-opp">
+      <span class="mc-stat lose ovr-view">68</span>
+      <span class="mc-stat lose sta-view">71</span>
+      <span class="mc-name">Jin Park</span>
+    </div>
+  </div>
+
+  <!-- Row 2: IRON +13 OVR, IRON +7 STA -->
+  <div class="mc-row">
+    <div class="mc-you">
+      <span class="mc-name">Cass Frost</span>
+      <span class="mc-stat win ovr-view">83</span>
+      <span class="mc-stat win sta-view">72</span>
+    </div>
+    <div class="mc-center">
+      <span class="gap-label you ovr-view">◀ IRON +13</span>
+      <span class="gap-label you sta-view">◀ IRON +7</span>
+      <div class="mc-bar-wrap">
+        <div class="mc-bar-fill bar-you ovr-view" style="width:38.2%"></div>
+        <div class="mc-bar-fill bar-you sta-view" style="width:25%"></div>
+      </div>
+    </div>
+    <div class="mc-opp">
+      <span class="mc-stat lose ovr-view">70</span>
+      <span class="mc-stat lose sta-view">65</span>
+      <span class="mc-name">Lex Dorn</span>
+    </div>
+  </div>
+
+  <!-- Row 3: SYN +13 OVR, SYN +4 STA -->
+  <div class="mc-row">
+    <div class="mc-you">
+      <span class="mc-name">Dex Vale</span>
+      <span class="mc-stat lose ovr-view">58</span>
+      <span class="mc-stat lose sta-view">64</span>
+    </div>
+    <div class="mc-center">
+      <span class="gap-label opp ovr-view">SYN +13 ▶</span>
+      <span class="gap-label opp sta-view">SYN +4 ▶</span>
+      <div class="mc-bar-wrap">
+        <div class="mc-bar-fill bar-opp ovr-view" style="width:38.2%"></div>
+        <div class="mc-bar-fill bar-opp sta-view" style="width:14.3%"></div>
+      </div>
+    </div>
+    <div class="mc-opp">
+      <span class="mc-stat win ovr-view">71</span>
+      <span class="mc-stat win sta-view">68</span>
+      <span class="mc-name">Rho Vance</span>
+    </div>
+  </div>
+
+  <!-- Row 4: IRON +12 OVR, IRON +14 STA -->
+  <div class="mc-row">
+    <div class="mc-you">
+      <span class="mc-name">Ezra Okafor</span>
+      <span class="mc-stat win ovr-view">75</span>
+      <span class="mc-stat win sta-view">80</span>
+    </div>
+    <div class="mc-center">
+      <span class="gap-label you ovr-view">◀ IRON +12</span>
+      <span class="gap-label you sta-view">◀ IRON +14</span>
+      <div class="mc-bar-wrap">
+        <div class="mc-bar-fill bar-you ovr-view" style="width:35.3%"></div>
+        <div class="mc-bar-fill bar-you sta-view" style="width:50%"></div>
+      </div>
+    </div>
+    <div class="mc-opp">
+      <span class="mc-stat lose ovr-view">63</span>
+      <span class="mc-stat lose sta-view">66</span>
+      <span class="mc-name">Ori Vale</span>
+    </div>
+  </div>
+
+  <!-- Row 5: IRON +9 OVR, IRON +1 STA -->
+  <div class="mc-row">
+    <div class="mc-you">
+      <span class="mc-name">Avery Helix</span>
+      <span class="mc-stat win ovr-view">83</span>
+      <span class="mc-stat win sta-view">71</span>
+    </div>
+    <div class="mc-center">
+      <span class="gap-label you ovr-view">◀ IRON +9</span>
+      <span class="gap-label you sta-view">◀ IRON +1</span>
+      <div class="mc-bar-wrap">
+        <div class="mc-bar-fill bar-you ovr-view" style="width:26.5%"></div>
+        <div class="mc-bar-fill bar-you sta-view" style="width:3.6%"></div>
+      </div>
+    </div>
+    <div class="mc-opp">
+      <span class="mc-stat lose ovr-view">74</span>
+      <span class="mc-stat lose sta-view">70</span>
+      <span class="mc-name">Cas Wren</span>
+    </div>
+  </div>
+
+  <!-- Row 6: SYN +6 OVR, SYN +4 STA -->
+  <div class="mc-row">
+    <div class="mc-you">
+      <span class="mc-name">Nex Crane</span>
+      <span class="mc-stat lose ovr-view">59</span>
+      <span class="mc-stat lose sta-view">70</span>
+    </div>
+    <div class="mc-center">
+      <span class="gap-label opp ovr-view">SYN +6 ▶</span>
+      <span class="gap-label opp sta-view">SYN +4 ▶</span>
+      <div class="mc-bar-wrap">
+        <div class="mc-bar-fill bar-opp ovr-view" style="width:17.6%"></div>
+        <div class="mc-bar-fill bar-opp sta-view" style="width:14.3%"></div>
+      </div>
+    </div>
+    <div class="mc-opp">
+      <span class="mc-stat win ovr-view">65</span>
+      <span class="mc-stat win sta-view">74</span>
+      <span class="mc-name">Mika Keene</span>
+    </div>
+  </div>
+
+  <div class="mc-tally">
+    <span class="ovr-view"><span class="tally-you">4</span> slot advantages</span>
+    <span class="ovr-view"><span class="tally-opp">2</span> slot disadvantages</span>
+    <span class="sta-view"><span class="tally-you">4</span> stamina advantages</span>
+    <span class="sta-view"><span class="tally-opp">2</span> stamina disadvantages</span>
+  </div>
+
+  <hr class="divider">
+  <div class="flag-row"><span>⚠️</span><span class="flag-text"><strong>Plan conflict:</strong> <em>Aggressive</em> approach vs. Tactical threat — consider Control.</span></div>
+  <button class="lock-btn">LOCK WEEKLY PLAN</button>
+
+</div>
+
+<script>
+function setMode(mode) {
+  document.body.classList.toggle('sta-mode', mode === 'sta');
+  document.querySelectorAll('.toggle-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', (mode === 'ovr' && i === 0) || (mode === 'sta' && i === 1));
+  });
+  // re-sort rows by gap magnitude for the active mode
+  const order = mode === 'ovr'
+    ? [0,1,2,3,4,5]   // already sorted by OVR gap desc
+    : [3,1,0,4,2,5];  // sorted by STA gap desc: 14,7,4,4,1,1 → Ezra,Cass,Dex,Nex,Avery V,Avery H
+  const rows = [...document.querySelectorAll('.mc-row')];
+  const parent = rows[0].parentNode;
+  const anchor = rows[rows.length - 1].nextSibling;
+  order.forEach(i => parent.insertBefore(rows[i], anchor));
+}
+</script>
+
+</body>
+</html>

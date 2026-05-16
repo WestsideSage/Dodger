@@ -270,10 +270,16 @@ export function Graduation({ beat, onComplete, acting }: { beat: RetirementsBeat
   );
 }
 
+
 export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat; onComplete: () => void; acting?: boolean }) {
   const playerSigning = beat.payload.player_signing;
-  const otherSignings = beat.payload.other_signings;
-  const totalStages = 1 + otherSignings.length;
+  const otherSignings = beat.payload.other_signings ?? [];
+  const totalStages = 0;
+  const summaryLabel = playerSigning ? 'YOUR PICK' : 'SIGNING DAY UPDATE';
+  const summaryTitle = playerSigning ? playerSigning.name : 'No new player signing this round';
+  const summaryDetail = playerSigning
+    ? `OVR ${playerSigning.ovr}${playerSigning.age ? ` | Age ${playerSigning.age}` : ''}${playerSigning.role ? ` | ${playerSigning.role}` : ''}`
+    : (typeof beat.body === 'string' && beat.body.trim()) || 'The board is complete. Continue when you are ready for the next offseason update.';
 
   return (
     <CeremonyShell
@@ -281,35 +287,29 @@ export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat
       eyebrow="Signing Day"
       description="The nation's top prospects have made their commitments."
       stages={totalStages}
-      renderStage={(stage) => (
+      renderStage={() => (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '480px', margin: '0 auto' }}>
-          {/* Stage 1: player's pick */}
-          {stage >= 1 && playerSigning && (
-            <div
-              className="fade-in"
-              style={{
-                border: '2px solid #22d3ee',
-                borderRadius: '8px',
-                padding: '1.25rem',
-                background: '#083344',
-              }}
-            >
-              <div style={{ fontSize: '0.65rem', color: '#22d3ee', fontWeight: 700, letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
-                YOUR PICK
-              </div>
-              <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#e2e8f0', marginBottom: '0.25rem' }}>
-                {playerSigning.name}
-              </div>
-              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                OVR {playerSigning.ovr}
-                {playerSigning.age ? ` · Age ${playerSigning.age}` : ''}
-                {playerSigning.role ? ` · ${playerSigning.role}` : ''}
-              </div>
+          <div
+            className="fade-in"
+            style={{
+              border: `2px solid ${playerSigning ? '#22d3ee' : '#334155'}`,
+              borderRadius: '8px',
+              padding: '1.25rem',
+              background: playerSigning ? '#083344' : '#0f172a',
+            }}
+          >
+            <div style={{ fontSize: '0.65rem', color: playerSigning ? '#22d3ee' : '#94a3b8', fontWeight: 700, letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
+              {summaryLabel}
             </div>
-          )}
+            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#e2e8f0', marginBottom: '0.25rem' }}>
+              {summaryTitle}
+            </div>
+            <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+              {summaryDetail}
+            </div>
+          </div>
 
-          {/* Subsequent stages: AI signings */}
-          {otherSignings.slice(0, stage - 1).map((s: OffseasonSigning, i: number) => (
+          {otherSignings.map((s: OffseasonSigning, i: number) => (
             <div
               key={i}
               className="fade-in"
@@ -325,20 +325,15 @@ export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat
             >
               <div>
                 <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{s.name}</span>
-                <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '0.5rem' }}>→ {s.club_name}</span>
+                <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '0.5rem' }}>to {s.club_name}</span>
               </div>
               <span style={{ color: '#64748b', fontSize: '0.75rem' }}>OVR {s.ovr}</span>
             </div>
           ))}
-
-          {!playerSigning && (
-            <div style={{ textAlign: 'center', color: '#94a3b8' }}>
-              {typeof beat.body === 'string' ? beat.body : 'Signing complete.'}
-            </div>
-          )}
         </div>
       )}
       onComplete={onComplete}
+      actionDescription="Review the commitments, then continue the offseason sequence."
       isActing={acting}
     />
   );

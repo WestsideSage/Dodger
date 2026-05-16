@@ -1,0 +1,83 @@
+<h2>Key Threat Card — Right Side Options</h2>
+<p class="subtitle">Three ways to fill the empty right half of the card</p>
+
+<div class="cards">
+
+  <!-- Option A: Large OVR on right -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 1.2rem; background: #0a0f1e;">
+      <div style="background:rgba(248,113,113,0.07); border:1px solid rgba(248,113,113,0.2); border-radius:6px; padding:0.7rem 0.9rem; display:flex; align-items:center; gap:0.85rem;">
+        <div style="background:rgba(248,113,113,0.15); border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0;">⚠️</div>
+        <div style="flex:1;">
+          <div style="color:#f87171; font-size:0.6rem; text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:0.2rem;">Key Threat</div>
+          <div style="color:#f8fafc; font-size:0.9rem; font-weight:700; margin-bottom:0.25rem;">Mika Keene</div>
+          <span style="background:rgba(30,41,59,0.8); color:#94a3b8; font-size:0.62rem; padding:0.15rem 0.45rem; border-radius:3px; text-transform:uppercase; letter-spacing:0.05em;">Tactical</span>
+        </div>
+        <!-- Right: big OVR stat -->
+        <div style="text-align:center; flex-shrink:0; padding-left:0.5rem; border-left:1px solid rgba(248,113,113,0.2);">
+          <div style="color:#f87171; font-size:1.6rem; font-weight:800; line-height:1; font-family:monospace;">65</div>
+          <div style="color:#64748b; font-size:0.58rem; text-transform:uppercase; letter-spacing:0.08em; margin-top:0.2rem;">OVR</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Large OVR stat on right</h3>
+      <p>OVR moves to a right column as a big number, separated by a subtle divider. Feels like a player card or jersey number. Clean, no new data needed.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Scout blurb on right -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 1.2rem; background: #0a0f1e;">
+      <div style="background:rgba(248,113,113,0.07); border:1px solid rgba(248,113,113,0.2); border-radius:6px; padding:0.7rem 0.9rem; display:flex; align-items:center; gap:0.85rem;">
+        <div style="background:rgba(248,113,113,0.15); border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0;">⚠️</div>
+        <div style="flex:1; min-width:0;">
+          <div style="color:#f87171; font-size:0.6rem; text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:0.2rem;">Key Threat</div>
+          <div style="color:#f8fafc; font-size:0.9rem; font-weight:700; margin-bottom:0.25rem;">Mika Keene</div>
+          <div style="display:flex; gap:0.4rem;">
+            <span style="background:rgba(30,41,59,0.8); color:#94a3b8; font-size:0.62rem; padding:0.15rem 0.45rem; border-radius:3px; text-transform:uppercase;">Tactical</span>
+            <span style="background:rgba(30,41,59,0.8); color:#22d3ee; font-size:0.62rem; padding:0.15rem 0.45rem; border-radius:3px; font-weight:700;">65 OVR</span>
+          </div>
+        </div>
+        <!-- Right: short scout note -->
+        <div style="flex-shrink:0; max-width:140px; border-left:1px solid rgba(248,113,113,0.2); padding-left:0.75rem;">
+          <div style="color:#64748b; font-size:0.58rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.3rem;">Scout Note</div>
+          <div style="color:#94a3b8; font-size:0.72rem; line-height:1.35;">Will challenge your rotations — target their weak side.</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Scout note on right</h3>
+      <p>A short blurb from the scouting report fills the right column. Removes the need for the separate muted paragraph below — two birds, one stone.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Narrower card, doesn't stretch full width -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 1.2rem; background: #0a0f1e;">
+      <div style="display:flex; gap:0.75rem; align-items:stretch;">
+        <div style="background:rgba(248,113,113,0.07); border:1px solid rgba(248,113,113,0.2); border-radius:6px; padding:0.7rem 0.9rem; display:flex; align-items:center; gap:0.85rem; flex:0 0 auto;">
+          <div style="background:rgba(248,113,113,0.15); border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0;">⚠️</div>
+          <div>
+            <div style="color:#f87171; font-size:0.6rem; text-transform:uppercase; letter-spacing:0.1em; font-weight:700; margin-bottom:0.2rem;">Key Threat</div>
+            <div style="color:#f8fafc; font-size:0.9rem; font-weight:700; margin-bottom:0.25rem;">Mika Keene</div>
+            <div style="display:flex; gap:0.4rem;">
+              <span style="background:rgba(30,41,59,0.8); color:#94a3b8; font-size:0.62rem; padding:0.15rem 0.45rem; border-radius:3px; text-transform:uppercase;">Tactical</span>
+              <span style="background:rgba(30,41,59,0.8); color:#22d3ee; font-size:0.62rem; padding:0.15rem 0.45rem; border-radius:3px; font-weight:700;">65 OVR</span>
+            </div>
+          </div>
+        </div>
+        <!-- Right: scout note as its own panel -->
+        <div style="flex:1; background:rgba(2,6,23,0.4); border:1px solid rgba(30,41,59,0.8); border-radius:6px; padding:0.7rem 0.9rem; display:flex; flex-direction:column; justify-content:center;">
+          <div style="color:#64748b; font-size:0.58rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.3rem;">Scouting</div>
+          <div style="color:#94a3b8; font-size:0.78rem; line-height:1.4;">Lunar Syndicate will challenge your rotations. Align your target plan to exploit their weak side.</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Two-panel row</h3>
+      <p>Threat card on the left, scouting note as a separate adjacent panel on the right. Both have equal visual weight. Replaces the scouting paragraph below entirely.</p>
+    </div>
+  </div>
+
+</div>

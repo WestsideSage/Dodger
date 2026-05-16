@@ -1,0 +1,193 @@
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .demo-card {
+    background: #0f1923;
+    border: 1px solid #1e2d3d;
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-family: 'Inter', sans-serif;
+    max-width: 100%;
+  }
+  .threat-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em; color: #f97316;
+    margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+  }
+  .threat-label svg { width: 13px; height: 13px; }
+  .threat-name { font-size: 18px; font-weight: 700; color: #f1f5f9; margin: 0 0 4px 0; }
+  .threat-role {
+    font-size: 10px; color: #64748b; background: #1e293b;
+    padding: 2px 6px; border-radius: 3px; letter-spacing: 0.08em; display: inline-block;
+  }
+  .ovr-big { font-size: 28px; font-weight: 800; color: #f43f5e; line-height: 1; }
+  .ovr-label { font-size: 10px; color: #475569; letter-spacing: 0.1em; text-align: right; margin-top: 2px; }
+  .divider { border: none; border-top: 1px solid #1e2d3d; margin: 12px 0; }
+  .pill-icon { font-size: 12px; }
+  .pill-text { color: #94a3b8; font-size: 11px; }
+  .pill-text strong { color: #f1f5f9; }
+  .pill-text em { color: #f43f5e; font-style: normal; }
+  .pill-text .good { color: #10b981; }
+  .card-wrapper { padding: 12px; background: #0a1220; border-radius: 6px; }
+  .caption { font-size: 11px; color: #475569; margin-top: 10px; line-height: 1.5; font-style: italic; }
+  .width-label { font-size: 10px; letter-spacing: 0.1em; color: #334155; margin-bottom: 6px; }
+</style>
+
+<h2>Key Threat Card — Layout at wide widths</h2>
+<p class="subtitle">Three ways to keep the card feeling full regardless of how wide the panel gets.</p>
+
+<div class="cards">
+
+  <!-- Option A: Two-column split -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="width-label">WIDE VIEW</div>
+        <div class="demo-card">
+          <div class="threat-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            KEY THREAT
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+            <!-- Left: Identity -->
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                <div>
+                  <div class="threat-name">Mika Keene</div>
+                  <div class="threat-role">TACTICAL</div>
+                </div>
+                <div style="text-align:right">
+                  <div class="ovr-big">65</div>
+                  <div class="ovr-label">OVR</div>
+                </div>
+              </div>
+            </div>
+            <!-- Right: Matchup pills -->
+            <div style="display:flex;flex-direction:column;gap:7px;padding-left:12px;border-left:1px solid #1e2d3d">
+              <div style="display:flex;align-items:center;gap:7px">
+                <span class="pill-icon">⚡</span>
+                <span class="pill-text">Outrates your starter by <em>+7</em></span>
+              </div>
+              <div style="display:flex;align-items:center;gap:7px">
+                <span class="pill-icon">🎯</span>
+                <span class="pill-text">Targets <em>Aggressive</em> gaps</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:7px">
+                <span class="pill-icon">📋</span>
+                <span class="pill-text"><span class="good">Weak vs. Control tempo</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="caption">Left column: identity. Right column: matchup pills. Vertical divider anchors both halves. Never stretches awkwardly.</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Two-column split</h3>
+      <p>Identity on the left, matchup context on the right, divided by a vertical rule. The two halves grow together as the card widens — no dead space.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Threat gauge fills the right -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="width-label">WIDE VIEW</div>
+        <div class="demo-card">
+          <div class="threat-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            KEY THREAT
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:20px">
+            <!-- Left block -->
+            <div style="min-width:0;flex:1">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+                <div>
+                  <div class="threat-name">Mika Keene</div>
+                  <div class="threat-role">TACTICAL</div>
+                </div>
+              </div>
+              <hr class="divider" style="margin:8px 0">
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;align-items:center;gap:7px"><span class="pill-icon">⚡</span><span class="pill-text">Outrates your starter by <em>+7</em></span></div>
+                <div style="display:flex;align-items:center;gap:7px"><span class="pill-icon">🎯</span><span class="pill-text">Targets <em>Aggressive</em> gaps</span></div>
+                <div style="display:flex;align-items:center;gap:7px"><span class="pill-icon">📋</span><span class="pill-text"><span class="good">Weak vs. Control tempo</span></span></div>
+              </div>
+            </div>
+            <!-- Right: Threat gauge -->
+            <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px">
+              <svg width="72" height="72" viewBox="0 0 72 72">
+                <!-- Background arc -->
+                <circle cx="36" cy="36" r="28" fill="none" stroke="#1e293b" stroke-width="6" stroke-dasharray="132 176" stroke-dashoffset="-22" stroke-linecap="round"/>
+                <!-- Filled arc (65% = danger level) -->
+                <circle cx="36" cy="36" r="28" fill="none" stroke="#f43f5e" stroke-width="6" stroke-dasharray="86 222" stroke-dashoffset="-22" stroke-linecap="round"/>
+                <text x="36" y="40" text-anchor="middle" fill="#f43f5e" font-size="18" font-weight="800" font-family="Inter">65</text>
+              </svg>
+              <span style="font-size:9px;letter-spacing:0.1em;color:#475569">OVR</span>
+              <span style="font-size:10px;color:#f97316;letter-spacing:0.06em;font-weight:600">HIGH RISK</span>
+            </div>
+          </div>
+        </div>
+        <p class="caption">The OVR arc gauge anchors the right side, absorbing horizontal space. Scales naturally as the card widens — gauge just gets more padding.</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Threat gauge on the right</h3>
+      <p>Replaces the plain OVR number with an arc gauge that anchors the right side of the card. Looks purposeful at any width. Adds visual drama to the threat.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Full-width pill rows with right-aligned severity -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="width-label">WIDE VIEW</div>
+        <div class="demo-card">
+          <div class="threat-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            KEY THREAT
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+            <div>
+              <div class="threat-name">Mika Keene</div>
+              <div class="threat-role">TACTICAL</div>
+            </div>
+            <div style="text-align:right">
+              <div class="ovr-big">65</div>
+              <div class="ovr-label">OVR</div>
+            </div>
+          </div>
+          <hr class="divider" style="margin:8px 0">
+          <!-- Full-width pill rows -->
+          <div style="display:flex;flex-direction:column;gap:0">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #0f1923">
+              <div style="display:flex;align-items:center;gap:7px">
+                <span class="pill-icon">⚡</span>
+                <span class="pill-text">OVR vs. your top starter</span>
+              </div>
+              <span style="font-size:11px;font-weight:700;color:#f43f5e">+7 DANGER</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #0f1923">
+              <div style="display:flex;align-items:center;gap:7px">
+                <span class="pill-icon">🎯</span>
+                <span class="pill-text">Role vs. your approach</span>
+              </div>
+              <span style="font-size:11px;font-weight:700;color:#f97316">EXPOSED</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0">
+              <div style="display:flex;align-items:center;gap:7px">
+                <span class="pill-icon">📋</span>
+                <span class="pill-text">Counter via Control tempo</span>
+              </div>
+              <span style="font-size:11px;font-weight:700;color:#10b981">AVAILABLE</span>
+            </div>
+          </div>
+        </div>
+        <p class="caption">Each insight row spans the full card width with a severity label right-aligned. No dead space at any width — the rows just breathe more horizontally.</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Full-width rows with severity labels</h3>
+      <p>Each insight is a full-width row: description on the left, a severity chip on the right. Scales to any width with no gaps. The right side always has content.</p>
+    </div>
+  </div>
+
+</div>

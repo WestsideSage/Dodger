@@ -1,0 +1,179 @@
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .panel-section {
+    background: #0f1923; border: 1px solid #1e2d3d; border-radius: 8px;
+    padding: 14px 16px; width: 100%;
+  }
+  .section-heading {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
+  }
+  .field-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em; color: #64748b;
+  }
+  .pts-label { font-size: 11px; color: #94a3b8; }
+  .starter-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 0; border-bottom: 1px solid #0f1923; font-size: 12px;
+  }
+  .starter-row:last-child { border-bottom: none; }
+  .starter-num { color: #475569; font-size: 11px; width: 12px; flex-shrink: 0; }
+  .starter-name { color: #e2e8f0; font-weight: 600; flex: 1; }
+  .starter-ovr-wrap { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
+  .starter-ovr { font-size: 12px; color: #22d3ee; font-weight: 700; }
+  .starter-ovr-label { font-size: 9px; color: #334155; letter-spacing: 0.06em; }
+  .starter-sta { font-size: 11px; color: #475569; width: 46px; text-align: right; flex-shrink: 0; }
+  .divider { border: none; border-top: 1px solid #1e2d3d; margin: 10px 0; }
+  .card-wrapper { padding: 12px; background: #0a1220; border-radius: 6px; margin-bottom: 4px; }
+  .caption { font-size: 11px; color: #475569; margin-top: 8px; line-height: 1.5; font-style: italic; }
+
+  /* Strip variants */
+  .strip-old { display: flex; gap: 0; }
+  .strip-old > div {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    gap: 2px; padding: 8px 0;
+  }
+  .strip-old > div strong { font-size: 16px; color: #f1f5f9; }
+  .strip-old > div span { font-size: 9px; color: #475569; letter-spacing: 0.08em; }
+
+  .strip-two { display: flex; gap: 12px; }
+  .strip-stat {
+    flex: 1; background: #0a1220; border: 1px solid #1e2d3d; border-radius: 6px;
+    padding: 10px 14px; display: flex; flex-direction: column; gap: 2px;
+  }
+  .strip-stat-label { font-size: 9px; color: #475569; letter-spacing: 0.1em; font-weight: 700; }
+  .strip-stat-value { font-size: 20px; font-weight: 800; color: #f1f5f9; line-height: 1.1; }
+  .strip-stat-sub { font-size: 10px; color: #64748b; }
+
+  .strip-one {
+    background: #0a1220; border: 1px solid #1e2d3d; border-radius: 6px;
+    padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .strip-one-text { font-size: 12px; color: #94a3b8; }
+  .strip-one-text strong { color: #f1f5f9; }
+  .strip-one-text em { color: #22d3ee; font-style: normal; }
+  .badge {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+    padding: 3px 8px; border-radius: 4px; flex-shrink: 0;
+  }
+  .badge-safe { background: rgba(16,185,129,0.12); color: #10b981; }
+  .badge-push { background: rgba(249,115,22,0.12); color: #f97316; }
+</style>
+
+<h2>Bottom strip rework</h2>
+<p class="subtitle">Shown in context below the starter list. The old strip is included for comparison.</p>
+
+<!-- Starters (shared across all) -->
+<div style="background:#0f1923;border:1px solid #1e2d3d;border-radius:8px;padding:14px 16px;margin-bottom:20px">
+  <div class="section-heading">
+    <span class="field-label">STARTER READINESS</span>
+    <span class="pts-label">3 pts</span>
+  </div>
+  <div class="starter-row"><span class="starter-num">1</span><strong class="starter-name">Nex Crane</strong><div class="starter-ovr-wrap"><span class="starter-ovr">59</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">70 sta</span></div>
+  <div class="starter-row"><span class="starter-num">2</span><strong class="starter-name">Dex Vale</strong><div class="starter-ovr-wrap"><span class="starter-ovr">58</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">64 sta</span></div>
+  <div class="starter-row"><span class="starter-num">3</span><strong class="starter-name">Cass Frost</strong><div class="starter-ovr-wrap"><span class="starter-ovr">83</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">72 sta</span></div>
+  <div class="starter-row"><span class="starter-num">4</span><strong class="starter-name">Avery Helix</strong><div class="starter-ovr-wrap"><span class="starter-ovr">83</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">71 sta</span></div>
+  <div class="starter-row"><span class="starter-num">5</span><strong class="starter-name">Avery Voss</strong><div class="starter-ovr-wrap"><span class="starter-ovr">85</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">72 sta</span></div>
+  <div class="starter-row"><span class="starter-num">6</span><strong class="starter-name">Ezra Okafor</strong><div class="starter-ovr-wrap"><span class="starter-ovr">75</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">80 sta</span></div>
+  <hr class="divider">
+  <div class="strip-old" style="opacity:0.45">
+    <div><strong>3</strong><span>ELIM DIFF</span></div>
+    <div><strong style="color:#f43f5e">LOSS</strong><span>LAST</span></div>
+    <div><strong>2</strong><span>PLANS</span></div>
+  </div>
+  <div style="font-size:10px;color:#334155;margin-top:6px;text-align:center;letter-spacing:0.06em">↑ CURRENT (faded)</div>
+</div>
+
+<div class="cards">
+
+  <!-- Option A: Removed entirely -->
+  <div class="card" data-choice="removed" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="panel-section">
+          <div class="section-heading">
+            <span class="field-label">STARTER READINESS</span>
+            <span class="pts-label">3 pts</span>
+          </div>
+          <div class="starter-row"><span class="starter-num">1</span><strong class="starter-name">Nex Crane</strong><div class="starter-ovr-wrap"><span class="starter-ovr">59</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">70 sta</span></div>
+          <div class="starter-row"><span class="starter-num">2</span><strong class="starter-name">Dex Vale</strong><div class="starter-ovr-wrap"><span class="starter-ovr">58</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">64 sta</span></div>
+          <div class="starter-row"><span class="starter-num">3</span><strong class="starter-name">Cass Frost</strong><div class="starter-ovr-wrap"><span class="starter-ovr">83</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">72 sta</span></div>
+          <div class="starter-row"><span class="starter-num">4</span><strong class="starter-name">Avery Helix</strong><div class="starter-ovr-wrap"><span class="starter-ovr">83</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">71 sta</span></div>
+          <div class="starter-row"><span class="starter-num">5</span><strong class="starter-name">Avery Voss</strong><div class="starter-ovr-wrap"><span class="starter-ovr">85</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">72 sta</span></div>
+          <div class="starter-row"><span class="starter-num">6</span><strong class="starter-name">Ezra Okafor</strong><div class="starter-ovr-wrap"><span class="starter-ovr">75</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">80 sta</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Remove it</h3>
+      <p>Cleaner section. Reclaimed space tightens the panel. Nothing to confuse the user.</p>
+    </div>
+  </div>
+
+  <!-- Option B: 2-stat standing + record -->
+  <div class="card" data-choice="two-stat" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="panel-section">
+          <div class="section-heading">
+            <span class="field-label">STARTER READINESS</span>
+            <span class="pts-label">3 pts</span>
+          </div>
+          <div class="starter-row"><span class="starter-num">1</span><strong class="starter-name">Nex Crane</strong><div class="starter-ovr-wrap"><span class="starter-ovr">59</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">70 sta</span></div>
+          <div class="starter-row"><span class="starter-num">2</span><strong class="starter-name">Dex Vale</strong><div class="starter-ovr-wrap"><span class="starter-ovr">58</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">64 sta</span></div>
+          <div class="starter-row"><span class="starter-num">3</span><strong class="starter-name">Cass Frost</strong><div class="starter-ovr-wrap"><span class="starter-ovr">83</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">72 sta</span></div>
+          <div class="starter-row"><span class="starter-num">4</span><strong class="starter-name">Avery Helix</strong><div class="starter-ovr-wrap"><span class="starter-ovr">83</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">71 sta</span></div>
+          <div class="starter-row"><span class="starter-num">5</span><strong class="starter-name">Avery Voss</strong><div class="starter-ovr-wrap"><span class="starter-ovr">85</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">72 sta</span></div>
+          <div class="starter-row"><span class="starter-num">6</span><strong class="starter-name">Ezra Okafor</strong><div class="starter-ovr-wrap"><span class="starter-ovr">75</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">80 sta</span></div>
+          <hr class="divider">
+          <div class="strip-two">
+            <div class="strip-stat">
+              <span class="strip-stat-label">DIVISION RANK</span>
+              <span class="strip-stat-value">3rd</span>
+              <span class="strip-stat-sub">3 pts — 2 back from 2nd</span>
+            </div>
+            <div class="strip-stat">
+              <span class="strip-stat-label">SEASON RECORD</span>
+              <span class="strip-stat-value">1 – 2</span>
+              <span class="strip-stat-sub">Week 4 of 10</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Standing + Record</h3>
+      <p>Two clear stats that shape how aggressively you should play: where you rank and how the season is going. Sub-labels give the "so what" without needing to navigate away.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Single contextual line -->
+  <div class="card" data-choice="one-line" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="panel-section">
+          <div class="section-heading">
+            <span class="field-label">STARTER READINESS</span>
+            <span class="pts-label">3 pts</span>
+          </div>
+          <div class="starter-row"><span class="starter-num">1</span><strong class="starter-name">Nex Crane</strong><div class="starter-ovr-wrap"><span class="starter-ovr">59</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">70 sta</span></div>
+          <div class="starter-row"><span class="starter-num">2</span><strong class="starter-name">Dex Vale</strong><div class="starter-ovr-wrap"><span class="starter-ovr">58</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">64 sta</span></div>
+          <div class="starter-row"><span class="starter-num">3</span><strong class="starter-name">Cass Frost</strong><div class="starter-ovr-wrap"><span class="starter-ovr">83</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">72 sta</span></div>
+          <div class="starter-row"><span class="starter-num">4</span><strong class="starter-name">Avery Helix</strong><div class="starter-ovr-wrap"><span class="starter-ovr">83</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">71 sta</span></div>
+          <div class="starter-row"><span class="starter-num">5</span><strong class="starter-name">Avery Voss</strong><div class="starter-ovr-wrap"><span class="starter-ovr">85</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">72 sta</span></div>
+          <div class="starter-row"><span class="starter-num">6</span><strong class="starter-name">Ezra Okafor</strong><div class="starter-ovr-wrap"><span class="starter-ovr">75</span><span class="starter-ovr-label">OVR</span></div><span class="starter-sta">80 sta</span></div>
+          <hr class="divider">
+          <div class="strip-one">
+            <span class="strip-one-text"><strong>3rd place</strong> — <em>2 wins</em> from a playoff spot</span>
+            <span class="badge badge-push">PUSH</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Single context line</h3>
+      <p>One sentence that synthesizes standing into an actionable signal, with a PUSH / SAFE / CLINCHED badge. Tells you what it means for your decision, not just raw numbers.</p>
+    </div>
+  </div>
+
+</div>

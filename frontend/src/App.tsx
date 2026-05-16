@@ -17,13 +17,9 @@ const OFFSEASON_STATES = new Set([
   'next_season_ready',
 ]);
 
-const tabs: Array<{ id: Tab | string; label: string; short: string; icon?: string }> = [
-  { id: 'command', label: 'Command Center', short: 'Week', icon: '✦' },
+const tabs: Array<{ id: Tab; label: string; short: string; icon?: string }> = [
+  { id: 'command', label: 'Command Center', short: 'Week', icon: '*' },
   { id: 'roster', label: 'Roster', short: 'Team', icon: 'users' },
-  { id: 'tactics', label: 'Tactics', short: 'Tact', icon: 'crosshair' },
-  { id: 'training', label: 'Training', short: 'Train', icon: 'activity' },
-  { id: 'scouting', label: 'Scouting', short: 'Scout', icon: 'search' },
-  { id: 'analytics', label: 'Analytics', short: 'Stat', icon: 'bar-chart' },
   { id: 'dynasty', label: 'Dynasty Office', short: 'Program', icon: 'briefcase' },
   { id: 'standings', label: 'Standings', short: 'Table', icon: 'list' },
 ];
@@ -33,15 +29,11 @@ const tabKickers: Record<string, string> = {
   dynasty: 'WAR ROOM',
   roster: 'ROSTER LAB',
   standings: 'LEAGUE OFFICE',
-  tactics: 'STRATEGY',
-  training: 'DEVELOPMENT',
-  scouting: 'INTEL',
-  analytics: 'DATA',
 };
 
 function tabFromUrl(): Tab {
   const tab = new URLSearchParams(window.location.search).get('tab');
-  return tabs.some(item => item.id === tab && ['command', 'dynasty', 'roster', 'standings'].includes(tab)) ? tab as Tab : 'command';
+  return tabs.some(item => item.id === tab) ? tab as Tab : 'command';
 }
 
 function App() {
@@ -83,7 +75,7 @@ function App() {
   if (screen === 'loading') {
     return (
       <div className="dm-app-shell" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p className="dm-kicker" style={{ fontSize: '0.875rem', letterSpacing: '0.2em' }}>Loading…</p>
+        <p className="dm-kicker" style={{ fontSize: '0.875rem', letterSpacing: '0.2em' }}>Loading...</p>
       </div>
     );
   }
@@ -94,6 +86,7 @@ function App() {
 
   const menuButton = (
     <button
+      aria-label="Back to save menu"
       onClick={() => {
         careerApi.unloadSave()
           .finally(() => window.location.reload());
@@ -128,7 +121,7 @@ function App() {
 
   const activeTabDef = tabs.find(t => t.id === effectiveActiveTab) ?? tabs[0];
   const kicker = commandReplay ? 'MATCH DAY' : commandReplayLoading ? 'MATCH DAY' : tabKickers[effectiveActiveTab];
-  const headerTitle = commandReplay ? 'Match Replay' : commandReplayLoading ? 'Loading Replay…' : activeTabDef.label;
+  const headerTitle = commandReplay ? 'Match Replay' : commandReplayLoading ? 'Loading Replay...' : activeTabDef.label;
 
   return (
     <div className="dm-app-shell flex" style={{ minHeight: '100vh' }}>
@@ -140,22 +133,26 @@ function App() {
         </div>
         <nav style={{ padding: '0.5rem 0', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }} aria-label="Primary">
           {tabs.map(tab => {
-            const isSupported = ['command', 'dynasty', 'roster', 'standings'].includes(tab.id);
+            const isAvailable = screen !== 'offseason' || tab.id === 'command';
             const isActive = effectiveActiveTab === tab.id && !commandReplay && !commandReplayLoading;
             return (
               <button
                 key={tab.id}
                 className={`dm-nav-item ${isActive ? 'dm-nav-item-active' : ''}`}
+                aria-label={tab.label}
+                disabled={!isAvailable}
+                title={isAvailable ? tab.label : `${tab.label} returns after offseason`}
                 onClick={() => {
-                  if (isSupported) {
+                  if (isAvailable) {
                     setCommandReplay(null);
-                    setActiveTab(tab.id as Tab);
+                    setActiveTab(tab.id);
                   }
                 }}
-                style={{ opacity: isSupported ? 1 : 0.4 }}
+                style={{ opacity: isAvailable ? 1 : 0.35, cursor: isAvailable ? 'pointer' : 'not-allowed' }}
               >
                 <span className="dm-nav-dot" />
-                {tab.label}
+                <span className="dm-nav-label-full" aria-hidden="true">{tab.label}</span>
+                <span className="dm-nav-label-short" aria-hidden="true">{tab.short}</span>
               </button>
             );
           })}
@@ -163,7 +160,9 @@ function App() {
         <div style={{ padding: '0.75rem', borderTop: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <button
             className="dm-nav-item"
-            style={{ opacity: 0.4 }}
+            disabled
+            title="Settings are coming soon"
+            style={{ opacity: 0.35, cursor: 'not-allowed' }}
             onClick={() => {}}
           >
             <span className="dm-nav-dot" />
@@ -196,7 +195,7 @@ function App() {
             />
           )}
           {!commandReplay && commandReplayLoading && (
-            <p className="dm-kicker" style={{ padding: '2rem', fontSize: '0.875rem' }}>Loading replay…</p>
+            <p className="dm-kicker" style={{ padding: '2rem', fontSize: '0.875rem' }}>Loading replay...</p>
           )}
           {!commandReplay && !commandReplayLoading && effectiveActiveTab === 'command' && (
             <MatchWeek

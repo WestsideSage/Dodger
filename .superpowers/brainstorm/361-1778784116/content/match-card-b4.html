@@ -1,0 +1,223 @@
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .panel-section { background: #0f1923; border: 1px solid #1e2d3d; border-radius: 8px; padding: 14px 16px; }
+  .divider { border: none; border-top: 1px solid #1e2d3d; margin: 10px 0; }
+  .card-wrapper { padding: 12px; background: #0a1220; border-radius: 6px; }
+  .flag-row { display: flex; align-items: flex-start; gap: 10px; padding: 9px 12px; border-radius: 6px; font-size: 11px; line-height: 1.5; background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.2); }
+  .flag-text { color: #94a3b8; }
+  .flag-text strong { color: #f1f5f9; }
+  .flag-text em { font-style: normal; color: #f97316; }
+  .lock-btn { width: 100%; margin-top: 10px; padding: 14px; background: #06b6d4; border: none; border-radius: 6px; font-size: 13px; font-weight: 800; letter-spacing: 0.1em; color: #0a1220; text-align: center; }
+
+  /* Header */
+  .mc-header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .team-you { font-size: 10px; font-weight: 700; color: #22d3ee; letter-spacing: 0.08em; }
+  .team-opp { font-size: 10px; font-weight: 700; color: #f43f5e; letter-spacing: 0.08em; text-align: right; }
+
+  /* Legend */
+  .mc-legend {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 9px; color: #2d3d4d; letter-spacing: 0.06em;
+    padding: 4px 0 10px; border-bottom: 1px solid #1e2d3d; margin-bottom: 4px;
+  }
+  .legend-you { color: #164e63; }
+  .legend-opp { color: #4c0519; }
+  .legend-center { color: #1e293b; }
+
+  /* Row layout: name side | center zone | name side */
+  .mc-row {
+    display: grid;
+    grid-template-columns: 1fr 36% 1fr;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid #0d1a26;
+  }
+  .mc-row:last-child { border-bottom: none; }
+
+  .mc-you { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+  .mc-opp { display: flex; align-items: center; justify-content: flex-start; gap: 6px; }
+
+  .mc-name { font-size: 12px; font-weight: 600; color: #e2e8f0; }
+  .mc-ovr-you { font-size: 11px; font-weight: 700; }
+  .mc-ovr-opp { font-size: 11px; font-weight: 700; }
+  .ovr-win  { color: #22d3ee; }
+  .ovr-lose { color: #f43f5e; }
+  .mc-sta { font-size: 10px; color: #2d3d4d; }
+
+  /* Center zone: gap label stacked above bar */
+  .mc-center { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 0 10px; }
+
+  .gap-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+    line-height: 1;
+  }
+  .gap-label.you { color: #22d3ee; }
+  .gap-label.opp { color: #f43f5e; }
+
+  /* Bar track */
+  .mc-bar-wrap {
+    position: relative; width: 100%; height: 6px;
+    background: #1e293b; border-radius: 3px; overflow: hidden;
+  }
+  .mc-bar-wrap::after {
+    content: ''; position: absolute; left: 50%; top: 0;
+    width: 2px; height: 100%; background: #0a1220;
+    transform: translateX(-50%);
+  }
+  .mc-bar-fill { position: absolute; top: 0; height: 100%; border-radius: 3px; }
+
+  .mc-tally { display: flex; justify-content: space-between; font-size: 10px; color: #334155; margin-top: 8px; }
+  .tally-you { color: #22d3ee; font-weight: 700; }
+  .tally-opp { color: #f43f5e; font-weight: 700; }
+</style>
+
+<h2>Match Card — gap labels + clear direction</h2>
+<p class="subtitle">Gap number sits above each bar. Arrow shows direction. Legend anchors the color meaning. No heavy name dimming.</p>
+
+<div class="card-wrapper">
+  <div class="panel-section">
+
+    <div class="mc-header">
+      <span class="team-you">NORTHWOOD IRONCLADS</span>
+      <span style="font-size:10px;color:#334155;letter-spacing:0.1em">VS</span>
+      <span class="team-opp">LUNAR SYNDICATE</span>
+    </div>
+
+    <!-- Legend -->
+    <div class="mc-legend">
+      <span class="legend-you">◀ IRONCLADS EDGE</span>
+      <span class="legend-center">bar length = OVR gap</span>
+      <span class="legend-opp">SYNDICATE EDGE ▶</span>
+    </div>
+
+    <!-- Slot 1: opp wins by 6 -->
+    <div class="mc-row">
+      <div class="mc-you">
+        <span class="mc-sta">70</span>
+        <span class="mc-ovr-you ovr-lose">59</span>
+        <span class="mc-name">Nex Crane</span>
+      </div>
+      <div class="mc-center">
+        <span class="gap-label opp">−6 ▶</span>
+        <div class="mc-bar-wrap">
+          <div class="mc-bar-fill" style="background:#f43f5e;right:0;left:auto;width:17.6%;border-radius:3px 0 0 3px"></div>
+        </div>
+      </div>
+      <div class="mc-opp">
+        <span class="mc-name">Mika Keene</span>
+        <span class="mc-ovr-opp ovr-win">65</span>
+        <span class="mc-sta">74</span>
+      </div>
+    </div>
+
+    <!-- Slot 2: opp wins by 13 -->
+    <div class="mc-row">
+      <div class="mc-you">
+        <span class="mc-sta">64</span>
+        <span class="mc-ovr-you ovr-lose">58</span>
+        <span class="mc-name">Dex Vale</span>
+      </div>
+      <div class="mc-center">
+        <span class="gap-label opp">−13 ▶</span>
+        <div class="mc-bar-wrap">
+          <div class="mc-bar-fill" style="background:#f43f5e;right:0;left:auto;width:38.2%;border-radius:3px 0 0 3px"></div>
+        </div>
+      </div>
+      <div class="mc-opp">
+        <span class="mc-name">Rho Vance</span>
+        <span class="mc-ovr-opp ovr-win">71</span>
+        <span class="mc-sta">68</span>
+      </div>
+    </div>
+
+    <!-- Slot 3: you win by 13 -->
+    <div class="mc-row">
+      <div class="mc-you">
+        <span class="mc-sta">72</span>
+        <span class="mc-ovr-you ovr-win">83</span>
+        <span class="mc-name">Cass Frost</span>
+      </div>
+      <div class="mc-center">
+        <span class="gap-label you">◀ +13</span>
+        <div class="mc-bar-wrap">
+          <div class="mc-bar-fill" style="background:#22d3ee;left:0;right:auto;width:38.2%;border-radius:0 3px 3px 0"></div>
+        </div>
+      </div>
+      <div class="mc-opp">
+        <span class="mc-name">Lex Dorn</span>
+        <span class="mc-ovr-opp ovr-lose">70</span>
+        <span class="mc-sta">65</span>
+      </div>
+    </div>
+
+    <!-- Slot 4: you win by 9 -->
+    <div class="mc-row">
+      <div class="mc-you">
+        <span class="mc-sta">71</span>
+        <span class="mc-ovr-you ovr-win">83</span>
+        <span class="mc-name">Avery Helix</span>
+      </div>
+      <div class="mc-center">
+        <span class="gap-label you">◀ +9</span>
+        <div class="mc-bar-wrap">
+          <div class="mc-bar-fill" style="background:#22d3ee;left:0;right:auto;width:26.5%;border-radius:0 3px 3px 0"></div>
+        </div>
+      </div>
+      <div class="mc-opp">
+        <span class="mc-name">Cas Wren</span>
+        <span class="mc-ovr-opp ovr-lose">74</span>
+        <span class="mc-sta">70</span>
+      </div>
+    </div>
+
+    <!-- Slot 5: you win by 17 — MAX -->
+    <div class="mc-row">
+      <div class="mc-you">
+        <span class="mc-sta">72</span>
+        <span class="mc-ovr-you ovr-win">85</span>
+        <span class="mc-name">Avery Voss</span>
+      </div>
+      <div class="mc-center">
+        <span class="gap-label you">◀ +17</span>
+        <div class="mc-bar-wrap">
+          <div class="mc-bar-fill" style="background:#22d3ee;left:0;right:auto;width:50%;border-radius:0 3px 3px 0"></div>
+        </div>
+      </div>
+      <div class="mc-opp">
+        <span class="mc-name">Jin Park</span>
+        <span class="mc-ovr-opp ovr-lose">68</span>
+        <span class="mc-sta">71</span>
+      </div>
+    </div>
+
+    <!-- Slot 6: you win by 12 -->
+    <div class="mc-row">
+      <div class="mc-you">
+        <span class="mc-sta">80</span>
+        <span class="mc-ovr-you ovr-win">75</span>
+        <span class="mc-name">Ezra Okafor</span>
+      </div>
+      <div class="mc-center">
+        <span class="gap-label you">◀ +12</span>
+        <div class="mc-bar-wrap">
+          <div class="mc-bar-fill" style="background:#22d3ee;left:0;right:auto;width:35.3%;border-radius:0 3px 3px 0"></div>
+        </div>
+      </div>
+      <div class="mc-opp">
+        <span class="mc-name">Ori Vale</span>
+        <span class="mc-ovr-opp ovr-lose">63</span>
+        <span class="mc-sta">66</span>
+      </div>
+    </div>
+
+    <div class="mc-tally">
+      <span><span class="tally-you">4</span> slot advantages</span>
+      <span><span class="tally-opp">2</span> slot disadvantages</span>
+    </div>
+
+    <hr class="divider">
+    <div class="flag-row"><span>⚠️</span><span class="flag-text"><strong>Plan conflict:</strong> <em>Aggressive</em> approach vs. Tactical threat — consider Control.</span></div>
+    <div class="lock-btn">LOCK WEEKLY PLAN</div>
+
+  </div>
+</div>

@@ -769,13 +769,13 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
 
           {/* Controls */}
           <div className="dm-replay-controls">
-            <button aria-label="Previous replay event" onClick={stepBack} disabled={eventIndex === 0} style={{ background: 'transparent', border: '1px solid #334155', borderRadius: 4, color: eventIndex === 0 ? '#334155' : '#94a3b8', padding: '4px 10px', cursor: eventIndex === 0 ? 'default' : 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>←</button>
+            <button aria-label="Previous replay event" onClick={stepBack} disabled={eventIndex === 0} style={{ background: 'transparent', border: '1px solid #334155', borderRadius: 4, color: eventIndex === 0 ? '#334155' : '#94a3b8', padding: '4px 10px', cursor: eventIndex === 0 ? 'default' : 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>{"<"}</button>
 
             <button aria-label={isPlaying ? 'Pause replay' : 'Play replay'} onClick={togglePlay} style={{ background: isPlaying ? '#1e293b' : '#f97316', border: 'none', borderRadius: 4, color: '#ffffff', padding: '4px 14px', cursor: 'pointer', fontFamily: 'Oswald, sans-serif', fontSize: 13, letterSpacing: 1 }}>
-              {isPlaying ? '⏸ PAUSE' : '▶ PLAY'}
+              {isPlaying ? 'PAUSE' : 'PLAY'}
             </button>
 
-            <button aria-label="Next replay event" onClick={stepForward} disabled={eventIndex >= totalEvents - 1} style={{ background: 'transparent', border: '1px solid #334155', borderRadius: 4, color: eventIndex >= totalEvents - 1 ? '#334155' : '#94a3b8', padding: '4px 10px', cursor: eventIndex >= totalEvents - 1 ? 'default' : 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>→</button>
+            <button aria-label="Next replay event" onClick={stepForward} disabled={eventIndex >= totalEvents - 1} style={{ background: 'transparent', border: '1px solid #334155', borderRadius: 4, color: eventIndex >= totalEvents - 1 ? '#334155' : '#94a3b8', padding: '4px 10px', cursor: eventIndex >= totalEvents - 1 ? 'default' : 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>{">"}</button>
 
             <button onClick={cycleSpeed} style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 4, color: '#f97316', padding: '4px 10px', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, letterSpacing: 1 }}>{playSpeed}</button>
 
@@ -801,7 +801,7 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
 
             {data.key_play_indices.length > 0 && (
               <button aria-label="Next key replay event" onClick={jumpToKeyEvent} style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid #f59e0b44', borderRadius: 4, color: '#f59e0b', padding: '4px 8px', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 9, letterSpacing: 1, whiteSpace: 'nowrap' as const }}>
-                ★ KEY
+                KEY
               </button>
             )}
           </div>
@@ -816,7 +816,7 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
           {/* Continue */}
           <div style={{ padding: '8px 12px', borderTop: '1px solid #1e293b', background: '#020617' }}>
             <button onClick={onContinue} style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: 6, color: '#94a3b8', padding: '8px', cursor: 'pointer', fontFamily: 'Oswald, sans-serif', fontSize: 13, letterSpacing: 1 }}>
-              CONTINUE →
+              {'CONTINUE ->'}
             </button>
           </div>
         </div>

@@ -55,6 +55,11 @@ export function IdentityStep({
 }) {
   const currentPrimary = identity.colors?.split(',')[0] ?? '#22d3ee';
   const currentSecondary = identity.colors?.split(',')[1] ?? '#0f172a';
+  const missingFields: string[] = [];
+  if (!identity.save_name.trim()) missingFields.push('save name');
+  if (!identity.club_name.trim()) missingFields.push('club name');
+  if (!identity.city.trim()) missingFields.push('city');
+  const canContinue = missingFields.length === 0;
   const selectedPreset = COLOR_PRESETS.find(
     preset => identity.colors === colorsToValue(preset.primary, preset.secondary)
   );
@@ -98,7 +103,6 @@ export function IdentityStep({
         />
       </Field>
 
-      {/* Color picker */}
       <Field label="Club Colors">
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
           {COLOR_PRESETS.map(preset => {
@@ -107,6 +111,7 @@ export function IdentityStep({
               <button
                 key={preset.label}
                 type="button"
+                aria-pressed={isSelected}
                 title={preset.label}
                 onClick={() => setIdentity({ ...identity, colors: colorsToValue(preset.primary, preset.secondary) })}
                 style={{
@@ -146,26 +151,33 @@ export function IdentityStep({
         </div>
       </Field>
 
-      {/* Identity preview */}
       {(identity.club_name || identity.city) && (
         <div style={{ background: currentSecondary, border: `1px solid ${currentPrimary}44`, borderLeft: `3px solid ${currentPrimary}`, borderRadius: '4px', padding: '0.75rem 1rem' }}>
           <p className="dm-kicker" style={{ color: currentPrimary, marginBottom: '0.125rem' }}>Preview</p>
           <p style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             {identity.city && <span style={{ color: '#94a3b8', fontSize: '0.75rem', display: 'block', marginBottom: '0.125rem' }}>{identity.city}</span>}
-            {identity.club_name || '—'}
+            {identity.club_name || '-'}
           </p>
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '0.75rem' }}>
-        <ActionButton variant="secondary" onClick={onBack}>Back</ActionButton>
-        <ActionButton
-          variant="primary"
-          onClick={onNext}
-          disabled={!identity.save_name || !identity.club_name || !identity.city}
-        >
-          Next: Coach Profile
-        </ActionButton>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <ActionButton variant="secondary" onClick={onBack}>Back</ActionButton>
+          <ActionButton
+            variant="primary"
+            onClick={onNext}
+            disabled={!canContinue}
+            aria-describedby="identity-step-help"
+          >
+            Next: Coach Profile
+          </ActionButton>
+        </div>
+        {!canContinue && (
+          <p id="identity-step-help" className="dm-helper-copy dm-helper-copy-warning" style={{ margin: 0 }}>
+            Add a {missingFields.join(', ').replace(/, ([^,]*)$/, ' and $1')} to continue.
+          </p>
+        )}
       </div>
     </div>
   );

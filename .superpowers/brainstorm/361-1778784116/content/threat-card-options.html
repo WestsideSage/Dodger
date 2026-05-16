@@ -1,0 +1,223 @@
+<style>
+  .demo-card {
+    background: #0f1923;
+    border: 1px solid #1e2d3d;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 0;
+    font-family: 'Inter', sans-serif;
+  }
+  .threat-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #f97316;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .threat-label svg { width: 13px; height: 13px; }
+  .threat-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+  .threat-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin: 0 0 4px 0;
+  }
+  .threat-role {
+    font-size: 10px;
+    color: #64748b;
+    background: #1e293b;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.08em;
+    display: inline-block;
+  }
+  .ovr-big {
+    font-size: 28px;
+    font-weight: 800;
+    color: #f43f5e;
+    line-height: 1;
+  }
+  .ovr-label {
+    font-size: 10px;
+    color: #475569;
+    letter-spacing: 0.1em;
+    text-align: right;
+    margin-top: 2px;
+  }
+  .divider { border: none; border-top: 1px solid #1e2d3d; margin: 12px 0; }
+
+  /* Option A: Narrative */
+  .threat-blurb {
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.6;
+    font-style: italic;
+  }
+  .threat-blurb strong { color: #e2e8f0; font-style: normal; }
+
+  /* Option B: Stat bars */
+  .stat-rows { display: flex; flex-direction: column; gap: 7px; }
+  .stat-row { display: flex; align-items: center; gap: 8px; }
+  .stat-row-label { font-size: 10px; color: #64748b; letter-spacing: 0.06em; width: 70px; flex-shrink: 0; }
+  .stat-bar-track { flex: 1; height: 4px; background: #1e293b; border-radius: 2px; }
+  .stat-bar-fill { height: 4px; border-radius: 2px; }
+  .stat-val { font-size: 10px; color: #94a3b8; width: 28px; text-align: right; flex-shrink: 0; }
+
+  /* Option C: Matchup context */
+  .matchup-pills { display: flex; flex-direction: column; gap: 6px; }
+  .matchup-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+  }
+  .pill-icon { font-size: 12px; }
+  .pill-text { color: #94a3b8; }
+  .pill-text strong { color: #f1f5f9; }
+  .pill-text em { color: #f43f5e; font-style: normal; }
+  .pill-text .good { color: #10b981; }
+
+  .card-wrapper {
+    padding: 12px;
+    background: #0a1220;
+    border-radius: 6px;
+  }
+  .section-note {
+    font-size: 11px;
+    color: #475569;
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+</style>
+
+<h2>Key Threat Card — What fills the empty space?</h2>
+<p class="subtitle">Mika Keene's card currently has her name, role, and OVR — and then a blank void. Pick an approach for the empty area.</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="demo-card">
+          <div class="threat-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            KEY THREAT
+          </div>
+          <div class="threat-top">
+            <div>
+              <div class="threat-name">Mika Keene</div>
+              <div class="threat-role">TACTICAL</div>
+            </div>
+            <div style="text-align:right">
+              <div class="ovr-big">65</div>
+              <div class="ovr-label">OVR</div>
+            </div>
+          </div>
+          <hr class="divider">
+          <div class="threat-blurb">
+            <strong>Targets rotation gaps</strong> and applies consistent mid-range pressure. Historically forces <strong>3+ eliminations</strong> per match against teams running Aggressive.
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Narrative Blurb</h3>
+      <p>A 2-sentence AI-generated scouting note about why this player is dangerous — specific to your matchup context. Requires the backend to send a threat description string.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="demo-card">
+          <div class="threat-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            KEY THREAT
+          </div>
+          <div class="threat-top">
+            <div>
+              <div class="threat-name">Mika Keene</div>
+              <div class="threat-role">TACTICAL</div>
+            </div>
+            <div style="text-align:right">
+              <div class="ovr-big">65</div>
+              <div class="ovr-label">OVR</div>
+            </div>
+          </div>
+          <hr class="divider">
+          <div class="stat-rows">
+            <div class="stat-row">
+              <span class="stat-row-label">ACCURACY</span>
+              <div class="stat-bar-track"><div class="stat-bar-fill" style="width:78%;background:#f43f5e"></div></div>
+              <span class="stat-val">78</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-label">AGGRESSION</span>
+              <div class="stat-bar-track"><div class="stat-bar-fill" style="width:61%;background:#f97316"></div></div>
+              <span class="stat-val">61</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-label">EVASION</span>
+              <div class="stat-bar-track"><div class="stat-bar-fill" style="width:55%;background:#f59e0b"></div></div>
+              <span class="stat-val">55</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Stat Bars</h3>
+      <p>2–3 key attribute bars for the threat player — Accuracy, Aggression, Evasion etc. Makes it scannable at a glance. Requires individual player stats from the backend.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="demo-card">
+          <div class="threat-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            KEY THREAT
+          </div>
+          <div class="threat-top">
+            <div>
+              <div class="threat-name">Mika Keene</div>
+              <div class="threat-role">TACTICAL</div>
+            </div>
+            <div style="text-align:right">
+              <div class="ovr-big">65</div>
+              <div class="ovr-label">OVR</div>
+            </div>
+          </div>
+          <hr class="divider">
+          <div class="matchup-pills">
+            <div class="matchup-pill">
+              <span class="pill-icon">⚡</span>
+              <span class="pill-text">Outrates your top starter by <em>+7 OVR</em></span>
+            </div>
+            <div class="matchup-pill">
+              <span class="pill-icon">🎯</span>
+              <span class="pill-text">Exploits <em>Aggressive</em> approach — expect direct targeting</span>
+            </div>
+            <div class="matchup-pill">
+              <span class="pill-icon">📋</span>
+              <span class="pill-text">Tactical role — <span class="good">weak vs. Control tempo</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Matchup Context Pills</h3>
+      <p>2–3 derived matchup bullets: OVR gap vs. your starter, role vs. your approach, and a counter-hint. Uses data you already have — no new backend fields needed.</p>
+    </div>
+  </div>
+
+</div>

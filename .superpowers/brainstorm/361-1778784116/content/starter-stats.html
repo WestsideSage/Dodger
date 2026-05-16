@@ -1,0 +1,169 @@
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .panel-section { background: #0f1923; border: 1px solid #1e2d3d; border-radius: 8px; padding: 14px 16px; }
+  .field-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; color: #64748b; }
+  .section-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .divider { border: none; border-top: 1px solid #1e2d3d; margin: 10px 0; }
+  .card-wrapper { padding: 12px; background: #0a1220; border-radius: 6px; margin-bottom: 4px; }
+  .flag-row { display: flex; align-items: flex-start; gap: 10px; padding: 9px 12px; border-radius: 6px; font-size: 11px; line-height: 1.5; background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.2); }
+  .flag-text { color: #94a3b8; }
+  .flag-text strong { color: #f1f5f9; }
+  .flag-text em { font-style: normal; color: #f97316; }
+  .lock-btn { width: 100%; margin-top: 10px; padding: 14px; background: #06b6d4; border: none; border-radius: 6px; font-size: 13px; font-weight: 800; letter-spacing: 0.1em; color: #0a1220; text-align: center; }
+  .hdr-record { font-size: 11px; color: #94a3b8; }
+
+  /* Table base */
+  .starter-table { width: 100%; border-collapse: collapse; }
+  .starter-table th {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.1em; color: #334155;
+    padding: 0 4px 6px; text-align: right; border-bottom: 1px solid #1e2d3d;
+  }
+  .starter-table th.name-col { text-align: left; padding-left: 0; }
+  .starter-table th.num-col { width: 16px; padding-left: 0; }
+  .starter-table td {
+    font-size: 12px; padding: 5px 4px; border-bottom: 1px solid #0d1a26;
+    text-align: right; vertical-align: middle;
+  }
+  .starter-table td.num-col { color: #475569; font-size: 11px; text-align: left; padding-left: 0; }
+  .starter-table td.name-col { color: #e2e8f0; font-weight: 600; text-align: left; padding-left: 0; }
+  .starter-table tr:last-child td { border-bottom: none; }
+  .stat-ovr { color: #22d3ee; font-weight: 700; }
+  .stat-acc { color: #a78bfa; }
+  .stat-pwr { color: #f87171; }
+  .stat-ddg { color: #34d399; }
+  .stat-cth { color: #fbbf24; }
+  .stat-sta { color: #64748b; }
+  .stat-iq  { color: #7dd3fc; }
+</style>
+
+<h2>Starter Readiness — stat columns</h2>
+<p class="subtitle">All options use column headers (Option A). Question is which stats to show and how many. Backend will need to expose skill ratings — small change to <code>_player_summary()</code>.</p>
+
+<div class="cards">
+
+  <!-- Option A: OVR + 4 combat stats -->
+  <div class="card" data-choice="four-stats" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="panel-section">
+          <div class="section-heading">
+            <span class="field-label">STARTER READINESS</span>
+            <span class="hdr-record">1 – 2</span>
+          </div>
+          <table class="starter-table">
+            <thead>
+              <tr>
+                <th class="num-col"></th>
+                <th class="name-col">NAME</th>
+                <th>OVR</th>
+                <th>ACC</th>
+                <th>PWR</th>
+                <th>DDG</th>
+                <th>STA</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="num-col">1</td><td class="name-col">Nex Crane</td><td class="stat-ovr">59</td><td class="stat-acc">61</td><td class="stat-pwr">55</td><td class="stat-ddg">62</td><td class="stat-sta">70</td></tr>
+              <tr><td class="num-col">2</td><td class="name-col">Dex Vale</td><td class="stat-ovr">58</td><td class="stat-acc">54</td><td class="stat-pwr">60</td><td class="stat-ddg">58</td><td class="stat-sta">64</td></tr>
+              <tr><td class="num-col">3</td><td class="name-col">Cass Frost</td><td class="stat-ovr">83</td><td class="stat-acc">85</td><td class="stat-pwr">80</td><td class="stat-ddg">82</td><td class="stat-sta">72</td></tr>
+              <tr><td class="num-col">4</td><td class="name-col">Avery Helix</td><td class="stat-ovr">83</td><td class="stat-acc">86</td><td class="stat-pwr">79</td><td class="stat-ddg">84</td><td class="stat-sta">71</td></tr>
+              <tr><td class="num-col">5</td><td class="name-col">Avery Voss</td><td class="stat-ovr">85</td><td class="stat-acc">88</td><td class="stat-pwr">83</td><td class="stat-ddg">84</td><td class="stat-sta">72</td></tr>
+              <tr><td class="num-col">6</td><td class="name-col">Ezra Okafor</td><td class="stat-ovr">75</td><td class="stat-acc">74</td><td class="stat-pwr">77</td><td class="stat-ddg">73</td><td class="stat-sta">80</td></tr>
+            </tbody>
+          </table>
+          <hr class="divider">
+          <div class="flag-row"><span>⚠️</span><span class="flag-text"><strong>Plan conflict:</strong> <em>Aggressive</em> vs. Tactical threat — consider Control.</span></div>
+          <div class="lock-btn">LOCK WEEKLY PLAN</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — OVR + ACC, PWR, DDG, STA</h3>
+      <p>Four combat-relevant stats. Catch omitted since DDG + ACC already tell the defensive story. Color-coded by stat type for quick scanning.</p>
+    </div>
+  </div>
+
+  <!-- Option B: All 5 skills, no OVR -->
+  <div class="card" data-choice="five-no-ovr" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="panel-section">
+          <div class="section-heading">
+            <span class="field-label">STARTER READINESS</span>
+            <span class="hdr-record">1 – 2</span>
+          </div>
+          <table class="starter-table">
+            <thead>
+              <tr>
+                <th class="num-col"></th>
+                <th class="name-col">NAME</th>
+                <th>ACC</th>
+                <th>PWR</th>
+                <th>DDG</th>
+                <th>CTH</th>
+                <th>STA</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="num-col">1</td><td class="name-col">Nex Crane</td><td class="stat-acc">61</td><td class="stat-pwr">55</td><td class="stat-ddg">62</td><td class="stat-cth">57</td><td class="stat-sta">70</td></tr>
+              <tr><td class="num-col">2</td><td class="name-col">Dex Vale</td><td class="stat-acc">54</td><td class="stat-pwr">60</td><td class="stat-ddg">58</td><td class="stat-cth">62</td><td class="stat-sta">64</td></tr>
+              <tr><td class="num-col">3</td><td class="name-col">Cass Frost</td><td class="stat-acc">85</td><td class="stat-pwr">80</td><td class="stat-ddg">82</td><td class="stat-cth">84</td><td class="stat-sta">72</td></tr>
+              <tr><td class="num-col">4</td><td class="name-col">Avery Helix</td><td class="stat-acc">86</td><td class="stat-pwr">79</td><td class="stat-ddg">84</td><td class="stat-cth">82</td><td class="stat-sta">71</td></tr>
+              <tr><td class="num-col">5</td><td class="name-col">Avery Voss</td><td class="stat-acc">88</td><td class="stat-pwr">83</td><td class="stat-ddg">84</td><td class="stat-cth">80</td><td class="stat-sta">72</td></tr>
+              <tr><td class="num-col">6</td><td class="name-col">Ezra Okafor</td><td class="stat-acc">74</td><td class="stat-pwr">77</td><td class="stat-ddg">73</td><td class="stat-cth">75</td><td class="stat-sta">80</td></tr>
+            </tbody>
+          </table>
+          <hr class="divider">
+          <div class="flag-row"><span>⚠️</span><span class="flag-text"><strong>Plan conflict:</strong> <em>Aggressive</em> vs. Tactical threat — consider Control.</span></div>
+          <div class="lock-btn">LOCK WEEKLY PLAN</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — All 5 skills, drop OVR</h3>
+      <p>Shows the full breakdown. OVR is just an average of these anyway — seeing the components is more useful. You can spot a low-catch or low-dodge player directly.</p>
+    </div>
+  </div>
+
+  <!-- Option C: OVR + 3 stats + STA -->
+  <div class="card" data-choice="three-stats" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="card-wrapper">
+        <div class="panel-section">
+          <div class="section-heading">
+            <span class="field-label">STARTER READINESS</span>
+            <span class="hdr-record">1 – 2</span>
+          </div>
+          <table class="starter-table">
+            <thead>
+              <tr>
+                <th class="num-col"></th>
+                <th class="name-col">NAME</th>
+                <th>OVR</th>
+                <th>ACC</th>
+                <th>DDG</th>
+                <th>STA</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="num-col">1</td><td class="name-col">Nex Crane</td><td class="stat-ovr">59</td><td class="stat-acc">61</td><td class="stat-ddg">62</td><td class="stat-sta">70</td></tr>
+              <tr><td class="num-col">2</td><td class="name-col">Dex Vale</td><td class="stat-ovr">58</td><td class="stat-acc">54</td><td class="stat-ddg">58</td><td class="stat-sta">64</td></tr>
+              <tr><td class="num-col">3</td><td class="name-col">Cass Frost</td><td class="stat-ovr">83</td><td class="stat-acc">85</td><td class="stat-ddg">82</td><td class="stat-sta">72</td></tr>
+              <tr><td class="num-col">4</td><td class="name-col">Avery Helix</td><td class="stat-ovr">83</td><td class="stat-acc">86</td><td class="stat-ddg">84</td><td class="stat-sta">71</td></tr>
+              <tr><td class="num-col">5</td><td class="name-col">Avery Voss</td><td class="stat-ovr">85</td><td class="stat-acc">88</td><td class="stat-ddg">84</td><td class="stat-sta">72</td></tr>
+              <tr><td class="num-col">6</td><td class="name-col">Ezra Okafor</td><td class="stat-ovr">75</td><td class="stat-acc">74</td><td class="stat-ddg">73</td><td class="stat-sta">80</td></tr>
+            </tbody>
+          </table>
+          <hr class="divider">
+          <div class="flag-row"><span>⚠️</span><span class="flag-text"><strong>Plan conflict:</strong> <em>Aggressive</em> vs. Tactical threat — consider Control.</span></div>
+          <div class="lock-btn">LOCK WEEKLY PLAN</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — OVR + ACC, DDG, STA (tight)</h3>
+      <p>Fewest columns: the two stats that most directly influence a match outcome — who can hit and who can dodge — plus stamina. Clean at any width.</p>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,194 @@
+<h2>MatchCard — 8 feedback items to address</h2>
+<p class="subtitle">Before we pick an approach, here's a visual audit of each issue mapped to the current UI</p>
+
+<style>
+  .audit-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 20px;
+  }
+  .audit-item {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .audit-item .issue-num {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: #94a3b8;
+    margin-bottom: 4px;
+  }
+  .audit-item h3 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin: 0 0 6px 0;
+  }
+  .audit-item p {
+    font-size: 12px;
+    color: #64748b;
+    margin: 0 0 8px 0;
+    line-height: 1.5;
+  }
+  .fix-pill {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+  .fix-easy { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.25); }
+  .fix-medium { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.25); }
+
+  /* mini bar preview */
+  .bar-demo {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 8px 0 4px;
+    font-size: 11px;
+    color: #94a3b8;
+  }
+  .bar-track {
+    position: relative;
+    width: 120px;
+    height: 7px;
+    background: #1e293b;
+    border-radius: 3px;
+    overflow: visible;
+  }
+  .bar-fill-cyan {
+    position: absolute;
+    top: 0; height: 100%;
+    width: 40%;
+    right: 50%;
+    background: #22d3ee;
+    border-radius: 2px;
+  }
+  .bar-fill-rose {
+    position: absolute;
+    top: 0; height: 100%;
+    width: 25%;
+    left: 50%;
+    background: #f43f5e;
+    border-radius: 2px;
+  }
+  .bar-center-old {
+    position: absolute;
+    left: 50%;
+    top: -1px;
+    width: 2px;
+    height: calc(100% + 2px);
+    background: #0a1220;
+    transform: translateX(-50%);
+    z-index: 2;
+  }
+  .bar-center-new {
+    position: absolute;
+    left: 50%;
+    top: -2px;
+    width: 2px;
+    height: calc(100% + 4px);
+    background: #334155;
+    transform: translateX(-50%);
+    z-index: 2;
+    border-radius: 1px;
+    box-shadow: 0 0 0 1px rgba(100,116,139,0.3);
+  }
+
+  .label-demo {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  .label-old { background: transparent; color: #475569; border: 1px solid transparent; }
+  .label-new-synd { background: transparent; color: #f43f5e; border: 1px solid transparent; font-weight: 700; font-size: 10px; }
+</style>
+
+<div class="audit-grid">
+
+  <div class="audit-item">
+    <div class="issue-num">ISSUE 1</div>
+    <h3>Ambiguous bar centerline</h3>
+    <p>The current divider is nearly invisible — same dark tone as the track background. No visual anchor for "neutral."</p>
+    <div class="bar-demo">
+      <span style="color:#475569;font-size:10px">Now:</span>
+      <div class="bar-track"><div class="bar-fill-cyan"></div><div class="bar-center-old"></div></div>
+    </div>
+    <div class="bar-demo">
+      <span style="color:#10b981;font-size:10px">Fix:</span>
+      <div class="bar-track"><div class="bar-fill-cyan"></div><div class="bar-center-new"></div></div>
+      <span style="font-size:10px;color:#64748b">taller + visible tick</span>
+    </div>
+    <span class="fix-pill fix-easy">Easy</span>
+  </div>
+
+  <div class="audit-item">
+    <div class="issue-num">ISSUE 2</div>
+    <h3>Net OVR headline too loud</h3>
+    <p>"Northwood Ironclads +66 net OVR" reads like the team rating, not a sum of 6 slot gaps. Should feel like a tally, not a verdict.</p>
+    <p style="color:#22d3ee;font-size:12px;font-weight:700">Northwood Ironclads +66 net OVR</p>
+    <p style="color:#94a3b8;font-size:11px">→ Downsize team name, emphasize the +66 gap number, add "across 6 slots" context</p>
+    <span class="fix-pill fix-easy">Easy</span>
+  </div>
+
+  <div class="audit-item">
+    <div class="issue-num">ISSUE 3</div>
+    <h3>Losing-row labels asymmetric</h3>
+    <p>Win rows show "◀ IRON +23". Loss rows show "−7 ▶" — inconsistent and harder to parse quickly.</p>
+    <div style="display:flex;gap:12px;align-items:center;margin:6px 0 8px;">
+      <span class="label-old">−7 ▶</span>
+      <span style="color:#475569;font-size:10px">→</span>
+      <span class="label-new-synd">SYND +7 ▶</span>
+    </div>
+    <span class="fix-pill fix-easy">Easy</span>
+  </div>
+
+  <div class="audit-item">
+    <div class="issue-num">ISSUE 4</div>
+    <h3>Right-side OVR label noise</h3>
+    <p>Left side has "OVR" in dark-blue; right side uses a nearly black tone (#2d1a1a). Both are cramped. The tiny "OVR" above each number adds visual clutter per row.</p>
+    <p style="color:#94a3b8;font-size:11px">→ Remove per-row "OVR" label, show it once in the legend or header toggle area</p>
+    <span class="fix-pill fix-easy">Easy</span>
+  </div>
+
+  <div class="audit-item">
+    <div class="issue-num">ISSUE 5</div>
+    <h3>Helper text nearly invisible</h3>
+    <p>"Longer bar = larger OVR edge" is set to <code style="color:#1e293b;background:#334155;padding:1px 4px;border-radius:2px">#1e293b</code> — same as the background. Completely ghosted.</p>
+    <p style="color:#94a3b8;font-size:11px">→ Lift to #475569 minimum, or redesign the legend row to be more prominent</p>
+    <span class="fix-pill fix-easy">Easy</span>
+  </div>
+
+  <div class="audit-item">
+    <div class="issue-num">ISSUE 6</div>
+    <h3>Tally underemphasized</h3>
+    <p>"4 slot advantages / 2 slot disadvantages" is small gray text. It's the actual planning summary — should carry more weight as a visual anchor row.</p>
+    <span class="fix-pill fix-easy">Easy</span>
+  </div>
+
+  <div class="audit-item">
+    <div class="issue-num">ISSUE 7</div>
+    <h3>Lock button dominates the panel</h3>
+    <p>The "Lock Weekly Plan" CTA is full-width and visually heavier than the MatchCard analysis above it. The button eats the page.</p>
+    <p style="color:#94a3b8;font-size:11px">→ Reduce height/padding on the button, or visually separate the analysis area from the action zone</p>
+    <span class="fix-pill fix-medium">Layout</span>
+  </div>
+
+  <div class="audit-item">
+    <div class="issue-num">ISSUE 8</div>
+    <h3>Missing "why this matters" layer</h3>
+    <p>Numbers show Iron wins, but not which slot is the key exploit or which is the danger to avoid. The best/worst matchups should be flagged in-line.</p>
+    <p style="color:#94a3b8;font-size:11px">→ Tag the best iron advantage row as "KEY EDGE" and worst loss row as "WATCH OUT"</p>
+    <span class="fix-pill fix-medium">Feature</span>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:20px">All 8 are scoped to <strong>MatchCard.tsx</strong> (issues 1–8) plus a minor CSS tweak for the button (issue 7).<br>Let me know in the terminal when you're done reviewing this, and I'll ask the first design question.</p>
