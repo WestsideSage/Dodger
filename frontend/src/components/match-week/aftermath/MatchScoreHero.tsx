@@ -42,12 +42,26 @@ function TeamScore({
       className={`command-score-team command-score-team-${side} ${isWinner ? 'command-score-team-winner' : 'command-score-team-loser'}`}
       style={{
         borderColor: isWinner ? `${accent}88` : '#1e293b',
-        boxShadow: isWinner ? `0 0 28px ${side === 'home' ? 'rgba(249,115,22,0.18)' : 'rgba(34,211,238,0.16)'}` : undefined,
+        boxShadow: isWinner ? `0 0 36px ${side === 'home' ? 'rgba(249,115,22,0.28)' : 'rgba(34,211,238,0.24)'}` : undefined,
       }}
     >
       <span className="dm-kicker">{side === 'home' ? 'Home' : 'Away'}</span>
       <strong style={{ color: accent, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', display: 'block' }} title={name}>{name}</strong>
-      <span className="command-score-number">{displayedSurvivors}</span>
+      <span
+        className="command-score-number"
+        style={{
+          fontSize: 'clamp(2.8rem, 8vw, 4rem)',
+          opacity: isWinner ? 1 : 0.45,
+          textShadow: isWinner
+            ? side === 'home'
+              ? '0 0 24px rgba(249,115,22,0.6)'
+              : '0 0 24px rgba(34,211,238,0.5)'
+            : 'none',
+          display: 'block',
+        }}
+      >
+        {displayedSurvivors}
+      </span>
       <span className="command-score-detail">{survivors} survivors</span>
       {isWinner && <span className="dm-badge dm-badge-amber command-score-winner-badge">Winner</span>}
     </div>
