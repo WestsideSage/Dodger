@@ -2168,6 +2168,22 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+.command-action-bar-primary {
+  flex: 1;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  padding: 10px 16px;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  letter-spacing: 2px;
+}
+
+.command-action-bar-primary:focus-visible {
+  outline: 2px solid #f97316;
+  outline-offset: 2px;
+}
+
 .command-action-buttons {
   display: flex;
   flex-wrap: wrap;
