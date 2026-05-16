@@ -224,7 +224,10 @@ export function MatchWeek({
           <div className="command-story-grid command-reveal" data-testid="command-story-grid">
             <ReplayTimeline lanes={activeResult.dashboard.lanes} />
             <div className="command-story-side">
-              <KeyPlayersPanel performers={replayForMatch?.report.top_performers ?? []} />
+              <KeyPlayersPanel
+                performers={replayForMatch?.report.top_performers ?? []}
+                playerClubName={data?.player_club_name}
+              />
               <TacticalSummaryCard
                 turningPoint={replayForMatch?.report.turning_point ?? ''}
                 evidenceLanes={replayForMatch?.report.evidence_lanes ?? activeResult.dashboard.lanes}

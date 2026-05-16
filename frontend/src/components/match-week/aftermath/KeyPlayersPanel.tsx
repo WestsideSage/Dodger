@@ -11,7 +11,13 @@ function statLine(player: TopPerformer) {
   return stats.join(' / ');
 }
 
-export function KeyPlayersPanel({ performers }: { performers: TopPerformer[] }) {
+export function KeyPlayersPanel({
+  performers,
+  playerClubName,
+}: {
+  performers: TopPerformer[];
+  playerClubName?: string;
+}) {
   return (
     <section className="dm-panel command-key-players" data-testid="key-players-panel">
       <div className="dm-panel-header">
@@ -21,20 +27,34 @@ export function KeyPlayersPanel({ performers }: { performers: TopPerformer[] }) 
         {performers.length === 0 ? (
           <p className="command-empty-copy">Replay stats are loading.</p>
         ) : (
-          performers.slice(0, 3).map((player, index) => (
-            <article key={player.player_id} className="command-key-player">
-              <span>{index + 1}</span>
-              <div>
-                <strong>{player.player_name}</strong>
-                {player.club_name && (
-                  <span style={{ fontSize: '0.7rem', color: '#64748b', marginLeft: '0.35rem' }}>
-                    {player.club_name}
-                  </span>
-                )}
-                <p>{statLine(player)}</p>
-              </div>
-            </article>
-          ))
+          performers.slice(0, 3).map((player, index) => {
+            const isYours = playerClubName
+              ? player.club_name === playerClubName
+              : false;
+            return (
+              <article
+                key={player.player_id}
+                className="command-key-player"
+                style={isYours ? { borderLeft: '2px solid #22d3ee' } : undefined}
+              >
+                <span>{index + 1}</span>
+                <div>
+                  <strong>{player.player_name}</strong>
+                  {isYours && (
+                    <span className="dm-badge dm-badge-cyan" style={{ marginLeft: '0.4rem', fontSize: '0.6rem' }}>
+                      Your Club
+                    </span>
+                  )}
+                  {!isYours && player.club_name && (
+                    <span style={{ fontSize: '0.7rem', color: '#64748b', marginLeft: '0.35rem' }}>
+                      {player.club_name}
+                    </span>
+                  )}
+                  <p>{statLine(player)}</p>
+                </div>
+              </article>
+            );
+          })
         )}
       </div>
     </section>
