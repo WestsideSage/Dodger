@@ -1,58 +1,41 @@
+import type React from 'react';
 import type { TopPerformer } from '../../../types';
 
 function StatChips({ player }: { player: TopPerformer }) {
+  const chipStyle = (bg: string, color: string): React.CSSProperties => ({
+    fontFamily: 'JetBrains Mono, monospace',
+    fontSize: '0.55rem',
+    background: bg,
+    color,
+    borderRadius: '3px',
+    padding: '1px 4px',
+  });
+
   return (
-    <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '4px', alignItems: 'center' }}>
+    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '2px', alignItems: 'center' }}>
       {player.eliminations_by_throw > 0 && (
-        <span
-          style={{
-            fontFamily: 'JetBrains Mono, monospace',
-            fontSize: '0.62rem',
-            background: 'rgba(249,115,22,0.15)',
-            color: '#f97316',
-            borderRadius: '3px',
-            padding: '2px 6px',
-          }}
-        >
-          {player.eliminations_by_throw} Kill{player.eliminations_by_throw !== 1 ? 's' : ''}
+        <span style={chipStyle('rgba(249,115,22,0.15)', '#f97316')}>
+          {player.eliminations_by_throw}K
         </span>
       )}
       {player.catches_made > 0 && (
-        <span
-          style={{
-            fontFamily: 'JetBrains Mono, monospace',
-            fontSize: '0.62rem',
-            background: 'rgba(34,211,238,0.12)',
-            color: '#22d3ee',
-            borderRadius: '3px',
-            padding: '2px 6px',
-          }}
-        >
-          {player.catches_made} Catch{player.catches_made !== 1 ? 'es' : ''}
+        <span style={chipStyle('rgba(34,211,238,0.12)', '#22d3ee')}>
+          {player.catches_made}C
         </span>
       )}
       {player.dodges_successful > 0 && (
-        <span
-          style={{
-            fontFamily: 'JetBrains Mono, monospace',
-            fontSize: '0.62rem',
-            background: 'rgba(163,230,53,0.12)',
-            color: '#a3e635',
-            borderRadius: '3px',
-            padding: '2px 6px',
-          }}
-        >
-          {player.dodges_successful} Dodge{player.dodges_successful !== 1 ? 's' : ''}
+        <span style={chipStyle('rgba(163,230,53,0.12)', '#a3e635')}>
+          {player.dodges_successful}D
         </span>
       )}
       <span
         style={{
           fontFamily: 'JetBrains Mono, monospace',
-          fontSize: '0.6rem',
+          fontSize: '0.55rem',
           color: '#475569',
         }}
       >
-        Impact Score {Math.round(player.score)}
+        Imp {Math.round(player.score)}
       </span>
     </div>
   );
@@ -65,7 +48,16 @@ export function KeyPlayersPanel({
   performers: TopPerformer[];
   playerClubName?: string;
 }) {
-  if (performers.length === 0) return null;
+  if (performers.length === 0) {
+    return (
+      <section className="dm-panel command-key-players" data-testid="key-players-panel">
+        <div className="dm-panel-header">
+          <p className="dm-kicker">Key Performers</p>
+        </div>
+        <p className="command-fallout-empty">No standout performances recorded.</p>
+      </section>
+    );
+  }
 
   return (
     <section className="dm-panel command-key-players" data-testid="key-players-panel">
@@ -81,7 +73,7 @@ export function KeyPlayersPanel({
             <article
               key={player.player_id}
               className="command-key-player"
-              style={{ paddingTop: '10px', paddingBottom: '10px' }}
+              style={{ paddingTop: '2px', paddingBottom: '2px' }}
             >
               <span
                 className="command-rank-badge"
@@ -91,7 +83,7 @@ export function KeyPlayersPanel({
                 {index + 1}
               </span>
               <div>
-                <strong style={{ fontSize: '0.9rem', color: '#f1f5f9' }}>{player.player_name}</strong>
+                <strong style={{ fontSize: '0.82rem', color: '#f1f5f9' }}>{player.player_name}</strong>
                 {isYours ? (
                   <span
                     style={{

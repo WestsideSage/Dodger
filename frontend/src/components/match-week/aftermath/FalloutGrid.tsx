@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 function FalloutCard({ title, children }: { title: string; children: ReactNode }) {
   return (
     <article className="dm-panel command-fallout-card">
-      <p className="dm-kicker" style={{ borderTop: '2px solid #1e293b', paddingTop: '6px' }}>
+      <p className="dm-kicker" style={{ borderTop: '2px solid #1e293b', paddingTop: '3px' }}>
         {title}
       </p>
       <div className="command-fallout-card-body">{children}</div>
@@ -21,19 +21,17 @@ export function FalloutGrid({
   standingsShift: Aftermath['standings_shift'];
   recruitReactions: Aftermath['recruit_reactions'];
 }) {
-  if (playerGrowth.length === 0 && standingsShift.length === 0 && recruitReactions.length === 0) {
-    return null;
-  }
-
   return (
     <section className="command-fallout" data-testid="fallout-grid">
-      <div className="command-section-heading">
-        <p className="dm-kicker">Aftermath</p>
-        <h3>Week Fallout</h3>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '6px' }}>
+        <span className="dm-kicker" style={{ opacity: 0.7 }}>Aftermath</span>
+        <span style={{ fontFamily: 'Oswald, sans-serif', fontSize: '0.95rem', fontWeight: 700, color: '#fff', letterSpacing: '0.5px' }}>
+          Week Fallout
+        </span>
       </div>
       <div className="command-fallout-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-        {playerGrowth.length > 0 && (
-          <FalloutCard title="Who Grew">
+        <FalloutCard title="Who Grew">
+          {playerGrowth.length > 0 ? (
             <ul className="command-clean-list">
               {playerGrowth.slice(0, 4).map((item) => (
                 <li key={`${item.player_id}-${item.attribute}`}>
@@ -44,30 +42,40 @@ export function FalloutGrid({
                 </li>
               ))}
             </ul>
-          </FalloutCard>
-        )}
+          ) : (
+            <p className="command-fallout-empty">No growth logged this week.</p>
+          )}
+        </FalloutCard>
 
-        {standingsShift.length > 0 && (
-          <FalloutCard title="Standings Shift">
-            <ul className="command-clean-list">
-              {standingsShift.slice(0, 4).map((item) => {
-                const moved = item.new_rank - item.old_rank;
-                const up = moved < 0;
-                return (
-                  <li key={item.club_id}>
-                    <strong>{item.club_name}</strong>
-                    <span style={{ color: up ? '#10b981' : '#f43f5e', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem' }}>
-                      {up ? '↑' : '↓'} #{item.old_rank} → #{item.new_rank}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </FalloutCard>
-        )}
+        <FalloutCard title="Standings Shift">
+          {standingsShift.length > 0 ? (
+            <>
+              <div className="command-fallout-standings-header">
+                <span>Club</span>
+                <span>Prev → New</span>
+              </div>
+              <ul className="command-clean-list command-clean-list-compact">
+                {standingsShift.slice(0, 3).map((item) => {
+                  const moved = item.new_rank - item.old_rank;
+                  const up = moved < 0;
+                  return (
+                    <li key={item.club_id}>
+                      <strong>{item.club_name}</strong>
+                      <span style={{ color: up ? '#10b981' : '#f43f5e', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem' }}>
+                        {up ? '↑' : '↓'} #{item.old_rank} → #{item.new_rank}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          ) : (
+            <p className="command-empty-copy">No standings changes this week.</p>
+          )}
+        </FalloutCard>
 
-        {recruitReactions.length > 0 && (
-          <FalloutCard title="Prospect Pulse">
+        <FalloutCard title="Prospect Pulse">
+          {recruitReactions.length > 0 ? (
             <ul className="command-clean-list command-clean-list-loose">
               {recruitReactions.slice(0, 3).map((item) => {
                 const delta = parseInt(item.interest_delta, 10);
@@ -84,8 +92,10 @@ export function FalloutGrid({
                 );
               })}
             </ul>
-          </FalloutCard>
-        )}
+          ) : (
+            <p className="command-fallout-empty">No prospect movement this week.</p>
+          )}
+        </FalloutCard>
       </div>
     </section>
   );

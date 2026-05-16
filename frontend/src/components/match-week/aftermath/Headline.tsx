@@ -1,7 +1,6 @@
 export function Headline({
   text,
   week,
-  subtitle,
   contextLine,
 }: {
   text: string;
@@ -12,68 +11,68 @@ export function Headline({
   return (
     <div
       style={{
-        background: 'linear-gradient(110deg, rgba(249,115,22,0.18) 0%, rgba(249,115,22,0.06) 45%, #0f172a 80%)',
-        borderBottom: '1px solid rgba(249,115,22,0.25)',
-        padding: '18px 20px 16px',
+        borderLeft: '3px solid #f97316',
+        background: 'linear-gradient(90deg, rgba(249,115,22,0.10) 0%, rgba(249,115,22,0.03) 50%, transparent 100%)',
+        borderBottom: '1px solid rgba(249,115,22,0.18)',
+        padding: '5px 16px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '2px',
       }}
     >
-      {week !== undefined && (
-        <div
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+        <span
           style={{
             fontFamily: 'JetBrains Mono, monospace',
-            fontSize: '0.6rem',
-            letterSpacing: '3px',
+            fontSize: '0.55rem',
+            letterSpacing: '2.5px',
             color: '#f97316',
             textTransform: 'uppercase' as const,
-            marginBottom: '6px',
-            opacity: 0.8,
+            opacity: 0.9,
           }}
         >
-          Week {week} Result
-        </div>
-      )}
-      <h1
-        style={{
-          fontFamily: 'Oswald, sans-serif',
-          fontSize: 'clamp(1.4rem, 4vw, 2rem)',
-          fontWeight: 700,
-          color: '#fff',
-          letterSpacing: '1px',
-          lineHeight: 1.1,
-          textShadow: '0 0 30px rgba(249,115,22,0.35)',
-          margin: 0,
-        }}
-      >
-        {text}
-      </h1>
-      {contextLine && (
-        <p
+          War Room
+        </span>
+        {week !== undefined && (
+          <span
+            style={{
+              fontFamily: 'JetBrains Mono, monospace',
+              fontSize: '0.55rem',
+              letterSpacing: '1px',
+              color: '#64748b',
+            }}
+          >
+            · Wk {week} Debrief
+          </span>
+        )}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' as const }}>
+        <span
           style={{
-            fontFamily: 'Inter, sans-serif',
-            fontSize: '0.8rem',
-            color: '#94a3b8',
-            marginTop: '8px',
-            marginBottom: 0,
-            lineHeight: 1.5,
-            letterSpacing: '0.3px',
-          }}
-        >
-          {contextLine}
-        </p>
-      )}
-      {subtitle && !contextLine && (
-        <div
-          style={{
-            fontFamily: 'Inter, sans-serif',
-            fontSize: '0.65rem',
-            color: '#94a3b8',
-            marginTop: '6px',
+            fontFamily: 'Oswald, sans-serif',
+            fontSize: 'clamp(1rem, 2.5vw, 1.25rem)',
+            fontWeight: 700,
+            color: '#fff',
             letterSpacing: '0.5px',
+            lineHeight: 1.1,
           }}
         >
-          {subtitle}
-        </div>
-      )}
+          {text}
+        </span>
+        {contextLine && (
+          <span
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '0.72rem',
+              color: '#94a3b8',
+              lineHeight: 1.4,
+              letterSpacing: '0.2px',
+            }}
+          >
+            {contextLine}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
