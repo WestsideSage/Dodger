@@ -205,30 +205,14 @@ export function PreSimDashboard({
             <p>{nextActionDescription}</p>
           </div>
         </div>
-        <div className="command-next-action-buttons">
-          {!planConfirmed ? (
-            <button
-              type="button"
-              data-testid="lock-weekly-plan-top"
-              aria-label="Confirm Plan"
-              onClick={() => {
-                if (isReadyToLock) onSavePlan(selectedIntent, true);
-              }}
-              disabled={!isReadyToLock}
-              className="command-primary-button"
-            >
-              {isReadyToLock ? 'Confirm Plan' : 'Review Checklist'}
-            </button>
-          ) : (
-            <>
-              <button type="button" data-testid="simulate-command-week-top" onClick={simulate} className="command-primary-button is-live">
-                Simulate Match
-              </button>
-              <button type="button" onClick={() => onSavePlan(selectedIntent, false)} className="command-secondary-button" style={{ marginTop: 0 }}>
-                Unlock Plan
-              </button>
-            </>
-          )}
+        <div className="command-next-action-status">
+          <p style={{ margin: 0, fontSize: '0.8rem', color: planConfirmed ? '#10b981' : '#94a3b8', fontFamily: 'var(--font-body)' }}>
+            {planConfirmed
+              ? 'Plan locked. Simulate the match using the button below.'
+              : isReadyToLock
+              ? 'The board is ready. Lock the plan to unlock simulation.'
+              : `Complete the readiness checklist below, then lock the plan to run the match.`}
+          </p>
         </div>
       </section>
 
