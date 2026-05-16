@@ -12,26 +12,9 @@ export function AftermathActionBar({
   const hasReplay = Boolean(matchId && onViewReplay);
 
   return (
-    <div
-      style={{ padding: '12px 16px', display: 'flex', gap: '8px', alignItems: 'stretch' }}
-      data-testid="after-action-bar"
-    >
+    <div className="command-action-bar" data-testid="after-action-bar">
       {hasReplay && (
-        <button
-          onClick={onViewReplay}
-          style={{
-            background: 'transparent',
-            border: '1px solid #475569',
-            borderRadius: '8px',
-            color: '#94a3b8',
-            padding: '10px 18px',
-            fontFamily: 'Oswald, sans-serif',
-            fontSize: '0.75rem',
-            letterSpacing: '1px',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap' as const,
-          }}
-        >
+        <button onClick={onViewReplay} className="command-action-bar-secondary">
           WATCH REPLAY
         </button>
       )}
@@ -49,6 +32,14 @@ export function AftermathActionBar({
           fontSize: '0.85rem',
           letterSpacing: '2px',
           cursor: isAdvancing ? 'default' : 'pointer',
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.outline = '2px solid #f97316';
+          e.currentTarget.style.outlineOffset = '2px';
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.outline = 'none';
+          e.currentTarget.style.outlineOffset = '0';
         }}
       >
         {isAdvancing ? 'ADVANCING...' : 'ADVANCE TO NEXT WEEK →'}
