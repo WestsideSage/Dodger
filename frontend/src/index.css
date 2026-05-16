@@ -1832,7 +1832,7 @@ textarea:focus-visible {
 }
 
 .command-match-flow-count {
-  font-family: var(--font-mono);
+  font-family: var(--font-mono-data);
   font-size: 0.65rem;
   color: #475569;
   letter-spacing: 1px;
@@ -1887,7 +1887,7 @@ textarea:focus-visible {
   border-radius: 50%;
   background: #1e293b;
   color: #64748b;
-  font-family: var(--font-mono);
+  font-family: var(--font-mono-data);
   font-size: 0.65rem;
   font-weight: 700;
   flex-shrink: 0;
@@ -1896,7 +1896,7 @@ textarea:focus-visible {
 
 .command-event-phase {
   display: inline-block;
-  font-family: var(--font-mono);
+  font-family: var(--font-mono-data);
   font-size: 0.55rem;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -2011,7 +2011,7 @@ textarea:focus-visible {
   width: 1.75rem;
   height: 1.75rem;
   border-radius: 50%;
-  font-family: var(--font-mono);
+  font-family: var(--font-mono-data);
   font-size: 0.7rem;
   font-weight: 700;
   flex-shrink: 0;
@@ -2030,7 +2030,6 @@ textarea:focus-visible {
 }
 
 .command-key-player p,
-.command-tactical-card p,
 .command-action-bar p {
   margin: 0.25rem 0 0;
   color: #94a3b8;
@@ -2046,7 +2045,7 @@ textarea:focus-visible {
   margin-top: 0.75rem;
   padding-top: 0.625rem;
   border-top: 1px solid #1e293b;
-  font-family: var(--font-mono);
+  font-family: var(--font-mono-data);
   font-size: 0.6rem;
   color: #475569;
   letter-spacing: 0.5px;
@@ -2200,7 +2199,7 @@ textarea:focus-visible {
   }
 }
 
-@media (min-width: 769px) and (max-width: 1023px) {
+@media (min-width: 721px) and (max-width: 1023px) {
   .command-match-flow-scroll {
     max-height: 480px;
   }
