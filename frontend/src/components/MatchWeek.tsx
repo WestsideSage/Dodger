@@ -197,13 +197,31 @@ export function MatchWeek({
       ? resolveMatchCardNames({ matchCard: aftermath.match_card, currentData: data, activeResult })
       : null;
 
+    const headlineSubtitle = (() => {
+      const mc = aftermath.match_card;
+      if (!mc || !matchCardNames) return undefined;
+      if (!mc.winner_club_id) {
+        return `${matchCardNames.homeTeam} vs ${matchCardNames.awayTeam} · ${mc.home_survivors} — ${mc.away_survivors}`;
+      }
+      const homeIsWinner = mc.winner_club_id === mc.home_club_id;
+      const winnerName = homeIsWinner ? matchCardNames.homeTeam : matchCardNames.awayTeam;
+      const loserName = homeIsWinner ? matchCardNames.awayTeam : matchCardNames.homeTeam;
+      const winnerSurvs = homeIsWinner ? mc.home_survivors : mc.away_survivors;
+      const loserSurvs = homeIsWinner ? mc.away_survivors : mc.home_survivors;
+      return `${winnerName} def. ${loserName} · ${winnerSurvs} survivors to ${loserSurvs}`;
+    })();
+
     return (
       <div className="command-post-sim" data-testid="post-week-dashboard">
         <PageHeader eyebrow="WAR ROOM" title="Command Center" description="Review the result, who performed, and what your week caused." />
 
         {revealStage >= 0 && (
           <div className="command-reveal">
-            <Headline text={aftermath.headline} />
+            <Headline
+              text={aftermath.headline}
+              week={activeResult.dashboard.week}
+              subtitle={headlineSubtitle}
+            />
           </div>
         )}
 
