@@ -168,7 +168,7 @@ export function PreSimDashboard({
       <div className="command-dashboard-header">
         <div>
           <h1>Command Center</h1>
-          <div className="command-dashboard-subtitle">Week {data.week} vs {plan.opponent.name}</div>
+          <div className="command-dashboard-subtitle">Week {data.week} · {recentRecord} · vs {plan.opponent.name}</div>
         </div>
         <div className="command-dashboard-metrics">
           <div>
