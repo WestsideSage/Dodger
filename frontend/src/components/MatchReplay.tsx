@@ -739,117 +739,127 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
         homeClubId={data.home_club_id}
       />
 
-      <div className="dm-replay-layout">
-
-        {/* Left: court + controls + event */}
-        <div className="dm-replay-stage">
-          {/* Court */}
-          <div className="dm-replay-court">
-            {hasCourtData ? (
-              <CourtView
-                homeName={data.home_club_name}
-                awayName={data.away_club_name}
-                homeIds={homeIds}
-                awayIds={awayIds}
-                positions={positions}
-                playerRegistry={playerRegistry}
-                eliminatedIds={eliminatedIds}
-                throwerId={throwerId}
-                targetId={targetId}
-                activeResolution={activeResolution}
-                flashTargetId={flashTargetId}
-                ballAnimKey={ballAnimKey}
-              />
-            ) : (
-              <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', borderRadius: 8, fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#475569' }}>
-                No player tracking data available.
-              </div>
-            )}
+      {/* Court — full width */}
+      <div style={{ background: '#060d1a', padding: '8px 0 4px' }}>
+        {hasCourtData ? (
+          <CourtView
+            homeName={data.home_club_name}
+            awayName={data.away_club_name}
+            homeIds={homeIds}
+            awayIds={awayIds}
+            positions={positions}
+            playerRegistry={playerRegistry}
+            eliminatedIds={eliminatedIds}
+            throwerId={throwerId}
+            targetId={targetId}
+            activeResolution={activeResolution}
+            flashTargetId={flashTargetId}
+            ballAnimKey={ballAnimKey}
+          />
+        ) : (
+          <div
+            style={{
+              height: 180,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#0f172a',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 12,
+              color: '#475569',
+            }}
+          >
+            No player tracking data available.
           </div>
+        )}
+      </div>
 
-          {/* Controls */}
-          <div className="dm-replay-controls">
-            <button aria-label="Previous replay event" onClick={stepBack} disabled={eventIndex === 0} style={{ background: 'transparent', border: '1px solid #334155', borderRadius: 4, color: eventIndex === 0 ? '#334155' : '#94a3b8', padding: '4px 10px', cursor: eventIndex === 0 ? 'default' : 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>{"<"}</button>
+      {/* Controls */}
+      <div className="dm-replay-controls" style={{ padding: '6px 12px' }}>
+        <button aria-label="Previous replay event" onClick={stepBack} disabled={eventIndex === 0} style={{ background: 'transparent', border: '1px solid #334155', borderRadius: 4, color: eventIndex === 0 ? '#334155' : '#94a3b8', padding: '4px 10px', cursor: eventIndex === 0 ? 'default' : 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>{'<'}</button>
+        <button aria-label={isPlaying ? 'Pause replay' : 'Play replay'} onClick={togglePlay} style={{ background: isPlaying ? '#1e293b' : '#f97316', border: 'none', borderRadius: 4, color: '#ffffff', padding: '4px 14px', cursor: 'pointer', fontFamily: 'Oswald, sans-serif', fontSize: 13, letterSpacing: 1 }}>
+          {isPlaying ? 'PAUSE' : 'PLAY'}
+        </button>
+        <button aria-label="Next replay event" onClick={stepForward} disabled={eventIndex >= totalEvents - 1} style={{ background: 'transparent', border: '1px solid #334155', borderRadius: 4, color: eventIndex >= totalEvents - 1 ? '#334155' : '#94a3b8', padding: '4px 10px', cursor: eventIndex >= totalEvents - 1 ? 'default' : 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>{'>'}</button>
+        <button onClick={cycleSpeed} style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 4, color: '#f97316', padding: '4px 10px', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, letterSpacing: 1 }}>{playSpeed}</button>
+        <div
+          className="dm-replay-scrubber"
+          style={{ height: 8, background: '#1e293b', borderRadius: 4, cursor: 'pointer', position: 'relative', flex: 1 }}
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            setEventIndex(Math.round(((e.clientX - rect.left) / rect.width) * (totalEvents - 1)));
+            setIsPlaying(false);
+          }}
+        >
+          <div style={{ height: '100%', width: `${progress * 100}%`, background: '#f97316', borderRadius: 4, transition: 'width 0.1s' }} />
+          {data.key_play_indices.map((ki) => (
+            <div key={ki} style={{ position: 'absolute', top: -2, left: `${(ki / (totalEvents - 1)) * 100}%`, width: 3, height: 12, background: '#f59e0b', borderRadius: 1.5, transform: 'translateX(-50%)' }} />
+          ))}
+        </div>
+        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: '#475569', whiteSpace: 'nowrap' as const }}>
+          {eventIndex + 1} / {totalEvents}
+        </span>
+        {data.key_play_indices.length > 0 && (
+          <button aria-label="Next key replay event" onClick={jumpToKeyEvent} style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid #f59e0b44', borderRadius: 4, color: '#f59e0b', padding: '4px 8px', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 9, letterSpacing: 1, whiteSpace: 'nowrap' as const }}>
+            KEY
+          </button>
+        )}
+      </div>
 
-            <button aria-label={isPlaying ? 'Pause replay' : 'Play replay'} onClick={togglePlay} style={{ background: isPlaying ? '#1e293b' : '#f97316', border: 'none', borderRadius: 4, color: '#ffffff', padding: '4px 14px', cursor: 'pointer', fontFamily: 'Oswald, sans-serif', fontSize: 13, letterSpacing: 1 }}>
-              {isPlaying ? 'PAUSE' : 'PLAY'}
-            </button>
+      {/* Current play strip */}
+      <div
+        style={{
+          margin: '0 12px 8px',
+          borderLeft: `3px solid ${isKeyPlay ? '#f59e0b' : '#334155'}`,
+          background: isKeyPlay ? 'rgba(245,158,11,0.06)' : '#0f172a',
+          borderRadius: '0 6px 6px 0',
+          padding: '8px 12px',
+        }}
+      >
+        {currentEvent && (
+          <EventCard
+            label={currentEvent.label}
+            detail={currentEvent.detail}
+            eventType={currentEvent.event_type}
+            isKeyPlay={isKeyPlay}
+          />
+        )}
+      </div>
 
-            <button aria-label="Next replay event" onClick={stepForward} disabled={eventIndex >= totalEvents - 1} style={{ background: 'transparent', border: '1px solid #334155', borderRadius: 4, color: eventIndex >= totalEvents - 1 ? '#334155' : '#94a3b8', padding: '4px 10px', cursor: eventIndex >= totalEvents - 1 ? 'default' : 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>{">"}</button>
-
-            <button onClick={cycleSpeed} style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 4, color: '#f97316', padding: '4px 10px', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, letterSpacing: 1 }}>{playSpeed}</button>
-
-            {/* Scrubber */}
-            <div
-              className="dm-replay-scrubber"
-              style={{ height: 8, background: '#1e293b', borderRadius: 4, cursor: 'pointer', position: 'relative' }}
-              onClick={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                setEventIndex(Math.round(((e.clientX - rect.left) / rect.width) * (totalEvents - 1)));
-                setIsPlaying(false);
-              }}
-            >
-              <div style={{ height: '100%', width: `${progress * 100}%`, background: '#f97316', borderRadius: 4, transition: 'width 0.1s' }} />
-              {data.key_play_indices.map((ki) => (
-                <div key={ki} style={{ position: 'absolute', top: -2, left: `${(ki / (totalEvents - 1)) * 100}%`, width: 3, height: 12, background: '#f59e0b', borderRadius: 1.5, transform: 'translateX(-50%)' }} />
-              ))}
-            </div>
-
-            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: '#475569', whiteSpace: 'nowrap' as const }}>
-              {eventIndex + 1} / {totalEvents}
-            </span>
-
-            {data.key_play_indices.length > 0 && (
-              <button aria-label="Next key replay event" onClick={jumpToKeyEvent} style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid #f59e0b44', borderRadius: 4, color: '#f59e0b', padding: '4px 8px', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 9, letterSpacing: 1, whiteSpace: 'nowrap' as const }}>
-                KEY
+      {/* Tabbed analysis — full width below court */}
+      <div style={{ borderTop: '1px solid #1e293b', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid #1e293b', padding: '0 4px' }}>
+          {(['pbp', 'keyplays', 'stats'] as const).map((tab) => {
+            const labels = { pbp: 'PLAY-BY-PLAY', keyplays: 'KEY PLAYS', stats: 'REPORT' };
+            const isActive = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                style={{ background: 'transparent', border: 'none', borderBottom: `2px solid ${isActive ? '#f97316' : 'transparent'}`, color: isActive ? '#f97316' : '#475569', padding: '10px 12px', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: 1, marginBottom: -1 }}
+              >
+                {labels[tab]}
               </button>
-            )}
-          </div>
-
-          {/* Event description */}
-          <div style={{ padding: '8px 12px', background: '#020617' }}>
-            {currentEvent && (
-              <EventCard label={currentEvent.label} detail={currentEvent.detail} eventType={currentEvent.event_type} isKeyPlay={isKeyPlay} />
-            )}
-          </div>
-
-          {/* Continue */}
-          <div style={{ padding: '8px 12px', borderTop: '1px solid #1e293b', background: '#020617' }}>
-            <button onClick={onContinue} style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: 6, color: '#94a3b8', padding: '8px', cursor: 'pointer', fontFamily: 'Oswald, sans-serif', fontSize: 13, letterSpacing: 1 }}>
-              {'BACK TO RESULTS'}
-            </button>
-          </div>
+            );
+          })}
         </div>
-
-        {/* Right: tabbed analysis */}
-        <div className="dm-replay-sidebar">
-          <div style={{ display: 'flex', borderBottom: '1px solid #1e293b', padding: '0 4px' }}>
-            {(['pbp', 'keyplays', 'stats'] as const).map((tab) => {
-              const labels = { pbp: 'PLAY-BY-PLAY', keyplays: 'KEY PLAYS', stats: 'BOX SCORE' };
-              const isActive = activeTab === tab;
-              return (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  style={{ background: 'transparent', border: 'none', borderBottom: `2px solid ${isActive ? '#f97316' : 'transparent'}`, color: isActive ? '#f97316' : '#475569', padding: '10px 12px', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: 1, marginBottom: -1 }}
-                >
-                  {labels[tab]}
-                </button>
-              );
-            })}
-          </div>
-
-          <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-            {activeTab === 'pbp' && (
-              <PlayByPlayPanel
-                events={data.proof_events}
-                currentIndex={eventIndex}
-              />
-            )}
-            {activeTab === 'keyplays' && <KeyPlaysPanel data={data} currentIndex={eventIndex} onJump={jumpTo} />}
-            {activeTab === 'stats' && <StatsPanel data={data} />}
-          </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px', maxHeight: '280px' }}>
+          {activeTab === 'pbp' && (
+            <PlayByPlayPanel events={data.proof_events} currentIndex={eventIndex} />
+          )}
+          {activeTab === 'keyplays' && <KeyPlaysPanel data={data} currentIndex={eventIndex} onJump={jumpTo} />}
+          {activeTab === 'stats' && <StatsPanel data={data} />}
         </div>
+      </div>
+
+      {/* Back to results */}
+      <div style={{ padding: '8px 12px', borderTop: '1px solid #1e293b', background: '#020617' }}>
+        <button
+          onClick={onContinue}
+          style={{ width: '100%', background: '#0f172a', border: '1px solid #334155', borderRadius: 6, color: '#94a3b8', padding: '8px', cursor: 'pointer', fontFamily: 'Oswald, sans-serif', fontSize: 13, letterSpacing: 1 }}
+        >
+          BACK TO RESULTS
+        </button>
       </div>
     </div>
   );
