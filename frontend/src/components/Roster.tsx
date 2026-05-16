@@ -107,7 +107,7 @@ export function Roster() {
           <>
             <StatChip label="Avg Age" value={averageAge} />
             <StatChip label="Avg OVR" value={averageOverall} tone="info" />
-            <StatChip label="Trend" value="UP" tone="success" />
+            <StatChip label="Starters" value={roster.filter(r => r.starter).length} />
             {planContext && (
               <DevFocusChip
                 current={planContext.dev_focus}
@@ -133,7 +133,7 @@ export function Roster() {
               <th style={{ padding: '1rem', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase' }}>Ratings</th>
               <th style={{ padding: '1rem', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase' }}>Potential</th>
               <th style={{ padding: '1rem', textAlign: 'right', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase' }}>OVR</th>
-              <th style={{ padding: '1rem', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase' }}>Status</th>
+              <th style={{ padding: '1rem', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase' }}>Role</th>
             </tr>
           </thead>
         )}
@@ -146,7 +146,7 @@ export function Roster() {
                <th style={{ padding: '0.5rem', color: '#64748b', fontSize: '0.75rem' }}>DOD</th>
                <th style={{ padding: '0.5rem', color: '#64748b', fontSize: '0.75rem' }}>CAT</th>
                <th style={{ padding: '0.5rem', color: '#64748b', fontSize: '0.75rem' }}>OVR</th>
-               <th style={{ padding: '0.5rem', color: '#64748b', fontSize: '0.75rem' }}>Status</th>
+               <th style={{ padding: '0.5rem', color: '#64748b', fontSize: '0.75rem' }}>Role</th>
              </tr>
           </thead>
         )}
