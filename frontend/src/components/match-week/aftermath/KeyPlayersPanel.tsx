@@ -14,7 +14,7 @@ function StatChips({ player }: { player: TopPerformer }) {
             padding: '2px 6px',
           }}
         >
-          {player.eliminations_by_throw}K
+          {player.eliminations_by_throw} Kill{player.eliminations_by_throw !== 1 ? 's' : ''}
         </span>
       )}
       {player.catches_made > 0 && (
@@ -28,7 +28,7 @@ function StatChips({ player }: { player: TopPerformer }) {
             padding: '2px 6px',
           }}
         >
-          {player.catches_made}C
+          {player.catches_made} Catch{player.catches_made !== 1 ? 'es' : ''}
         </span>
       )}
       {player.dodges_successful > 0 && (
@@ -42,7 +42,7 @@ function StatChips({ player }: { player: TopPerformer }) {
             padding: '2px 6px',
           }}
         >
-          {player.dodges_successful}D
+          {player.dodges_successful} Dodge{player.dodges_successful !== 1 ? 's' : ''}
         </span>
       )}
       <span
@@ -52,7 +52,7 @@ function StatChips({ player }: { player: TopPerformer }) {
           color: '#475569',
         }}
       >
-        {Math.round(player.score)} impact
+        Impact Score {Math.round(player.score)}
       </span>
     </div>
   );
@@ -65,59 +65,58 @@ export function KeyPlayersPanel({
   performers: TopPerformer[];
   playerClubName?: string;
 }) {
+  if (performers.length === 0) return null;
+
   return (
     <section className="dm-panel command-key-players" data-testid="key-players-panel">
       <div className="dm-panel-header">
         <p className="dm-kicker">Key Performers</p>
       </div>
       <div className="command-key-player-list">
-        {performers.length === 0 ? (
-          <p className="command-empty-copy">Replay stats are loading.</p>
-        ) : (
-          performers.slice(0, 3).map((player, index) => {
-            const isYours = playerClubName
-              ? player.club_name === playerClubName
-              : false;
-            return (
-              <article
-                key={player.player_id}
-                className="command-key-player"
-                style={{
-                  borderLeft: index === 0
-                    ? '2px solid #f97316'
-                    : isYours
-                    ? '2px solid #22d3ee'
-                    : undefined,
-                  paddingTop: '10px',
-                  paddingBottom: '10px',
-                }}
+        {performers.slice(0, 3).map((player, index) => {
+          const isYours = Boolean(playerClubName && player.club_name === playerClubName);
+          const badgeColor = isYours ? '#f97316' : '#334155';
+
+          return (
+            <article
+              key={player.player_id}
+              className="command-key-player"
+              style={{ paddingTop: '10px', paddingBottom: '10px' }}
+            >
+              <span
+                className="command-rank-badge"
+                style={{ background: badgeColor }}
+                aria-label={`Rank ${index + 1}`}
               >
-                <span style={{
-                  color: '#475569',
-                  fontSize: '0.7rem',
-                  border: '1px solid #1e293b',
-                  background: 'transparent',
-                }}>
-                  {index + 1}
-                </span>
-                <div>
-                  <strong style={{ fontSize: '0.9rem', color: '#f1f5f9' }}>{player.player_name}</strong>
-                  {isYours && (
-                    <span className="dm-badge dm-badge-cyan" style={{ marginLeft: '0.4rem', fontSize: '0.6rem' }}>
-                      Your Club
-                    </span>
-                  )}
-                  {!isYours && player.club_name && (
-                    <span style={{ fontSize: '0.7rem', color: '#64748b', marginLeft: '0.35rem' }}>
-                      {player.club_name}
-                    </span>
-                  )}
-                  <StatChips player={player} />
-                </div>
-              </article>
-            );
-          })
-        )}
+                {index + 1}
+              </span>
+              <div>
+                <strong style={{ fontSize: '0.9rem', color: '#f1f5f9' }}>{player.player_name}</strong>
+                {isYours ? (
+                  <span
+                    style={{
+                      marginLeft: '0.4rem',
+                      fontSize: '0.6rem',
+                      fontWeight: 700,
+                      background: '#f97316',
+                      color: '#000',
+                      borderRadius: '3px',
+                      padding: '1px 5px',
+                      letterSpacing: '0.5px',
+                    }}
+                  >
+                    Your Club
+                  </span>
+                ) : player.club_name ? (
+                  <span style={{ fontSize: '0.7rem', color: '#64748b', marginLeft: '0.35rem' }}>
+                    {player.club_name}
+                  </span>
+                ) : null}
+                <StatChips player={player} />
+              </div>
+            </article>
+          );
+        })}
       </div>
     </section>
   );
