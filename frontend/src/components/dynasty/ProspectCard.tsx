@@ -82,9 +82,21 @@ export function ProspectCard({
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', borderTop: '1px solid #1e293b', padding: '0.85rem 1.1rem 1rem' }}>
-        <ActionButton title={canScout ? 'Spend one Scout slot' : 'No Scout slots remain this week'} disabled={loading || !canScout} onClick={() => doAction('scout')}>Scout</ActionButton>
-        <ActionButton title={canContact ? 'Spend one Contact slot' : 'No Contact slots remain this week'} disabled={loading || !canContact} onClick={() => doAction('contact')}>Contact</ActionButton>
-        <ActionButton title={canVisit ? 'Spend one Visit slot' : 'No Visit slots remain this week'} disabled={loading || !canVisit} onClick={() => doAction('visit')}>Visit</ActionButton>
+        <ActionButton
+          title={canScout ? 'Scout: Reveals hidden rating data and narrows the OVR band for this prospect.' : 'No Scout slots remain this week'}
+          disabled={loading || !canScout}
+          onClick={() => doAction('scout')}
+        >Scout</ActionButton>
+        <ActionButton
+          title={canContact ? 'Contact: Reaches out directly to build interest. Increases their engagement with your program.' : 'No Contact slots remain this week'}
+          disabled={loading || !canContact}
+          onClick={() => doAction('contact')}
+        >Contact</ActionButton>
+        <ActionButton
+          title={canVisit ? 'Visit: Invites the prospect to your facility. Strongest commitment signal — use it on top targets.' : 'No Visit slots remain this week'}
+          disabled={loading || !canVisit}
+          onClick={() => doAction('visit')}
+        >Visit</ActionButton>
       </div>
     </article>
   );
