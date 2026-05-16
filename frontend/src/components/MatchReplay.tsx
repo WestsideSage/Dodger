@@ -446,22 +446,8 @@ function EventCard({
   eventType: string;
   isKeyPlay: boolean;
 }) {
-  const borderColor =
-    eventType === 'throw'
-      ? '#f97316'
-      : eventType === 'match_start' || eventType === 'match_end'
-      ? '#06b6d4'
-      : '#334155';
-
   return (
-    <div
-      style={{
-        borderLeft: `3px solid ${isKeyPlay ? '#f59e0b' : borderColor}`,
-        background: '#0f172a',
-        borderRadius: '0 6px 6px 0',
-        padding: '8px 12px',
-      }}
-    >
+    <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
         {isKeyPlay && (
           <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '1px 5px', borderRadius: 3, letterSpacing: 1 }}>
@@ -480,7 +466,7 @@ function EventCard({
           {detail}
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -807,24 +793,32 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
       </div>
 
       {/* Current play strip */}
-      <div
-        style={{
-          margin: '0 12px 8px',
-          borderLeft: `3px solid ${isKeyPlay ? '#f59e0b' : '#334155'}`,
-          background: isKeyPlay ? 'rgba(245,158,11,0.06)' : '#0f172a',
-          borderRadius: '0 6px 6px 0',
-          padding: '8px 12px',
-        }}
-      >
-        {currentEvent && (
-          <EventCard
-            label={currentEvent.label}
-            detail={currentEvent.detail}
-            eventType={currentEvent.event_type}
-            isKeyPlay={isKeyPlay}
-          />
-        )}
-      </div>
+      {currentEvent && (() => {
+        const stripBorderColor =
+          currentEvent.event_type === 'throw'
+            ? '#f97316'
+            : currentEvent.event_type === 'match_start' || currentEvent.event_type === 'match_end'
+            ? '#06b6d4'
+            : '#334155';
+        return (
+          <div
+            style={{
+              margin: '0 12px 8px',
+              borderLeft: `3px solid ${isKeyPlay ? '#f59e0b' : stripBorderColor}`,
+              background: isKeyPlay ? 'rgba(245,158,11,0.06)' : '#0f172a',
+              borderRadius: '0 6px 6px 0',
+              padding: '8px 12px',
+            }}
+          >
+            <EventCard
+              label={currentEvent.label}
+              detail={currentEvent.detail}
+              eventType={currentEvent.event_type}
+              isKeyPlay={isKeyPlay}
+            />
+          </div>
+        );
+      })()}
 
       {/* Tabbed analysis — full width below court */}
       <div style={{ borderTop: '1px solid #1e293b', flex: 1, display: 'flex', flexDirection: 'column' }}>
