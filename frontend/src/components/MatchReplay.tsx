@@ -313,8 +313,6 @@ function ScoreHeader({
   awayName,
   homeLiving,
   awayLiving,
-  homeTotal,
-  awayTotal,
   week,
   winnerName,
   winnerClubId,
@@ -324,15 +322,11 @@ function ScoreHeader({
   awayName: string;
   homeLiving: number;
   awayLiving: number;
-  homeTotal: number;
-  awayTotal: number;
   week: number;
   winnerName: string | null;
   winnerClubId: string | null;
   homeClubId: string;
 }) {
-  const homeElim = homeTotal - homeLiving;
-  const awayElim = awayTotal - awayLiving;
   const homeIsWinner = winnerClubId === homeClubId;
 
   return (
@@ -343,90 +337,82 @@ function ScoreHeader({
         borderRadius: '8px 8px 0 0',
       }}
     >
-      {/* Winner banner */}
       {winnerName && (
         <div
           style={{
             textAlign: 'center',
-            padding: '6px',
+            padding: '4px',
             background: 'rgba(249,115,22,0.08)',
             borderBottom: '1px solid rgba(249,115,22,0.2)',
             fontFamily: 'Oswald, sans-serif',
-            fontSize: 12,
+            fontSize: '0.7rem',
             color: '#f97316',
-            letterSpacing: 2,
+            letterSpacing: '2px',
           }}
         >
           ★ {winnerName.toUpperCase()} WIN
         </div>
       )}
-
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px' }}>
-        {/* Home */}
-        <div style={{ flex: 1 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '8px 16px',
+        }}
+      >
+        <div
+          style={{
+            fontFamily: 'Oswald, sans-serif',
+            fontSize: '0.85rem',
+            color: '#f97316',
+            letterSpacing: '1px',
+          }}
+        >
+          {homeName.toUpperCase()}
+        </div>
+        <div style={{ textAlign: 'center' }}>
           <div
             style={{
               fontFamily: 'Oswald, sans-serif',
-              fontSize: 13,
-              color: '#f97316',
-              letterSpacing: 1,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
+              fontSize: '1.4rem',
+              fontWeight: 700,
+              letterSpacing: '3px',
+              color: '#fff',
             }}
           >
-            {homeName.toUpperCase()}
-            {homeIsWinner && winnerName && (
-              <span style={{ fontSize: 9, background: 'rgba(249,115,22,0.15)', border: '1px solid #f97316', borderRadius: 3, padding: '1px 4px', letterSpacing: 1 }}>
-                WIN
-              </span>
-            )}
+            <span style={{ opacity: winnerClubId && !homeIsWinner ? 0.45 : 1, color: '#f97316' }}>
+              {homeLiving}
+            </span>
+            {' '}
+            <span style={{ color: '#334155', fontSize: '0.9rem' }}>—</span>
+            {' '}
+            <span style={{ opacity: winnerClubId && homeIsWinner ? 0.45 : 1, color: '#22d3ee' }}>
+              {awayLiving}
+            </span>
           </div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 48, fontWeight: 700, color: '#ffffff', lineHeight: 1, marginTop: 4, textShadow: '0 0 15px rgba(249,115,22,0.5)' }}>
-            {homeLiving}
-          </div>
-          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', marginTop: 4, letterSpacing: 1 }}>
-            ALIVE · {homeElim} ELIM
-          </div>
-        </div>
-
-        {/* Center */}
-        <div style={{ textAlign: 'center', padding: '0 16px' }}>
-          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#334155', letterSpacing: 2 }}>
+          <div
+            style={{
+              fontFamily: 'JetBrains Mono, monospace',
+              fontSize: '0.55rem',
+              color: '#334155',
+              letterSpacing: '2px',
+              marginTop: '2px',
+            }}
+          >
             WEEK {week}
           </div>
-          <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 14, color: '#334155', letterSpacing: 2, marginTop: 2 }}>
-            VS
-          </div>
         </div>
-
-        {/* Away */}
-        <div style={{ flex: 1, textAlign: 'right' }}>
-          <div
-            style={{
-              fontFamily: 'Oswald, sans-serif',
-              fontSize: 13,
-              color: '#06b6d4',
-              letterSpacing: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'flex-end',
-              gap: 6,
-            }}
-          >
-            {!homeIsWinner && winnerName && (
-              <span style={{ fontSize: 9, background: 'rgba(6,182,212,0.15)', border: '1px solid #06b6d4', borderRadius: 3, padding: '1px 4px', letterSpacing: 1 }}>
-                WIN
-              </span>
-            )}
-            {awayName.toUpperCase()}
-          </div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 48, fontWeight: 700, color: '#ffffff', lineHeight: 1, marginTop: 4, textShadow: '0 0 15px rgba(6,182,212,0.5)' }}>
-            {awayLiving}
-          </div>
-          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', marginTop: 4, letterSpacing: 1 }}>
-            ALIVE · {awayElim} ELIM
-          </div>
+        <div
+          style={{
+            fontFamily: 'Oswald, sans-serif',
+            fontSize: '0.85rem',
+            color: '#22d3ee',
+            letterSpacing: '1px',
+            textAlign: 'right',
+          }}
+        >
+          {awayName.toUpperCase()}
         </div>
       </div>
     </div>
@@ -706,8 +692,6 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
 
   const progress = totalEvents > 1 ? eventIndex / (totalEvents - 1) : 0;
   const isKeyPlay = data.key_play_indices.includes(eventIndex);
-  const homeTotal = homeIds.length || data.home_survivors;
-  const awayTotal = awayIds.length || data.away_survivors;
   const hasCourtData = playerRegistry.size > 0;
 
   return (
@@ -717,8 +701,6 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
         awayName={data.away_club_name}
         homeLiving={homeLiving}
         awayLiving={awayLiving}
-        homeTotal={homeTotal}
-        awayTotal={awayTotal}
         week={data.week}
         winnerName={winnerName}
         winnerClubId={data.winner_club_id}
