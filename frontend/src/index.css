@@ -2523,7 +2523,7 @@ textarea:focus-visible {
   color: #fca5a5;
 }
 
-.command-plan-grid {
+.command-cockpit-panel .command-plan-grid {
   grid-template-columns: minmax(12rem, 0.95fr) minmax(13rem, 1.05fr);
   gap: 1.1rem;
 }
@@ -2532,7 +2532,7 @@ textarea:focus-visible {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.command-approach-grid button {
+.command-cockpit-panel .command-approach-grid button {
   min-height: 3rem;
 }
 
