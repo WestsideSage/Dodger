@@ -2495,10 +2495,6 @@ textarea:focus-visible {
   max-width: 16rem;
 }
 
-.command-cockpit-panel h3 {
-  font-size: 1.55rem;
-}
-
 .command-plan-alert {
   display: flex;
   justify-content: space-between;
@@ -3423,6 +3419,10 @@ textarea:focus-visible {
   color: #fff;
   font-size: 1.18rem;
   text-transform: uppercase;
+}
+
+.command-cockpit-panel h3 {
+  font-size: 1.55rem;
 }
 
 .command-opponent-file h2 {
