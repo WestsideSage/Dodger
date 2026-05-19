@@ -36,15 +36,27 @@ function resolveMatchCardNames({
   };
 }
 
-function buildContextLine(matchCard: Aftermath['match_card'] | undefined): string | undefined {
+function buildContextLine(
+  matchCard: Aftermath['match_card'] | undefined,
+  playerClubId: string | undefined,
+): string | undefined {
   if (!matchCard) return undefined;
-  if (!matchCard.winner_club_id) return undefined;
+  if (!matchCard.winner_club_id) {
+    return `A drawn result: ${matchCard.home_survivors}–${matchCard.away_survivors}.`;
+  }
   const homeWins = matchCard.winner_club_id === matchCard.home_club_id;
   const winnerSurvs = homeWins ? matchCard.home_survivors : matchCard.away_survivors;
   const loserSurvs = homeWins ? matchCard.away_survivors : matchCard.home_survivors;
-  if (loserSurvs === 0) return `A ${winnerSurvs}–0 shutout that leaves no room for excuses.`;
-  if (winnerSurvs >= loserSurvs * 2) return `A dominant ${winnerSurvs}–${loserSurvs} result.`;
-  return `The final score: ${winnerSurvs}–${loserSurvs}.`;
+  const playerWon = playerClubId != null && matchCard.winner_club_id === playerClubId;
+  if (playerWon) {
+    if (loserSurvs === 0) return `A ${winnerSurvs}–0 shutout that leaves no room for excuses.`;
+    if (winnerSurvs >= loserSurvs * 2) return `A dominant ${winnerSurvs}–${loserSurvs} win.`;
+    return `A hard-fought ${winnerSurvs}–${loserSurvs} win.`;
+  }
+  // Player perspective on a loss: their survivors first.
+  if (loserSurvs === 0) return `A ${loserSurvs}–${winnerSurvs} shutout loss with nowhere to hide.`;
+  if (winnerSurvs >= loserSurvs * 2) return `A chastening ${loserSurvs}–${winnerSurvs} defeat.`;
+  return `A narrow ${loserSurvs}–${winnerSurvs} defeat.`;
 }
 
 export function MatchWeek({
@@ -215,7 +227,11 @@ export function MatchWeek({
             <Headline
               text={aftermath.headline}
               week={activeResult.dashboard.week}
-              contextLine={buildContextLine(aftermath.match_card)}
+              stage={activeResult.dashboard.stage}
+              contextLine={buildContextLine(
+                aftermath.match_card,
+                data?.player_club_id ?? activeResult.plan.player_club_id,
+              )}
             />
           </div>
         )}

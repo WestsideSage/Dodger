@@ -2,12 +2,15 @@ export function Headline({
   text,
   week,
   contextLine,
+  stage,
 }: {
   text: string;
   week?: number;
   subtitle?: string;
   contextLine?: string;
+  stage?: string;
 }) {
+  const isPlayoff = Boolean(stage && stage !== 'Regular Season');
   return (
     <div
       style={{
@@ -33,16 +36,17 @@ export function Headline({
         >
           War Room
         </span>
-        {week !== undefined && (
+        {(week !== undefined || isPlayoff) && (
           <span
             style={{
               fontFamily: 'JetBrains Mono, monospace',
               fontSize: '0.55rem',
               letterSpacing: '1px',
-              color: '#64748b',
+              color: isPlayoff ? '#fbbf24' : '#64748b',
+              fontWeight: isPlayoff ? 700 : 400,
             }}
           >
-            · Wk {week} Debrief
+            {isPlayoff ? `· ${stage} Debrief` : `· Wk ${week} Debrief`}
           </span>
         )}
       </div>

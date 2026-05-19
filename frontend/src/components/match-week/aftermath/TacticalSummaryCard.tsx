@@ -1,9 +1,12 @@
 import type { CommandDashboardLane } from '../../../types';
 
-function buildStatLine(lanes: CommandDashboardLane[]): string | null {
+function buildStatLine(lanes: CommandDashboardLane[], exclude: string): string | null {
+  const normalized = exclude.trim();
   for (const lane of lanes) {
-    if (lane.items.length > 0) {
-      return lane.items[0];
+    for (const item of lane.items) {
+      if (item.trim() && item.trim() !== normalized) {
+        return item;
+      }
     }
   }
   if (lanes.length > 0) return `Focus: ${lanes[0].title}`;
@@ -19,7 +22,7 @@ export function TacticalSummaryCard({
 }) {
   if (!turningPoint) return null;
 
-  const statLine = buildStatLine(evidenceLanes);
+  const statLine = buildStatLine(evidenceLanes, turningPoint);
   const evidenceLabel = evidenceLanes.length > 0
     ? `Based on ${evidenceLanes[0].title}`
     : null;
