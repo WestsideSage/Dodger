@@ -58,7 +58,7 @@ The web app is the supported foundation. `server.py` wraps the domain and persis
 
 ## Milestones
 
-Read `docs/README.md` before documentation, milestone, workflow, design-system, or handoff work. Read `docs/specs/MILESTONES.md` before milestone work.
+Read `docs/README.md` before documentation, milestone, workflow, or handoff work. Read `docs/STATUS.md` for current build state and open work, and `docs/specs/MILESTONES.md` before milestone work.
 
 Current orientation:
 
@@ -92,7 +92,7 @@ When adding a milestone, create a focused spec under `docs/specs/`, update `docs
 
 ## Squad Notes
 
-Use the squad model when planning a new milestone or when Maurice explicitly asks for it. Reports belong in `docs/retrospectives/`; sprint plans belong in `docs/specs/`.
+Use the squad model when planning a new milestone or when Maurice explicitly asks for it. Reports belong in `docs/archive/retrospectives/`; active sprint plans belong in `docs/specs/`.
 
 Role routing, when useful:
 
@@ -109,12 +109,13 @@ Do not force the full squad ceremony for small fixes or routine documentation cl
 
 ## Git / Main Repo / Multi-Agent Workflow
 
-Every agent starts by reading this file before touching the repo. For documentation, milestone, workflow, design-system, or handoff work, also read `docs/README.md`. For milestone work, also read `docs/specs/MILESTONES.md` and the relevant spec or active plan.
+Every agent starts by reading this file before touching the repo. For documentation, milestone, workflow, or handoff work, also read `docs/README.md`. For milestone work, also read `docs/specs/MILESTONES.md` and the relevant spec or active plan.
 
 Current source of truth:
 
 - Active local repo: `C:\GPT5-Projects\Dodgeball Simulator`
 - Documentation front door: `docs/README.md`
+- Current build state and open-work backlog: `docs/STATUS.md`
 - The old external `.worktrees` checkout at `C:\GPT5-Projects\Dodgeball Simulator.worktrees\...` is retired and stale. Do not use it for implementation, planning truth, verification, or handoff state unless Maurice explicitly re-authorizes it for a specific recovery task.
 - If old `.worktrees` files are referenced, treat them as historical reference only. Port by inspecting diffs and adapting to this repo; never assume those files include current main-repo changes.
 

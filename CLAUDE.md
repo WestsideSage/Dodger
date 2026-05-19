@@ -20,17 +20,16 @@ Claude agents should read root `AGENTS.md` first. This file is only a short Clau
 
 ## Claude-Specific Cautions
 
-- Treat root `AGENTS.md` and `docs/specs/MILESTONES.md` as the orientation source of truth.
+- Treat root `AGENTS.md`, `docs/STATUS.md`, and `docs/specs/MILESTONES.md` as the orientation source of truth.
 - Prefer search-first reading over opening huge files end to end.
 - Keep plans and reports concise. Link to existing docs rather than restating them.
 - When receiving a handoff, implement only the requested phase unless Maurice expands scope.
 
 ## Current Gotchas
 
-- `MatchResult` uses `winner_team_id`.
-- `CoachPolicy` has 8 fields.
-- The offseason Recruitment Day key is `recruitment`.
-- New player-facing work should target the web app.
+See the "Current Facts Worth Remembering" section of root `AGENTS.md` for the
+canonical list (e.g. `MatchResult.winner_team_id`, the 8-field `CoachPolicy`,
+the `recruitment` offseason key). New player-facing work targets the web app.
 
 ## Agent skills
 
@@ -44,4 +43,6 @@ Default canonical label strings (`needs-triage`, `needs-info`, `ready-for-agent`
 
 ### Domain docs
 
-Single-context repo — `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+This repo does not use a root `CONTEXT.md` or ADR files. The domain map is
+`AGENTS.md`, `docs/README.md`, and `docs/STATUS.md`. See `docs/agents/domain.md`
+for read order and vocabulary.

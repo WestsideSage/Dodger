@@ -19,7 +19,7 @@ Gemini agents should read root `AGENTS.md` first. This file only defines Gemini-
 
 ## Balance Analyst Output
 
-Create `docs/retrospectives/YYYY-MM-DD-v[V_CURRENT]-balance-report.md` when Maurice requests a balance pass.
+Create `docs/archive/retrospectives/YYYY-MM-DD-v[V_CURRENT]-balance-report.md` when Maurice requests a balance pass.
 
 Include only sections that add value for the current question:
 

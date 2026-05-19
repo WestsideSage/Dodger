@@ -11,8 +11,9 @@
 ## Context Files Read
 
 - AGENTS.md
+- docs/STATUS.md
 - docs/specs/...
-- docs/retrospectives/...
+- docs/archive/...
 
 ## Files Changed
 
