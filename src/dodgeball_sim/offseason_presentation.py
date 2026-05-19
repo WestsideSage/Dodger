@@ -97,17 +97,24 @@ def build_beat_payload(
         result = []
         for award in sorted_awards:
             player = find_player(award.player_id)
-            career = load_player_career_stats(conn, award.player_id)
+            career = load_player_career_stats(conn, award.player_id) or {}
+            career_throws = int(career.get("total_eliminations", 0))
+            career_catches = int(career.get("total_catches_made", 0))
             stats = season_stats.get(award.player_id, PlayerMatchStats())
+            # career_stat tracks the SAME metric as season_stat so the two
+            # numbers on an award card are comparable (B10).
             if award.award_type == "best_thrower":
                 season_stat = stats.eliminations_by_throw
                 season_stat_label = f"{season_stat} throw elims"
+                career_stat = career_throws
             elif award.award_type == "best_catcher":
                 season_stat = stats.catches_made
                 season_stat_label = f"{season_stat} catches"
+                career_stat = career_catches
             else:  # mvp, best_newcomer
                 season_stat = stats.eliminations_by_throw + stats.catches_made
                 season_stat_label = f"{season_stat} season elims"
+                career_stat = career_throws + career_catches
             result.append(
                 {
                     "player_name": player.name if player else award.player_id,
@@ -119,7 +126,7 @@ def build_beat_payload(
                     ),
                     "season_stat": int(season_stat),
                     "season_stat_label": season_stat_label,
-                    "career_stat": int((career or {}).get("total_eliminations", 0)),
+                    "career_stat": int(career_stat),
                     "ovr": int(round(player.overall())) if player else 0,
                     "extra_stats": (
                         {
@@ -162,15 +169,20 @@ def build_beat_payload(
         player_rows_sorted = sorted(
             player_rows, key=lambda r: -abs(float(r.get("delta", 0)))
         )
-        players = [
-            {
-                "name": row.get("player_name", row.get("player_id", "")),
-                "ovr_before": int(round(float(row.get("before", 0)))),
-                "ovr_after": int(round(float(row.get("after", 0)))),
-                "delta": int(round(float(row.get("delta", 0)))),
-            }
-            for row in player_rows_sorted
-        ]
+        players = []
+        for row in player_rows_sorted:
+            ovr_before = int(round(float(row.get("before", 0))))
+            ovr_after = int(round(float(row.get("after", 0))))
+            # Derive the delta from the displayed OVR values so the badge always
+            # agrees with the before -> after numbers (B11).
+            players.append(
+                {
+                    "name": row.get("player_name", row.get("player_id", "")),
+                    "ovr_before": ovr_before,
+                    "ovr_after": ovr_after,
+                    "delta": ovr_after - ovr_before,
+                }
+            )
         return {"players": players}
 
     if beat_key == "champion":

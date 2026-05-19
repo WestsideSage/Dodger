@@ -19,15 +19,41 @@ from .persistence import (
     load_clubs,
     load_completed_match_ids,
     load_lineup_default,
+    load_playoff_bracket,
     load_season,
+    load_season_outcome,
     load_standings,
     load_weekly_command_plan,
     save_club,
 )
+from .playoffs import playoff_stage_label
 from .view_models import build_schedule_rows, build_wire_items
 
 
-ROLE_LABELS = ["Captain", "Striker", "Anchor", "Runner", "Rookie", "Utility"]
+_ARCHETYPE_BY_RATING = {
+    "accuracy": "Sharpshooter",
+    "power": "Enforcer",
+    "dodge": "Escape Artist",
+    "catch": "Ball Hawk",
+    "stamina": "Iron Engine",
+}
+
+
+def player_archetype_label(player) -> str:
+    """Derive the player's on-court role from their dominant rating.
+
+    Mirrors recruitment's archetype assignment so the roster, recruit board,
+    and scout reads all describe a player the same way.
+    """
+    ratings = {
+        "accuracy": player.ratings.accuracy,
+        "power": player.ratings.power,
+        "dodge": player.ratings.dodge,
+        "catch": player.ratings.catch,
+        "stamina": player.ratings.stamina,
+    }
+    dominant = max(ratings, key=ratings.get)
+    return _ARCHETYPE_BY_RATING[dominant]
 
 
 def career_state_payload(cursor: CareerStateCursor) -> dict[str, Any]:
@@ -71,11 +97,10 @@ def build_roster_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     lineup = load_lineup_default(conn, player_club_id)
 
     enriched = []
-    for index, player in enumerate(roster):
-        role = ROLE_LABELS[index] if index < len(ROLE_LABELS) else "Utility"
+    for player in roster:
         player_dict = dataclasses.asdict(player)
         player_dict["overall"] = int(round(player.overall()))
-        player_dict["role"] = role
+        player_dict["role"] = player_archetype_label(player)
         player_dict["potential_tier"] = calculate_potential_tier(player.traits.potential)
         player_dict["scouting_confidence"] = 3
         player_dict["weekly_ovr_history"] = [int(round(player.overall()))]
@@ -223,9 +248,92 @@ def build_schedule_payload(conn: sqlite3.Connection) -> dict[str, Any]:
                 "away_club_name": away.name if away else row.away_club_id,
                 "status": row.status,
                 "is_user_match": row.is_user_match,
+                "stage": playoff_stage_label(season_id, row.match_id),
             }
         )
     return {"season_id": season_id, "schedule": rows}
+
+
+def build_playoff_bracket_payload(conn: sqlite3.Connection) -> dict[str, Any]:
+    """Expose the current season's playoff bracket: seeds, rounds, results, champion."""
+    season_id = get_state(conn, "active_season_id")
+    if not season_id:
+        return {"active": False}
+    bracket = load_playoff_bracket(conn, season_id)
+    if bracket is None:
+        return {"active": False}
+
+    clubs = load_clubs(conn)
+    player_club_id = get_state(conn, "player_club_id")
+    standings = {row.club_id: row for row in load_standings(conn, season_id)}
+
+    results: dict[str, dict[str, Any]] = {}
+    for row in conn.execute(
+        """
+        SELECT match_id, home_club_id, away_club_id, winner_club_id,
+               home_survivors, away_survivors
+        FROM match_records
+        WHERE season_id = ?
+        """,
+        (season_id,),
+    ).fetchall():
+        results[row["match_id"]] = dict(row)
+
+    def club_name(club_id: str | None) -> str | None:
+        if club_id is None:
+            return None
+        club = clubs.get(club_id)
+        return club.name if club else club_id
+
+    seeds = []
+    for index, club_id in enumerate(bracket.seeds):
+        row = standings.get(club_id)
+        seeds.append(
+            {
+                "seed": index + 1,
+                "club_id": club_id,
+                "club_name": club_name(club_id),
+                "wins": row.wins if row else 0,
+                "losses": row.losses if row else 0,
+                "draws": row.draws if row else 0,
+                "is_player_club": club_id == player_club_id,
+            }
+        )
+
+    rounds = []
+    for round_info in bracket.rounds:
+        matches = []
+        for match in round_info.get("matches", ()):
+            result = results.get(match["match_id"])
+            matches.append(
+                {
+                    "match_id": match["match_id"],
+                    "home_club_id": match["home"],
+                    "home_club_name": club_name(match["home"]),
+                    "away_club_id": match["away"],
+                    "away_club_name": club_name(match["away"]),
+                    "home_survivors": result["home_survivors"] if result else None,
+                    "away_survivors": result["away_survivors"] if result else None,
+                    "winner_club_id": result["winner_club_id"] if result else None,
+                    "status": "played" if result else "scheduled",
+                }
+            )
+        rounds.append({"round": round_info.get("round"), "matches": matches})
+
+    outcome = load_season_outcome(conn, season_id)
+    champion_club_id = outcome.champion_club_id if outcome else None
+
+    return {
+        "active": True,
+        "season_id": season_id,
+        "format": bracket.format,
+        "status": bracket.status,
+        "seeds": seeds,
+        "rounds": rounds,
+        "champion_club_id": champion_club_id,
+        "champion_club_name": club_name(champion_club_id),
+        "player_club_id": player_club_id,
+    }
 
 
 def build_news_payload(conn: sqlite3.Connection) -> dict[str, Any]:
