@@ -30,9 +30,12 @@ export function RookieClassPreview({
                     <div style={{ fontSize: '2rem', fontWeight: 800, color: '#e2e8f0' }}>{class_size}</div>
                     <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Incoming Rookies</div>
                 </div>
-                <div style={{ textAlign: 'center' }}>
+                <div
+                    style={{ textAlign: 'center' }}
+                    title="Prospects whose scouted rating floor is already 70+ OVR — a confident projection that rises as scouting narrows their range."
+                >
                     <div style={{ fontSize: '2rem', fontWeight: 800, color: top_prospects > 0 ? '#10b981' : '#64748b' }}>{top_prospects}</div>
-                    <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Top Prospects (70+ OVR)</div>
+                    <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Top Prospects (70+ floor)</div>
                 </div>
                 <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '2rem', fontWeight: 800, color: '#94a3b8' }}>{free_agents}</div>

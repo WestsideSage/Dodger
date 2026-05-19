@@ -27,12 +27,15 @@ export function ChampionReveal({
                                 fontSize: '2rem',
                                 fontWeight: 800,
                                 color: '#fbbf24',
-                                marginBottom: '1rem',
+                                marginBottom: '0.35rem',
                                 lineHeight: 1.2,
                             }}
                         >
                             {champion.club_name}
                         </h2>
+                        <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '1rem' }}>
+                            Won the championship final to claim the title.
+                        </p>
                         <div
                             style={{
                                 display: 'flex',
@@ -46,7 +49,7 @@ export function ChampionReveal({
                                 <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#e2e8f0' }}>
                                     {champion.wins}-{champion.losses}-{champion.draws}
                                 </div>
-                                <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Record</div>
+                                <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Regular Season</div>
                             </div>
                             <div style={{ textAlign: 'center' }}>
                                 <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#fbbf24' }}>
