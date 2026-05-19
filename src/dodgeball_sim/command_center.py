@@ -17,6 +17,7 @@ from .persistence import (
 )
 from .franchise import MatchRecord
 from .matchup_details import build_matchup_details
+from .playoffs import playoff_stage_label
 
 
 INTENTS = ("Balanced", "Win Now", "Develop Youth", "Preserve Health", "Evaluate Lineup", "Prepare For Playoffs")
@@ -257,6 +258,7 @@ def build_post_week_dashboard(conn: sqlite3.Connection, plan: Mapping[str, Any],
         "season_id": record.season_id,
         "week": record.week,
         "match_id": record.match_id,
+        "stage": playoff_stage_label(record.season_id, record.match_id),
         "opponent_name": clubs[opponent_id].name if opponent_id in clubs else opponent_id,
         "result": "Draw" if draw else ("Win" if won else "Loss"),
         "lanes": [

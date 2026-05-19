@@ -322,7 +322,12 @@ def induct_hall_of_fame(
 
 
 def _prospect_band_low_mean(prospect) -> float:
-    """Mean of the low end of public_ratings_band across the 5 rating keys."""
+    """Mean of the low end of public_ratings_band across the 5 rating keys.
+
+    This is a *pessimistic* read: the scouted floor a prospect is confidently
+    worth. The Rookie Class Preview surfaces it as the "scouted 70+ floor"
+    count, so the label must not promise raw OVR (see B12).
+    """
     return sum(prospect.public_ratings_band[key][0] for key in _PROSPECT_RATING_KEYS) / len(_PROSPECT_RATING_KEYS)
 
 

@@ -100,6 +100,7 @@ from dodgeball_sim.command_week_service import (
 )
 from dodgeball_sim.web_status_service import (
     build_news_payload,
+    build_playoff_bracket_payload,
     build_roster_payload,
     build_schedule_payload,
     build_standings_payload,
@@ -295,6 +296,7 @@ class ScheduleItem(BaseModel):
     away_club_name: str
     status: str
     is_user_match: bool
+    stage: str = "Regular Season"
 
 
 class ScheduleResponse(BaseModel):
@@ -452,6 +454,14 @@ def get_standings(conn = Depends(get_db)) -> StandingsResponse:
 def get_schedule(conn = Depends(get_db)) -> ScheduleResponse:
     try:
         return build_schedule_payload(conn)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/playoffs/bracket", response_model=dict[str, Any])
+def get_playoff_bracket(conn = Depends(get_db)) -> dict[str, Any]:
+    try:
+        return build_playoff_bracket_payload(conn)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
