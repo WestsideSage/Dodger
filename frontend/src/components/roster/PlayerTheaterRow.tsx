@@ -14,7 +14,7 @@ export function PlayerTheaterRow({ player, starter }: { player: Player, starter:
                 {player.name}
                 {player.newcomer && <span style={{ marginLeft: '0.5rem', fontSize: '0.625rem', color: '#a78bfa', border: '1px solid #a78bfa', padding: '0 0.25rem', borderRadius: '2px' }}>NEWCOMER</span>}
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{player.archetype} · Age {player.age}</div>
+            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{starter ? 'Starter' : 'Bench'} · Age {player.age}</div>
           </div>
         </div>
       </td>

@@ -78,8 +78,9 @@ export function Roster() {
     fetchPlan();
   }, []);
 
+  // A dodgeball lineup fields 6 starters; the rest of the ordered lineup is bench.
   const defaultLineupIds = useMemo(
-    () => new Set(data?.default_lineup ?? []),
+    () => new Set((data?.default_lineup ?? []).slice(0, 6)),
     [data?.default_lineup]
   );
 
