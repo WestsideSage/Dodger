@@ -1,7 +1,8 @@
-import type { StandingsResponse } from '../types';
+import type { PlayoffBracketResponse, StandingsResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
 import { StatusMessage } from './ui';
 import { RecentMatchesSidebar } from './standings/RecentMatchesSidebar';
+import { PlayoffBracket } from './standings/PlayoffBracket';
 
 function pct(wins: number, losses: number, draws: number): string {
   const played = wins + losses + draws;
@@ -23,6 +24,7 @@ function formatApproach(value: string | null | undefined): string {
 
 export function Standings() {
   const { data, error, loading } = useApiResource<StandingsResponse>('/api/standings');
+  const { data: bracket } = useApiResource<PlayoffBracketResponse>('/api/playoffs/bracket');
 
   if (error) return <StatusMessage title="Standings unavailable" tone="danger">{error}</StatusMessage>;
   if (loading) return <StatusMessage title="Loading standings">Updating the table.</StatusMessage>;
@@ -36,6 +38,8 @@ export function Standings() {
   };
 
   return (
+    <>
+    {bracket?.active && <PlayoffBracket data={bracket} />}
     <div className="standings-layout">
       <div className="dm-panel standings-table-panel">
         <div className="dm-panel-header">
@@ -121,7 +125,7 @@ export function Standings() {
                     <td className="dm-data" style={{ textAlign: 'right', color: '#cbd5e1' }}>{winPct}</td>
                     <td className="dm-data" style={{ textAlign: 'right', color: '#64748b' }}>{gamesBack}</td>
                     <td className="dm-data" style={{ textAlign: 'right', color: diffColor, fontWeight: 600 }}>{diffSign}{row.elimination_differential}</td>
-                    <td style={{ color: '#94a3b8', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{formatApproach(row.latest_approach)}</td>
+                    <td style={{ color: '#94a3b8', fontSize: '0.78rem' }}>{formatApproach(row.latest_approach)}</td>
                   </tr>
                 );
               })}
@@ -186,5 +190,6 @@ export function Standings() {
 
       <RecentMatchesSidebar matches={data.recent_matches || []} />
     </div>
+    </>
   );
 }
