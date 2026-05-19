@@ -18,11 +18,14 @@ export function RecapStandings({
         <section className="command-offseason-shell" data-testid="offseason-recap">
             <div style={{ padding: '1.5rem 1rem 0.5rem' }}>
                 <p style={{ fontSize: '0.75rem', letterSpacing: '0.1em', color: '#94a3b8', marginBottom: '0.5rem' }}>
-                    FINAL STANDINGS
+                    REGULAR SEASON
                 </p>
-                <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '1rem' }}>
-                    Season Table
+                <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '0.35rem' }}>
+                    Final Regular-Season Table
                 </h2>
+                <p style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '1rem' }}>
+                    The top four seeds advance to the playoff bracket, where the champion is decided.
+                </p>
             </div>
 
             <div className="dm-panel" style={{ padding: '0', overflow: 'hidden' }}>

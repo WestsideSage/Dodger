@@ -40,11 +40,7 @@ export function DevelopmentResults({
                         const deltaColor = improved ? '#10b981' : declined ? '#ef4444' : '#64748b';
                         const deltaLabel = player.delta > 0 ? `+${player.delta}` : `${player.delta}`;
 
-                        const ovrBefore = Math.round(player.ovr_before);
-                        const ovrAfter = Math.round(player.ovr_after);
-                        const ovrDisplay = ovrBefore !== ovrAfter
-                            ? `${ovrBefore} → ${ovrAfter}`
-                            : `${player.ovr_before.toFixed(1)} → ${player.ovr_after.toFixed(1)}`;
+                        const ovrDisplay = `${Math.round(player.ovr_before)} → ${Math.round(player.ovr_after)}`;
 
                         return (
                             <div
