@@ -1,40 +1,47 @@
-# Documentation Source Map
+# Documentation Map
 
-This file is the documentation front door for Dodgeball Manager. If two docs disagree, use this order of authority.
+The front door for Dodgeball Manager documentation. Start here, then read only
+what you need. If two docs disagree, follow the authority order below.
 
-## Current Sources Of Truth
+## Authority Order
 
-1. `AGENTS.md` - repo rules, active path, workflow, architecture snapshot, and current implementation facts.
-2. `docs/specs/MILESTONES.md` - milestone status and the current product phase.
-3. Active plan/spec for the current work:
-   - Command Center / UX polish initiative: `docs/superpowers/plans/2026-05-08-ux-polish/00-MAIN.md`
-   - Design-system references: `docs/design-systems/README.md`
-4. Source code and tests - final authority when docs and implementation disagree.
-
-## Current Implementation Snapshot
-
-- Active repo: `C:\GPT5-Projects\Dodgeball Simulator`.
-- Retired external worktrees under `C:\GPT5-Projects\Dodgeball Simulator.worktrees\...` are historical only.
-- Product foundation: web backend plus React/Vite frontend.
-- Current UI work is post-V8-V10 polish, with Command Center / Match Week work in progress before the remaining design-system passes.
-- The current frontend has `MatchWeek.tsx`, `DynastyOffice.tsx`, `Roster.tsx`, `LeagueContext.tsx`, `MatchReplay.tsx`, and split Command Center aftermath components under `frontend/src/components/match-week/`.
-- Do not treat older references to `CommandCenter.tsx`, the Tkinter GUI, WSL paths, or the retired external worktrees as current implementation instructions unless a current source explicitly revives them.
+1. `AGENTS.md` (repo root) — repo rules, workflow, architecture snapshot, and
+   current implementation facts.
+2. `docs/README.md` — this file: where things live and what to read.
+3. `docs/STATUS.md` — current build state and the live open-work backlog.
+4. `docs/specs/MILESTONES.md` — the milestone history index.
+5. Source code and tests — final authority when docs and code disagree.
 
 ## Directory Guide
 
-- `docs/specs/` - milestone specs and the milestone index. Current milestone truth lives here.
-- `docs/superpowers/` - execution plans and planning artifacts. These are perishable unless named as active by this file or `MILESTONES.md`.
-- `docs/design-systems/` - visual and UX contracts for the design-system push. See its README before using any individual file.
-- `docs/retrospectives/` - historical handoffs, audits, QA reports, and session closeouts. Useful evidence, not current marching orders.
-- `docs/learnings/` - durable technical lessons from prior implementation.
-- `docs/workflows/` - workflow helpers for branching, handoff, and dependency/bootstrap behavior.
-- `docs/roadmap/` and `docs/phase0/` - historical product context. Do not use as current implementation authority.
-- `docs/agents/` - optional skill/issue-tracker integration notes, subordinate to root `AGENTS.md`.
+- `docs/STATUS.md` — what is built, what is open. Read this before assuming a
+  feature exists or a planned item is done.
+- `docs/specs/` — current milestone authority: the milestone index
+  (`MILESTONES.md`), the inherited integrity contract (`AGENTS.md`), and the
+  long-range scope-control roadmap. A new milestone's spec lives here while it
+  is active, then moves to `docs/archive/` once shipped.
+- `docs/workflows/` — process helpers: branching, agent handoff template,
+  pre-implementation checklist, and worktree/remote notes.
+- `docs/agents/` — optional skill, issue-tracker, and domain notes. Subordinate
+  to root `AGENTS.md`.
+- `docs/archive/` — the full historical record: shipped-milestone specs,
+  retrospectives, learnings, QA reviews, Phase 0 research, execution plans, and
+  closed audits. Evidence and decision history, never current marching orders.
+
+## Where New Documents Go
+
+- Milestone specs and sprint plans (while active): `docs/specs/`.
+- Retrospectives, balance reports, learnings, and other dated session
+  artifacts: directly into `docs/archive/retrospectives/` or
+  `docs/archive/learnings/` — they are records from birth, never active
+  authority.
 
 ## Cleanup Policy
 
-- Keep official guidance short and current.
-- Prefer one canonical index over repeated summaries.
-- Preserve historical reports when they explain why a decision was made, but label them as historical if they contain stale paths, stale file names, or obsolete process guidance.
-- Delete or consolidate docs only when the information is duplicated elsewhere and has no historical value.
-- When behavior changes, update the active source of truth in the same pass as the code or leave a dated handoff explaining the gap.
+- Keep official guidance short, current, and in one canonical place.
+- Source-of-truth docs stay at the top of `docs/`; dated artifacts go to
+  `docs/archive/`.
+- When behavior changes, update the relevant source-of-truth doc in the same
+  pass as the code.
+- Delete docs outright only when they are duplicated elsewhere and have no
+  historical value. Otherwise archive.
