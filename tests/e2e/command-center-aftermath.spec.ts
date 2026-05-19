@@ -25,6 +25,6 @@ test('Command Center aftermath presents score, replay identity, fallout, and nex
   await expect(page.getByTestId('tactical-summary')).toBeVisible();
   await expect(page.getByTestId('fallout-grid')).toBeVisible();
   await expect(page.getByTestId('after-action-bar')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Watch Replay' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Advance to Next Week ->' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /view full replay/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /advance to next week/i })).toBeVisible();
 });
