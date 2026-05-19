@@ -2506,10 +2506,13 @@ textarea:focus-visible {
 .command-plan-alert div {
   display: grid;
   gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .command-plan-alert button,
 .command-scout-response button {
+  flex-shrink: 0;
   border: 1px solid rgba(245,158,11,0.35);
   background: rgba(245,158,11,0.12);
   color: #fde68a;
@@ -2534,6 +2537,12 @@ textarea:focus-visible {
 
 .command-cockpit-panel .command-approach-grid button {
   min-height: 3rem;
+  padding: 0.5rem 0.38rem;
+  overflow: hidden;
+}
+
+.command-cockpit-panel .command-approach-grid span {
+  font-size: 0.68rem;
 }
 
 .command-approach-grid button.is-selected {
@@ -2604,7 +2613,7 @@ textarea:focus-visible {
 
 .command-decision-card {
   display: grid;
-  gap: 0.38rem;
+  gap: 0.25rem;
 }
 
 .command-decision-card div {
@@ -2612,7 +2621,7 @@ textarea:focus-visible {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.5rem;
   border-top: 1px solid rgba(30,41,59,0.75);
-  padding-top: 0.38rem;
+  padding-top: 0.25rem;
 }
 
 .command-decision-card div:first-child {
@@ -2661,9 +2670,10 @@ textarea:focus-visible {
 }
 
 .command-secondary-rail {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   min-height: 0;
+  overflow: hidden;
   border: 1px solid rgba(30,41,59,0.95);
   background: rgba(15,23,42,0.72);
 }
@@ -2692,9 +2702,10 @@ textarea:focus-visible {
 }
 
 .command-secondary-body {
+  flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 0.45rem;
+  padding: 0.75rem 1rem;
 }
 
 .command-strip-meta {
@@ -3392,6 +3403,10 @@ textarea:focus-visible {
   width: min(100%, 15rem);
 }
 
+.command-game-plan .command-order-pills {
+  margin-top: auto;
+}
+
 .command-control-tower {
   display: flex;
   flex-direction: column;
@@ -3607,9 +3622,16 @@ textarea:focus-visible {
   text-transform: uppercase;
 }
 
+.command-intel-summary-grid strong {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
 .command-plan-alert {
-  display: grid;
-  gap: 0.2rem;
+  display: flex;
+  gap: 0.55rem;
   margin-top: 0.65rem;
   border-left: 3px solid #10b981;
   background: rgba(16,185,129,0.08);
@@ -4243,12 +4265,16 @@ textarea:focus-visible {
   min-width: 0;
 }
 
+.command-intel-card .command-threat-row {
+  margin-top: auto;
+}
+
 .command-control-squad {
-  margin-top: 0.6rem;
+  margin-top: 0.5rem;
   border-top: 1px solid rgba(30,41,59,0.75);
-  padding-top: 0.6rem;
+  padding-top: 0.5rem;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .command-control-squad .command-panel-heading {
@@ -4469,6 +4495,122 @@ textarea:focus-visible {
 
 .standings-table-scroll {
   overflow-x: auto;
+}
+
+.standings-table-scroll .dm-table {
+  table-layout: auto;
+}
+
+.standings-table-scroll .dm-table th,
+.standings-table-scroll .dm-table td {
+  padding: 0.7rem 0.6rem;
+}
+
+.playoff-bracket-panel {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+}
+
+.playoff-bracket-seeds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0 1rem 0.85rem;
+}
+
+.playoff-seed-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid rgba(51, 65, 85, 0.75);
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.4);
+  font-size: 0.72rem;
+  color: #cbd5e1;
+}
+
+.playoff-seed-chip b {
+  color: #22d3ee;
+}
+
+.playoff-seed-chip em {
+  color: #64748b;
+  font-style: normal;
+  font-size: 0.66rem;
+}
+
+.playoff-seed-chip.is-user {
+  border-color: #22d3ee;
+  background: rgba(34, 211, 238, 0.1);
+}
+
+.playoff-bracket-grid {
+  display: flex;
+  gap: 1.5rem;
+  padding: 0 1rem;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.playoff-bracket-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  justify-content: center;
+  min-width: 13rem;
+}
+
+.playoff-bracket-round-label {
+  margin: 0;
+  font-size: 0.6rem;
+  color: #64748b;
+}
+
+.playoff-bracket-empty {
+  font-size: 0.75rem;
+  color: #475569;
+  font-style: italic;
+  margin: 0;
+}
+
+.playoff-champion-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  border-radius: 6px;
+  background: rgba(251, 191, 36, 0.08);
+  text-align: center;
+}
+
+.playoff-champion-card strong {
+  color: #fbbf24;
+  font-size: 1rem;
+}
+
+.playoff-champion-card span {
+  color: #94a3b8;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.playoff-champion-trophy {
+  font-size: 1.4rem;
+}
+
+.playoff-champion-card.is-user {
+  border-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.14);
+}
+
+.command-strip-stage {
+  color: #fbbf24;
+  font-weight: 700;
+  letter-spacing: 0.06em;
 }
 
 .standings-recent-card {
@@ -4836,7 +4978,6 @@ textarea:focus-visible {
     grid-template-columns: 1fr;
   }
 
-  .command-plan-alert,
   .command-scout-response {
     grid-template-columns: 1fr;
   }

@@ -224,6 +224,46 @@ export interface ScheduleRow {
     away_club_name: string;
     status: string;
     is_user_match: boolean;
+    stage: string;
+}
+
+export interface PlayoffSeed {
+    seed: number;
+    club_id: string;
+    club_name: string;
+    wins: number;
+    losses: number;
+    draws: number;
+    is_player_club: boolean;
+}
+
+export interface PlayoffBracketMatch {
+    match_id: string;
+    home_club_id: string;
+    home_club_name: string;
+    away_club_id: string;
+    away_club_name: string;
+    home_survivors: number | null;
+    away_survivors: number | null;
+    winner_club_id: string | null;
+    status: string;
+}
+
+export interface PlayoffBracketRound {
+    round: string;
+    matches: PlayoffBracketMatch[];
+}
+
+export interface PlayoffBracketResponse {
+    active: boolean;
+    season_id?: string;
+    format?: string;
+    status?: string;
+    seeds?: PlayoffSeed[];
+    rounds?: PlayoffBracketRound[];
+    champion_club_id?: string | null;
+    champion_club_name?: string | null;
+    player_club_id?: string | null;
 }
 
 export interface ScheduleResponse {
@@ -306,6 +346,7 @@ export interface CommandDashboard {
     season_id: string;
     week: number;
     match_id: string;
+    stage?: string;
     opponent_name: string;
     result: string;
     lanes: CommandDashboardLane[];
