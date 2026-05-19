@@ -6,6 +6,8 @@ interface MatchCardProps {
   oppPlayers: LineupPlayer[];
   yourTeamName: string;
   oppTeamName: string;
+  compact?: boolean;
+  maxVisibleRows?: number;
 }
 
 type Mode = 'ovr' | 'sta';
@@ -15,8 +17,16 @@ function teamAbbr(name: string): string {
   return (words.at(-1) ?? name).slice(0, 4).toUpperCase();
 }
 
-export function MatchCard({ yourPlayers, oppPlayers, yourTeamName, oppTeamName }: MatchCardProps) {
+export function MatchCard({
+  yourPlayers,
+  oppPlayers,
+  yourTeamName,
+  oppTeamName,
+  compact = false,
+  maxVisibleRows = 4,
+}: MatchCardProps) {
   const [mode, setMode] = useState<Mode>('ovr');
+  const [showAll, setShowAll] = useState(false);
 
   const youAbbr = teamAbbr(yourTeamName);
   const oppAbbr = teamAbbr(oppTeamName);
@@ -52,42 +62,55 @@ export function MatchCard({ yourPlayers, oppPlayers, yourTeamName, oppTeamName }
 
   const advantages = sorted.filter(s => (mode === 'ovr' ? s.ovrGap : s.staGap) > 0).length;
   const disadvantages = sorted.filter(s => (mode === 'ovr' ? s.ovrGap : s.staGap) < 0).length;
+  const visibleRows = showAll || !compact ? sorted : sorted.slice(0, maxVisibleRows);
 
   return (
-    <div>
-      {/* Header */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-        <span style={{ fontSize: '10px', fontWeight: 700, color: '#22d3ee', letterSpacing: '0.08em' }}>{yourTeamName.toUpperCase()}</span>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
-          <span style={{ fontSize: '10px', color: '#334155', letterSpacing: '0.1em' }}>VS</span>
-          <div style={{ display: 'flex', gap: '4px' }}>
-            <button
-              type="button"
-              onClick={() => setMode('ovr')}
-              style={{
-                fontSize: '8px', fontWeight: 700, padding: '2px 6px', borderRadius: '3px', border: 'none', cursor: 'pointer',
-                background: mode === 'ovr' ? '#22d3ee' : '#1e293b',
-                color: mode === 'ovr' ? '#0a1220' : '#334155',
-                letterSpacing: '0.06em',
-              }}
-            >OVR</button>
-            <button
-              type="button"
-              onClick={() => setMode('sta')}
-              style={{
-                fontSize: '8px', fontWeight: 700, padding: '2px 6px', borderRadius: '3px', border: 'none', cursor: 'pointer',
-                background: mode === 'sta' ? '#22d3ee' : '#1e293b',
-                color: mode === 'sta' ? '#0a1220' : '#334155',
-                letterSpacing: '0.06em',
-              }}
-            >STA</button>
+    <div className={compact ? 'command-match-card is-compact' : 'command-match-card'}>
+      {/* Header — hidden in compact mode (squad context has its own heading) */}
+      {!compact && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+          <span
+            title={yourTeamName}
+            style={{ fontSize: '10px', fontWeight: 700, color: '#22d3ee', letterSpacing: '0.08em' }}
+          >
+            {yourTeamName.toUpperCase()}
+          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+            <span style={{ fontSize: '10px', color: '#334155', letterSpacing: '0.1em' }}>VS</span>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button
+                type="button"
+                onClick={() => setMode('ovr')}
+                style={{
+                  fontSize: '8px', fontWeight: 700, padding: '2px 6px', borderRadius: '3px', border: 'none', cursor: 'pointer',
+                  background: mode === 'ovr' ? '#22d3ee' : '#1e293b',
+                  color: mode === 'ovr' ? '#0a1220' : '#334155',
+                  letterSpacing: '0.06em',
+                }}
+              >OVR</button>
+              <button
+                type="button"
+                onClick={() => setMode('sta')}
+                style={{
+                  fontSize: '8px', fontWeight: 700, padding: '2px 6px', borderRadius: '3px', border: 'none', cursor: 'pointer',
+                  background: mode === 'sta' ? '#22d3ee' : '#1e293b',
+                  color: mode === 'sta' ? '#0a1220' : '#334155',
+                  letterSpacing: '0.06em',
+                }}
+              >STA</button>
+            </div>
           </div>
+          <span
+            title={oppTeamName}
+            style={{ fontSize: '10px', fontWeight: 700, color: '#f43f5e', letterSpacing: '0.08em', textAlign: 'right' }}
+          >
+            {oppTeamName.toUpperCase()}
+          </span>
         </div>
-        <span style={{ fontSize: '10px', fontWeight: 700, color: '#f43f5e', letterSpacing: '0.08em', textAlign: 'right' }}>{oppTeamName.toUpperCase()}</span>
-      </div>
+      )}
 
-      {/* Net summary strip */}
-      {hasOpp && (
+      {/* Net summary strip — hidden in compact mode */}
+      {hasOpp && !compact && (
         <div style={{
           background: 'rgba(34,211,238,0.07)', border: '1px solid rgba(34,211,238,0.15)',
           borderRadius: '5px', padding: '6px 12px', marginBottom: '10px',
@@ -101,7 +124,7 @@ export function MatchCard({ yourPlayers, oppPlayers, yourTeamName, oppTeamName }
       )}
 
       {/* Legend */}
-      {hasOpp && (
+      {hasOpp && !compact && (
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           fontSize: '9px', letterSpacing: '0.05em',
@@ -114,7 +137,7 @@ export function MatchCard({ yourPlayers, oppPlayers, yourTeamName, oppTeamName }
       )}
 
       {/* Rows */}
-      {sorted.map((slot, i) => {
+      {visibleRows.map((slot, i) => {
         const gap = mode === 'ovr' ? slot.ovrGap : slot.staGap;
         const barWidth = (Math.abs(gap) / maxGap) * 50;
         const youWin = gap > 0;
@@ -128,8 +151,8 @@ export function MatchCard({ yourPlayers, oppPlayers, yourTeamName, oppTeamName }
               display: 'grid',
               gridTemplateColumns: '1fr 36% 1fr',
               alignItems: 'center',
-              padding: '6px 0',
-              borderBottom: i < sorted.length - 1 ? '1px solid #0d1a26' : 'none',
+              padding: compact ? '5px 0' : '6px 0',
+              borderBottom: i < visibleRows.length - 1 ? '1px solid #0d1a26' : 'none',
             }}
           >
             {/* Your side */}
@@ -142,7 +165,9 @@ export function MatchCard({ yourPlayers, oppPlayers, yourTeamName, oppTeamName }
                   {youVal}
                 </span>
               </div>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: '#e2e8f0' }}>{slot.you.name}</span>
+              <span title={slot.you.name} style={{ fontSize: compact ? '11px' : '12px', fontWeight: 600, color: '#e2e8f0' }}>
+                {slot.you.name}
+              </span>
             </div>
 
             {/* Center: gap label + bar */}
@@ -178,7 +203,9 @@ export function MatchCard({ yourPlayers, oppPlayers, yourTeamName, oppTeamName }
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '4px' }}>
               {slot.opp ? (
                 <>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#e2e8f0' }}>{slot.opp.name}</span>
+                  <span title={slot.opp.name} style={{ fontSize: compact ? '11px' : '12px', fontWeight: 600, color: '#e2e8f0' }}>
+                    {slot.opp.name}
+                  </span>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <span style={{ fontSize: '8px', color: '#2d1a1a', letterSpacing: '0.06em', lineHeight: 1 }}>
                       {mode === 'ovr' ? 'OVR' : 'STA'}
@@ -204,11 +231,21 @@ export function MatchCard({ yourPlayers, oppPlayers, yourTeamName, oppTeamName }
       )}
 
       {/* Tally */}
-      {hasOpp && (
+      {hasOpp && !compact && (
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#334155', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #1e2d3d' }}>
           <span><span style={{ color: '#22d3ee', fontWeight: 700 }}>{advantages}</span> slot advantages</span>
           <span><span style={{ color: '#f43f5e', fontWeight: 700 }}>{disadvantages}</span> slot disadvantages</span>
         </div>
+      )}
+
+      {compact && sorted.length > maxVisibleRows && (
+        <button
+          type="button"
+          className="command-inline-toggle"
+          onClick={() => setShowAll(prev => !prev)}
+        >
+          {showAll ? 'Collapse details' : `Expand all ${sorted.length} matchups`}
+        </button>
       )}
     </div>
   );

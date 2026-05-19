@@ -5,24 +5,22 @@ export function WeeklyChecklist({
   plan,
   onAcceptPlan,
   planConfirmed,
+  showAction = true,
+  bare = false,
 }: {
   plan: CommandCenterPlan;
   onAcceptPlan: () => void;
   planConfirmed: boolean;
+  showAction?: boolean;
+  bare?: boolean;
 }) {
   const warnings: string[] = plan?.warnings ?? [];
   const recommendations: Array<{ department: string; text: string }> = plan?.recommendations ?? [];
   const lineupSummary: string | undefined = plan?.lineup?.summary;
   const starterNames: string[] = (plan?.lineup?.players ?? []).slice(0, 6).map(player => player.name);
 
-  return (
-    <div className="dm-panel" style={{ flex: 6 }}>
-      <div className="dm-panel-header">
-        <p className="dm-kicker">Pre-Game</p>
-        <h3 className="dm-panel-title">Weekly Checklist</h3>
-      </div>
-
-      <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+  const content = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
 
         {/* Lineup status */}
         <div>
@@ -84,12 +82,25 @@ export function WeeklyChecklist({
           </div>
         )}
 
-        <div style={{ borderTop: '1px solid #1e293b', paddingTop: '0.75rem' }}>
-          <ActionButton variant={planConfirmed ? 'ghost' : 'accent'} onClick={onAcceptPlan}>
-            {planConfirmed ? 'Plan Confirmed' : 'Confirm Plan'}
-          </ActionButton>
-        </div>
+        {showAction && (
+          <div style={{ borderTop: '1px solid #1e293b', paddingTop: '0.75rem' }}>
+            <ActionButton variant={planConfirmed ? 'ghost' : 'accent'} onClick={onAcceptPlan}>
+              {planConfirmed ? 'Plan Confirmed' : 'Confirm Plan'}
+            </ActionButton>
+          </div>
+        )}
       </div>
+  );
+
+  if (bare) return content;
+
+  return (
+    <div className="dm-panel" style={{ flex: 6 }}>
+      <div className="dm-panel-header">
+        <p className="dm-kicker">Pre-Game</p>
+        <h3 className="dm-panel-title">Weekly Checklist</h3>
+      </div>
+      <div style={{ padding: '1rem' }}>{content}</div>
     </div>
   );
 }
