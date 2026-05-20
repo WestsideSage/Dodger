@@ -82,3 +82,52 @@ def test_time_cap_prevents_infinite_matches():
     for seed in range(20):
         out = driver.run(_make_input(seed=seed))
         assert out is not None
+
+
+from dodgeball_sim.moment_events import (
+    Comeback,
+    DramaticCatch,
+    FloodThrow,
+    GassedCollapse,
+    LateGameEscape,
+    OneVOneFinale,
+    MomentKind,
+)
+
+
+def _moment_kinds_across_seeds(seeds=range(80)) -> set[MomentKind]:
+    driver = RecTier1Driver()
+    seen: set[MomentKind] = set()
+    for s in seeds:
+        out = driver.run(_make_input(seed=s))
+        for ev in out.moment_events:
+            seen.add(ev.kind)
+    return seen
+
+
+def test_emits_at_least_some_moments_across_runs():
+    driver = RecTier1Driver()
+    any_emitted = False
+    for s in range(20):
+        out = driver.run(_make_input(seed=s))
+        if out.moment_events:
+            any_emitted = True
+            break
+    assert any_emitted, "no moments emitted across 20 seeds — emission is broken"
+
+
+def test_dramatic_catch_emits_when_catch_returns_player():
+    """Run many seeds; at least one match should produce a dramatic catch."""
+    seen = _moment_kinds_across_seeds()
+    assert MomentKind.DRAMATIC_CATCH in seen
+
+
+def test_flood_throw_or_late_escape_emerges_across_seeds():
+    """Either flood throws or late-game escapes should appear across enough seeds."""
+    seen = _moment_kinds_across_seeds()
+    assert seen & {MomentKind.FLOOD_THROW, MomentKind.LATE_GAME_ESCAPE}
+
+
+def test_one_v_one_finale_emerges_across_seeds():
+    seen = _moment_kinds_across_seeds()
+    assert MomentKind.ONE_V_ONE_FINALE in seen
