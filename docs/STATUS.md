@@ -4,17 +4,23 @@ Canonical snapshot of what is actually built and what is still open. When code
 state changes materially, update this file in the same pass. If this file and
 the source disagree, the source wins — then fix this file.
 
-Last updated: 2026-05-19.
+Last updated: 2026-05-20.
 
 ## Current Phase
 
-Post-V10. The game is playable end to end: career creation, weekly command
-loop, match replay, playoffs, offseason ceremonies, and multi-season dynasty
-history all work in the browser. No milestone is in active development. The
-current focus is **refinement and gameplay optimization**, not new systems.
+Post-V11. The game is playable end to end: career creation, weekly command
+loop, official-rules match replay, playoffs, offseason ceremonies, and
+multi-season dynasty history all work in the browser. No milestone is in
+active development. The current focus is **refinement and gameplay
+optimization**, not new systems.
 
 ## Shipped And Verified
 
+- **V11 — Official USA Dodgeball Rules Integration** (shipped 2026-05-19) — see `docs/specs/MILESTONES.md` and `docs/specs/2026-05-20-v11-official-usad-rules/design.md`. Fully integrates warning records, blue cards, and discipline states (Section 34 & 35) with a complete conformance matrix verification.
+  - Career creation only: the official ruleset cannot be opted into mid-career. Existing V1–V10 saves remain on the generic ruleset.
+  - Rulesets: Foam, No-Sting, and Cloth ruleset profiles are fully supported.
+  - Deferred: yellow/red card tournament persistence, designated retriever realism, pinching, flight kills, injuries, interference, player collision, bracket expansion, and full administrative rules.
+  - Conformance matrix reference: verified completeness of all must-have official rules in `tests/test_official_conformance_matrix.py`.
 - **V1–V10** — see `docs/specs/MILESTONES.md` for the per-milestone index.
 - **UX Polish initiative** (three waves, 15 subplans; plan archived at
   `docs/archive/plans/2026-05-08-ux-polish/`). The frontend reflects it:
@@ -35,18 +41,22 @@ current focus is **refinement and gameplay optimization**, not new systems.
    *proposed but deliberately not applied* — per the engine integrity rules it
    needs explicit sign-off and golden-log regeneration in the same commit.
    Full write-up: `docs/archive/playthrough-bug-log.md` (O1 section).
-2. **V11 — AI Program Managers (partially scaffolded).** `ai_program_manager.py`
-   (~100 lines) exists and is wired into `command_week_service.py` and
-   `use_cases.py`, but V11 has no spec and no row in `MILESTONES.md`. Roadmap
-   intent: `docs/specs/long-range-playable-roadmap.md`.
-3. **V12 — Broadcast / Presentation layer.** Not started. Roadmap only.
+2. **Future AI Program Managers / Rival Adaptation Loop (partially
+   scaffolded).** `ai_program_manager.py` (~100 lines) exists and is wired into
+   `command_week_service.py` and `use_cases.py`, but this work no longer owns
+   the V11 label because V11 shipped as Official USA Dodgeball Rules. Re-slot it
+   into the next milestone before writing a spec. Roadmap intent:
+   `docs/specs/long-range-playable-roadmap.md`.
+3. **Future Broadcast / Presentation layer.** Not started. Roadmap only. Its
+   milestone number should be assigned after the AI Program Managers work is
+   re-slotted.
 4. **Product-coherence-audit follow-ups.** The 2026-05-15 audit
    (`docs/archive/product-coherence-audit.md`) proposed 10 coherence fixes plus
    10 "make it feel real" changes. Several label/copy fixes appear to have
-   landed in later commits, but the audit was **never systematically
-   reconciled** against current code. Fix 1 ("Did Your Plan Work?" verdict) was
-   explicitly deferred and still needs a backend verdict generator. A
-   verification pass is owed.
+   landed in later commits, and Fix 1 ("Did Your Plan Work?" verdict) now has a
+   backend generator in `voice_verdict.py` plus aftermath payload coverage. The
+   audit was still **never systematically reconciled** against current code, so
+   a verification pass is owed for the remaining items.
 5. **Dead Tkinter-era code.** `gui.py`, `manager_gui.py`, `ui_components.py`,
    `ui_formatters.py`, `ui_style.py`, and likely `court_renderer.py`
    (~5,900+ lines combined) are imported by nothing the web app runs. The

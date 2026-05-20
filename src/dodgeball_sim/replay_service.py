@@ -18,6 +18,7 @@ from .persistence import (
     save_career_state_cursor,
 )
 from .replay_proof import build_replay_proof, event_detail, event_label
+from .official_persistence import replay_state_from_dict, replay_state_to_dict
 from .stats import PlayerMatchStats
 from .web_status_service import career_state_payload
 
@@ -67,6 +68,19 @@ def match_replay_payload(conn: sqlite3.Connection, match_id: str) -> dict[str, A
         }
         for index, event in enumerate(stored["events"])
     ]
+    official_state = None
+    if events:
+        match_start_context = events[0].get("context") or {}
+        official_state_data = (
+            match_start_context.get("official_state")
+            if isinstance(match_start_context, dict)
+            else None
+        )
+        if isinstance(official_state_data, dict):
+            official_state = replay_state_to_dict(
+                replay_state_from_dict(official_state_data),
+                include_events=False,
+            )
 
     stats = stats_for_match(conn, match_id)
     proof = build_replay_proof(
@@ -125,10 +139,12 @@ def match_replay_payload(conn: sqlite3.Connection, match_id: str) -> dict[str, A
         "winner_name": winner_name,
         "home_survivors": row["home_survivors"],
         "away_survivors": row["away_survivors"],
+        "config_version": row["config_version"] if "config_version" in row.keys() else None,
         "events": events,
         "proof_events": proof["proof_events"],
         "key_play_indices": proof["key_play_indices"],
         "report": report,
+        "official_state": official_state,
     }
 
 

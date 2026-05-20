@@ -165,6 +165,65 @@ export interface TopPerformer {
     dodges_successful: number;
 }
 
+export interface OfficialClockView {
+    limit_seconds: number;
+    elapsed_seconds: number;
+}
+
+export interface OfficialGameScoreView {
+    team_a_id: string;
+    team_b_id: string;
+    team_a_games: number;
+    team_b_games: number;
+    team_a_ties: number;
+    team_b_ties: number;
+    no_point_games: number;
+}
+
+export interface OfficialBurdenView {
+    team_id: string | null;
+    basis: string;
+    clock_status: string;
+    seconds_remaining: number;
+    play_n_count: number;
+}
+
+export interface OfficialBallView {
+    ball_id: string;
+    state: string;
+    side?: string | null;
+    controller_player_id?: string | null;
+}
+
+export interface OfficialTeamStateView {
+    team_id: string;
+    active_ids: string[];
+    queued_ids: string[];
+    entering_id?: string | null;
+    unavailable_ids: string[];
+}
+
+export interface OfficialRuleCallView {
+    rule_label: string;
+    summary: string;
+    timestamp_seconds: number;
+}
+
+export interface OfficialReplayState {
+    ruleset: string;
+    rulebook_version: string;
+    official_payload_version: string;
+    match_clock?: OfficialClockView | null;
+    game_clock?: OfficialClockView | null;
+    game_score?: OfficialGameScoreView | null;
+    mode: string;
+    burden?: OfficialBurdenView | null;
+    balls: OfficialBallView[];
+    teams: OfficialTeamStateView[];
+    player_statuses: Record<string, string>;
+    rule_calls: OfficialRuleCallView[];
+}
+
 export interface MatchReplayResponse {
     match_id: string;
     season_id: string;
@@ -177,9 +236,11 @@ export interface MatchReplayResponse {
     winner_name: string;
     home_survivors: number;
     away_survivors: number;
+    config_version?: string | null;  // V11: "official:..." when run under official ruleset
     events: ReplayEvent[];
     proof_events: ReplayProofEvent[];
     key_play_indices: number[];
+    official_state?: OfficialReplayState | null;
     report: {
         winner_name: string;
         match_mvp_player_id: string | null;
@@ -403,6 +464,7 @@ export interface Aftermath {
         interest_delta: string;
         evidence: string;
     }>;
+    verdict?: string;
 }
 
 export interface OffseasonAward {

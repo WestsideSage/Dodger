@@ -246,6 +246,31 @@ export function MatchWeek({
               winnerClubId={aftermath.match_card.winner_club_id}
               homeClubId={aftermath.match_card.home_club_id}
             />
+            {aftermath.verdict && (
+              <p
+                data-testid="match-verdict"
+                style={{
+                  margin: '12px 0 0',
+                  padding: '10px 14px',
+                  fontFamily: 'Oswald, sans-serif',
+                  fontSize: '0.95rem',
+                  letterSpacing: '0.3px',
+                  color: '#e2e8f0',
+                  background: '#0f172a',
+                  border: '1px solid #1e293b',
+                  borderLeft: `3px solid ${
+                    activeResult.dashboard.result === 'Win'
+                      ? '#10b981'
+                      : activeResult.dashboard.result === 'Loss'
+                        ? '#f43f5e'
+                        : '#64748b'
+                  }`,
+                  borderRadius: '4px',
+                }}
+              >
+                {aftermath.verdict}
+              </p>
+            )}
           </div>
         )}
 

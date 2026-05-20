@@ -1,0 +1,122 @@
+"""Adapter that routes a generic ``MatchSetup`` into the official engine.
+
+Used by the use-case layer to simulate a single match under official rules
+when the career's :class:`~dodgeball_sim.rulesets.RulesetSelection` is set.
+Produces a generic-shaped :class:`~dodgeball_sim.engine.MatchResult` derived
+from the official event stream via :mod:`official_translator`, so downstream
+stats and persistence don't need to know which engine produced the match.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, replace
+from typing import Any, Dict, Tuple
+
+from .engine import MatchResult
+from .models import MatchSetup
+from .official_engine import run_autonomous_game
+from .official_events import OfficialEvent
+from .official_persistence import replay_state_to_dict
+from .official_stats import derive_box_score
+from .official_translator import collect_official_metadata, translate_events
+from .replay_contracts import OfficialReplayState
+from .rulesets import RulesetSelection
+
+
+@dataclass(frozen=True)
+class OfficialMatchResult:
+    """Raw official outcome (event stream + metadata).
+
+    The :meth:`OfficialEngineAdapter.run_generic` method returns the
+    generic-compatible :class:`MatchResult` for pipeline integration;
+    callers wanting the raw event stream can use :meth:`run` instead.
+    """
+
+    winner_team_id: str | None
+    box_score: Dict[str, Any]
+    events: Tuple[OfficialEvent, ...]
+    ticks: int
+    ruleset_selection: str
+    official_metadata: Dict[str, Any]
+    replay_state: OfficialReplayState
+
+
+class OfficialEngineAdapter:
+    """Drives the official engine end to end and returns a generic-shaped
+    :class:`MatchResult` so the franchise pipeline keeps its contracts."""
+
+    def __init__(self, selection: RulesetSelection) -> None:
+        if not selection.is_official():
+            raise ValueError("OfficialEngineAdapter requires an official ruleset")
+        self.selection = selection
+        self.profile = selection.to_profile()
+
+    def _run_raw(self, setup: MatchSetup, *, seed: int, match_id: str | None) -> OfficialMatchResult:
+        team_a = setup.team_a
+        team_b = setup.team_b
+        starters_a = tuple(p.id for p in team_a.players[: self.profile.roster_rule.starters])
+        starters_b = tuple(p.id for p in team_b.players[: self.profile.roster_rule.starters])
+        lookup = {p.id: p for p in team_a.players} | {p.id: p for p in team_b.players}
+        team_map = (
+            {p.id: team_a.id for p in team_a.players}
+            | {p.id: team_b.id for p in team_b.players}
+        )
+        name_map = (
+            {p.id: p.name for p in team_a.players}
+            | {p.id: p.name for p in team_b.players}
+        )
+        game_result = run_autonomous_game(
+            profile=self.profile,
+            match_id=match_id or f"{team_a.id}-vs-{team_b.id}",
+            team_a_id=team_a.id, team_b_id=team_b.id,
+            starters_a=starters_a, starters_b=starters_b,
+            player_lookup=lookup,
+            policy_a=team_a.coach_policy, policy_b=team_b.coach_policy,
+            seed=seed,
+        )
+        box = derive_box_score(
+            game_result.events,
+            team_a_id=team_a.id, team_b_id=team_b.id,
+            team_a_name=team_a.name, team_b_name=team_b.name,
+            player_team_map=team_map, player_name_map=name_map,
+            starters_a=starters_a, starters_b=starters_b,
+            winner_team_id=game_result.winner_team_id,
+        )
+        return OfficialMatchResult(
+            winner_team_id=game_result.winner_team_id,
+            box_score=box, events=game_result.events,
+            ticks=game_result.ticks,
+            ruleset_selection=self.selection.value,
+            official_metadata=collect_official_metadata(game_result.events),
+            replay_state=game_result.replay_state,
+        )
+
+    def run(self, setup: MatchSetup, *, seed: int, match_id: str | None = None) -> OfficialMatchResult:
+        return self._run_raw(setup, seed=seed, match_id=match_id)
+
+    def run_generic(self, setup: MatchSetup, *, seed: int, match_id: str | None = None) -> MatchResult:
+        """Run the official engine and return a generic-shaped MatchResult."""
+
+        raw = self._run_raw(setup, seed=seed, match_id=match_id)
+        starters_a = tuple(p.id for p in setup.team_a.players[: self.profile.roster_rule.starters])
+        starters_b = tuple(p.id for p in setup.team_b.players[: self.profile.roster_rule.starters])
+        match_events = translate_events(
+            raw.events, seed=seed,
+            team_a_id=setup.team_a.id, team_b_id=setup.team_b.id,
+            starters_a=starters_a, starters_b=starters_b,
+            winner_team_id=raw.winner_team_id,
+        )
+        if match_events:
+            official_state = replay_state_to_dict(raw.replay_state, include_events=False)
+            match_events[0] = replace(
+                match_events[0],
+                context={**match_events[0].context, "official_state": official_state},
+            )
+        return MatchResult(
+            events=tuple(match_events),
+            winner_team_id=raw.winner_team_id,
+            box_score=raw.box_score,
+            final_tick=raw.ticks,
+            seed=seed,
+            config_version=f"official:{self.selection.value}",
+        )

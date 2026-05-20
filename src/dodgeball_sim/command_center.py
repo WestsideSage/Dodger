@@ -20,7 +20,7 @@ from .matchup_details import build_matchup_details
 from .playoffs import playoff_stage_label
 
 
-INTENTS = ("Balanced", "Win Now", "Develop Youth", "Preserve Health", "Evaluate Lineup", "Prepare For Playoffs")
+INTENTS = ("Balanced", "Win Now", "Develop Youth", "Preserve Health", "Prepare For Playoffs")
 
 DEFAULT_DEPARTMENT_ORDERS = {
     "tactics": "opponent prep",
@@ -231,6 +231,8 @@ def _lineup_warnings(roster: list[Player], player_ids: list[str], intent: str, t
 
 
 def build_post_week_dashboard(conn: sqlite3.Connection, plan: Mapping[str, Any], record: MatchRecord) -> dict[str, Any]:
+    from dodgeball_sim.voice_verdict import approach_label_for_intent
+
     clubs = load_clubs(conn)
     rosters = load_all_rosters(conn)
     player_names = {
@@ -248,37 +250,31 @@ def build_post_week_dashboard(conn: sqlite3.Connection, plan: Mapping[str, Any],
     score = f"{home_survivors}-{away_survivors}"
     stats = _match_stats(conn, record.match_id)
     target_note = _target_note(stats, player_club_id, player_names)
-    rush_frequency = float(plan.get("tactics", {}).get("rush_frequency", 0.0))
-    fatigue_note = "Conservative rush plan limited fatigue-risk exposure."
-    if rush_frequency > 0.65:
-        fatigue_note = "Aggressive rush plan raised visible fatigue-risk pressure."
-    target_plan_note = _target_plan_note(float(plan.get("tactics", {}).get("target_stars", 0.0)))
-    pressure_plan_note = _pressure_plan_note(rush_frequency)
+    result = "Draw" if draw else ("Win" if won else "Loss")
+    intent = str(plan.get("intent", ""))
+    approach_label = approach_label_for_intent(intent)
+
     return {
         "season_id": record.season_id,
         "week": record.week,
         "match_id": record.match_id,
         "stage": playoff_stage_label(record.season_id, record.match_id),
         "opponent_name": clubs[opponent_id].name if opponent_id in clubs else opponent_id,
-        "result": "Draw" if draw else ("Win" if won else "Loss"),
+        "result": result,
         "lanes": [
             {
                 "title": "Result",
                 "summary": f"{'Drew' if draw else ('Beat' if won else 'Lost to')} {clubs[opponent_id].name if opponent_id in clubs else opponent_id}, survivors {score}.",
-                "items": [f"Intent: {plan['intent']}", f"Week {record.week} command record saved."],
+                "items": [f"Approach: {approach_label}", f"Week {record.week} command record saved."],
             },
             {
                 "title": "Why it happened",
-                "summary": "The staff review ties the result to visible pressure, target selection, and late-match execution.",
-                "items": [
-                    target_note,
-                    target_plan_note,
-                    pressure_plan_note,
-                ],
+                "summary": "The clearest tactical read came from who absorbed pressure.",
+                "items": [target_note],
             },
             {
                 "title": "Roster health",
-                "summary": fatigue_note,
+                "summary": "Roster availability and recovery tracked.",
                 "items": [f"Medical order: {plan.get('department_orders', {}).get('medical', 'none')}.", "Staff report no new medical incidents; fitness levels maintained."],
             },
             {
@@ -310,22 +306,6 @@ def _target_note(stats: list[dict[str, Any]], player_club_id: str, player_names:
     if target_count <= 0:
         return "The opponent did not build sustained pressure against one clear defender."
     return f"{player_name} absorbed the most pressure, drawing {target_count} throws."
-
-
-def _target_plan_note(target_stars: float) -> str:
-    if target_stars >= 0.7:
-        return "The plan leaned into star containment and forced their best players to work through traffic."
-    if target_stars <= 0.35:
-        return "The plan spread attention across the lineup instead of overcommitting to one star matchup."
-    return "The plan balanced star containment with broader lineup pressure."
-
-
-def _pressure_plan_note(rush_frequency: float) -> str:
-    if rush_frequency >= 0.65:
-        return "The team played on the front foot, using frequent pressure to speed up possessions."
-    if rush_frequency <= 0.35:
-        return "The team stayed patient, choosing shape and recovery over constant rush pressure."
-    return "The team mixed patient possessions with selective rush pressure."
 
 
 __all__ = [

@@ -81,6 +81,7 @@ def build_status_payload(conn: sqlite3.Connection) -> dict[str, Any]:
             "player_club_id": player_club_id,
             "player_club_name": player_club.name if player_club else player_club_id,
             "season_year": season.year if season else None,
+            "ruleset_selection": get_state(conn, "ruleset_selection"),
         },
     }
 

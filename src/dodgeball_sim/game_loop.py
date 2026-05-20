@@ -43,6 +43,8 @@ def simulate_scheduled_match(
     away_default = load_lineup_default(conn, scheduled.away_club_id)
     home_override = load_match_lineup_override(conn, scheduled.match_id, scheduled.home_club_id)
     away_override = load_match_lineup_override(conn, scheduled.match_id, scheduled.away_club_id)
+    from .persistence import get_state
+    ruleset_selection = get_state(conn, "ruleset_selection")
     record, _ = simulate_match(
         scheduled=scheduled,
         home_club=clubs[scheduled.home_club_id],
@@ -55,6 +57,7 @@ def simulate_scheduled_match(
         away_lineup_default=away_default,
         home_lineup_override=home_override,
         away_lineup_override=away_override,
+        ruleset_selection=ruleset_selection,
     )
     persist_match_record(
         conn,

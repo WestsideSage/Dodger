@@ -32,6 +32,9 @@ coverage.xml
 htmlcov/
 
 # Local assistant/editor state
+.claude/agents/
+.claude/skills/
+.claude/settings.json
 .claude/settings.local.json
 .claude/worktrees/
 .vscode/*

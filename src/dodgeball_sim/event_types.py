@@ -6,6 +6,7 @@ class MatchStartContext(TypedDict):
     difficulty: str
     meta_patch: Optional[Dict[str, Any]]
     team_policies: Dict[str, Dict[str, float]]
+    official_state: NotRequired[Dict[str, Any]]
 
 
 class MatchEndContext(TypedDict):

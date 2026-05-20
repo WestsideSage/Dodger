@@ -19,6 +19,20 @@ const PLAYER_R = 13;
 const HOME_COLOR = '#f97316';
 const AWAY_COLOR = '#06b6d4';
 
+function formatClock(limitSeconds?: number | null, elapsedSeconds?: number | null): string {
+  if (limitSeconds == null || elapsedSeconds == null) return 'N/A';
+  if (limitSeconds <= 0) return `${elapsedSeconds}s elapsed`;
+  const remaining = Math.max(0, limitSeconds - elapsedSeconds);
+  const minutes = Math.floor(remaining / 60);
+  const seconds = remaining % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')} left`;
+}
+
+function humanizeRuleToken(value: string | null | undefined): string {
+  if (!value) return 'none';
+  return value.replace(/_/g, ' ');
+}
+
 function playerLabel(name: string): string {
   const parts = name.trim().split(' ');
   if (parts.length === 1) return parts[0].toUpperCase().slice(0, 7);
@@ -52,16 +66,22 @@ function getFormationPositions(ids: string[], side: 'left' | 'right', courtWidth
 // ── Resolution helpers ─────────────────────────────────────────────────────
 
 const resolutionColor = (r: string | null) =>
-  r === 'eliminated'
+  r === 'eliminated' || r === 'hit' || r === 'failed_catch'
     ? '#f43f5e'
-    : r === 'caught'
+    : r === 'caught' || r === 'catch'
     ? '#06b6d4'
     : r === 'dodged'
     ? '#a3e635'
     : '#f97316';
 
 const resolutionActionLabel = (r: string | null) =>
-  r === 'eliminated' ? 'OUT' : r === 'caught' ? 'CATCH' : r === 'dodged' ? 'DODGE' : '';
+  r === 'eliminated' || r === 'hit' || r === 'failed_catch'
+    ? 'OUT'
+    : r === 'caught' || r === 'catch'
+    ? 'CATCH'
+    : r === 'dodged'
+    ? 'DODGE'
+    : '';
 
 // ── Court SVG ──────────────────────────────────────────────────────────────
 
@@ -524,6 +544,129 @@ const StatsPanel = memo(function StatsPanel({ data }: { data: MatchReplayRespons
 
 // ── Key Plays Panel ────────────────────────────────────────────────────────
 
+const OfficialRulesPanel = memo(function OfficialRulesPanel({ data }: { data: MatchReplayResponse }) {
+  const state = data.official_state;
+  if (!state) return null;
+
+  const homeTeam = state.teams.find((team) => team.team_id === data.home_club_id) ?? state.teams[0];
+  const awayTeam = state.teams.find((team) => team.team_id === data.away_club_id) ?? state.teams[1];
+  const recentCalls = state.rule_calls.slice(-4).reverse();
+
+  return (
+    <div
+      style={{
+        margin: '10px 12px 0',
+        background: '#0f172a',
+        border: '1px solid rgba(249,115,22,0.22)',
+        borderRadius: 8,
+        padding: '12px',
+        display: 'grid',
+        gap: 12,
+      }}
+    >
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+        <div>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', letterSpacing: 2, marginBottom: 4 }}>RULESET</div>
+          <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 13, color: '#f8fafc' }}>{state.ruleset.toUpperCase()}</div>
+        </div>
+        <div>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', letterSpacing: 2, marginBottom: 4 }}>MODE</div>
+          <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 13, color: '#f8fafc' }}>{humanizeRuleToken(state.mode)}</div>
+        </div>
+        <div>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', letterSpacing: 2, marginBottom: 4 }}>GAME CLOCK</div>
+          <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 13, color: '#f8fafc' }}>
+            {formatClock(state.game_clock?.limit_seconds, state.game_clock?.elapsed_seconds)}
+          </div>
+        </div>
+        <div>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', letterSpacing: 2, marginBottom: 4 }}>MATCH CLOCK</div>
+          <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 13, color: '#f8fafc' }}>
+            {formatClock(state.match_clock?.limit_seconds, state.match_clock?.elapsed_seconds)}
+          </div>
+        </div>
+      </div>
+
+      {state.game_score && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', letterSpacing: 2 }}>GAME SCORE</span>
+          <span style={{ fontFamily: 'Oswald, sans-serif', fontSize: 14, color: '#f97316' }}>{state.game_score.team_a_games}</span>
+          <span style={{ color: '#475569', fontSize: 12 }}>-</span>
+          <span style={{ fontFamily: 'Oswald, sans-serif', fontSize: 14, color: '#06b6d4' }}>{state.game_score.team_b_games}</span>
+        </div>
+      )}
+
+      {state.burden && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', letterSpacing: 2 }}>BURDEN</span>
+          <span style={{ fontFamily: 'Oswald, sans-serif', fontSize: 13, color: '#f8fafc' }}>
+            {state.burden.team_id ?? 'none'}
+          </span>
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#94a3b8' }}>
+            via {humanizeRuleToken(state.burden.basis)} • {humanizeRuleToken(state.burden.clock_status)}
+          </span>
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+        {[homeTeam, awayTeam].filter(Boolean).map((team, index) => (
+          <div key={team?.team_id ?? index} style={{ border: '1px solid #1e293b', borderRadius: 6, padding: '10px' }}>
+            <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 13, color: index === 0 ? '#f97316' : '#06b6d4', marginBottom: 6 }}>
+              {team?.team_id === data.home_club_id ? data.home_club_name.toUpperCase() : data.away_club_name.toUpperCase()}
+            </div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#cbd5e1', lineHeight: 1.5 }}>
+              Active: {(team?.active_ids ?? []).join(', ') || 'none'}
+            </div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>
+              Queue: {(team?.queued_ids ?? []).join(', ') || 'empty'}
+            </div>
+            {team?.entering_id && (
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#fbbf24', lineHeight: 1.5 }}>
+                Entering: {team.entering_id}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', letterSpacing: 2, marginBottom: 6 }}>BALL STATES</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {state.balls.map((ball) => (
+            <span
+              key={ball.ball_id}
+              style={{
+                borderRadius: 999,
+                border: '1px solid #334155',
+                padding: '3px 8px',
+                fontFamily: 'JetBrains Mono, monospace',
+                fontSize: 10,
+                color: '#cbd5e1',
+              }}
+            >
+              {ball.ball_id}: {humanizeRuleToken(ball.state)}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {recentCalls.length > 0 && (
+        <div>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#64748b', letterSpacing: 2, marginBottom: 6 }}>RULE CALLS</div>
+          <div style={{ display: 'grid', gap: 6 }}>
+            {recentCalls.map((call, index) => (
+              <div key={`${call.rule_label}-${index}`} style={{ borderLeft: '2px solid #f97316', paddingLeft: 8 }}>
+                <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 12, color: '#f8fafc' }}>{call.rule_label}</div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#94a3b8' }}>{call.summary}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+
 function KeyPlaysPanel({ data, currentIndex, onJump }: { data: MatchReplayResponse; currentIndex: number; onJump: (i: number) => void }) {
   const keyEvents = data.key_play_indices.map((i) => ({ index: i, event: data.events[i] })).filter((e) => e.event);
   if (keyEvents.length === 0) {
@@ -708,7 +851,33 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
         homeClubId={data.home_club_id}
       />
 
+      {/* V11: Official ruleset banner. Auto-switch by config_version. */}
+      {data.config_version?.startsWith('official:') && (
+        <div
+          data-testid="official-ruleset-banner"
+          style={{
+            background: 'linear-gradient(90deg, rgba(249,115,22,0.18), rgba(249,115,22,0.06))',
+            borderTop: '1px solid rgba(249,115,22,0.3)',
+            borderBottom: '1px solid rgba(249,115,22,0.3)',
+            color: '#fbbf24',
+            padding: '6px 16px',
+            fontFamily: 'var(--font-display)',
+            fontSize: 11,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <span>USA Dodgeball 2026.1 — {data.config_version.replace('official:official_', '').toUpperCase()}</span>
+          <span style={{ color: '#94a3b8', fontSize: 10 }}>Official Rules</span>
+        </div>
+      )}
+
       {/* Court — full width */}
+      {data.official_state && <OfficialRulesPanel data={data} />}
+
       <div style={{ background: '#060d1a', padding: '8px 0 4px' }}>
         {hasCourtData ? (
           <CourtView
@@ -807,7 +976,7 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
       <div style={{ borderTop: '1px solid #1e293b', flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', borderBottom: '1px solid #1e293b', padding: '0 4px' }}>
           {(['pbp', 'keyplays', 'stats'] as const).map((tab) => {
-            const labels = { pbp: 'PLAY-BY-PLAY', keyplays: 'KEY PLAYS', stats: 'REPORT' };
+            const labels = { pbp: 'PLAY-BY-PLAY', keyplays: 'KEY PLAYS', stats: 'BOX SCORE' };
             const isActive = activeTab === tab;
             return (
               <button
