@@ -115,18 +115,19 @@ Subsystems 1 + 2 + 3 are tightly coupled and will be co-developed; see §6.
 
 ### 3.1 Tier ladder
 
-Seven tiers from rec league to Worlds. Tier names below are working
-placeholders — final naming will be settled during implementation:
+Seven tiers from rec league to Worlds. Working names below (user-set
+2026-05-20); final naming may still be adjusted but these are the
+working ladder for design and implementation:
 
 | # | Working name | Stakes | Tournaments? |
 |---|---|---|---|
-| 1 | Rec League | Local pride. Signup-based. Regular season only. | No |
-| 2 | Rec League Open | Top rec teams. First taste of stakes. | **Unlock** |
-| 3 | Semi-Pro Div 2 | First semi-formal level. | Yes |
-| 4 | Semi-Pro Div 1 | Established semi-pro. | Yes |
-| 5 | Pro Div 2 | First professional tier. | Yes |
-| 6 | Pro Div 1 | Top pro league. | Yes |
-| 7 | **Worlds** | USAD-sanctioned international championship. **Endgame.** | Yes |
+| 1 | Local Rec League | Local pride. Signup-based. Regular season only. | No |
+| 2 | City Open | Top rec teams across a city. First real stakes. | **Unlock** |
+| 3 | Regional Club Circuit | First semi-formal competitive level. | Yes |
+| 4 | Competitive Club League | Established competitive clubs. | Yes |
+| 5 | National Qualifier Circuit | Path-to-pro qualifying competition. | Yes |
+| 6 | Premier Tour | Top tier of domestic competition. | Yes |
+| 7 | **World Championship (Worlds)** | USAD-sanctioned international championship. **Endgame.** | Yes |
 
 ### 3.2 Promotion / relegation
 
@@ -179,6 +180,38 @@ go to the gym on your own time"), formal/staff-driven at high tiers
 **Out of scope (deferred):** facilities economy, salary/contract sim,
 sponsorship economy, player morale demands, scripted media controversies.
 These remain in the parking lot from the long-range roadmap.
+
+### 3.5 Tier 1 rule contract
+
+This table is the concrete, build-against-able definition of "rec rules"
+at Local Rec League. It exists so the implementation does not invent
+rules under the label of "rec." Higher tiers will get their own
+contracts in their per-tier design passes.
+
+| Rule | Tier 1 (Local Rec League) | Notes |
+|---|---|---|
+| **Team size on court** | 6 players per side | Matches USAD starter count; consistent across tiers |
+| **Ball count** | 6 balls | 3 per side at opening rush |
+| **Ball type** | Foam (rec-friendly, lowest sting) | Cloth/no-sting are higher-tier options |
+| **Opening rush** | Yes — opening sprint to the center line to retrieve balls | The "Opening Rush Plan" tactical knob (§6.5) configures this |
+| **Headshot behavior** | **Thrower is out, hit player stays in.** | Inverted from USAD. Recognition signal for rec audience. |
+| **Catches** | Live-ball catch → thrower is out AND one queued teammate returns (FIFO from `catch_queue`) | Same primitive V11 uses |
+| **Blocking** | Allowed — deflect an incoming throw with a held ball. If the held ball is knocked out of the blocker's grip or drops, the blocker is out. | Standard rec; no formal "no-blocking mode" until higher tiers |
+| **Boundaries** | Crossing the center line into the opponent's side → out. Crossing the sideline/baseline → out, no exception. | No formal designated retriever; brief OOB exception for chaos retrieval is **not** modeled at Tier 1 |
+| **Retrieval** | Chaos — any active player on a side can grab any ball that comes to rest on their side. No retriever role. | Recognition signal for rec audience |
+| **Stall handling** | Soft stall cap: if a side controls all balls and no throw occurs within 10 seconds, balls are reset by being rolled to the opposing side. No card, no warning. | Rec-style "make them throw" rule without refs |
+| **Burden state** | **Not modeled at Tier 1.** Possession-pressure is implicit via the stall cap only. | V11's `burden.py` is unused at this tier |
+| **Discipline state** | **Not modeled at Tier 1.** No refs, no warnings, no blue cards. | V11's `discipline.py` is unused at this tier |
+| **Game end condition** | First to eliminate all opposing players wins the game. If no winner after a 5-minute hard time cap, the side with more survivors wins; tied count = draw. | Time cap prevents pathological stalemates |
+| **Match format** | Single game per match. No best-of-N. | Tier 2+ may introduce best-of-N |
+| **Substitutions** | None during a game. | All starters play through. |
+
+**Rule deltas to capture in implementation:** the items marked "not
+modeled at Tier 1" (burden, discipline, OOB retrieval, no-blocking mode,
+designated retriever) are V11 features the Tier 1 driver explicitly
+opts out of, not features that are deleted. This is the architectural
+proof that Option C (hybrid driver model, §7.1) is the right shape:
+each tier driver picks which primitives it composes.
 
 ## 4. The six recognition moments
 
@@ -253,10 +286,18 @@ V11 was not wasted. It built the engine that the top of the climb uses.
 
 - The generic `MatchEngine` and its resolution path are deleted.
 - The generic-engine variance probe (`tools/o1_variance_probe.py`) is
-  deleted or repurposed for the new engine.
+  **replaced** with a new official/rec engine simulation-health probe
+  that runs the hybrid drivers (§7.1 Option C) against statistically
+  meaningful matchups and reports on the six-moment occurrence rate,
+  upset frequency, and outcome variance per tier. The intent of O1 is
+  preserved; the implementation is rewritten.
 - `PlayerArchetype` enum (vestigial; only `TACTICAL` is ever assigned) is
   redesigned per §6.2.
-- Generic `CoachPolicy` 8-field model is redesigned per §6.5.
+- Generic `CoachPolicy` 8-field model is redesigned per §6.5. **The data
+  model is deleted; the useful semantic behaviors are preserved** by
+  mapping them into the new tier-aware tactics concepts (Approach,
+  Target Focus, Catch Posture, Opening Rush Plan). Old fields are not
+  preserved verbatim.
 - Tkinter-era code (`gui.py`, `manager_gui.py`, etc.) deleted as part of
   this redesign — already flagged in STATUS.md as cleanup candidates.
 
@@ -323,14 +364,37 @@ Tier-aware vocabulary.
 
 ### 6.5 Coach tactics (subsystem #5)
 
-`CoachPolicy` 8-field model is deleted. Replaced with tier-appropriate
-levers:
+`CoachPolicy` 8-field data model is **deleted**. Useful semantic
+behaviors from the old fields are **preserved by mapping them into new
+tier-aware tactics concepts**, not by keeping the old fields verbatim:
 
-- Tier 1: pre-match approach (aggressive / patient / mixed), target focus
-  (their stars / spread the pressure), catch posture (go for catches /
-  play safe). ~3–4 knobs.
-- Tier 4+: adds discipline posture, retrieval priority, sequence pacing.
-- Tier 7: full tactical surface mirroring USAD coaching depth.
+| Old `CoachPolicy` field (deleted) | New concept (semantic preservation) |
+|---|---|
+| `risk_tolerance`, `target_stars`, `target_ball_holder` | **Target Focus** (their stars / their ball-holders / spread the pressure) |
+| `rush_frequency`, `rush_proximity` | **Opening Rush Plan** (Tier 1+ knob — see below) |
+| `tempo`, `sync_throws` | **Approach** (aggressive / patient / mixed) |
+| `catch_bias` | **Catch Posture** (go for catches / play safe / opportunistic) |
+
+Tier 1 tactical knobs (~3–4, all rec-recognizable):
+
+1. **Approach** — aggressive / patient / mixed. Pacing and throw cadence.
+2. **Target Focus** — their stars / their ball-holders / spread the
+   pressure. Who your team prefers to throw at.
+3. **Catch Posture** — go for catches / play safe / opportunistic. Risk
+   appetite when a ball is incoming.
+4. **Opening Rush Plan** — *candidate knob, included unless implementation
+   cost says otherwise*. Configures the opening sprint to the center line:
+   how many players commit to retrieval (all-in / balanced / hold-back),
+   and which balls to prioritize (nearest / strongest-side / center).
+   This is a more dodgeball-specific decision than generic aggression and
+   gives the player a recognizable pre-match decision.
+
+Higher tiers extend this surface:
+
+- Tier 4+: adds **discipline posture** (how to behave under ref attention)
+  and **retrieval priority** (when designated retrievers exist).
+- Tier 7: full tactical surface mirroring USAD coaching depth —
+  burden-release timing, sequence pacing, no-blocking-mode preparation.
 
 Tactical levers grow with tier — both the engine and the player learn
 new vocabulary together.
@@ -374,7 +438,9 @@ playable rec-league match with the six recognition moments visible.
   curve, position-aware archetypes — minimum needed for tier 1)
 - Replay UI that surfaces all six moments
 - Aftermath voice rewritten for rec-league vocabulary
-- Tier 1 tactical surface (3–4 pre-match knobs)
+- Tier 1 tactical surface (3–4 pre-match knobs: Approach, Target Focus,
+  Catch Posture, and Opening Rush Plan unless implementation cost forces
+  it to a later sub-project)
 - *Single* tier of play; no promotion/relegation yet (next sub-project)
 
 **Out of scope for this sub-project:**
@@ -427,16 +493,37 @@ separation of "rules" from "primitives"; mid-tier engines (2–6) are just
 new drivers, not new code. **Con:** requires factoring V11 primitives to
 be driver-agnostic, which may surface coupling.
 
-**Recommendation: (C) Hybrid.** It's the only option that scales to a
-7-tier climb without either accumulating dead code or rewriting the
-engine seven times. The factoring cost is real but pays back at every
-tier above 1. (A) collapses on the second-tier redesign when "USAD with
-features off" stops being a good abstraction. (B) accepts duplication
-that gets worse over time.
+**Decision: (C) Hybrid, as a thin slice.** User-approved 2026-05-20.
 
-If the user prefers (A) for speed-to-first-playable, that's defensible —
-but the brief should call out that (C) is the architecturally right
-answer for the 7-tier vision.
+**Thin-slice constraint (binding for the implementation plan):**
+
+- Extract *only* the primitives required for the Tier 1 Match Loop.
+  Identify them by what the Tier 1 rule contract (§3.5) actually uses:
+  `ball_state`, `catch_queue`, `sequence`, `player_state`, plus the new
+  fatigue and flood-throw primitives.
+- Existing V11 / USAD behavior must remain covered by its current tests
+  throughout the slice — the USAD driver is not refactored, it is
+  *unbundled* from primitive ownership. If a primitive needs a signature
+  change, both drivers must compile and pass tests at the same commit.
+- **Do not pre-build Tier 2–7 drivers** before Tier 1 proves the
+  playable loop. The hybrid architecture is justified by the 7-tier
+  vision, but only the Tier 1 driver and the USAD driver exist after
+  this sub-project. Other tier drivers are added when their tier's
+  sub-project begins.
+- Primitives that V11 owns but Tier 1 does not use (`burden`,
+  `discipline`, `no_blocking`, designated-retriever logic in
+  `official_engine`) stay where they are; they are *not* hoisted into
+  the shared primitive layer in this sub-project. Hoist them only when
+  a tier driver other than USAD needs them.
+
+This keeps the architectural change scoped: the Tier 1 sub-project
+delivers two drivers and a shared-primitive layer that contains exactly
+the primitives Tier 1 needs, with V11 behavior preserved.
+
+Rationale for (C) over (A) and (B): (A) collapses on the second-tier
+redesign when "USAD with features off" stops being a good abstraction.
+(B) accepts duplication that gets worse over time. (C) absorbs a real
+factoring cost in this sub-project but pays back at every tier above 1.
 
 ## 8. Open questions deferred to per-sub-project design
 
@@ -511,6 +598,12 @@ verbatim:
 - "After you win Worlds the game is done. Eventually there can be like
   a New Game+ where the game is much harder but that is a dessert and
   we haven't even got the main course."
+- **"The replay should prove the decisions mattered, not just show
+  random events happening."** (Added 2026-05-20 during brief review.)
+  This is the load-bearing test for §6.3 (Match Replay UI) and for the
+  six-moment surfacing work: a replay where a Win/Loss is indistinguishable
+  from coin-flip variance has failed this principle, even if every event
+  is rules-accurate.
 
 These quotes are the load-bearing commitments. Subsequent design must
 serve them.
