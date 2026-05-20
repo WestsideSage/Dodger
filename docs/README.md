@@ -20,6 +20,8 @@ what you need. If two docs disagree, follow the authority order below.
   (`MILESTONES.md`), the inherited integrity contract (`AGENTS.md`), and the
   long-range scope-control roadmap. A new milestone's spec lives here while it
   is active, then moves to `docs/archive/` once shipped.
+- `docs/adr/` — accepted technical decisions that bind future changes, but do
+  not replace the authority order above.
 - `docs/workflows/` — process helpers: branching, agent handoff template,
   pre-implementation checklist, and worktree/remote notes.
 - `docs/agents/` — optional skill, issue-tracker, and domain notes. Subordinate

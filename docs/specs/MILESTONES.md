@@ -18,15 +18,17 @@ Each milestone has its own folder under `docs/specs/`, containing the canonical 
 
 ## Current Product Phase
 
-Post-V10. The product is playable end to end; the current focus is refinement
-and gameplay optimization, not new milestones. For the live build state and
-open-work backlog, read `docs/STATUS.md`.
+Post-V11. The product is playable end to end. V11 (Official USA Dodgeball
+Rules Integration) has shipped and passed automated verification. For the live
+build state and open-work backlog, read `docs/STATUS.md`.
 
 V8-V10 shipped as a thin implementation blitz on 2026-05-06: recruiting promises/program credibility, league memory, and staff market loops are exposed through the Dynasty Office. Handoff: `docs/archive/retrospectives/v8-v10/2026-05-06-dynasty-office-blitz-handoff.md`. Learnings: `docs/archive/learnings/v8-v10/2026-05-06-dynasty-office-blitz-learnings.md`.
 
 The UX Polish initiative (three waves, 15 subplans) that followed V8-V10 has shipped; its plan is archived at `docs/archive/plans/2026-05-08-ux-polish/00-MAIN.md`.
 
 Long-range scope control: `docs/specs/long-range-playable-roadmap.md`.
+That roadmap predates the official-rules V11 pivot, so its future AI and
+broadcast labels must be re-numbered before becoming active milestone specs.
 
 | ID    | Name                                            | Status                       | Spec                                                                  | Notes |
 |-------|-------------------------------------------------|------------------------------|-----------------------------------------------------------------------|-------|
@@ -47,6 +49,7 @@ Long-range scope control: `docs/specs/long-range-playable-roadmap.md`.
 | V8    | Recruiting, Promises, and Program Credibility   | Shipped thin (2026-05-06)    | `docs/specs/long-range-playable-roadmap.md`                           | Implemented in the Dynasty Office: credibility from command history/prestige, limited saved recruiting promises, prospect interest evidence, and explicit future promise-check boundaries. |
 | V9    | Living League Memory Loop                       | Shipped thin (2026-05-06)    | `docs/specs/long-range-playable-roadmap.md`                           | Implemented in the Dynasty Office: records, awards, rivalry, and recent-match memory surfaces that report real saved data or clear limited-state copy. |
 | V10   | Staff Market and Program Arms Race Loop         | Shipped thin (2026-05-06)    | `docs/specs/long-range-playable-roadmap.md`                           | Implemented in the Dynasty Office: deterministic staff candidates, visible staff hires, staff-action history, and current recommendation-facing effects. |
+| V11   | Official USA Dodgeball Rules                    | Shipped (2026-05-19)         | `docs/specs/2026-05-20-v11-official-usad-rules/design.md`             | Fully integrated USA Dodgeball 2026.1 rules (warnings, blue cards, and discipline states) with complete conformance matrix test coverage and E2E verification. |
 
 ---
 

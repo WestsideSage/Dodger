@@ -319,7 +319,11 @@ Honesty checks:
 - Staff-driven success should be visible through development, health, tactics, recruiting, and outcomes.
 - High reputation should increase pressure and poaching risk, not just provide bonuses.
 
-## V11: AI Program Managers And Rival Adaptation Loop
+## Future: AI Program Managers And Rival Adaptation Loop
+
+Numbering note: this section was originally labeled V11, but V11 shipped as
+Official USA Dodgeball Rules. Assign a new milestone number before turning this
+roadmap slice into an active spec.
 
 Playable thesis: Opposing programs make believable simplified decisions under mostly the same rules, creating rebuilds, dynasties, counters, and collapses.
 
@@ -353,7 +357,10 @@ Honesty checks:
 - AI teams should rise/fall from visible staff, roster, recruiting, development, health, and tactics.
 - Difficulty should improve AI decision quality or reduce player information, not secretly alter match math.
 
-## V12: Broadcast And Presentation Layer
+## Future: Broadcast And Presentation Layer
+
+Numbering note: this section was originally labeled V12. Re-number it after the
+AI Program Managers milestone is re-slotted.
 
 Playable thesis: Once the simulation is already legible, presentation can make matches and league moments feel more dramatic without changing outcomes.
 

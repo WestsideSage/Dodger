@@ -244,6 +244,7 @@ class StatusContextResponse(BaseModel):
     season_id: str | None = None
     player_club_id: str | None = None
     player_club_name: str | None = None
+    ruleset_selection: str | None = None  # V11: surfaces the official ruleset
 
 
 class StatusResponse(BaseModel):
@@ -349,6 +350,7 @@ class NewSaveRequest(BaseModel):
     name: str
     club_id: str = "aurora"
     root_seed: int = 20260426
+    ruleset_selection: str | None = None  # V11: official ruleset opt-in
 
 
 class BuildFromScratchRequest(BaseModel):
@@ -360,6 +362,7 @@ class BuildFromScratchRequest(BaseModel):
     coach_backstory: str
     roster_player_ids: list[str]
     root_seed: int = 20260426
+    ruleset_selection: str | None = None  # V11: official ruleset opt-in
 
 
 class MatchReplayResponse(BaseModel):
@@ -374,10 +377,12 @@ class MatchReplayResponse(BaseModel):
     winner_name: str
     home_survivors: int
     away_survivors: int
+    config_version: str | None = None  # V11: "official:..." when run under official ruleset
     events: list[dict[str, Any]]
     proof_events: list[dict[str, Any]] = Field(default_factory=list)
     key_play_indices: list[int] = Field(default_factory=list)
     report: dict[str, Any]
+    official_state: dict[str, Any] | None = None
 
 
 class AcknowledgeMatchResponse(BaseModel):
@@ -658,7 +663,11 @@ def api_list_saves():
 def api_new_save(req: NewSaveRequest):
     global _active_save_path
     try:
-        payload = create_new_save(SAVES_DIR, name=req.name, club_id=req.club_id, root_seed=req.root_seed)
+        payload = create_new_save(
+            SAVES_DIR,
+            name=req.name, club_id=req.club_id, root_seed=req.root_seed,
+            ruleset_selection=req.ruleset_selection,
+        )
     except SaveServiceError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     _active_save_path = Path(payload["path"])

@@ -114,6 +114,7 @@ def initialize_curated_manager_career(
     root_seed: int,
     custom_club: Club | None = None,
     custom_roster: List[Player] | None = None,
+    ruleset_selection: str | None = None,
 ) -> CareerStateCursor:
     """Create a fresh Manager career using the curated league without importing UI code."""
     root_seed = normalize_root_seed(root_seed)
@@ -156,6 +157,13 @@ def initialize_curated_manager_career(
     set_state(conn, "active_season_id", season.season_id)
     set_state(conn, "player_club_id", selected_club_id)
     set_state(conn, "difficulty", "pro")
+    # V11: ruleset selection is set at career creation only and persists
+    # for the lifetime of the career. Existing saves stay on generic.
+    if ruleset_selection:
+        from .rulesets import RulesetSelection
+        # Validate by constructing the enum.
+        RulesetSelection(ruleset_selection)
+        set_state(conn, "ruleset_selection", ruleset_selection)
     cursor = CareerStateCursor(state=CareerState.SEASON_ACTIVE_PRE_MATCH, season_number=1, week=1)
     save_career_state_cursor(conn, cursor)
     initialize_scouting_for_career(conn, root_seed=root_seed, config=DEFAULT_SCOUTING_CONFIG)

@@ -24,8 +24,15 @@ def test_aftermath_payload_structure():
         print(f"DEBUG KEYS: {list(data.keys())}")
         assert 'aftermath' in data
         assert 'headline' in data['aftermath']
+        assert data['aftermath'].get('verdict')
         assert 'player_growth_deltas' in data['aftermath']
         assert 'recruit_reactions' in data['aftermath']
+        dashboard_copy = [
+            text
+            for lane in data['dashboard']['lanes']
+            for text in [lane['summary'], *lane['items']]
+        ]
+        assert data['aftermath']['verdict'] not in dashboard_copy
         match_card = data['aftermath']['match_card']
         stored_match = conn.execute(
             """

@@ -116,7 +116,14 @@ def list_saves_payload(saves_dir: Path, default_db_path: Path, active_save_path:
     return {"saves": saves, "active_path": str(active_save_path) if active_save_path else None}
 
 
-def create_new_save(saves_dir: Path, *, name: str, club_id: str, root_seed: int) -> dict[str, str]:
+def create_new_save(
+    saves_dir: Path,
+    *,
+    name: str,
+    club_id: str,
+    root_seed: int,
+    ruleset_selection: str | None = None,
+) -> dict[str, str]:
     saves_dir.mkdir(exist_ok=True)
     safe_name = sanitize_save_name(name)
     path = saves_dir / f"{safe_name}.db"
@@ -124,7 +131,9 @@ def create_new_save(saves_dir: Path, *, name: str, club_id: str, root_seed: int)
         raise SaveServiceError(f"Save '{safe_name}' already exists.", status_code=409)
     conn = connect(path)
     try:
-        initialize_curated_manager_career(conn, club_id, root_seed)
+        initialize_curated_manager_career(
+            conn, club_id, root_seed, ruleset_selection=ruleset_selection,
+        )
     finally:
         conn.close()
     return {"status": "ok", "path": str(path)}
@@ -213,6 +222,7 @@ def build_from_scratch_save(saves_dir: Path, request: dict[str, Any]) -> dict[st
             int(request.get("root_seed", 20260426)),
             custom_club=custom_club,
             custom_roster=custom_roster,
+            ruleset_selection=request.get("ruleset_selection"),
         )
         set_state(conn, "coach_backstory", request["coach_backstory"])
         conn.commit()

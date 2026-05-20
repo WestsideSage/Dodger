@@ -67,7 +67,8 @@ export const saveApi = {
   clubs: () => apiGet<{ clubs: ClubOption[] }>('/api/saves/clubs'),
   load: (path: string) => apiPost<{ status: string; path: string }>('/api/saves/load', { path }),
   delete: (path: string) => apiPost<{ status: string }>('/api/saves/delete', { path }),
-  create: (body: { name: string; club_id: string }) => apiPost<{ status: string; path: string }>('/api/saves/new', body),
+  create: (body: { name: string; club_id: string; ruleset_selection?: string | null }) =>
+    apiPost<{ status: string; path: string }>('/api/saves/new', body),
   buildFromScratch: (body: {
     save_name: string;
     club_name: string;
@@ -76,6 +77,7 @@ export const saveApi = {
     coach_name: string;
     coach_backstory: string;
     roster_player_ids: string[];
+    ruleset_selection?: string | null;
   }) => apiPost<{ status: string; path: string }>('/api/saves/build-from-scratch', body),
 };
 

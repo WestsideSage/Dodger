@@ -53,10 +53,13 @@ def _build_aftermath(
     standings_before: list | None = None,
     standings_after: list | None = None,
     clubs: dict | None = None,
+    plan: Mapping[str, Any] | None = None,
+    player_club_id: str | None = None,
 ) -> dict[str, Any]:
     """Build the aftermath payload for a simulated week."""
     from dodgeball_sim.rng import DeterministicRNG, derive_seed
     from dodgeball_sim.voice_aftermath import render_headline
+    from dodgeball_sim.voice_verdict import render_verdict
 
     root_seed_val = get_state(conn, "root_seed") or "1"
     rng = DeterministicRNG(derive_seed(int(root_seed_val), "headline", season_id, str(record.week)))
@@ -81,7 +84,24 @@ def _build_aftermath(
                 })
         standings_shift.sort(key=lambda item: item["new_rank"])
 
-    return {
+    verdict: str | None = None
+    if plan is not None and player_club_id is not None and clubs is not None:
+        opponent_club_id = record.away_club_id if record.home_club_id == player_club_id else record.home_club_id
+        winner = record.result.winner_team_id
+        result = "Draw" if winner is None else ("Win" if winner == player_club_id else "Loss")
+        club = clubs.get(player_club_id)
+        if club is not None and player_club_id in box and opponent_club_id in box:
+            base_tactics = club.coach_policy.as_dict()
+            verdict = render_verdict(
+                intent=str(plan.get("intent", "")),
+                tactics=dict(plan.get("tactics") or {}),
+                base_tactics=base_tactics,
+                result=result,
+                player_team_box=box[player_club_id],
+                opponent_team_box=box[opponent_club_id],
+            )
+
+    aftermath: dict[str, Any] = {
         "headline": headline,
         "match_card": {
             "home_club_id": record.home_club_id,
@@ -94,6 +114,9 @@ def _build_aftermath(
         "standings_shift": standings_shift,
         "recruit_reactions": [],
     }
+    if verdict is not None:
+        aftermath["verdict"] = verdict
+    return aftermath
 
 
 def simulate_week(
@@ -274,7 +297,17 @@ def simulate_week(
     save_career_state_cursor(conn, cursor)
     conn.commit()
 
-    aftermath = _build_aftermath(conn, dashboard, record, season_id, standings_before, standings_after, clubs)
+    aftermath = _build_aftermath(
+        conn,
+        dashboard,
+        record,
+        season_id,
+        standings_before,
+        standings_after,
+        clubs,
+        plan=plan,
+        player_club_id=player_club_id,
+    )
 
     return {
         "status": "success",

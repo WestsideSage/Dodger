@@ -117,6 +117,7 @@ def simulate_match(
     away_lineup_default: Optional[List[str]] = None,
     home_lineup_override: Optional[List[str]] = None,
     away_lineup_override: Optional[List[str]] = None,
+    ruleset_selection: str | None = None,
 ) -> Tuple[MatchRecord, SeasonResult]:
     """Run one match and produce a MatchRecord + SeasonResult. Pure computation.
 
@@ -133,8 +134,20 @@ def simulate_match(
     away_team = build_match_team_snapshot(away_club, away_roster, away_active_starters)
 
     setup = MatchSetup(team_a=home_team, team_b=away_team, config_version=config_version)
-    engine = MatchEngine()
-    result = engine.run(setup, seed=match_seed, difficulty=difficulty, meta_patch=meta_patch)
+    # V11: route to official engine if the career selected an official ruleset.
+    if ruleset_selection:
+        from .rulesets import RulesetSelection
+        from .official_adapter import OfficialEngineAdapter
+        selection = RulesetSelection(ruleset_selection)
+        if selection.is_official():
+            adapter = OfficialEngineAdapter(selection)
+            result = adapter.run_generic(setup, seed=match_seed, match_id=str(scheduled.match_id))
+        else:
+            engine = MatchEngine()
+            result = engine.run(setup, seed=match_seed, difficulty=difficulty, meta_patch=meta_patch)
+    else:
+        engine = MatchEngine()
+        result = engine.run(setup, seed=match_seed, difficulty=difficulty, meta_patch=meta_patch)
 
     home_hash = _hash_players(home_roster)
     away_hash = _hash_players(away_roster)
@@ -149,6 +162,10 @@ def simulate_match(
     away_survivors = box[away_club.club_id]["totals"]["living"]
     winner_club_id = result.winner_team_id  # team_id == club_id by convention
 
+    # V11: when the official adapter ran, ``result.config_version`` already
+    # encodes the ruleset (e.g. ``official:official_foam``); use it so the
+    # match record reflects what was actually simulated.
+    record_config_version = result.config_version or config_version
     record = MatchRecord(
         match_id=scheduled.match_id,
         season_id=scheduled.season_id,
@@ -157,7 +174,7 @@ def simulate_match(
         away_club_id=scheduled.away_club_id,
         home_roster_hash=home_hash,
         away_roster_hash=away_hash,
-        config_version=config_version,
+        config_version=record_config_version,
         ruleset_version="default.v1",
         meta_patch_id=None if meta_patch is None else meta_patch.patch_id,
         seed=match_seed,

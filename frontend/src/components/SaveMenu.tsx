@@ -22,6 +22,8 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
   // New save form state
   const [newName, setNewName] = useState('');
   const [newClubId, setNewClubId] = useState('aurora');
+  // V11: official-ruleset opt-in at career creation only.
+  const [rulesetSelection, setRulesetSelection] = useState<string>('generic');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   
@@ -95,7 +97,11 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
     setCreating(true);
     setCreateError(null);
     try {
-      await saveApi.create({ name: newName.trim(), club_id: newClubId });
+      await saveApi.create({
+        name: newName.trim(),
+        club_id: newClubId,
+        ruleset_selection: rulesetSelection === 'generic' ? null : rulesetSelection,
+      });
       onSaveLoaded();
     } catch (e) {
       setCreateError(e instanceof Error ? e.message : 'Failed to create save');
@@ -115,6 +121,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
         coach_name: buildCoach.coach_name,
         coach_backstory: buildCoach.coach_backstory,
         roster_player_ids: rosterIds,
+        ruleset_selection: rulesetSelection === 'generic' ? null : rulesetSelection,
       });
       onSaveLoaded();
     } catch (e) {
@@ -469,6 +476,42 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                       <option value="solstice">Solstice Embers</option>
                     </select>
                   )}
+                </div>
+
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '0.6875rem',
+                    fontFamily: 'var(--font-display)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                    color: '#64748b',
+                    marginBottom: '0.25rem',
+                  }}>
+                    Ruleset
+                  </label>
+                  <select
+                    value={rulesetSelection}
+                    onChange={(e) => setRulesetSelection(e.target.value)}
+                    data-testid="ruleset-select"
+                    style={{
+                      width: '100%',
+                      borderRadius: '4px',
+                      border: '1px solid #334155',
+                      background: '#0f172a',
+                      padding: '0.5rem 0.75rem',
+                      fontSize: '0.875rem',
+                      color: '#e2e8f0',
+                    }}
+                  >
+                    <option value="generic">Generic (Classic Dodger sim)</option>
+                    <option value="official_foam">USA Dodgeball 2026.1 — Foam</option>
+                    <option value="official_no_sting">USA Dodgeball 2026.1 — No-Sting</option>
+                    <option value="official_cloth">USA Dodgeball 2026.1 — Cloth</option>
+                  </select>
+                  <p style={{ fontSize: '0.6875rem', color: '#64748b', margin: '0.375rem 0 0' }}>
+                    Set at career creation only. Cannot be changed later.
+                  </p>
                 </div>
 
                 {createError && (
