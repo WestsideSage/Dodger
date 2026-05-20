@@ -76,10 +76,8 @@ If you are picking this plan up cold, read these in order:
 
 This task defines the protocol that B, C, and D will build against. It is intentionally tiny — the interface should be the smallest thing that lets two drivers coexist.
 
-- [ ] **Step 1: Write the failing test**
-
+- [x] **Step 1: Write the failing test**
 Create `tests/test_engine_driver.py`:
-
 ```python
 from dodgeball_sim.engine_driver import (
     EngineDriver,
@@ -146,12 +144,12 @@ def test_stub_driver_satisfies_protocol():
     assert out.winner_team_id == "a"
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/test_engine_driver.py -v`
 Expected: `ModuleNotFoundError: No module named 'dodgeball_sim.engine_driver'`
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Create `src/dodgeball_sim/engine_driver.py`:
 
@@ -209,17 +207,17 @@ class EngineDriver(Protocol):
 __all__ = ["EngineDriver", "DriverMatchInput", "DriverMatchOutput"]
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/test_engine_driver.py -v`
 Expected: 3 passed.
 
-- [ ] **Step 5: Run the full suite to confirm no regressions**
+- [x] **Step 5: Run the full suite to confirm no regressions**
 
 Run: `python -m pytest -q`
 Expected: 662 passed (659 baseline + 3 new).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/dodgeball_sim/engine_driver.py tests/test_engine_driver.py
@@ -239,7 +237,7 @@ no driver-internal imports cross plan boundaries."
 
 Defines the six recognition moments as immutable event dataclasses, plus a `MomentEvent` union. Surfacing in the replay UI waits for Plan C — Plan A only commits to the *contract*.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/test_moment_events.py`:
 
@@ -356,12 +354,12 @@ def test_moment_event_union_accepts_all_six():
     assert len(events) == 6
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/test_moment_events.py -v`
 Expected: `ModuleNotFoundError`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `src/dodgeball_sim/moment_events.py`:
 
@@ -487,17 +485,17 @@ __all__ = [
 ]
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/test_moment_events.py -v`
 Expected: 8 passed.
 
-- [ ] **Step 5: Run the full suite**
+- [x] **Step 5: Run the full suite**
 
 Run: `python -m pytest -q`
 Expected: 670 passed (662 + 8 new).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/dodgeball_sim/moment_events.py tests/test_moment_events.py
@@ -517,7 +515,7 @@ FloodThrow, Comeback. Emission is Plan A; UI surfacing is Plan C."
 
 Per-player in-match fatigue accumulation and decay. Plan B will later attach a `conditioning_curve` attribute that modulates accumulation; Plan A defines the primitive with a sensible default so Tier 1 matches produce the gassed-star moment.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/test_fatigue.py`:
 
@@ -606,12 +604,12 @@ def test_conditioning_curve_slows_accumulation():
     assert soft_state.value > hard_state.value
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/test_fatigue.py -v`
 Expected: `ModuleNotFoundError`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `src/dodgeball_sim/fatigue.py`:
 
@@ -702,17 +700,17 @@ __all__ = [
 ]
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/test_fatigue.py -v`
 Expected: 10 passed.
 
-- [ ] **Step 5: Run the full suite**
+- [x] **Step 5: Run the full suite**
 
 Run: `python -m pytest -q`
 Expected: 680 passed (670 + 10 new).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/dodgeball_sim/fatigue.py tests/test_fatigue.py
@@ -732,7 +730,7 @@ conditioning_curve attribute. Feeds the gassed-star moment."
 
 A throw is a "flood" candidate when three or more throwers release within the same engine tick. The primitive tracks pending releases per tick and reports flood-throws when the threshold is met. The actual `SequenceLedger` in `sequence.py` is unchanged; the rec driver simply opens multiple sequences in one tick and routes them through this primitive's detector to emit the moment.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/test_flood_throws.py`:
 
@@ -802,12 +800,12 @@ def test_flood_records_team_with_majority_when_split_above_threshold():
     assert len(detected.thrower_ids) == 4
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/test_flood_throws.py -v`
 Expected: `ModuleNotFoundError`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `src/dodgeball_sim/flood_throws.py`:
 
@@ -881,17 +879,17 @@ __all__ = [
 ]
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/test_flood_throws.py -v`
 Expected: 6 passed.
 
-- [ ] **Step 5: Run the full suite**
+- [x] **Step 5: Run the full suite**
 
 Run: `python -m pytest -q`
 Expected: 686 passed (680 + 6 new).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/dodgeball_sim/flood_throws.py tests/test_flood_throws.py
@@ -911,7 +909,7 @@ driver feeds this tracker alongside opening N sequences in one tick."
 
 The rec-league stall cap from brief §3.5: if one side controls all balls for more than 10 seconds without releasing a throw, balls are rolled to the opposing side. No cards, no warning.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/test_stall_timer.py`:
 
@@ -961,12 +959,12 @@ def test_reset_on_throw_clears_timer():
     assert state.seconds_holding == 0.0
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/test_stall_timer.py -v`
 Expected: `ModuleNotFoundError`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `src/dodgeball_sim/stall_timer.py`:
 
@@ -1023,17 +1021,17 @@ __all__ = [
 ]
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/test_stall_timer.py -v`
 Expected: 6 passed.
 
-- [ ] **Step 5: Run the full suite**
+- [x] **Step 5: Run the full suite**
 
 Run: `python -m pytest -q`
 Expected: 692 passed (686 + 6 new).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/dodgeball_sim/stall_timer.py tests/test_stall_timer.py
@@ -1053,7 +1051,7 @@ V11 uses the formal burden module."
 
 A small frozen dataclass encoding the §3.5 rule contract. No behavior — just the configuration the rec driver consumes. Keeping this separate from `rec_engine.py` makes it cheap for B/C to read tier 1's contract without importing driver code.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/test_tier_1_rules.py`:
 
@@ -1105,12 +1103,12 @@ def test_rules_dataclass_is_frozen():
     assert TierRules.__dataclass_params__.frozen is True
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/test_tier_1_rules.py -v`
 Expected: `ModuleNotFoundError`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `src/dodgeball_sim/tier_1_rules.py`:
 
@@ -1170,17 +1168,17 @@ TIER_1_RULES = TierRules(
 __all__ = ["TierRules", "TIER_1_RULES"]
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/test_tier_1_rules.py -v`
 Expected: 9 passed.
 
-- [ ] **Step 5: Run the full suite**
+- [x] **Step 5: Run the full suite**
 
 Run: `python -m pytest -q`
 Expected: 701 passed (692 + 9 new).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/dodgeball_sim/tier_1_rules.py tests/test_tier_1_rules.py
@@ -1207,7 +1205,7 @@ The driver composes:
 
 It does **not** use `burden`, `discipline`, or `no_blocking`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/test_rec_engine.py`:
 
@@ -1298,12 +1296,12 @@ def test_time_cap_prevents_infinite_matches():
         assert out is not None
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/test_rec_engine.py -v`
 Expected: `ModuleNotFoundError`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `src/dodgeball_sim/rec_engine.py`:
 
@@ -1705,17 +1703,17 @@ def reset_on_throw_call(rt: _MatchRuntime, team_id: str, team_a: str) -> None:
 __all__ = ["RecTier1Driver"]
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/test_rec_engine.py -v`
 Expected: 7 passed.
 
-- [ ] **Step 5: Run the full suite**
+- [x] **Step 5: Run the full suite**
 
 Run: `python -m pytest -q`
 Expected: 708 passed (701 + 7 new). **V11 tests must still all pass.**
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/dodgeball_sim/rec_engine.py tests/test_rec_engine.py
