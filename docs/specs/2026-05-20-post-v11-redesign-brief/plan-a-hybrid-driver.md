@@ -1743,7 +1743,7 @@ Detection rules:
 - **`FloodThrow`** — emitted at end of each tick if `flood_tracker.detect_flood(tick=rt.tick)` returns non-None.
 - **`Comeback`** — emitted when a team that was at one point ≥3 down ties or leads in active count. Each team can emit at most once.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `tests/test_rec_engine.py`:
 
@@ -1797,12 +1797,12 @@ def test_one_v_one_finale_emerges_across_seeds():
     assert MomentKind.ONE_V_ONE_FINALE in seen
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `python -m pytest tests/test_rec_engine.py -v`
 Expected: the four new tests fail (moments not emitted).
 
-- [ ] **Step 3: Implement moment emission**
+- [x] **Step 3: Implement moment emission**
 
 Modify `src/dodgeball_sim/rec_engine.py`:
 
@@ -2042,17 +2042,17 @@ from .moment_events import (
 
 (Replace the previous single `MomentEvent` import.)
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `python -m pytest tests/test_rec_engine.py -v`
 Expected: 11 passed.
 
-- [ ] **Step 5: Run the full suite**
+- [x] **Step 5: Run the full suite**
 
 Run: `python -m pytest -q`
 Expected: 712 passed (708 + 4 new).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/dodgeball_sim/rec_engine.py tests/test_rec_engine.py
