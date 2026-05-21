@@ -67,3 +67,16 @@ def test_match_outcomes_distributed_across_seeds():
         }
         assert "a" in winners
         assert "b" in winners
+
+
+def test_rec_driver_moments_carry_match_id():
+    """Regression: every moment event must carry the input match_id, not a placeholder."""
+    saw_any = False
+    for seed in range(30):
+        out = RecTier1Driver().run(_make_input(seed=seed))
+        for event in out.moment_events:
+            saw_any = True
+            assert event.match_id == "m1", (
+                f"moment {type(event).__name__} carried match_id={event.match_id!r}"
+            )
+    assert saw_any, "expected at least one moment event across 30 seeds"

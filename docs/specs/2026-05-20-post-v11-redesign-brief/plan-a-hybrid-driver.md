@@ -2596,12 +2596,25 @@ shipped. Plans B/C/D queued per tier-1-roadmap.md."
 All of the following are true before Plan A is considered complete:
 
 - [x] All 13 tasks above are checked off.
-- [x] `python -m pytest -q` reports 724 passing tests (659 baseline + 65 new). If the baseline has shifted upstream, the delta should be exactly +65.
+- [x] `python -m pytest -q` reports 725 passing tests (659 baseline + 65 plan tasks + 1 close-out regression test for `match_id` propagation).
 - [x] `python tools/tier_1_sanity_probe.py` exits 0 and prints `OK`.
 - [x] No file under `src/dodgeball_sim/burden.py`, `discipline.py`, `no_blocking.py` has been modified.
 - [x] `src/dodgeball_sim/official_engine.py` has not been edited (only re-exported / wrapped).
 - [x] `docs/STATUS.md` reflects Plan A landing.
 - [x] Tests for all six moment kinds emit at least once across the sanity probe's 25-match run.
+
+### Close-out review (2026-05-20)
+
+Plan A was reviewed after Task 13 landed. One bug + one test gap were found and fixed in the same close-out pass:
+
+- **Bug** — `rec_engine._mark_out` hard-coded `match_id="rt"` (the runtime-variable name) in both `GassedCollapse(...)` and `enqueue_out_player(...)`. Fix: thread `match_id` through `_MatchRuntime` and use `rt.match_id`.
+- **Test gap** — no test asserted `match_id` propagation into moment events, which is why the bug shipped. Fix: `tests/test_tier_1_integration.py::test_rec_driver_moments_carry_match_id` exercises 30 seeds and asserts every emitted moment carries the input `match_id`.
+
+Known judgment-call follow-ups (intentionally deferred to Plan B/C, not blockers):
+
+- The comeback heuristic in `rec_engine.py` compares the team's low-water active count to the opponent's *starting* count rather than to the opponent's active count at that moment. Result: ~22 comebacks across 25 sanity-probe matches. Loose-but-acceptable per brief §3.5; tune during Plan C replay framing.
+- `OfficialDriver.moment_events` is intentionally empty in Plan A scope. Plan B/C decides whether to emit moments from the V11 engine.
+- `_select_throwers` caps candidates at 3 per team per tick — exactly the `FLOOD_THRESHOLD` floor. If the threshold ever rises, link the two constants.
 
 ## Self-review checklist (run before handing off)
 

@@ -4,7 +4,7 @@ Canonical snapshot of what is actually built and what is still open. When code
 state changes materially, update this file in the same pass. If this file and
 the source disagree, the source wins — then fix this file.
 
-Last updated: 2026-05-20.
+Last updated: 2026-05-20 (Plan A close-out: match_id propagation fix + regression test).
 
 ## Current Phase
 
@@ -23,7 +23,7 @@ shipped on 2026-05-20**, and Plans B/C/D live in
   - Rulesets: Foam, No-Sting, and Cloth ruleset profiles are fully supported.
   - Deferred: yellow/red card tournament persistence, designated retriever realism, pinching, flight kills, injuries, interference, player collision, bracket expansion, and full administrative rules.
   - Conformance matrix reference: verified completeness of all must-have official rules in `tests/test_official_conformance_matrix.py`.
-- **Post-V11 redesign — Plan A: Hybrid driver architecture + Tier 1 engine** (landed 2026-05-20) — see `docs/specs/2026-05-20-post-v11-redesign-brief/plan-a-hybrid-driver.md`. New `EngineDriver` protocol with `RecTier1Driver` (Local Rec League, brief §3.5) and `OfficialDriver` (wraps V11). New primitives: `fatigue`, `flood_throws`, `stall_timer`, and `moment_events` (six-moment contract). V11 / USAD tests still pass. Tier 1 sanity probe lives at `tools/tier_1_sanity_probe.py`. Plans B/C/D remain queued in `tier-1-roadmap.md`.
+- **Post-V11 redesign — Plan A: Hybrid driver architecture + Tier 1 engine** (landed 2026-05-20, closed-out 2026-05-20 after review) — see `docs/specs/2026-05-20-post-v11-redesign-brief/plan-a-hybrid-driver.md`. New `EngineDriver` protocol with `RecTier1Driver` (Local Rec League, brief §3.5) and `OfficialDriver` (wraps V11). New primitives: `fatigue`, `flood_throws`, `stall_timer`, and `moment_events` (six-moment contract). V11 / USAD tests still pass. Tier 1 sanity probe lives at `tools/tier_1_sanity_probe.py`. Review caught a `match_id="rt"` placeholder bug in `_mark_out` (corrupted `GassedCollapse.match_id` and catch-queue events); fixed by threading `match_id` through the runtime and pinned by a regression test in `tests/test_tier_1_integration.py::test_rec_driver_moments_carry_match_id`. Known follow-ups for Plans B/C: the rec-driver comeback heuristic is loose (≈22/25 matches) and `OfficialDriver.moment_events` is intentionally empty. Plans B/C/D remain queued in `tier-1-roadmap.md`.
 - **V1–V10** — see `docs/specs/MILESTONES.md` for the per-milestone index.
 - **UX Polish initiative** (three waves, 15 subplans; plan archived at
   `docs/archive/plans/2026-05-08-ux-polish/`). The frontend reflects it:
