@@ -10,9 +10,11 @@ Last updated: 2026-05-20.
 
 Post-V11. The game is playable end to end: career creation, weekly command
 loop, official-rules match replay, playoffs, offseason ceremonies, and
-multi-season dynasty history all work in the browser. No milestone is in
-active development. The current focus is **refinement and gameplay
-optimization**, not new systems.
+multi-season dynasty history all work in the browser. The post-V11 redesign
+is now in progress: **Plan A (hybrid driver architecture + Tier 1 engine)
+shipped on 2026-05-20**, and Plans B/C/D live in
+`docs/specs/2026-05-20-post-v11-redesign-brief/`. The current focus remains
+**refinement and gameplay optimization**, not unrelated new systems.
 
 ## Shipped And Verified
 
@@ -21,6 +23,7 @@ optimization**, not new systems.
   - Rulesets: Foam, No-Sting, and Cloth ruleset profiles are fully supported.
   - Deferred: yellow/red card tournament persistence, designated retriever realism, pinching, flight kills, injuries, interference, player collision, bracket expansion, and full administrative rules.
   - Conformance matrix reference: verified completeness of all must-have official rules in `tests/test_official_conformance_matrix.py`.
+- **Post-V11 redesign — Plan A: Hybrid driver architecture + Tier 1 engine** (landed 2026-05-20) — see `docs/specs/2026-05-20-post-v11-redesign-brief/plan-a-hybrid-driver.md`. New `EngineDriver` protocol with `RecTier1Driver` (Local Rec League, brief §3.5) and `OfficialDriver` (wraps V11). New primitives: `fatigue`, `flood_throws`, `stall_timer`, and `moment_events` (six-moment contract). V11 / USAD tests still pass. Tier 1 sanity probe lives at `tools/tier_1_sanity_probe.py`. Plans B/C/D remain queued in `tier-1-roadmap.md`.
 - **V1–V10** — see `docs/specs/MILESTONES.md` for the per-milestone index.
 - **UX Polish initiative** (three waves, 15 subplans; plan archived at
   `docs/archive/plans/2026-05-08-ux-polish/`). The frontend reflects it:

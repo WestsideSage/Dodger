@@ -2076,7 +2076,7 @@ UI surfacing is Plan C; this is just the emission contract."
 
 A thin adapter so V11's existing `run_autonomous_game` satisfies the `EngineDriver` protocol. This is the architectural proof that hybrid works — the existing official engine is *unbundled* from primitive ownership without being rewritten.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/test_official_driver.py`:
 
@@ -2143,12 +2143,12 @@ def test_official_driver_supports_ruleset_config():
     assert out is not None
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `python -m pytest tests/test_official_driver.py -v`
 Expected: `ModuleNotFoundError`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `src/dodgeball_sim/official_driver.py`:
 
@@ -2204,22 +2204,22 @@ class OfficialDriver:
 __all__ = ["OfficialDriver"]
 ```
 
-- [ ] **Step 4: Sanity-check the ruleset accessor still works**
+- [x] **Step 4: Sanity-check the ruleset accessor still works**
 
 Run: `python -c "from dodgeball_sim.rulesets import RulesetSelection; print(RulesetSelection('official_foam').to_profile().name)"`
 Expected: prints a profile name (e.g. `foam_open`). If this errors, `RulesetSelection` may have shifted upstream — search for `to_profile` usage in `franchise.py` and adjust if necessary.
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `python -m pytest tests/test_official_driver.py -v`
 Expected: 4 passed.
 
-- [ ] **Step 6: Run the full suite**
+- [x] **Step 6: Run the full suite**
 
 Run: `python -m pytest -q`
 Expected: 716 passed (712 + 4 new). **All V11 tests must still pass.**
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/dodgeball_sim/official_driver.py tests/test_official_driver.py
@@ -2239,22 +2239,22 @@ engine is unbundled from primitive ownership without rewrites."
 
 This is a gate task, not a coding task. Plan A is wrong if any existing V11 test has regressed.
 
-- [ ] **Step 1: Run the full test suite**
+- [x] **Step 1: Run the full test suite**
 
 Run: `python -m pytest -q`
 Expected: 716 passed. **No failures, no errors, no skips that weren't there before.**
 
-- [ ] **Step 2: Spot-check the V11 conformance matrix specifically**
+- [x] **Step 2: Spot-check the V11 conformance matrix specifically**
 
 Run: `python -m pytest tests/test_official_conformance_matrix.py -v`
 Expected: All previously-passing entries still pass.
 
-- [ ] **Step 3: Spot-check the autonomous game test**
+- [x] **Step 3: Spot-check the autonomous game test**
 
 Run: `python -m pytest tests/test_official_autonomous_game.py -v`
 Expected: All previously-passing entries still pass.
 
-- [ ] **Step 4: Commit a checkpoint marker if any incidental fixes were needed**
+- [x] **Step 4: Commit a checkpoint marker if any incidental fixes were needed**
 
 If steps 1–3 all passed cleanly, **no commit is needed** — Plan A's invariant is intact. If any incidental fix was required to keep V11 green (e.g. an import shadowing), commit it separately with message starting `fix(engine): preserve V11 invariant —`.
 
@@ -2267,7 +2267,7 @@ If steps 1–3 all passed cleanly, **no commit is needed** — Plan A's invarian
 
 End-to-end test that proves Plan A's invariants hold across drivers: rec driver resolves, official driver resolves, both implement the same protocol, results have the expected shape.
 
-- [ ] **Step 1: Write the integration test**
+- [x] **Step 1: Write the integration test**
 
 Create `tests/test_tier_1_integration.py`:
 
@@ -2343,17 +2343,17 @@ def test_match_outcomes_distributed_across_seeds():
         assert "b" in winners
 ```
 
-- [ ] **Step 2: Run the integration test**
+- [x] **Step 2: Run the integration test**
 
 Run: `python -m pytest tests/test_tier_1_integration.py -v`
 Expected: 3 passed.
 
-- [ ] **Step 3: Run the full suite**
+- [x] **Step 3: Run the full suite**
 
 Run: `python -m pytest -q`
 Expected: 719 passed (716 + 3 new).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tests/test_tier_1_integration.py
@@ -2373,7 +2373,7 @@ from rec driver in Plan A scope, balanced outcomes across seeds."
 
 The Plan A gate. A runnable script that simulates 25 Tier 1 matches, reports any failures, and asserts the per-match invariants from the plan-level guarantees. This is *not* the full simulation-health probe — that's Plan D. This probe just proves Tier 1 matches resolve and emit moments.
 
-- [ ] **Step 1: Write the test for the probe**
+- [x] **Step 1: Write the test for the probe**
 
 Create `tests/test_tier_1_sanity_probe.py`:
 
@@ -2407,18 +2407,18 @@ def test_report_is_dataclass_with_expected_fields():
     assert hasattr(report, "winner_counts")
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/test_tier_1_sanity_probe.py -v`
 Expected: `ModuleNotFoundError`.
 
-- [ ] **Step 3: Create the tools directory marker if missing**
+- [x] **Step 3: Create the tools directory marker if missing**
 
 Run: `python -c "import os; os.makedirs('tools', exist_ok=True); open('tools/__init__.py','a').close()"`
 
 (Tools is treated as a package so the test can `import tools.tier_1_sanity_probe`.)
 
-- [ ] **Step 4: Write the sanity probe**
+- [x] **Step 4: Write the sanity probe**
 
 Create `tools/tier_1_sanity_probe.py`:
 
@@ -2522,22 +2522,22 @@ if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(main())
 ```
 
-- [ ] **Step 5: Run the probe directly to confirm it prints OK**
+- [x] **Step 5: Run the probe directly to confirm it prints OK**
 
 Run: `python tools/tier_1_sanity_probe.py`
 Expected output ends with `OK` and exit code 0.
 
-- [ ] **Step 6: Run the test**
+- [x] **Step 6: Run the test**
 
 Run: `python -m pytest tests/test_tier_1_sanity_probe.py -v`
 Expected: 4 passed.
 
-- [ ] **Step 7: Run the full suite**
+- [x] **Step 7: Run the full suite**
 
 Run: `python -m pytest -q`
 Expected: 723 passed (719 + 4 new).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add tools/__init__.py tools/tier_1_sanity_probe.py tests/test_tier_1_sanity_probe.py
@@ -2556,11 +2556,11 @@ Replaces nothing yet; tools/o1_variance_probe.py deletion is Plan D."
 
 Record that Plan A landed so future agents can see the post-V11 redesign is in motion.
 
-- [ ] **Step 1: Read the current STATUS.md "Shipped And Verified" section**
+- [x] **Step 1: Read the current STATUS.md "Shipped And Verified" section**
 
 Open `docs/STATUS.md` and find the "Shipped And Verified" section. Note its current structure (bulleted list of milestones).
 
-- [ ] **Step 2: Add an entry for Plan A**
+- [x] **Step 2: Add an entry for Plan A**
 
 Insert after the V11 entry, before the V1–V10 bullet:
 
@@ -2570,16 +2570,16 @@ Insert after the V11 entry, before the V1–V10 bullet:
 
 Replace `YYYY-MM-DD` with the actual landing date (commit date).
 
-- [ ] **Step 3: Update the "Current Phase" paragraph**
+- [x] **Step 3: Update the "Current Phase" paragraph**
 
 Change "No milestone is in active development" → "Post-V11 redesign in progress; Plan A (hybrid driver architecture + Tier 1 engine) shipped. Plans B/C/D in `docs/specs/2026-05-20-post-v11-redesign-brief/`."
 
-- [ ] **Step 4: Run the full suite one more time as a final sanity check**
+- [x] **Step 4: Run the full suite one more time as a final sanity check**
 
 Run: `python -m pytest -q`
-Expected: 723 passed.
+Expected: 724 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/STATUS.md
@@ -2595,13 +2595,13 @@ shipped. Plans B/C/D queued per tier-1-roadmap.md."
 
 All of the following are true before Plan A is considered complete:
 
-- [ ] All 13 tasks above are checked off.
-- [ ] `python -m pytest -q` reports 723 passing tests (659 baseline + 64 new). If the baseline has shifted upstream, the delta should be exactly +64.
-- [ ] `python tools/tier_1_sanity_probe.py` exits 0 and prints `OK`.
-- [ ] No file under `src/dodgeball_sim/burden.py`, `discipline.py`, `no_blocking.py` has been modified.
-- [ ] `src/dodgeball_sim/official_engine.py` has not been edited (only re-exported / wrapped).
-- [ ] `docs/STATUS.md` reflects Plan A landing.
-- [ ] Tests for all six moment kinds emit at least once across the sanity probe's 25-match run.
+- [x] All 13 tasks above are checked off.
+- [x] `python -m pytest -q` reports 724 passing tests (659 baseline + 65 new). If the baseline has shifted upstream, the delta should be exactly +65.
+- [x] `python tools/tier_1_sanity_probe.py` exits 0 and prints `OK`.
+- [x] No file under `src/dodgeball_sim/burden.py`, `discipline.py`, `no_blocking.py` has been modified.
+- [x] `src/dodgeball_sim/official_engine.py` has not been edited (only re-exported / wrapped).
+- [x] `docs/STATUS.md` reflects Plan A landing.
+- [x] Tests for all six moment kinds emit at least once across the sanity probe's 25-match run.
 
 ## Self-review checklist (run before handing off)
 
