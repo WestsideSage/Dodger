@@ -15,6 +15,7 @@ from typing import List
 
 from dodgeball_sim.engine_driver import DriverMatchInput
 from dodgeball_sim.models import CoachPolicy, Player, PlayerRatings
+from dodgeball_sim.moment_events import MomentKind
 from dodgeball_sim.rec_engine import RecTier1Driver
 
 
@@ -25,6 +26,7 @@ class SanityProbeReport:
     total_moment_events: int = 0
     exceptions: List[str] = field(default_factory=list)
     winner_counts: Counter = field(default_factory=Counter)
+    moment_kind_counts: Counter = field(default_factory=Counter)
 
 
 def _make_player(pid: str, club: str) -> Player:
@@ -69,6 +71,7 @@ def run_sanity_probe(matches: int = 25, seed_start: int = 1) -> SanityProbeRepor
         report.total_moment_events += len(out.moment_events)
         winner = out.winner_team_id or "draw"
         report.winner_counts[winner] += 1
+        report.moment_kind_counts.update(event.kind for event in out.moment_events)
     return report
 
 
@@ -81,6 +84,10 @@ def main() -> int:
     avg = report.total_moment_events / max(1, report.matches_run)
     print(f"Avg moments/match:   {avg:.2f}")
     print(f"Winner counts:       {dict(report.winner_counts)}")
+    print(
+        "Moment kinds:        "
+        f"{ {kind.value: count for kind, count in sorted(report.moment_kind_counts.items(), key=lambda item: item[0].value)} }"
+    )
     if report.exceptions:
         print("EXCEPTIONS:")
         for line in report.exceptions:
@@ -89,6 +96,10 @@ def main() -> int:
     if avg < 1.0:
         print("FAIL: average moments per match below 1.0")
         return 2
+    missing = [kind.value for kind in MomentKind if report.moment_kind_counts[kind] == 0]
+    if missing:
+        print(f"FAIL: missing moment kinds: {', '.join(missing)}")
+        return 3
     print("OK")
     return 0
 

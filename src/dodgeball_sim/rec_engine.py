@@ -46,6 +46,15 @@ from .tier_1_rules import TIER_1_RULES, TierRules
 TICK_SECONDS: float = 6.0
 """Engine tick in seconds; matches official_engine.py for consistency."""
 
+ON_COURT_EXERTION_COST: float = 0.03
+"""Background exertion per tick for active players."""
+
+THROW_EXERTION_COST: float = 0.09
+"""Additional exertion for a throw attempt."""
+
+ACTIVE_RECOVERY_SECONDS: float = 0.5
+"""Short between-rally recovery for players still on court."""
+
 
 @dataclass
 class _MatchRuntime:
@@ -241,10 +250,26 @@ class RecTier1Driver:
             pid for pids in throwers_by_team.values() for pid in pids
         }
         for pid, state in list(rt.fatigue.items()):
-            if pid in threw_pids:
-                rt.fatigue[pid] = accumulate(
-                    state, action_cost=0.05, params=rt.fatigue_params[pid]
+            player_state = rt.players[pid]
+            if player_state.status == OfficialPlayerStatus.ACTIVE:
+                next_state = accumulate(
+                    state,
+                    action_cost=ON_COURT_EXERTION_COST,
+                    params=rt.fatigue_params[pid],
                 )
+                if pid in threw_pids:
+                    next_state = accumulate(
+                        next_state,
+                        action_cost=THROW_EXERTION_COST,
+                        params=rt.fatigue_params[pid],
+                    )
+                else:
+                    next_state = recover(
+                        next_state,
+                        seconds_idle=ACTIVE_RECOVERY_SECONDS,
+                        params=rt.fatigue_params[pid],
+                    )
+                rt.fatigue[pid] = next_state
             else:
                 rt.fatigue[pid] = recover(
                     state, seconds_idle=TICK_SECONDS, params=rt.fatigue_params[pid]
