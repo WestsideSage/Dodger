@@ -1,7 +1,7 @@
 # Tier 1 Match Loop — Plan Roadmap
 
 Date: 2026-05-20
-Status: Active. Plan A in writing; B/C/D stubbed.
+Status: Active. Plan A landed on 2026-05-20; B/C/D stubbed.
 Parent brief: [brief.md](./brief.md)
 
 This is the parent roadmap for the **Tier 1 Match Loop** milestone — the
