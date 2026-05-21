@@ -62,6 +62,7 @@ class _MatchRuntime:
 
     rng: random.Random
     rules: TierRules
+    match_id: str
     players: Dict[str, OfficialPlayerState]
     balls: List[OfficialBall]
     queues: Dict[str, CatchQueueState]
@@ -191,6 +192,7 @@ class RecTier1Driver:
         return _MatchRuntime(
             rng=rng,
             rules=rules,
+            match_id=mi.match_id,
             players=players,
             balls=balls,
             queues=queues,
@@ -495,7 +497,7 @@ class RecTier1Driver:
         if fstate is not None and fstate.is_gassed():
             rt.moment_events.append(
                 GassedCollapse(
-                    match_id="rt",
+                    match_id=rt.match_id,
                     tick=rt.tick,
                     player_id=player_id,
                     team_id=team_id,
@@ -507,7 +509,7 @@ class RecTier1Driver:
             rt.queues[team_id],
             player_id=player_id,
             is_starter=player.is_starter,
-            match_id="rt",
+            match_id=rt.match_id,
         )
 
     def _update_stall(
