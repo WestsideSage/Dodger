@@ -1,3 +1,4 @@
+from dodgeball_sim.moment_events import MomentKind
 from tools.tier_1_sanity_probe import run_sanity_probe, SanityProbeReport
 
 
@@ -17,6 +18,12 @@ def test_average_moment_events_per_match_at_least_one():
     assert report.total_moment_events / max(1, report.matches_run) >= 1.0
 
 
+def test_default_probe_emits_all_six_moment_kinds():
+    report = run_sanity_probe()
+    for kind in MomentKind:
+        assert report.moment_kind_counts[kind] > 0, f"missing {kind.value}"
+
+
 def test_report_is_dataclass_with_expected_fields():
     report = run_sanity_probe(matches=5)
     assert isinstance(report, SanityProbeReport)
@@ -25,3 +32,4 @@ def test_report_is_dataclass_with_expected_fields():
     assert hasattr(report, "total_moment_events")
     assert hasattr(report, "exceptions")
     assert hasattr(report, "winner_counts")
+    assert hasattr(report, "moment_kind_counts")
