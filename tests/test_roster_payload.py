@@ -7,11 +7,12 @@ from dodgeball_sim.persistence import create_schema
 from dodgeball_sim.career_setup import initialize_curated_manager_career
 
 def test_potential_tier_mapping():
-    # Elite >= 90, High 80-89, Solid 65-79, Limited < 65
+    # Elite >= 90, High >= 82, Mid >= 72, Low >= 62, Raw < 62
     assert calculate_potential_tier(92) == "Elite"
     assert calculate_potential_tier(85) == "High"
-    assert calculate_potential_tier(75) == "Solid"
-    assert calculate_potential_tier(50) == "Limited"
+    assert calculate_potential_tier(75) == "Mid"
+    assert calculate_potential_tier(65) == "Low"
+    assert calculate_potential_tier(50) == "Raw"
 
 def test_roster_endpoint_payload_structure():
     conn = sqlite3.connect(":memory:", check_same_thread=False)

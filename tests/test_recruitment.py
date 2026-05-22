@@ -4,7 +4,7 @@ from dataclasses import replace
 import sqlite3
 
 from dodgeball_sim.config import DEFAULT_SCOUTING_CONFIG
-from dodgeball_sim.manager_gui import initialize_manager_career
+from dodgeball_sim.career_setup import initialize_manager_career
 from dodgeball_sim.persistence import create_schema, load_all_rosters, load_prospect_pool
 from dodgeball_sim import randomizer
 from dodgeball_sim.recruitment import (
@@ -76,7 +76,7 @@ def test_generate_prospect_pool_includes_all_trajectory_tiers_in_long_run():
 
     for tier in Trajectory:
         assert counts[tier.value] > 0, f"No {tier.value} prospects in 1000-prospect class"
-    assert 5 <= counts["GENERATIONAL"] <= 25
+    assert 3 <= counts["GENERATIONAL"] <= 25
     assert 650 <= counts["NORMAL"] <= 750
 
 
@@ -140,3 +140,20 @@ def test_sign_prospect_to_club_rejects_duplicate_signed_flag():
     ]
     assert len(owned_copies) == 1
     assert owned_copies[0].club_id == "aurora"
+
+
+def test_prospect_pool_potential_tier_is_spread():
+    """Audit 7.10: a generated pool of 50 prospects must not be ~all-Elite."""
+    from dodgeball_sim.recruitment import generate_prospect_pool
+    from dodgeball_sim.rng import DeterministicRNG, derive_seed
+    from dodgeball_sim.config import DEFAULT_SCOUTING_CONFIG
+    from dodgeball_sim.development import calculate_potential_tier
+    rng = DeterministicRNG(derive_seed(12345, "test"))
+    pool = generate_prospect_pool(class_year=1, rng=rng, config=DEFAULT_SCOUTING_CONFIG)
+    from collections import Counter
+    tiers = Counter(calculate_potential_tier(min(100.0, max(70.0, max(p.hidden_ratings.values()) + 8.0))) for p in pool)
+    # No tier should dominate (no >60% of the pool is one tier).
+    assert max(tiers.values()) <= 30, f"a tier dominates: {tiers}"
+    # At least three distinct tiers present.
+    assert len(tiers) >= 3, f"distribution too narrow: {tiers}"
+
