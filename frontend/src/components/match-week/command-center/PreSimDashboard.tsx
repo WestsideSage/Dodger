@@ -9,6 +9,7 @@ import type {
 } from '../../../types';
 import { WeeklyChecklist } from '../WeeklyChecklist';
 import { MatchCard } from './MatchCard';
+import { seasonTitle, bulletinLine, stakesLine, playerToWatch } from './presimNarrative';
 
 const approaches = [
   { id: 'Balanced', label: 'Balanced', desc: 'Even focus on offense and defense.' },
@@ -19,6 +20,7 @@ const approaches = [
 
 const intentLabels = new Map(approaches.map(approach => [approach.id, approach.label]));
 const roleCounterMap: Record<string, string> = { Tactical: 'Control', Pressure: 'Defensive', Balanced: 'Balanced' };
+const DEV_FOCUS_OPTIONS = ['BALANCED', 'YOUTH_ACCELERATION', 'TACTICAL_DRILLS', 'STRENGTH_AND_CONDITIONING'];
 
 function pct(value: number | undefined) {
   if (typeof value !== 'number') return 'n/a';
@@ -58,6 +60,7 @@ export function PreSimDashboard({
   data,
   simulate,
   onSavePlan,
+  onSaveDevFocus,
   selectedIntent,
   onIntentChange,
   planConfirmed,
@@ -65,6 +68,7 @@ export function PreSimDashboard({
   data: CommandCenterResponse;
   simulate: () => void;
   onSavePlan: (intent: string, confirm: boolean) => void;
+  onSaveDevFocus: (devFocus: string) => void;
   selectedIntent: string;
   onIntentChange: (intent: string) => void;
   planConfirmed: boolean;
@@ -94,18 +98,31 @@ export function PreSimDashboard({
   const plan = data.plan;
   const details = plan.matchup_details ?? {
     opponent_record: 'Unknown',
-    last_meeting: 'No meeting recorded',
+    last_meeting: 'First meeting — no tape on them yet. Trust your reads.',
     key_matchup: 'Opponent file unavailable.',
     framing_line: data.current_objective,
   };
   const activePlayers = useMemo(() => plan.lineup?.players?.slice(0, 6) ?? [], [plan.lineup?.players]);
   const opponentPlayers = useMemo(() => plan.opponent_lineup?.players?.slice(0, 6) ?? [], [plan.opponent_lineup?.players]);
   const userStanding = standings.find(row => row.club_id === data.player_club_id);
-  const leagueRank = userStanding ? standings.findIndex(row => row.club_id === data.player_club_id) + 1 : null;
-  const recentResults = data.history.slice(-5).map(record => record.dashboard?.result).filter(Boolean);
+  const anyGamesPlayed = standings.some(row =>
+    (row.wins ?? 0) + (row.losses ?? 0) + (row.draws ?? 0) > 0
+  );
+  const leagueRank = (userStanding && anyGamesPlayed)
+    ? standings.findIndex(row => row.club_id === data.player_club_id) + 1
+    : null;
+  const recentResults = data.history
+    .slice(-5)
+    .map(record => record.dashboard?.result)
+    .filter((result): result is string => Boolean(result));
   const recentWins = recentResults.filter(result => result === 'Win').length;
   const recentRecord = recentResults.length ? `${recentWins}-${recentResults.length - recentWins}` : 'No recent matches';
   const latestDashboard = data.latest_dashboard;
+  const lastRecord = data.history.length > 0 ? data.history[data.history.length - 1] : null;
+  const showLastMatch = !planConfirmed && lastRecord !== null && data.week > 1;
+  const seasonName = seasonTitle(data.season_id);
+  const bulletin = lastRecord ? bulletinLine(lastRecord, data.player_club_name) : null;
+  const watchLine = playerToWatch(activePlayers);
 
   const readinessChecks = useMemo(() => [
     { id: 'scout', label: 'Opponent file available', shortLabel: 'Scout', detail: 'Scout report, threat profile, and staff recommendation available.', ready: Boolean(plan.matchup_details || plan.recommendations.length) },
@@ -146,6 +163,8 @@ export function PreSimDashboard({
     [schedule],
   );
   const displayWeek = currentMatch?.week ?? data.week;
+  const gamesRemaining = schedule.filter(match => match.is_user_match && match.status !== 'played').length;
+  const stakes = stakesLine(leagueRank, gamesRemaining, recentResults);
   const playoffStage =
     currentMatch && currentMatch.stage && currentMatch.stage !== 'Regular Season'
       ? currentMatch.stage
@@ -162,9 +181,13 @@ export function PreSimDashboard({
 
   return (
     <div className="command-dashboard" data-testid="weekly-command-center">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
       <section className="command-filter-row" aria-label="Week context" data-testid="presim-command-strip">
         <div className="command-strip-meta">
           {playoffStage && <span className="command-strip-stage">{playoffStage}</span>}
+          <span style={{ color: '#f97316', fontWeight: 700 }} title="This season's storyline">
+            {seasonName}
+          </span>
           <span title="Upcoming match week">Week {displayWeek}</span>
           <span>{leagueRank ? `League Rank #${leagueRank}` : 'Rank n/a'}</span>
           <span title="Away team @ home team">{awayTeamName} @ {homeTeamName}</span>
@@ -173,6 +196,109 @@ export function PreSimDashboard({
           <span title="Starter overall edge vs opponent">{playerEdgeLabel}</span>
         </div>
       </section>
+
+      {showLastMatch && lastRecord && (
+        <div
+          data-testid="presim-last-match"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.35rem',
+            padding: '0.55rem 0.85rem',
+            background: '#0a1220',
+            border: '1px solid #1e293b',
+            borderRadius: '4px',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+              flexWrap: 'wrap',
+              fontFamily: 'JetBrains Mono, monospace',
+              fontSize: '0.7rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: '#64748b',
+            }}
+          >
+            <span style={{ color: '#94a3b8', fontWeight: 700 }}>Last Match</span>
+            <span
+              style={{
+                color:
+                  lastRecord.dashboard.result === 'Win'
+                    ? '#10b981'
+                    : lastRecord.dashboard.result === 'Loss'
+                    ? '#f43f5e'
+                    : '#94a3b8',
+                fontWeight: 700,
+              }}
+            >
+              {lastRecord.dashboard.result}
+            </span>
+            <span>vs {lastRecord.dashboard.opponent_name}</span>
+            <span style={{ color: '#475569' }}>
+              · {intentLabels.get(lastRecord.intent) ?? lastRecord.intent} plan
+            </span>
+          </div>
+          {bulletin && (
+            <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.45 }}>
+              {bulletin}
+            </p>
+          )}
+        </div>
+      )}
+
+      {!planConfirmed && (
+        <div
+          data-testid="presim-this-week"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.3rem',
+            padding: '0.55rem 0.85rem',
+            background: '#0a1628',
+            border: '1px solid #1e293b',
+            borderLeft: '3px solid #f97316',
+            borderRadius: '4px',
+          }}
+        >
+          <p style={{ margin: 0, fontSize: '0.82rem', color: '#e2e8f0', lineHeight: 1.45 }}>
+            <span
+              style={{
+                fontFamily: 'JetBrains Mono, monospace',
+                fontSize: '0.62rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                color: '#f97316',
+                marginRight: '0.5rem',
+              }}
+            >
+              This Week
+            </span>
+            {stakes}
+          </p>
+          {watchLine && (
+            <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.45 }}>
+              <span
+                style={{
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: '0.62rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  color: '#64748b',
+                  marginRight: '0.5rem',
+                }}
+              >
+                Watch
+              </span>
+              {watchLine}
+            </p>
+          )}
+        </div>
+      )}
+      </div>
 
       <section className="command-cockpit-grid" data-testid="plan-details-row">
         <article className="dm-panel command-cockpit-panel command-game-plan" data-testid="plan-editor-panel">
@@ -233,7 +359,36 @@ export function PreSimDashboard({
 
           <div className="command-order-pills">
             <div><span>Training</span><strong>{humanize(plan.department_orders?.training)}</strong></div>
-            <div><span>Development</span><strong>{humanize(plan.department_orders?.dev_focus)}</strong></div>
+            <div>
+              <span>Development</span>
+              {planConfirmed ? (
+                <strong>{humanize(plan.department_orders?.dev_focus)}</strong>
+              ) : (
+                <select
+                  data-testid="dev-focus-select"
+                  aria-label="Development focus"
+                  value={plan.department_orders?.dev_focus ?? 'BALANCED'}
+                  onChange={event => onSaveDevFocus(event.target.value)}
+                  style={{
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '4px',
+                    color: '#22d3ee',
+                    fontFamily: 'var(--font-display)',
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    padding: '0.15rem 0.3rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {DEV_FOCUS_OPTIONS.map(option => (
+                    <option key={option} value={option}>{humanize(option)}</option>
+                  ))}
+                </select>
+              )}
+            </div>
           </div>
         </article>
 
