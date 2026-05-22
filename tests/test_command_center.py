@@ -196,3 +196,35 @@ def test_build_matchup_details_no_opponent():
     assert result["opponent_record"] == "0-0"
     assert result["last_meeting"] == "None"
     assert "Season schedule complete" in result["key_matchup"]
+
+
+def test_week_context_marks_bye_when_player_has_no_game():
+    """Audit 7.7: a week with no game for the player's club should surface as a Bye Week."""
+    from dodgeball_sim.persistence import create_schema, get_state
+    from dodgeball_sim.career_setup import initialize_curated_manager_career
+    import sqlite3
+
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_curated_manager_career(conn, "aurora", root_seed=20260426)
+    
+    player_club_id = "aurora"
+    season_id = get_state(conn, "active_season_id")
+    conn.execute(
+        "DELETE FROM scheduled_matches WHERE season_id = ? AND week = 1 AND (home_club_id = ? OR away_club_id = ?)",
+        (season_id, player_club_id, player_club_id),
+    )
+    conn.commit()
+
+    state = build_command_center_state(conn)
+    assert state["is_bye"] is True
+    assert state["week"] == 1
+    assert state["opponent"] is None
+    assert state["upcoming_match"] is not None
+    assert state["upcoming_match"].week > 1
+
+    plan = build_default_weekly_plan(state)
+    assert plan["is_bye"] is True
+    assert plan["opponent"]["name"] == "Bye Week"
+

@@ -267,6 +267,9 @@ export interface StandingsResponse {
     season_id: string;
     standings: StandingRow[];
     recent_matches?: RecentMatchSummary[];
+    total_weeks: number;
+    current_week: number;
+    playoff_spots: number;
 }
 
 export interface RecentMatchSummary {
@@ -364,6 +367,7 @@ export interface CommandCenterPlan {
     season_id: string;
     week: number;
     player_club_id: string;
+    is_bye?: boolean;
     intent: string;
     available_intents: string[];
     opponent: {
@@ -555,9 +559,47 @@ export interface RookieClassPreviewBeatPayload {
     storylines: string[];
 }
 
+export interface RecruitmentProspectChoice {
+    prospect_id: string;
+    name: string;
+    overall: number;
+    age: number;
+    hometown: string;
+    archetype: string;
+    kind: 'prospect' | 'free_agent';
+}
+
 export interface RecruitmentBeatPayload {
     player_signing: OffseasonSigning | null;
     other_signings: OffseasonSigning[];
+    available_prospects: RecruitmentProspectChoice[];
+}
+
+export interface RatifiedRecordEntry {
+    record_type: string;
+    holder_name: string;
+    previous_value: number;
+    new_value: number;
+    detail: string;
+}
+
+export interface RecordsRatifiedBeatPayload {
+    records: RatifiedRecordEntry[];
+}
+
+export interface HallOfFameInductee {
+    player_name: string;
+    legacy_score: number;
+    threshold: number;
+    reasons: string[];
+    seasons_played: number;
+    championships: number;
+    awards_won: number;
+    total_eliminations: number;
+}
+
+export interface HofInductionBeatPayload {
+    inductees: HallOfFameInductee[];
 }
 
 export interface ScheduleRevealBeatPayload {
@@ -588,8 +630,8 @@ export type OffseasonBeat =
     | (OffseasonBeatBase & { key: 'champion'; payload: ChampionBeatPayload })
     | (OffseasonBeatBase & { key: 'recap'; payload: RecapBeatPayload })
     | (OffseasonBeatBase & { key: 'awards'; payload: AwardsBeatPayload })
-    | (OffseasonBeatBase & { key: 'records_ratified'; payload: EmptyBeatPayload })
-    | (OffseasonBeatBase & { key: 'hof_induction'; payload: EmptyBeatPayload })
+    | (OffseasonBeatBase & { key: 'records_ratified'; payload: RecordsRatifiedBeatPayload })
+    | (OffseasonBeatBase & { key: 'hof_induction'; payload: HofInductionBeatPayload })
     | (OffseasonBeatBase & { key: 'development'; payload: DevelopmentBeatPayload })
     | (OffseasonBeatBase & { key: 'retirements'; payload: RetirementsBeatPayload })
     | (OffseasonBeatBase & { key: 'rookie_class_preview'; payload: RookieClassPreviewBeatPayload })
@@ -664,6 +706,7 @@ export interface DynastyOfficeResponse {
             rating_primary: number;
             rating_secondary: number;
             voice: string;
+            effect_summary: string;
         }>;
         active_facilities: string[];
         candidates: Array<{

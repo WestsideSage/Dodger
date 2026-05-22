@@ -37,7 +37,7 @@ def _player_summary(player: Player) -> dict[str, Any]:
     return {
         "id": player.id,
         "name": player.name,
-        "overall": round(player.overall(), 1),
+        "overall": round(player.overall_skill(), 1),
         "age": player.age,
         "potential": player.traits.potential,
         "stamina": player.ratings.stamina,
@@ -51,10 +51,10 @@ def _lineup_recommendation(roster: list[Player], default_lineup: list[str] | Non
     else:
         chosen = []
     if len(chosen) < min(6, len(roster)):
-        chosen = sorted(roster, key=lambda player: (-player.overall(), player.id))[: min(6, len(roster))]
+        chosen = sorted(roster, key=lambda player: (-player.overall_skill(), player.id))[: min(6, len(roster))]
 
     if intent == "Develop Youth":
-        prospects = sorted(roster, key=lambda player: (-player.traits.potential, player.age, -player.overall()))
+        prospects = sorted(roster, key=lambda player: (-player.traits.potential, player.age, -player.overall_skill()))
         for prospect in prospects:
             if prospect not in chosen and len(chosen) >= 1:
                 chosen[-1] = prospect
@@ -82,6 +82,9 @@ def _policy_for_intent(policy: CoachPolicy, intent: str) -> dict[str, float]:
 
 from dodgeball_sim.rng import DeterministicRNG, derive_seed
 from dodgeball_sim.voice_pregame import render_matchup_framing
+from typing import Iterable
+from typing import Iterable
+from typing import Iterable
 
 def build_command_center_state(conn: sqlite3.Connection) -> dict[str, Any]:
     season_id = get_state(conn, "active_season_id")
@@ -103,8 +106,9 @@ def build_command_center_state(conn: sqlite3.Connection) -> dict[str, Any]:
         ),
         None,
     )
+    is_bye = (upcoming is None or upcoming.week > week) if week > 0 else False
     opponent_id = None
-    if upcoming is not None:
+    if upcoming is not None and not is_bye:
         opponent_id = upcoming.away_club_id if upcoming.home_club_id == player_club_id else upcoming.home_club_id
 
     return {
@@ -115,7 +119,8 @@ def build_command_center_state(conn: sqlite3.Connection) -> dict[str, Any]:
         "player_club": clubs[player_club_id],
         "opponent": clubs.get(opponent_id) if opponent_id else None,
         "upcoming_match": upcoming,
-        "matchup_details": build_matchup_details(conn, season_id=season_id, player_club_id=player_club_id, opponent_id=opponent_id, rosters=rosters),
+        "is_bye": is_bye,
+        "matchup_details": build_matchup_details(conn, season_id=season_id, player_club_id=player_club_id, opponent_id=opponent_id, rosters=rosters, is_bye=is_bye),
         "roster": list(rosters.get(player_club_id, [])),
         "opponent_roster": list(rosters.get(opponent_id, [])) if opponent_id else [],
         "default_lineup": load_lineup_default(conn, player_club_id),
@@ -132,16 +137,17 @@ def build_default_weekly_plan(state: Mapping[str, Any], intent: str = "Win Now")
     heads = list(state["department_heads"])
     lineup = _lineup_recommendation(list(state["roster"]), state.get("default_lineup"), intent)
     opponent_roster = list(state.get("opponent_roster", []))
-    opp_top_six = sorted(opponent_roster, key=lambda p: (-p.overall(), p.id))[:6]
+    opp_top_six = sorted(opponent_roster, key=lambda p: (-p.overall_skill(), p.id))[:6]
     opponent_lineup = {
         "players": [_player_summary(p) for p in opp_top_six],
     }
     tactics = _policy_for_intent(club.coach_policy, intent)
     warnings = _lineup_warnings(list(state["roster"]), lineup["player_ids"], intent, tactics)
-    recommendations = _staff_recommendations(heads, intent, opponent.name if opponent else "the next opponent")
+    is_bye = state.get("is_bye", False)
+    recommendations = _staff_recommendations(heads, intent, "Bye Week" if is_bye else (opponent.name if opponent else "the next opponent"))
     
     rng = DeterministicRNG(derive_seed(state.get("root_seed", 1), "framing", state["season_id"], str(state["week"])))
-    opponent_name = opponent.name if opponent else "Season complete"
+    opponent_name = "Bye Week" if is_bye else (opponent.name if opponent else "Season complete")
     matchup_details = {
         "opponent_record": "No record",
         "last_meeting": "None",
@@ -154,11 +160,12 @@ def build_default_weekly_plan(state: Mapping[str, Any], intent: str = "Win Now")
         "season_id": state["season_id"],
         "week": state["week"],
         "player_club_id": state["player_club_id"],
+        "is_bye": is_bye,
         "intent": intent,
         "available_intents": list(INTENTS),
         "opponent": {
             "club_id": opponent.club_id if opponent else None,
-            "name": opponent.name if opponent else "Season complete",
+            "name": opponent_name,
         },
         "department_heads": heads,
         "department_orders": dict(DEFAULT_DEPARTMENT_ORDERS),
@@ -178,6 +185,7 @@ def refresh_weekly_plan_context(plan: Mapping[str, Any], state: Mapping[str, Any
         **dict(refreshed.get("matchup_details") or {}),
         **dict(state.get("matchup_details") or {}),
     }
+    refreshed["is_bye"] = state.get("is_bye", False)
     return refreshed
 
 
@@ -215,13 +223,13 @@ def _lineup_warnings(roster: list[Player], player_ids: list[str], intent: str, t
     
     high_upside_benched = [
         player for player in roster
-        if player.id not in starters and player.traits.potential >= 80 and player.overall() >= 55
+        if player.id not in starters and player.traits.potential >= 80 and player.overall_skill() >= 55
     ]
     if high_upside_benched and intent != "Win Now":
         warnings.append(f"{high_upside_benched[0].name} has high upside but is outside the recommended reps group.")
     weak_starters = [
         player for player in roster
-        if player.id in starters and player.overall() < 55
+        if player.id in starters and player.overall_skill() < 55
     ]
     if weak_starters and intent == "Win Now":
         warnings.append(f"{weak_starters[0].name} is a weak starter and may be targeted.")
@@ -314,3 +322,59 @@ __all__ = [
     "build_default_weekly_plan",
     "build_post_week_dashboard",
 ]
+
+
+# ----------------------------------------------------------------------
+# Coach policy display helpers (formerly manager_helpers/ui_formatters)
+# ----------------------------------------------------------------------
+
+POLICY_KEYS = (
+    "target_stars",
+    "target_ball_holder",
+    "risk_tolerance",
+    "sync_throws",
+    "rush_frequency",
+    "rush_proximity",
+    "tempo",
+    "catch_bias",
+)
+
+def policy_label(value: float) -> str:
+    if value >= 0.8:
+        return "Very High"
+    if value >= 0.65:
+        return "High"
+    if value >= 0.45:
+        return "Balanced"
+    if value >= 0.25:
+        return "Low"
+    return "Very Low"
+
+def policy_effect(key: str, value: float) -> str:
+    label = policy_label(value)
+    mapping = {
+        "target_stars": f"{label} - focuses high-value opponents first.",
+        "target_ball_holder": f"{label} - prioritizes opponents controlling the ball.",
+        "risk_tolerance": f"{label} - accepts tighter odds for outs.",
+        "sync_throws": f"{label} - looks for coordinated volleys and stamina burn.",
+        "rush_frequency": f"{label} - changes how often the team forces pressure.",
+        "rush_proximity": f"{label} - adjusts how close rushes must be before pressure.",
+        "tempo": f"{label} - sets the pace of possessions and resets.",
+        "catch_bias": f"{label} - changes how willingly defenders try catches.",
+    }
+    return mapping.get(key, label)
+
+def policy_rows(policy: CoachPolicy) -> Iterable[tuple[str, float, str]]:
+    policy_dict = policy.as_dict()
+    for key in (
+        "target_stars",
+        "target_ball_holder",
+        "risk_tolerance",
+        "sync_throws",
+        "rush_frequency",
+        "rush_proximity",
+        "tempo",
+        "catch_bias",
+    ):
+        value = policy_dict[key]
+        yield key.replace("_", " ").title(), value, policy_effect(key, value)
