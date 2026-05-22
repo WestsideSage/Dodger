@@ -12,7 +12,9 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, List, Mapping, Optional, Set, Tuple
 
+from .archetype_derivation import derive_archetype
 from .config import ScoutingBalanceConfig
+from .models import PlayerArchetype, PlayerRatings
 from .rng import derive_seed
 
 
@@ -79,17 +81,18 @@ class Prospect:
         return sum(self.hidden_ratings.values()) / len(self.hidden_ratings)
 
     def true_archetype(self) -> str:
-        archetype_map = {
-            "accuracy": "Sharpshooter",
-            "power": "Enforcer",
-            "dodge": "Escape Artist",
-            "catch": "Ball Hawk",
-            "stamina": "Iron Engine",
-        }
-        rating_keys = ("accuracy", "power", "dodge", "catch", "stamina")
-        present = {key: self.hidden_ratings.get(key, 0.0) for key in rating_keys}
-        dominant = max(present, key=present.get)
-        return archetype_map[dominant]
+        ratings = PlayerRatings(
+            accuracy=self.hidden_ratings.get("accuracy", 50.0),
+            power=self.hidden_ratings.get("power", 50.0),
+            dodge=self.hidden_ratings.get("dodge", 50.0),
+            catch=self.hidden_ratings.get("catch", 50.0),
+            stamina=self.hidden_ratings.get("stamina", 50.0),
+            tactical_iq=self.hidden_ratings.get("tactical_iq", 50.0),
+            catch_courage=self.hidden_ratings.get("catch_courage", 50.0),
+            throw_selection_iq=self.hidden_ratings.get("throw_selection_iq", 50.0),
+            conditioning_curve=self.hidden_ratings.get("conditioning_curve", 50.0),
+        ).apply_bounds()
+        return _PROSPECT_ARCHETYPE_DISPLAY_NAMES[derive_archetype(ratings)]
 
 
 @dataclass(frozen=True)
@@ -166,8 +169,8 @@ DEFAULT_SCOUT_PROFILES: Tuple[SeededScoutProfile, ...] = (
         scout_id="vera",
         name="Vera Khan",
         base_accuracy=1.10,
-        archetype_affinities=("Enforcer",),
-        archetype_weakness="Escape Artist",
+        archetype_affinities=("Sharpshooter",),
+        archetype_weakness="Hit-and-Run",
         trait_sense=TraitSense.MEDIUM.value,
     ),
     SeededScoutProfile(
@@ -175,18 +178,29 @@ DEFAULT_SCOUT_PROFILES: Tuple[SeededScoutProfile, ...] = (
         name="Bram Tessen",
         base_accuracy=0.90,
         archetype_affinities=("Ball Hawk",),
-        archetype_weakness="Iron Engine",
+        archetype_weakness="Iron Anchor",
         trait_sense=TraitSense.HIGH.value,
     ),
     SeededScoutProfile(
         scout_id="linnea",
         name="Linnea Voss",
         base_accuracy=1.00,
-        archetype_affinities=("Sharpshooter", "Escape Artist"),
-        archetype_weakness="Enforcer",
+        archetype_affinities=("Sharpshooter", "Hit-and-Run"),
+        archetype_weakness="Net Specialist",
         trait_sense=TraitSense.LOW.value,
     ),
 )
+
+_PROSPECT_ARCHETYPE_DISPLAY_NAMES: dict[PlayerArchetype, str] = {
+    PlayerArchetype.THROWER: "Sharpshooter",
+    PlayerArchetype.CATCHER: "Net Specialist",
+    PlayerArchetype.BALL_HAWK: "Ball Hawk",
+    PlayerArchetype.DODGER_ANCHOR: "Iron Anchor",
+    PlayerArchetype.THROWER_CATCHER: "Two-Way Threat",
+    PlayerArchetype.THROWER_DODGER: "Skirmisher",
+    PlayerArchetype.CATCHER_HAWK: "Possession Specialist",
+    PlayerArchetype.HAWK_DODGER: "Hit-and-Run",
+}
 
 
 @dataclass(frozen=True)

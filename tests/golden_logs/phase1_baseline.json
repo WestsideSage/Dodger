@@ -82,24 +82,24 @@
           "scores": [
             {
               "player_id": "lunar_captain",
-              "score": 0.5157,
-              "normalized_overall": 0.604,
+              "score": 0.5259,
+              "normalized_overall": 0.624,
               "vulnerability": 0.43,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.0
             },
             {
               "player_id": "lunar_anchor",
-              "score": 0.5113,
-              "normalized_overall": 0.614,
+              "score": 0.5215,
+              "normalized_overall": 0.634,
               "vulnerability": 0.38,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.0
             },
             {
               "player_id": "lunar_spotter",
-              "score": 0.4722,
-              "normalized_overall": 0.542,
+              "score": 0.4828,
+              "normalized_overall": 0.562,
               "vulnerability": 0.42,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.0
@@ -218,24 +218,24 @@
           "scores": [
             {
               "player_id": "aurora_captain",
-              "score": 0.5924,
-              "normalized_overall": 0.63,
+              "score": 0.6067,
+              "normalized_overall": 0.65,
               "vulnerability": 0.4,
               "ball_holder_pressure": 0.0,
-              "fatigue": 1.0
+              "fatigue": 1.15
             },
             {
               "player_id": "aurora_rookie",
-              "score": 0.5734,
-              "normalized_overall": 0.554,
+              "score": 0.5879,
+              "normalized_overall": 0.574,
               "vulnerability": 0.48,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.0
             },
             {
               "player_id": "aurora_scout",
-              "score": 0.5535,
-              "normalized_overall": 0.584,
+              "score": 0.5681,
+              "normalized_overall": 0.604,
               "vulnerability": 0.36,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.0
@@ -271,8 +271,8 @@
         },
         "calc": {
           "accuracy_eff": 65.0,
-          "dodge_eff": 59.9,
-          "catch_eff": 54.93,
+          "dodge_eff": 59.885,
+          "catch_eff": 54.919,
           "power_eff": 60.0,
           "context_terms": {
             "chemistry": -0.12,
@@ -284,7 +284,7 @@
         },
         "fatigue": {
           "thrower_fatigue": 0.0,
-          "target_fatigue": 1.0,
+          "target_fatigue": 1.15,
           "thrower_consistency_modifier": 1.0,
           "target_consistency_modifier": 1.0
         },
@@ -303,8 +303,8 @@
         }
       },
       "probabilities": {
-        "p_on_target": 0.575664,
-        "p_catch": 0.735503
+        "p_on_target": 0.57597,
+        "p_catch": 0.735318
       },
       "rolls": {
         "on_target": 0.221517,
@@ -341,8 +341,8 @@
           "scores": [
             {
               "player_id": "aurora_captain",
-              "score": 0.7655,
-              "fatigue": 1.5
+              "score": 0.7645,
+              "fatigue": 1.725
             },
             {
               "player_id": "aurora_scout",
@@ -361,8 +361,8 @@
           "scores": [
             {
               "player_id": "lunar_spotter",
-              "score": 0.554,
-              "normalized_overall": 0.542,
+              "score": 0.57,
+              "normalized_overall": 0.562,
               "vulnerability": 0.42,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.0
@@ -397,10 +397,10 @@
           "sync_modifier": 0.0
         },
         "calc": {
-          "accuracy_eff": 77.85,
+          "accuracy_eff": 77.828,
           "dodge_eff": 58.0,
           "catch_eff": 60.0,
-          "power_eff": 71.85,
+          "power_eff": 71.828,
           "context_terms": {
             "chemistry": 0.12,
             "pressure": 0.0,
@@ -410,7 +410,7 @@
           }
         },
         "fatigue": {
-          "thrower_fatigue": 1.5,
+          "thrower_fatigue": 1.725,
           "target_fatigue": 0.0,
           "thrower_consistency_modifier": 1.0,
           "target_consistency_modifier": 1.0
@@ -420,8 +420,8 @@
         "pressure_modifier": 0.0
       },
       "probabilities": {
-        "p_on_target": 0.854975,
-        "p_catch": 0.60723
+        "p_on_target": 0.854742,
+        "p_catch": 0.607595
       },
       "rolls": {
         "on_target": 0.904177
@@ -461,24 +461,24 @@
           "scores": [
             {
               "player_id": "aurora_captain",
-              "score": 0.5154,
-              "normalized_overall": 0.63,
+              "score": 0.5269,
+              "normalized_overall": 0.65,
               "vulnerability": 0.4,
               "ball_holder_pressure": 0.0,
-              "fatigue": 2.5
+              "fatigue": 2.875
             },
             {
               "player_id": "aurora_rookie",
-              "score": 0.4964,
-              "normalized_overall": 0.554,
+              "score": 0.5079,
+              "normalized_overall": 0.574,
               "vulnerability": 0.48,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.0
             },
             {
               "player_id": "aurora_scout",
-              "score": 0.4764,
-              "normalized_overall": 0.584,
+              "score": 0.488,
+              "normalized_overall": 0.604,
               "vulnerability": 0.36,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.0
@@ -514,8 +514,8 @@
         },
         "calc": {
           "accuracy_eff": 54.95,
-          "dodge_eff": 59.75,
-          "catch_eff": 54.825,
+          "dodge_eff": 59.712,
+          "catch_eff": 54.799,
           "power_eff": 47.95,
           "context_terms": {
             "chemistry": -0.12,
@@ -527,7 +527,7 @@
         },
         "fatigue": {
           "thrower_fatigue": 0.5,
-          "target_fatigue": 2.5,
+          "target_fatigue": 2.875,
           "thrower_consistency_modifier": 1.0,
           "target_consistency_modifier": 1.0
         },
@@ -536,8 +536,8 @@
         "pressure_modifier": 0.0
       },
       "probabilities": {
-        "p_on_target": 0.372852,
-        "p_catch": 0.862329
+        "p_on_target": 0.373583,
+        "p_catch": 0.862046
       },
       "rolls": {
         "on_target": 0.442085
@@ -567,8 +567,8 @@
           "scores": [
             {
               "player_id": "aurora_captain",
-              "score": 0.6926,
-              "fatigue": 3.0
+              "score": 0.6906,
+              "fatigue": 3.45
             },
             {
               "player_id": "aurora_scout",
@@ -587,8 +587,8 @@
           "scores": [
             {
               "player_id": "lunar_spotter",
-              "score": 0.4667,
-              "normalized_overall": 0.542,
+              "score": 0.4769,
+              "normalized_overall": 0.562,
               "vulnerability": 0.42,
               "ball_holder_pressure": 0.0,
               "fatigue": 1.5
@@ -623,10 +623,10 @@
           "sync_modifier": 0.05
         },
         "calc": {
-          "accuracy_eff": 77.7,
+          "accuracy_eff": 77.655,
           "dodge_eff": 57.85,
           "catch_eff": 59.895,
-          "power_eff": 71.7,
+          "power_eff": 71.655,
           "context_terms": {
             "chemistry": 0.12,
             "pressure": 0.0,
@@ -636,7 +636,7 @@
           }
         },
         "fatigue": {
-          "thrower_fatigue": 3.0,
+          "thrower_fatigue": 3.45,
           "target_fatigue": 1.5,
           "thrower_consistency_modifier": 1.0,
           "target_consistency_modifier": 1.0
@@ -656,8 +656,8 @@
         }
       },
       "probabilities": {
-        "p_on_target": 0.861065,
-        "p_catch": 0.607392
+        "p_on_target": 0.860616,
+        "p_catch": 0.608124
       },
       "rolls": {
         "on_target": 0.185637,
@@ -704,16 +704,16 @@
           "scores": [
             {
               "player_id": "aurora_rookie",
-              "score": 0.5345,
-              "normalized_overall": 0.554,
+              "score": 0.5461,
+              "normalized_overall": 0.574,
               "vulnerability": 0.48,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.0
             },
             {
               "player_id": "aurora_scout",
-              "score": 0.5146,
-              "normalized_overall": 0.584,
+              "score": 0.5261,
+              "normalized_overall": 0.604,
               "vulnerability": 0.36,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.0
@@ -817,8 +817,8 @@
           "scores": [
             {
               "player_id": "lunar_spotter",
-              "score": 0.4836,
-              "normalized_overall": 0.542,
+              "score": 0.4969,
+              "normalized_overall": 0.562,
               "vulnerability": 0.42,
               "ball_holder_pressure": 0.0,
               "fatigue": 3.0
@@ -934,8 +934,8 @@
           "scores": [
             {
               "player_id": "aurora_rookie",
-              "score": 0.4888,
-              "normalized_overall": 0.554,
+              "score": 0.5004,
+              "normalized_overall": 0.574,
               "vulnerability": 0.48,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.5

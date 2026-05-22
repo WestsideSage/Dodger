@@ -1,25 +1,25 @@
-# Tier 1 Match Loop — Plan Roadmap
+# Tier 1 Match Loop - Plan Roadmap
 
 Date: 2026-05-20
-Status: Active. Plan A landed on 2026-05-20; B/C/D stubbed.
+Status: Active. Plans A and B landed on 2026-05-20; C/D stubbed.
 Parent brief: [brief.md](./brief.md)
 
-This is the parent roadmap for the **Tier 1 Match Loop** milestone — the
+This is the parent roadmap for the **Tier 1 Match Loop** milestone - the
 first sub-project of the post-V11 redesign. It exists so the A/B/C/D
 shape is visible without committing to a 30+ task mega-plan.
 
 ## Milestone goal
 
 Deliver a single mergeable slice that boots a Tier 1 (Local Rec League)
-match, runs it to completion against the rules from brief §3.5, and
-produces aftermath the player can read in rec-league vocabulary —
+match, runs it to completion against the rules from brief section 3.5, and
+produces aftermath the player can read in rec-league vocabulary -
 **without breaking V11 / USAD behavior covered by existing tests**.
 
 ## Architecture
 
-Brief §7.1 Option C, **Hybrid**, as a thin slice. Shared primitive
+Brief section 7.1 Option C, **Hybrid**, as a thin slice. Shared primitive
 layer (existing `ball_state`, `catch_queue`, `sequence`, `player_state`
-modules — *not moved*) plus new primitives (`fatigue`, `flood_throws`,
+modules - *not moved*) plus new primitives (`fatigue`, `flood_throws`,
 `stall_timer`, `moment_events`) and per-tier drivers. V11's
 `run_autonomous_game` is wrapped, not rewritten.
 
@@ -27,24 +27,22 @@ modules — *not moved*) plus new primitives (`fatigue`, `flood_throws`,
 
 | # | Plan | Role | Depends on | Risk |
 |---|---|---|---|---|
-| **A** | **Hybrid driver architecture + Tier 1 engine** | Architectural risk gate | V11 baseline | High — factoring without breaking USAD |
-| B | Player attribute v2 | Data-model upgrade | A's driver interface + primitive hooks | Medium — schema/seed migration |
-| C | Tier 1 player-facing surface | Tactics, replay, aftermath | A + B | Medium — design density |
+| **A** | **Hybrid driver architecture + Tier 1 engine** | Architectural risk gate | V11 baseline | High - factoring without breaking USAD |
+| **B** | **Player attribute v2** | Data-model upgrade | landed 2026-05-20 | - |
+| C | Tier 1 player-facing surface | Tactics, replay, aftermath | A + B | Medium - design density |
 | D | Simulation-health probe | Verification harness | A + B + C | Low |
 
-**Order is strict.** B cannot start until A's driver interface and
-fatigue primitive merge. C cannot start until B's attribute model
-merges (so the policy v2 and per-attribute behaviors are real). D runs
+**Order is strict.** B is now landed, which unblocks C. D still runs
 last and replaces `tools/o1_variance_probe.py`.
 
 The full Plan A file is at
-[plan-a-hybrid-driver.md](./plan-a-hybrid-driver.md). B, C, and D are
-stubbed below — they will each get a full plan written when their turn
+[plan-a-hybrid-driver.md](./plan-a-hybrid-driver.md). C and D are
+stubbed below - they will each get a full plan written when their turn
 comes.
 
 ---
 
-## Plan B stub — Player attribute v2
+## Plan B - Player attribute v2 (landed 2026-05-20)
 
 **Inputs from Plan A:**
 - `EngineDriver` protocol with attribute-attached hooks for catch
@@ -52,27 +50,28 @@ comes.
 - `fatigue.py` primitive that accepts a per-player `conditioning_curve`
   attribute and modulates accumulation/decay accordingly.
 - Stubs on `Player` model for the new attribute fields (defaults
-  preserve existing behavior — Plan A's tests pass without v2).
+  preserve existing behavior - Plan A's tests pass without v2).
 
 **Outputs:**
-- `PlayerRatings` v2 — adds `catch_courage`, `throw_selection_iq`,
+- `PlayerRatings` v2 - adds `catch_courage`, `throw_selection_iq`,
   `conditioning_curve` alongside the existing
   accuracy/power/dodge/catch/stamina/tactical_iq.
-- Position-aware `PlayerArchetype` — replaces vestigial `TACTICAL`
-  enum with `THROWER`, `CATCHER`, `RETRIEVER`, `DODGER_ANCHOR`, plus
-  documented hybrids (`THROWER_CATCHER`, etc.).
+- Position-aware `PlayerArchetype` - replaces the old V6 enum with
+  `THROWER`, `CATCHER`, `BALL_HAWK`, `DODGER_ANCHOR`, plus documented
+  hybrids (`THROWER_CATCHER`, etc.).
 - Seed/data migration for existing curated rosters: each player gets a
   derived archetype and v2 ratings from existing fields.
 - Tests for each new attribute affecting expected driver behavior
-  (e.g. `catch_courage` increases catch-attempt rate in the rec
-  driver; `conditioning_curve` slows fatigue accumulation).
+  (for example `catch_courage` changes the throw-response branch,
+  `throw_selection_iq` gates smarter throw timing, and
+  `conditioning_curve` changes fatigue accumulation).
 
 **Out of scope for Plan B:**
 - Recruiting / scouting reading the new attributes (Plan C work).
 - Command Center showing the new attributes (Plan C work).
 - AI Program Manager use of attributes (cuttable subsystem #9).
 
-## Plan C stub — Tier 1 player-facing surface
+## Plan C stub - Tier 1 player-facing surface
 
 **Inputs from Plans A + B:**
 - Tier 1 driver emits the six moment events (Plan A defines the
@@ -81,15 +80,15 @@ comes.
 - Tactics policy v2 stub exists; driver consumes new policy shape.
 
 **Outputs:**
-- New `CoachPolicy` v2 — **Approach** (aggressive/patient/mixed),
+- New `CoachPolicy` v2 - **Approach** (aggressive/patient/mixed),
   **Target Focus** (their stars / their ball-holders / spread),
   **Catch Posture** (go / safe / opportunistic), **Opening Rush Plan**
-  (all-in / balanced / hold-back × nearest / strongest-side / center).
+  (all-in / balanced / hold-back x nearest / strongest-side / center).
   Old 8-field model deleted.
 - Command Center wiring: pre-match decision UI with the four knobs.
 - Match Replay UI: surfaces all six moment beats from Plan A's
   emitted events. Speed controls. Rec-league vocabulary at Tier 1.
-- Aftermath voice rewritten — `voice_verdict.py` and
+- Aftermath voice rewritten - `voice_verdict.py` and
   `voice_aftermath.py` reference moment events; rec-league register at
   Tier 1.
 - Playwright e2e for the Tier 1 loop.
@@ -99,7 +98,7 @@ comes.
 - Multi-tier UI vocabulary switching (single rec-league register only).
 - Stats screens redesign (Plan D adjacent).
 
-## Plan D stub — Simulation-health probe
+## Plan D stub - Simulation-health probe
 
 **Inputs from Plans A + B + C:**
 - Both drivers fully working.
@@ -107,14 +106,14 @@ comes.
 - Player attribute model stable.
 
 **Outputs:**
-- New `tools/tier_engine_health_probe.py` — replaces
+- New `tools/tier_engine_health_probe.py` - replaces
   `tools/o1_variance_probe.py`.
 - Per-driver Monte Carlo runner: configurable matchups, N matches,
   seed range.
 - Reports per tier: six-moment occurrence rate, upset frequency
   (OVR-gap vs win-rate curve), outcome variance, match-length
   distribution.
-- CI-runnable smoke mode (fast, ~10 matches) for regressions; full
+- CI-runnable smoke mode (fast, about 10 matches) for regressions; full
   mode for periodic health checks.
 - Deletion of `tools/o1_variance_probe.py` (or graceful redirect).
 
@@ -122,7 +121,7 @@ comes.
 
 ## Out of scope for this whole milestone
 
-These come in **later** sub-projects, not in any of A/B/C/D:
+These come in later sub-projects, not in any of A/B/C/D:
 
 - Tier 2+ rules, drivers, or content.
 - Promotion / relegation system.

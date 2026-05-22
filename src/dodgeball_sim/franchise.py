@@ -328,7 +328,7 @@ def trim_ai_roster_for_offseason(
 
 def _ai_retention_score(player: Player) -> float:
     potential = float(player.traits.potential)
-    overall = player.overall()
+    overall = player.overall_skill()
     if player.age <= 22:
         score = overall * 0.60 + potential * 0.40
     else:

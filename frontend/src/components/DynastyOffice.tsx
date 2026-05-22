@@ -198,6 +198,7 @@ export function DynastyOffice() {
               <div key={staff.department} className="dynasty-staff-row">
                 <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{staff.department.toUpperCase()}</div>
                 <div style={{ fontWeight: 700 }}>{staff.name}</div>
+                <div style={{ fontSize: '0.72rem', color: '#94a3b8', lineHeight: 1.4 }}>{staff.effect_summary}</div>
               </div>
             ))}
             <ActionButton onClick={() => setShowStaffMarket(true)}>Staff Market</ActionButton>

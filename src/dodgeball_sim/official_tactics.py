@@ -71,7 +71,7 @@ def select_target(
     noise = rng.random() * 0.05
     for state in defense_states:
         player = player_lookup[state.player_id]
-        normalized_overall = player.overall() / 100.0
+        normalized_overall = player.overall_skill() / 100.0
         vulnerability = 1.0 - player.ratings.normalized_dodge()
         ball_holder_pressure = (
             (policy.target_ball_holder - 0.5)

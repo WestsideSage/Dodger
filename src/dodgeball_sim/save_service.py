@@ -185,9 +185,17 @@ def build_from_scratch_save(saves_dir: Path, request: dict[str, Any]) -> dict[st
     pool = generate_prospect_pool(2026, DeterministicRNG(12345), DEFAULT_SCOUTING_CONFIG)
     roster_map = {prospect.player_id: prospect for prospect in pool}
     custom_roster = []
+    from .archetype_derivation import derive_archetype
     for player_id in request["roster_player_ids"]:
         if player_id in roster_map:
             prospect = roster_map[player_id]
+            ratings = PlayerRatings(
+                accuracy=prospect.hidden_ratings["accuracy"],
+                power=prospect.hidden_ratings["power"],
+                dodge=prospect.hidden_ratings["dodge"],
+                catch=prospect.hidden_ratings["catch"],
+                stamina=prospect.hidden_ratings["stamina"],
+            ).apply_bounds()
             custom_roster.append(
                 Player(
                     id=prospect.player_id,
@@ -195,13 +203,8 @@ def build_from_scratch_save(saves_dir: Path, request: dict[str, Any]) -> dict[st
                     age=prospect.age,
                     club_id=club_id,
                     newcomer=True,
-                    ratings=PlayerRatings(
-                        accuracy=prospect.hidden_ratings["accuracy"],
-                        power=prospect.hidden_ratings["power"],
-                        dodge=prospect.hidden_ratings["dodge"],
-                        catch=prospect.hidden_ratings["catch"],
-                        stamina=prospect.hidden_ratings["stamina"],
-                    ).apply_bounds(),
+                    ratings=ratings,
+                    archetype=derive_archetype(ratings),
                     traits=PlayerTraits(
                         potential=min(100.0, max(70.0, max(prospect.hidden_ratings.values()) + 8.0)),
                         growth_curve=50.0,

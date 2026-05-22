@@ -10,6 +10,7 @@ from .offseason_ceremony import (
     finalize_season,
     initialize_manager_offseason,
     sign_best_rookie,
+    sign_chosen_rookie,
     stored_root_seed,
 )
 from .offseason_presentation import build_beat_response, load_active_beats
@@ -88,7 +89,9 @@ def advance_offseason_beat_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     return build_beat_response(conn, cursor)
 
 
-def recruit_offseason_payload(conn: sqlite3.Connection) -> dict[str, Any]:
+def recruit_offseason_payload(
+    conn: sqlite3.Connection, prospect_id: str | None = None
+) -> dict[str, Any]:
     cursor = load_career_state_cursor(conn)
     if cursor.state != CareerState.SEASON_COMPLETE_RECRUITMENT_PENDING:
         raise OffseasonError(
@@ -101,7 +104,15 @@ def recruit_offseason_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     if not player_club_id:
         raise OffseasonError("No player club assigned")
 
-    signed = sign_best_rookie(conn, player_club_id, cursor.season_number or 1)
+    season_number = cursor.season_number or 1
+    if prospect_id:
+        signed = sign_chosen_rookie(conn, player_club_id, season_number, prospect_id)
+        if signed is None:
+            raise OffseasonError(
+                "That prospect is no longer available to sign.", status_code=409
+            )
+    else:
+        signed = sign_best_rookie(conn, player_club_id, season_number)
 
     active_beats = load_active_beats(conn)
     recruitment_index = active_beats.index("recruitment")
@@ -118,7 +129,7 @@ def recruit_offseason_payload(conn: sqlite3.Connection) -> dict[str, Any]:
             {
                 "id": signed.id,
                 "name": signed.name,
-                "overall": round(signed.overall(), 1),
+                "overall": round(signed.overall_skill(), 1),
                 "age": signed.age,
             }
             if signed

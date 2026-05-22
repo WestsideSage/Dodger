@@ -1,4 +1,4 @@
-from dodgeball_sim.models import CoachPolicy, Player, PlayerRatings
+from dodgeball_sim.models import CoachPolicy, Player, PlayerRatings, PlayerArchetype
 from dodgeball_sim.official_events import OfficialEventKind
 from dodgeball_sim.official_engine import run_autonomous_game
 from dodgeball_sim.official_stats import derive_box_score
@@ -12,6 +12,7 @@ def _make_team(prefix: str, count: int = 6):
             ratings=PlayerRatings(
                 accuracy=55 + i, power=55 + i, dodge=50, catch=50,
             ),
+            archetype=PlayerArchetype.CATCHER,
         ) for i in range(count)
     }
 
@@ -65,10 +66,12 @@ def test_autonomous_game_higher_ratings_wins_more_often():
     weak = {f"w{i}": Player(
         id=f"w{i}", name=f"w{i}",
         ratings=PlayerRatings(accuracy=20, power=20, dodge=20, catch=20),
+        archetype=PlayerArchetype.CATCHER,
     ) for i in range(6)}
     strong = {f"s{i}": Player(
         id=f"s{i}", name=f"s{i}",
         ratings=PlayerRatings(accuracy=90, power=90, dodge=90, catch=90),
+        archetype=PlayerArchetype.CATCHER,
     ) for i in range(6)}
     lookup = {**weak, **strong}
 

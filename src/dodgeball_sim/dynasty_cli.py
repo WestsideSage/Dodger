@@ -118,10 +118,18 @@ def _clamp(v: float, lo: float, hi: float) -> float:
 def _generate_club_roster(club_id: str, seed: int, count: int = 5) -> List[Player]:
     rng = DeterministicRNG(seed)
     players: List[Player] = []
+    from .archetype_derivation import derive_archetype
     for i in range(count):
         first = _FIRST_NAMES[int(rng.unit() * len(_FIRST_NAMES))]
         last = _LAST_NAMES[int(rng.unit() * len(_LAST_NAMES))]
         age = max(18, min(32, int(rng.gauss(24, 4))))
+        ratings = PlayerRatings(
+            accuracy=_clamp(rng.gauss(65, 12), 30, 95),
+            power=_clamp(rng.gauss(65, 12), 30, 95),
+            dodge=_clamp(rng.gauss(65, 12), 30, 95),
+            catch=_clamp(rng.gauss(65, 12), 30, 95),
+            stamina=_clamp(rng.gauss(60, 10), 35, 95),
+        ).apply_bounds()
         players.append(
             Player(
                 id=f"{club_id}_p{i + 1}",
@@ -129,13 +137,8 @@ def _generate_club_roster(club_id: str, seed: int, count: int = 5) -> List[Playe
                 age=age,
                 club_id=club_id,
                 newcomer=True,
-                ratings=PlayerRatings(
-                    accuracy=_clamp(rng.gauss(65, 12), 30, 95),
-                    power=_clamp(rng.gauss(65, 12), 30, 95),
-                    dodge=_clamp(rng.gauss(65, 12), 30, 95),
-                    catch=_clamp(rng.gauss(65, 12), 30, 95),
-                    stamina=_clamp(rng.gauss(60, 10), 35, 95),
-                ).apply_bounds(),
+                ratings=ratings,
+                archetype=derive_archetype(ratings),
                 traits=PlayerTraits(
                     potential=_clamp(rng.gauss(78, 10), 55, 98),
                     growth_curve=("early", "steady", "late")[int(rng.unit() * 3) % 3],
@@ -253,9 +256,9 @@ def _print_roster(conn: sqlite3.Connection, club: Club, roster: List[Player]) ->
     _print_divider("=")
     print(f"  Roster: {club.name}")
     _print_divider()
-    for player in sorted(roster, key=lambda item: (-item.overall(), item.id)):
+    for player in sorted(roster, key=lambda item: (-item.overall_skill(), item.id)):
         print(
-            f"  {player.id:<22} age={player.age:<2} ovr={player.overall():>5.1f} "
+            f"  {player.id:<22} age={player.age:<2} ovr={player.overall_skill():>5.1f} "
             f"ACC={player.ratings.accuracy:>5.1f} POW={player.ratings.power:>5.1f} "
             f"DOD={player.ratings.dodge:>5.1f} CAT={player.ratings.catch:>5.1f} "
             f"{'rookie' if player.newcomer else ''}"
@@ -270,9 +273,9 @@ def _print_free_agents(players: List[Player]) -> None:
     _print_divider()
     if not players:
         print("  No free agents available.")
-    for player in sorted(players, key=lambda item: (-item.overall(), item.id)):
+    for player in sorted(players, key=lambda item: (-item.overall_skill(), item.id)):
         print(
-            f"  {player.id:<22} age={player.age:<2} ovr={player.overall():>5.1f} "
+            f"  {player.id:<22} age={player.age:<2} ovr={player.overall_skill():>5.1f} "
             f"newcomer={'yes' if player.newcomer else 'no ':<3} name={player.name}"
         )
     _print_divider("=")
@@ -333,7 +336,7 @@ def _print_player_page(
     print(f"  Player Page: {player.name}")
     _print_divider()
     print(f"  Club: {club_name}")
-    print(f"  Age: {player.age}  Overall: {player.overall():.1f}")
+    print(f"  Age: {player.age}  Overall: {player.overall_skill():.1f}")
     if identity:
         print(f"  Nickname: {identity['nickname']}  |  Archetype: {identity['archetype']}")
     print(
@@ -763,7 +766,7 @@ def _print_scouting_board(
     _print_divider()
     if not free_agents:
         print("  No scouted players available.")
-    for player in sorted(free_agents, key=lambda item: (-item.overall(), item.id)):
+    for player in sorted(free_agents, key=lambda item: (-item.overall_skill(), item.id)):
         report = generate_scout_report(
             player,
             budget,
@@ -1009,8 +1012,8 @@ def _pick_cup_winner(
             record.home_club_id if home_score > away_score else record.away_club_id,
             "survivor tiebreak",
         )
-    home_ovr = sum(player.overall() for player in rosters[record.home_club_id])
-    away_ovr = sum(player.overall() for player in rosters[record.away_club_id])
+    home_ovr = sum(player.overall_skill() for player in rosters[record.home_club_id])
+    away_ovr = sum(player.overall_skill() for player in rosters[record.away_club_id])
     if home_ovr != away_ovr:
         return (
             record.home_club_id if home_ovr > away_ovr else record.away_club_id,
@@ -1186,9 +1189,9 @@ def _ensure_offseason_initialized(
             development_rows.append(
                 {
                     "player_id": aged.id,
-                    "before": round(player.overall(), 2),
-                    "after": round(aged.overall(), 2),
-                    "delta": round(aged.overall() - player.overall(), 2),
+                    "before": round(player.overall_skill(), 2),
+                    "after": round(aged.overall_skill(), 2),
+                    "delta": round(aged.overall_skill() - player.overall_skill(), 2),
                 }
             )
             next_roster.append(aged)
@@ -1710,8 +1713,8 @@ def _update_story_and_history(
     for row in cursor.fetchall():
         home_roster = rosters[row["home_club_id"]]
         away_roster = rosters[row["away_club_id"]]
-        home_ovr = sum(player.overall() for player in home_roster) / max(1, len(home_roster))
-        away_ovr = sum(player.overall() for player in away_roster) / max(1, len(away_roster))
+        home_ovr = sum(player.overall_skill() for player in home_roster) / max(1, len(home_roster))
+        away_ovr = sum(player.overall_skill() for player in away_roster) / max(1, len(away_roster))
         winner_id = row["winner_club_id"] or row["home_club_id"]
         loser_id = row["away_club_id"] if winner_id == row["home_club_id"] else row["home_club_id"]
         winner_score = row["home_survivors"] if winner_id == row["home_club_id"] else row["away_survivors"]

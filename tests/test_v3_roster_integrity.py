@@ -6,7 +6,8 @@ from dodgeball_sim.franchise import build_match_team_snapshot, extract_match_sta
 from dodgeball_sim.league import Club
 from dodgeball_sim.lineup import STARTERS_COUNT
 from dodgeball_sim.models import CoachPolicy
-from dodgeball_sim.manager_gui import ManagerModeApp, initialize_manager_career, sign_prospect_to_club
+from dodgeball_sim.career_setup import initialize_manager_career
+from dodgeball_sim.recruitment import sign_prospect_to_club
 from dodgeball_sim.persistence import (
     create_schema,
     fetch_roster_snapshot,
@@ -88,26 +89,3 @@ def test_bench_players_do_not_receive_match_stats():
     }
     assert bench_player_ids
     assert all(player_id not in stats for player_id in bench_player_ids)
-
-
-def test_persisted_roster_snapshot_marks_active_and_bench_players():
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    create_schema(conn)
-    initialize_manager_career(conn, "aurora", root_seed=20260426)
-    prospect = load_prospect_pool(conn, class_year=1)[0]
-    signed = sign_prospect_to_club(conn, prospect, "aurora", season_num=1)
-
-    app = ManagerModeApp.__new__(ManagerModeApp)
-    app.conn = conn
-    app.clubs = load_clubs(conn)
-    app.rosters = load_all_rosters(conn)
-    app.season = load_season(conn, "season_1")
-    match = next(match for match in app.season.scheduled_matches if match.home_club_id == "aurora")
-
-    app._simulate_match_for_schedule_row(match)
-
-    snapshot = fetch_roster_snapshot(conn, match.match_id, "aurora")
-    by_id = {player["id"]: player for player in snapshot}
-    assert len([player for player in snapshot if player["match_role"] == "active"]) == STARTERS_COUNT
-    assert by_id[signed.id]["match_role"] == "bench"

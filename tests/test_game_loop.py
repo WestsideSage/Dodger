@@ -7,7 +7,7 @@ from dodgeball_sim.game_loop import (
     recompute_regular_season_standings,
     simulate_scheduled_match,
 )
-from dodgeball_sim.manager_gui import initialize_manager_career
+from dodgeball_sim.career_setup import initialize_manager_career
 from dodgeball_sim.persistence import (
     create_schema,
     fetch_roster_snapshot,

@@ -57,7 +57,7 @@ def build_ai_weekly_plan(
                 {
                     "id": players_by_id[player_id].id,
                     "name": players_by_id[player_id].name,
-                    "overall": round(players_by_id[player_id].overall(), 1),
+                    "overall": round(players_by_id[player_id].overall_skill(), 1),
                 }
                 for player_id in lineup_ids
                 if player_id in players_by_id

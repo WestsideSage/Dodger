@@ -92,19 +92,22 @@ def test_should_retire_flags_old_declining_veteran():
 
 
 def _baseline_prospect(player_id: str, age: int = 19) -> Player:
+    from dodgeball_sim.archetype_derivation import derive_archetype
+    ratings = PlayerRatings(
+        accuracy=60.0,
+        power=60.0,
+        dodge=60.0,
+        catch=60.0,
+        stamina=60.0,
+    )
     return Player(
         id=player_id,
         name=player_id,
         age=age,
         club_id="aurora",
         newcomer=True,
-        ratings=PlayerRatings(
-            accuracy=60.0,
-            power=60.0,
-            dodge=60.0,
-            catch=60.0,
-            stamina=60.0,
-        ),
+        ratings=ratings,
+        archetype=derive_archetype(ratings),
         traits=PlayerTraits(potential=80.0, growth_curve=50.0, consistency=0.5, pressure=0.5),
     )
 
@@ -152,7 +155,7 @@ def test_trajectory_ordering_in_cumulative_growth():
 
     def cumulative_delta(trajectory: str) -> float:
         end = _develop_for_n_seasons(base, n=6, trajectory=trajectory, root_seed=20260426)
-        return end.overall() - base.overall()
+        return end.overall_skill() - base.overall_skill()
 
     delta_normal = cumulative_delta("NORMAL")
     delta_impact = cumulative_delta("IMPACT")
@@ -173,7 +176,7 @@ def _staff_mod_player() -> Player:
         id="p1",
         name="Test Player",
         age=24,
-        archetype=PlayerArchetype.PRECISION,
+        archetype=PlayerArchetype.THROWER,
         ratings=PlayerRatings(
             accuracy=65.0, power=60.0, dodge=60.0,
             catch=60.0, stamina=60.0, tactical_iq=60.0,
@@ -215,7 +218,7 @@ def test_staff_dev_modifier_positive_raises_ovr():
         staff_development_modifier=max_mod,
     )
 
-    assert result_max.overall() >= result_base.overall()
+    assert result_max.overall_skill() >= result_base.overall_skill()
 
 
 def test_staff_dev_modifier_positive_only():

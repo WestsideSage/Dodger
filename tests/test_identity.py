@@ -17,20 +17,37 @@ from .factories import make_player
 
 def test_classify_archetype_detects_accuracy_driven_clutch_player():
     player = replace(
-        make_player("ace", name="Rhea Mercer", accuracy=92, power=70, dodge=61, catch=63, stamina=66),
+        make_player(
+            "ace",
+            name="Rhea Mercer",
+            accuracy=92,
+            power=90,
+            dodge=61,
+            catch=63,
+            stamina=66,
+        ),
         traits=PlayerTraits(potential=85, growth_curve="steady", consistency=0.61, pressure=0.91),
     )
 
-    assert classify_archetype(player) == "ace sniper"
+    assert classify_archetype(player) == "Thrower"
 
 
 def test_classify_archetype_detects_catch_specialist():
     player = replace(
-        make_player("hawk", name="Noa Barrett", accuracy=62, power=59, dodge=75, catch=94, stamina=64),
+        make_player(
+            "hawk",
+            name="Noa Barrett",
+            accuracy=62,
+            power=59,
+            dodge=75,
+            catch=94,
+            stamina=64,
+            catch_courage=92,
+        ),
         traits=PlayerTraits(potential=80, growth_curve="steady", consistency=0.88, pressure=0.42),
     )
 
-    assert classify_archetype(player) == "ball hawk"
+    assert classify_archetype(player) == "Catcher"
 
 
 def test_generate_nickname_is_seeded_by_caller_rng():
@@ -49,7 +66,17 @@ def test_generate_nickname_is_seeded_by_caller_rng():
 
 def test_build_identity_profile_returns_title_nickname_and_top_attributes():
     player = replace(
-        make_player("anchor", name="Tess Calder", accuracy=71, power=73, dodge=66, catch=78, stamina=91),
+        make_player(
+            "anchor",
+            name="Tess Calder",
+            accuracy=71,
+            power=73,
+            dodge=66,
+            catch=78,
+            stamina=91,
+            catch_courage=82,
+            throw_selection_iq=84,
+        ),
         traits=PlayerTraits(potential=83, growth_curve="steady", consistency=0.7, pressure=0.51),
     )
 
@@ -57,8 +84,8 @@ def test_build_identity_profile_returns_title_nickname_and_top_attributes():
 
     assert profile.player_id == "anchor"
     assert profile.full_name == "Tess Calder"
-    assert profile.archetype == "iron anchor"
-    assert profile.title == "Iron Anchor"
+    assert profile.archetype == "Catcher / Ball Hawk"
+    assert profile.title == "Catcher / Ball Hawk"
     assert profile.strongest_attribute == "Stamina"
     assert profile.secondary_attribute == "Catch"
     assert profile.nickname

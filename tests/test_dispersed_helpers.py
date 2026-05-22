@@ -5,33 +5,13 @@ import pytest
 from dodgeball_sim.awards import SeasonAward
 from dodgeball_sim.career_state import CareerState, CareerStateCursor
 from dodgeball_sim.events import MatchEvent
-from dodgeball_sim.manager_gui import (
-    OFFSEASON_CEREMONY_BEATS,
-    ManagerModeApp,
-    build_offseason_ceremony_beat,
-    build_expansion_club,
-    build_player_profile_details,
-    create_next_manager_season,
-    build_league_leaders,
-    build_schedule_rows,
-    build_wire_items,
-    clamp_offseason_beat_index,
-    generate_expansion_roster,
-    initialize_manager_offseason,
-    update_manager_career_summaries,
-    friendly_match_stats,
-    friendly_preview_text,
-    has_accuracy_reckoning_data,
-    initialize_build_a_club_career,
-    initialize_manager_career,
-    load_offseason_state_rows,
-    replay_event_label,
-    replay_phase_delay,
-    build_recruitment_day_summary,
-    conduct_recruitment_round,
-    format_bulk_sim_digest,
-    sign_prospect_to_club,
-)
+from dodgeball_sim.career_setup import build_expansion_club, generate_expansion_roster, initialize_build_a_club_career, initialize_manager_career
+from dodgeball_sim.dynasty_office import build_player_profile_details, build_league_leaders
+from dodgeball_sim.offseason_ceremony import OFFSEASON_CEREMONY_BEATS, build_offseason_ceremony_beat, create_next_manager_season, clamp_offseason_beat_index, initialize_manager_offseason, update_manager_career_summaries, load_offseason_state_rows
+from dodgeball_sim.recruitment import build_recruitment_day_summary, conduct_recruitment_round, sign_prospect_to_club
+from dodgeball_sim.replay_service import friendly_match_stats, friendly_preview_text, replay_event_label, replay_phase_delay, format_bulk_sim_digest
+from dodgeball_sim.scouting import has_accuracy_reckoning_data
+from dodgeball_sim.view_models import build_schedule_rows, build_wire_items
 from dodgeball_sim.models import Player, PlayerRatings, PlayerTraits
 from dodgeball_sim.persistence import (
     CorruptSaveError,
@@ -104,7 +84,7 @@ def test_build_expansion_club_sanitizes_untrusted_identity_fields():
 
 
 def test_generate_expansion_roster_is_weaker_than_curated_rosters_without_hidden_modifiers():
-    from dodgeball_sim.manager_gui import _club_roster
+    from dodgeball_sim.career_setup import _club_roster
     from dodgeball_sim.rng import derive_seed
     from dodgeball_sim.sample_data import curated_clubs
 
@@ -121,10 +101,10 @@ def test_generate_expansion_roster_is_weaker_than_curated_rosters_without_hidden
     curated_top_six_means = []
     for club in curated_clubs():
         roster = _club_roster(club, derive_seed(root_seed, "roster", club.club_id))
-        curated_top_six_means.append(sum(player.overall() for player in roster[:6]) / 6)
+        curated_top_six_means.append(sum(player.overall_skill() for player in roster[:6]) / 6)
 
     curated_mean = sum(curated_top_six_means) / len(curated_top_six_means)
-    expansion_mean = sum(player.overall() for player in expansion_roster[:6]) / 6
+    expansion_mean = sum(player.overall_skill() for player in expansion_roster[:6]) / 6
 
     assert len(expansion_roster) == 6
     assert 8.0 <= curated_mean - expansion_mean <= 16.0
@@ -246,7 +226,7 @@ def test_forged_offseason_cursor_is_clamped_to_valid_beat():
 
 
 def test_uncertainty_bar_halo_widths():
-    from dodgeball_sim.ui_components import uncertainty_bar_halo_width_for_tier
+    from dodgeball_sim.scouting import uncertainty_bar_halo_width_for_tier
 
     assert uncertainty_bar_halo_width_for_tier("UNKNOWN") == 100
     assert uncertainty_bar_halo_width_for_tier("GLIMPSED") == 30
@@ -262,7 +242,7 @@ def test_build_scout_strip_data_three_scouts():
     from dodgeball_sim.recruitment import generate_prospect_pool
     from dodgeball_sim.rng import DeterministicRNG, derive_seed
     from dodgeball_sim.scouting_center import ScoutAssignment
-    from dodgeball_sim.manager_gui import build_scout_strip_data
+    from dodgeball_sim.scouting import build_scout_strip_data
 
     create_schema(conn)
     seed_default_scouts(conn)
@@ -279,7 +259,7 @@ def test_build_scout_strip_data_three_scouts():
     assert len(cards) == 3
     vera_card = next(card for card in cards if card["scout_id"] == "vera")
     assert vera_card["assignment_player_id"] == "prospect_1_005"
-    assert "Enforcer" in vera_card["specialty_blurb"]
+    assert "Sharpshooter" in vera_card["specialty_blurb"]
     assert vera_card["mode"] == "MANUAL"
 
 
@@ -291,7 +271,7 @@ def test_build_prospect_board_rows_uses_tier_widths():
     from dodgeball_sim.recruitment import generate_prospect_pool
     from dodgeball_sim.rng import DeterministicRNG, derive_seed
     from dodgeball_sim.scouting_center import ScoutingState
-    from dodgeball_sim.manager_gui import build_prospect_board_rows
+    from dodgeball_sim.scouting import build_prospect_board_rows
 
     create_schema(conn)
     rng = DeterministicRNG(derive_seed(20260426, "prospect_gen", "1"))
@@ -321,7 +301,7 @@ def test_build_reveal_ticker_items_chronological():
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     from dodgeball_sim.persistence import append_scouting_domain_event, create_schema
-    from dodgeball_sim.manager_gui import build_reveal_ticker_items
+    from dodgeball_sim.scouting import build_reveal_ticker_items
 
     create_schema(conn)
     append_scouting_domain_event(
@@ -344,7 +324,7 @@ def test_worth_a_look_sort_prioritizes_low_confidence_high_ovr():
     from dodgeball_sim.persistence import create_schema, save_prospect_pool
     from dodgeball_sim.recruitment import generate_prospect_pool
     from dodgeball_sim.rng import DeterministicRNG, derive_seed
-    from dodgeball_sim.manager_gui import build_prospect_board_rows, sort_rows_worth_a_look
+    from dodgeball_sim.scouting import build_prospect_board_rows, sort_rows_worth_a_look
 
     create_schema(conn)
     rng = DeterministicRNG(derive_seed(20260426, "prospect_gen", "1"))
@@ -362,7 +342,7 @@ def test_build_fuzzy_profile_details_unknown_prospect():
     from dodgeball_sim.persistence import create_schema, save_prospect_pool
     from dodgeball_sim.recruitment import generate_prospect_pool
     from dodgeball_sim.rng import DeterministicRNG, derive_seed
-    from dodgeball_sim.manager_gui import build_fuzzy_profile_details
+    from dodgeball_sim.scouting import build_fuzzy_profile_details
 
     create_schema(conn)
     rng = DeterministicRNG(derive_seed(20260426, "prospect_gen", "1"))
@@ -401,7 +381,7 @@ def test_build_fuzzy_profile_details_with_known_ratings_and_revealed_traits():
     from dodgeball_sim.recruitment import generate_prospect_pool
     from dodgeball_sim.rng import DeterministicRNG, derive_seed
     from dodgeball_sim.scouting_center import ScoutingState
-    from dodgeball_sim.manager_gui import build_fuzzy_profile_details
+    from dodgeball_sim.scouting import build_fuzzy_profile_details
 
     create_schema(conn)
     rng = DeterministicRNG(derive_seed(20260426, "prospect_gen", "1"))
@@ -436,7 +416,7 @@ def test_sign_prospect_converts_to_player_and_persists_trajectory():
     create_schema(conn)
     initialize_manager_career(conn, "aurora", root_seed=20260426)
     from dodgeball_sim.persistence import load_all_rosters, load_player_trajectory, load_prospect_pool
-    from dodgeball_sim.manager_gui import sign_prospect_to_club
+    from dodgeball_sim.recruitment import sign_prospect_to_club
 
     target = load_prospect_pool(conn, class_year=1)[0]
     sign_prospect_to_club(conn, prospect=target, club_id="aurora", season_num=1)
@@ -456,7 +436,7 @@ def test_sign_prospect_drops_scouting_state():
     initialize_manager_career(conn, "aurora", root_seed=20260426)
     from dodgeball_sim.persistence import load_prospect_pool, load_scouting_state, save_scouting_state
     from dodgeball_sim.scouting_center import ScoutingState
-    from dodgeball_sim.manager_gui import sign_prospect_to_club
+    from dodgeball_sim.recruitment import sign_prospect_to_club
 
     target = load_prospect_pool(conn, class_year=1)[0]
     save_scouting_state(
@@ -487,7 +467,8 @@ def test_offseason_development_reads_trajectory_for_signed_prospect():
         load_season,
         save_player_trajectory,
     )
-    from dodgeball_sim.manager_gui import initialize_manager_offseason, sign_prospect_to_club
+    from dodgeball_sim.offseason_ceremony import initialize_manager_offseason
+    from dodgeball_sim.recruitment import sign_prospect_to_club
 
     target = load_prospect_pool(conn, class_year=1)[0]
     sign_prospect_to_club(conn, prospect=target, club_id="aurora", season_num=1)
@@ -502,7 +483,7 @@ def test_offseason_development_reads_trajectory_for_signed_prospect():
         root_seed=20260426,
     )
     post = next(player for player in load_all_rosters(conn)["aurora"] if player.id == target.player_id)
-    delta_generational = post.overall() - pre.overall()
+    delta_generational = post.overall_skill() - pre.overall_skill()
 
     conn2 = sqlite3.connect(":memory:")
     conn2.row_factory = sqlite3.Row
@@ -521,7 +502,7 @@ def test_offseason_development_reads_trajectory_for_signed_prospect():
         root_seed=20260426,
     )
     post2 = next(player for player in load_all_rosters(conn2)["aurora"] if player.id == target2.player_id)
-    delta_normal = post2.overall() - pre2.overall()
+    delta_normal = post2.overall_skill() - pre2.overall_skill()
     assert delta_generational > 0
     assert delta_generational > delta_normal
 
@@ -533,7 +514,7 @@ def test_build_trajectory_reveal_sweep_only_includes_verified_axis():
     initialize_manager_career(conn, "aurora", root_seed=20260426)
     from dodgeball_sim.persistence import load_prospect_pool, save_scouting_state
     from dodgeball_sim.scouting_center import ScoutingState
-    from dodgeball_sim.manager_gui import build_trajectory_reveal_sweep
+    from dodgeball_sim.scouting import build_trajectory_reveal_sweep
 
     pool = load_prospect_pool(conn, class_year=1)
     p_verified = pool[0]
@@ -582,7 +563,7 @@ def test_build_accuracy_reckoning_writes_track_records():
         upsert_scout_contribution,
     )
     from dodgeball_sim.scouting_center import ScoutContribution
-    from dodgeball_sim.manager_gui import build_accuracy_reckoning
+    from dodgeball_sim.scouting import build_accuracy_reckoning
 
     target = load_prospect_pool(conn, class_year=1)[0]
     upsert_scout_contribution(
@@ -651,7 +632,7 @@ def test_build_hidden_gem_spotlight_picks_recent_high_ceiling_event():
     create_schema(conn)
     initialize_manager_career(conn, "aurora", root_seed=20260426)
     from dodgeball_sim.persistence import append_scouting_domain_event, load_prospect_pool, save_ceiling_label
-    from dodgeball_sim.manager_gui import build_hidden_gem_spotlight
+    from dodgeball_sim.scouting import build_hidden_gem_spotlight
 
     target = load_prospect_pool(conn, class_year=1)[0]
     save_ceiling_label(conn, target.player_id, "HIGH_CEILING", 8, "bram")
@@ -675,7 +656,7 @@ def test_build_hidden_gem_spotlight_returns_none_without_high_ceiling_events():
     conn.row_factory = sqlite3.Row
     create_schema(conn)
     initialize_manager_career(conn, "aurora", root_seed=20260426)
-    from dodgeball_sim.manager_gui import build_hidden_gem_spotlight
+    from dodgeball_sim.scouting import build_hidden_gem_spotlight
 
     assert build_hidden_gem_spotlight(conn, season=1, class_year=1) is None
 
@@ -685,7 +666,7 @@ def test_build_scouting_alerts_unassigned_scouts():
     conn.row_factory = sqlite3.Row
     create_schema(conn)
     initialize_manager_career(conn, "aurora", root_seed=20260426)
-    from dodgeball_sim.manager_gui import build_scouting_alerts
+    from dodgeball_sim.scouting import build_scouting_alerts
 
     alerts = build_scouting_alerts(conn, season=1, current_week=2, total_weeks=14)
     assert any("3 unassigned" in alert["text"] for alert in alerts)
@@ -698,7 +679,7 @@ def test_build_scouting_alerts_late_season_verified_count():
     initialize_manager_career(conn, "aurora", root_seed=20260426)
     from dodgeball_sim.persistence import load_prospect_pool, save_scouting_state
     from dodgeball_sim.scouting_center import ScoutingState
-    from dodgeball_sim.manager_gui import build_scouting_alerts
+    from dodgeball_sim.scouting import build_scouting_alerts
 
     target = load_prospect_pool(conn, class_year=1)[0]
     save_scouting_state(
@@ -840,6 +821,7 @@ def test_build_league_leaders_uses_persisted_stats():
 
 
 def test_build_player_profile_details_includes_bio_ratings_and_stats():
+    from dodgeball_sim.models import PlayerArchetype
     player = Player(
         id="p1",
         name="Casey Cannon",
@@ -848,6 +830,7 @@ def test_build_player_profile_details_includes_bio_ratings_and_stats():
         age=22,
         club_id="aurora",
         newcomer=False,
+        archetype=PlayerArchetype.THROWER,
     )
 
     details = build_player_profile_details(
@@ -882,10 +865,12 @@ def test_build_player_profile_details_includes_bio_ratings_and_stats():
 
 
 def test_build_player_profile_details_handles_missing_persisted_stats():
+    from dodgeball_sim.models import PlayerArchetype
     player = Player(
         id="p1",
         name="Riley Rookie",
         ratings=PlayerRatings(accuracy=60, power=61, dodge=62, catch=63),
+        archetype=PlayerArchetype.THROWER,
     )
 
     details = build_player_profile_details(player, "Aurora Sentinels")
@@ -1089,7 +1074,6 @@ def test_offseason_champion_beat_prefers_playoff_outcome():
     )
 
     assert "Champion: Lunar Syndicate" in beat.body
-    assert "Champion source: Playoff final" in beat.body
     assert "Runner-up: Aurora Sentinels" in beat.body
 
 
@@ -1106,60 +1090,6 @@ def test_create_next_manager_season_uses_existing_clubs_and_next_id():
     assert season.year == 2027
     assert len(season.scheduled_matches) == 15
     assert {match.season_id for match in season.scheduled_matches} == {"season_2"}
-
-
-def test_playoff_progression_simulates_ai_only_bracket_and_persists_outcome():
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    create_schema(conn)
-    initialize_manager_career(conn, "aurora", root_seed=20260426)
-    app = ManagerModeApp.__new__(ManagerModeApp)
-    app.conn = conn
-    app.clubs = load_clubs(conn)
-    app.rosters = load_all_rosters(conn)
-    app.season = load_season(conn, "season_1")
-
-    strength = {"lunar": 6, "northwood": 5, "harbor": 4, "granite": 3, "solstice": 2, "aurora": 1}
-    for match in app.season.scheduled_matches:
-        home_score = strength[match.home_club_id]
-        away_score = strength[match.away_club_id]
-        winner = match.home_club_id if home_score > away_score else match.away_club_id
-        save_match_result(
-            conn,
-            match_id=match.match_id,
-            season_id=match.season_id,
-            week=match.week,
-            home_club_id=match.home_club_id,
-            away_club_id=match.away_club_id,
-            winner_club_id=winner,
-            home_survivors=home_score,
-            away_survivors=away_score,
-            home_roster_hash="home",
-            away_roster_hash="away",
-            config_version="phase1.v1",
-            ruleset_version="default.v1",
-            meta_patch_id=None,
-            seed=1,
-            event_log_hash="events",
-            final_state_hash="state",
-            engine_match_id=None,
-        )
-    app._recompute_standings()
-
-    app._advance_playoffs_if_needed()
-
-    season = load_season(conn, "season_1")
-    outcome = load_season_outcome(conn, "season_1")
-    assert {match.match_id for match in season.scheduled_matches if "_p_" in match.match_id} == {
-        "season_1_p_r1_m1",
-        "season_1_p_r1_m2",
-        "season_1_p_final",
-    }
-    assert outcome is not None
-    assert outcome.champion_source == "playoff_final"
-    assert outcome.final_match_id == "season_1_p_final"
-
-
 def test_initialize_manager_offseason_develops_rosters_and_creates_rookie_pool():
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
@@ -1168,14 +1098,14 @@ def test_initialize_manager_offseason_develops_rosters_and_creates_rookie_pool()
     clubs = load_clubs(conn)
     rosters = load_all_rosters(conn)
     season = load_season(conn, "season_1")
-    before = {club_id: [player.overall() for player in roster] for club_id, roster in rosters.items()}
+    before = {club_id: [player.overall_skill() for player in roster] for club_id, roster in rosters.items()}
 
     updated = initialize_manager_offseason(conn, season, clubs, rosters, root_seed=20260426)
 
     assert get_state(conn, "offseason_initialized_for") == "season_1"
     assert len(load_free_agents(conn)) == 12
     assert any(
-        updated[club_id][index].overall() != before[club_id][index]
+        updated[club_id][index].overall_skill() != before[club_id][index]
         for club_id in before
         for index in range(min(len(before[club_id]), len(updated[club_id])))
     )
@@ -1208,65 +1138,6 @@ def test_update_manager_career_summaries_rolls_up_finalized_season_stats():
     assert summary["awards_won"] == 1
     assert summary["total_eliminations"] == 7
     assert summary["career_catches"] == 3
-
-
-def test_sign_best_rookie_adds_player_to_user_roster_once():
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    create_schema(conn)
-    initialize_manager_career(conn, "aurora", root_seed=20260426)
-    app = ManagerModeApp.__new__(ManagerModeApp)
-    app.conn = conn
-    app.clubs = load_clubs(conn)
-    app.rosters = load_all_rosters(conn)
-    app.season = load_season(conn, "season_1")
-    app.cursor = CareerStateCursor(
-        state=CareerState.SEASON_COMPLETE_OFFSEASON_BEAT,
-        season_number=1,
-        week=0,
-        offseason_beat_index=5,
-    )
-    app.rosters = initialize_manager_offseason(conn, app.season, app.clubs, app.rosters, root_seed=20260426)
-    before_size = len(app.rosters["aurora"])
-
-    signed = app._sign_best_rookie()
-    second = app._sign_best_rookie()
-
-    assert signed is not None
-    assert second is None
-    assert get_state(conn, "offseason_draft_signed_player_id") == signed.id
-    assert len(load_all_rosters(conn)["aurora"]) == before_size + 1
-    assert all(player.id != signed.id for player in load_free_agents(conn))
-
-
-def test_sign_best_rookie_uses_prospect_pool_when_available():
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    create_schema(conn)
-    initialize_manager_career(conn, "aurora", root_seed=20260426)
-    app = ManagerModeApp.__new__(ManagerModeApp)
-    app.conn = conn
-    app.clubs = load_clubs(conn)
-    app.rosters = load_all_rosters(conn)
-    app.season = load_season(conn, "season_1")
-    app.cursor = CareerStateCursor(
-        state=CareerState.SEASON_COMPLETE_OFFSEASON_BEAT,
-        season_number=1,
-        week=0,
-        offseason_beat_index=5,
-    )
-    app.rosters = initialize_manager_offseason(conn, app.season, app.clubs, app.rosters, root_seed=20260426)
-
-    signed = app._sign_best_rookie()
-
-    from dodgeball_sim.persistence import load_player_trajectory, load_prospect_pool
-
-    assert signed is not None
-    assert signed.id.startswith("prospect_1_")
-    assert load_player_trajectory(conn, signed.id) is not None
-    assert any(prospect.player_id == signed.id for prospect in load_prospect_pool(conn, class_year=1))
-
-
 def test_draft_beat_copy_switches_to_recruitment_when_prospect_pool_exists():
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
@@ -1425,43 +1296,6 @@ def test_conduct_recruitment_round_user_club_not_in_ai_offers():
     )
     offers = load_recruitment_offers(conn, "season_1", 1)
     assert all(offer.club_id != "aurora" for offer in offers)
-
-
-def test_begin_next_season_persists_schedule_and_active_cursor():
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    create_schema(conn)
-    initialize_manager_career(conn, "aurora", root_seed=20260426)
-    app = ManagerModeApp.__new__(ManagerModeApp)
-    app.conn = conn
-    app.clubs = load_clubs(conn)
-    app.rosters = load_all_rosters(conn)
-    app.season = load_season(conn, "season_1")
-    app.cursor = CareerStateCursor(
-        state=CareerState.SEASON_COMPLETE_OFFSEASON_BEAT,
-        season_number=1,
-        week=0,
-        offseason_beat_index=len(OFFSEASON_CEREMONY_BEATS) - 1,
-    )
-    app._load_state = lambda: None
-    app.show_hub = lambda: None
-
-    app._begin_next_season()
-
-    next_season = load_season(conn, "season_2")
-    cursor = load_career_state_cursor(conn)
-    from dodgeball_sim.persistence import load_prospect_pool
-
-    assert get_state(conn, "active_season_id") == "season_2"
-    assert next_season.total_weeks() == 5
-    assert len(next_season.scheduled_matches) == 15
-    assert cursor.state == CareerState.SEASON_ACTIVE_PRE_MATCH
-    assert cursor.season_number == 2
-    assert cursor.week == 1
-    assert len(load_prospect_pool(conn, class_year=2)) > 0
-    assert build_recruitment_day_summary(conn, "season_2", 2, "aurora")["available_prospects"] > 0
-
-
 def test_load_offseason_state_rows_reports_corrupt_json():
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
@@ -1506,38 +1340,6 @@ def test_friendly_match_stats_extracts_in_memory_events():
     assert stats["aurora_captain"].throws_attempted == 1
     assert stats["aurora_captain"].eliminations_by_throw == 1
     assert stats["lunar_anchor"].times_eliminated == 1
-
-
-def test_sim_to_next_user_match_stops_before_user_match(monkeypatch):
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    create_schema(conn)
-    initialize_manager_career(conn, "aurora", root_seed=20260426)
-
-    app = ManagerModeApp.__new__(ManagerModeApp)
-    app.conn = conn
-    app.clubs = load_clubs(conn)
-    app.rosters = load_all_rosters(conn)
-    app.season = load_season(conn, "season_1")
-    from dodgeball_sim.persistence import set_state
-    set_state(conn, "player_club_id", "aurora")
-    app.cursor = CareerStateCursor(state=CareerState.SEASON_ACTIVE_PRE_MATCH, season_number=1, week=1)
-    app._advance_playoffs_if_needed = lambda: None
-    app.show_hub = lambda: None
-
-    infos = []
-    monkeypatch.setattr("dodgeball_sim.manager_gui.messagebox.showinfo", lambda title, message: infos.append((title, message)))
-
-    app._sim_to_next_user_match()
-
-    user_next = app._next_user_match()
-    assert user_next is not None
-    completed = conn.execute("SELECT match_id FROM match_records").fetchall()
-    completed_ids = {row["match_id"] for row in completed}
-    assert user_next.match_id not in completed_ids
-    assert infos
-
-
 def test_format_bulk_sim_digest_includes_standings_notables_and_recruitment_context():
     text = format_bulk_sim_digest(
         matches_simmed=4,
@@ -1557,36 +1359,6 @@ def test_format_bulk_sim_digest_includes_standings_notables_and_recruitment_cont
     assert "Scout reveal pending." in text
     assert "Recruitment day is next." in text
     assert "Play Next Match" in text
-
-
-def test_sim_week_without_user_auto_sim_keeps_user_match_pending(monkeypatch):
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    create_schema(conn)
-    initialize_manager_career(conn, "aurora", root_seed=20260426)
-
-    app = ManagerModeApp.__new__(ManagerModeApp)
-    app.conn = conn
-    app.clubs = load_clubs(conn)
-    app.rosters = load_all_rosters(conn)
-    app.season = load_season(conn, "season_1")
-    from dodgeball_sim.persistence import set_state
-    set_state(conn, "player_club_id", "aurora")
-    app.cursor = CareerStateCursor(state=CareerState.SEASON_ACTIVE_PRE_MATCH, season_number=1, week=1)
-    app._advance_playoffs_if_needed = lambda: None
-    app.show_hub = lambda: None
-
-    monkeypatch.setattr("dodgeball_sim.manager_gui.messagebox.askyesno", lambda *_args, **_kwargs: False)
-    monkeypatch.setattr("dodgeball_sim.manager_gui.messagebox.showinfo", lambda *_args, **_kwargs: None)
-
-    next_user_before = app._next_user_match()
-    assert next_user_before is not None
-    app._sim_week()
-
-    completed_ids = {row["match_id"] for row in conn.execute("SELECT match_id FROM match_records").fetchall()}
-    assert next_user_before.match_id not in completed_ids
-
-
 def test_offseason_records_ratified_beat_renders_persisted_payload():
     import json as _json
     from dodgeball_sim.persistence import set_state

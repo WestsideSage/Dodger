@@ -99,12 +99,12 @@ def test_scout_dataclass_construction():
         scout_id="vera",
         name="Vera Khan",
         base_accuracy=1.05,
-        archetype_affinities=("Enforcer",),
-        archetype_weakness="Escape Artist",
+        archetype_affinities=("Sharpshooter",),
+        archetype_weakness="Hit-and-Run",
         trait_sense="MEDIUM",
     )
     assert scout.scout_id == "vera"
-    assert scout.archetype_affinities == ("Enforcer",)
+    assert scout.archetype_affinities == ("Sharpshooter",)
 
 
 def test_scouting_state_default_unknown():
@@ -128,10 +128,11 @@ def test_default_scout_profiles_three_seeded_distinctly():
     assert ids == ["vera", "bram", "linnea"]
 
     vera, bram, linnea = DEFAULT_SCOUT_PROFILES
-    assert "Enforcer" in vera.archetype_affinities
+    assert "Sharpshooter" in vera.archetype_affinities
     assert vera.trait_sense == "MEDIUM"
     assert "Ball Hawk" in bram.archetype_affinities
     assert bram.trait_sense == "HIGH"
+    assert "Hit-and-Run" in linnea.archetype_affinities
     assert linnea.trait_sense == "LOW"
     assert vera.base_accuracy > bram.base_accuracy
 

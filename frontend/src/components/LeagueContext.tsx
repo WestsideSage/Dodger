@@ -32,6 +32,10 @@ export function Standings() {
 
   const rows = data.standings;
   const leader = rows[0];
+  const displayWeek = Math.min(data.current_week, data.total_weeks);
+  const gamesRemaining = Math.max(0, data.total_weeks - data.current_week + 1);
+  const playoffSpots = data.playoff_spots;
+  const showCutoff = rows.length > playoffSpots;
 
   const handleRowClick = (teamId: string) => {
     window.location.assign(`#?tab=dynasty&subtab=history&team_id=${teamId}`);
@@ -46,6 +50,31 @@ export function Standings() {
           <p className="dm-kicker">League Office</p>
           <h2 className="dm-panel-title">Standings</h2>
         </div>
+
+        {data.total_weeks > 0 && (
+          <div
+            data-testid="standings-context-callout"
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.4rem 1rem',
+              padding: '0.5rem 0.85rem',
+              margin: '0 0 0.75rem',
+              background: '#0a1220',
+              border: '1px solid #1e293b',
+              borderRadius: '4px',
+              fontFamily: 'JetBrains Mono, monospace',
+              fontSize: '0.72rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              color: '#94a3b8',
+            }}
+          >
+            <span>Week {displayWeek} of {data.total_weeks}</span>
+            <span style={{ color: '#f97316', fontWeight: 700 }}>Playoff cutoff · Top {playoffSpots}</span>
+            <span>{gamesRemaining} game{gamesRemaining === 1 ? '' : 's'} remaining</span>
+          </div>
+        )}
 
         <div className="standings-desktop-view standings-table-scroll">
           <table className="dm-table" style={{ width: '100%' }}>
@@ -102,10 +131,12 @@ export function Standings() {
                   <tr
                     key={row.club_id}
                     onClick={() => handleRowClick(row.club_id)}
+                    title={showCutoff && i < playoffSpots ? 'In playoff position' : undefined}
                     style={{
                       cursor: 'pointer',
                       background: row.is_user_club ? 'rgba(34,211,238,0.1)' : undefined,
                       borderLeft: row.is_user_club ? '2px solid #22d3ee' : undefined,
+                      borderBottom: showCutoff && i === playoffSpots - 1 ? '2px solid #f97316' : undefined,
                     }}
                   >
                     <td className="dm-data" style={{ textAlign: 'center', color: '#64748b', width: '2rem' }}>
@@ -155,6 +186,7 @@ export function Standings() {
                   className={`standings-card ${row.is_user_club ? 'is-user-club' : ''}`}
                   onClick={() => handleRowClick(row.club_id)}
                   aria-label={`Open ${row.club_name} history`}
+                  style={showCutoff && i === playoffSpots - 1 ? { borderBottom: '2px solid #f97316' } : undefined}
                 >
                   <div className="standings-card-header">
                     <div>
@@ -172,7 +204,7 @@ export function Standings() {
                     <span>Games back {gamesBack}</span>
                   </div>
                   <div className="standings-card-stats">
-                    <div>
+                    <div title="Total opponents eliminated minus times your players were eliminated across all matches. Used as a tiebreaker.">
                       <span>Diff</span>
                       <strong style={{ color: diffColor }}>{diffSign}{row.elimination_differential}</strong>
                     </div>

@@ -24,6 +24,7 @@ from .persistence import (
     load_awards,
     load_clubs,
     load_department_heads,
+    load_json_state,
     load_free_agents,
     load_player_career_stats,
     load_player_trajectory,
@@ -142,7 +143,7 @@ def _sign_ai_replacements(
     min_size: int = AI_MIN_PLAYABLE_ROSTER_SIZE,
 ) -> List[Player]:
     """Fill depleted AI rosters from a deterministic candidate pool."""
-    remaining = sorted(candidates, key=lambda player: (-player.overall(), player.id))
+    remaining = sorted(candidates, key=lambda player: (-player.overall_skill(), player.id))
     ai_club_ids = sorted(club_id for club_id in clubs if club_id != player_club_id)
     while remaining:
         needy = [
@@ -372,7 +373,7 @@ def initialize_manager_offseason(
                 staff_development_modifier=_staff_dev_modifier if is_player_club else 0.0,
             )
             aged = replace(developed, age=developed.age + 1)
-            delta = round(aged.overall() - player.overall(), 2)
+            delta = round(aged.overall_skill() - player.overall_skill(), 2)
             if should_retire(aged, load_player_career_stats(conn, player.id)):
                 save_retired_player(conn, aged, season.season_id, "age_decline")
                 retirement_rows.append(
@@ -381,7 +382,7 @@ def initialize_manager_offseason(
                         "player_name": aged.name,
                         "club_id": club_id,
                         "age": aged.age,
-                        "overall": round(aged.overall(), 1),
+                        "overall": round(aged.overall_skill(), 1),
                         "reason": "age_decline",
                     }
                 )
@@ -391,8 +392,8 @@ def initialize_manager_offseason(
                     "player_id": aged.id,
                     "player_name": aged.name,
                     "club_id": club_id,
-                    "before": round(player.overall(), 1),
-                    "after": round(aged.overall(), 1),
+                    "before": round(player.overall_skill(), 1),
+                    "after": round(aged.overall_skill(), 1),
                     "delta": delta,
                 }
             )
@@ -445,8 +446,8 @@ def initialize_manager_offseason(
     build_rookie_class_preview(conn, season.season_id, next_class_year)
     # Compute and store the active beat list for this offseason
     active_beats = compute_active_beats(
-        records_payload_json=get_state(conn, "offseason_records_json"),
-        hof_payload_json=get_state(conn, "offseason_hof_json"),
+        records_payload_json=get_state(conn, "offseason_records_ratified_json"),
+        hof_payload_json=get_state(conn, "offseason_hof_inducted_json"),
         retirement_rows=retirement_rows,
     )
     set_state(conn, "offseason_active_beats_json", json.dumps(active_beats))
@@ -455,40 +456,80 @@ def initialize_manager_offseason(
     return updated_rosters
 
 
-def sign_best_rookie(
-    conn: sqlite3.Connection,
-    player_club_id: str,
-    season_number: int,
-) -> Optional[Player]:
-    """Sign the highest-rated available prospect or free agent to the player's club."""
-    class_year = season_number or 1
-    available_prospects = [
+def _available_prospect_players(conn: sqlite3.Connection, class_year: int) -> list:
+    """Prospects in the class pool that have not been signed yet."""
+    return [
         prospect
         for prospect in load_prospect_pool(conn, class_year=class_year)
         if not _is_already_signed(conn, class_year, prospect.player_id)
     ]
-    if available_prospects:
-        selected_prospect = sorted(
-            available_prospects,
-            key=lambda prospect: (-prospect.true_overall(), prospect.player_id),
-        )[0]
-        signed_prospect = sign_prospect_to_club(conn, selected_prospect, player_club_id, class_year)
-        rosters = load_all_rosters(conn)
-        set_state(conn, "offseason_draft_signed_player_id", signed_prospect.id)
-        roster = list(rosters.get(player_club_id, []))
-        other_ids = [p.id for p in roster if p.id != signed_prospect.id]
-        # Insert recruit at slot 6 (index 5) so they're an active starter, not bench
-        lineup_ids = other_ids[:5] + [signed_prospect.id] + other_ids[5:]
-        save_lineup_default(conn, player_club_id, lineup_ids)
-        conn.commit()
-        return signed_prospect
-    free_agents = load_free_agents(conn)
-    if not free_agents:
-        conn.commit()
-        return None
-    selected = sorted(free_agents, key=lambda player: (-player.overall(), player.id))[0]
-    remaining = [player for player in free_agents if player.id != selected.id]
-    signed = replace(selected, club_id=player_club_id, newcomer=True)
+
+
+def available_recruitment_choices(
+    conn: sqlite3.Connection, season_number: int
+) -> list[dict[str, Any]]:
+    """Every prospect and free agent the player may sign this offseason.
+
+    Prospects are listed first (highest rated first), then free agents.
+    """
+    class_year = season_number or 1
+    choices: list[dict[str, Any]] = []
+    for prospect in sorted(
+        _available_prospect_players(conn, class_year),
+        key=lambda p: (-p.true_overall(), p.player_id),
+    ):
+        choices.append(
+            {
+                "prospect_id": prospect.player_id,
+                "name": prospect.name,
+                "overall": round(prospect.true_overall(), 1),
+                "age": prospect.age,
+                "hometown": prospect.hometown,
+                "archetype": prospect.public_archetype_guess,
+                "kind": "prospect",
+            }
+        )
+    for free_agent in sorted(
+        load_free_agents(conn), key=lambda p: (-p.overall_skill(), p.id)
+    ):
+        choices.append(
+            {
+                "prospect_id": free_agent.id,
+                "name": free_agent.name,
+                "overall": round(free_agent.overall_skill(), 1),
+                "age": free_agent.age,
+                "hometown": "Free agent",
+                "archetype": free_agent.archetype.display_name,
+                "kind": "free_agent",
+            }
+        )
+    return choices
+
+
+def _commit_prospect_signing(
+    conn: sqlite3.Connection, prospect, player_club_id: str, class_year: int
+) -> Player:
+    signed_prospect = sign_prospect_to_club(conn, prospect, player_club_id, class_year)
+    rosters = load_all_rosters(conn)
+    set_state(conn, "offseason_draft_signed_player_id", signed_prospect.id)
+    roster = list(rosters.get(player_club_id, []))
+    other_ids = [p.id for p in roster if p.id != signed_prospect.id]
+    # Insert recruit at slot 6 (index 5) so they're an active starter, not bench
+    lineup_ids = other_ids[:5] + [signed_prospect.id] + other_ids[5:]
+    save_lineup_default(conn, player_club_id, lineup_ids)
+    conn.commit()
+    return signed_prospect
+
+
+def _commit_free_agent_signing(
+    conn: sqlite3.Connection,
+    free_agent: Player,
+    free_agents: list[Player],
+    player_club_id: str,
+    season_number: int,
+) -> Player:
+    remaining = [player for player in free_agents if player.id != free_agent.id]
+    signed = replace(free_agent, club_id=player_club_id, newcomer=True)
     rosters = load_all_rosters(conn)
     roster = list(rosters.get(player_club_id, []))
     roster.append(signed)
@@ -502,6 +543,60 @@ def sign_best_rookie(
     set_state(conn, "offseason_draft_signed_player_id", signed.id)
     conn.commit()
     return signed
+
+
+def sign_chosen_rookie(
+    conn: sqlite3.Connection,
+    player_club_id: str,
+    season_number: int,
+    prospect_id: str,
+) -> Optional[Player]:
+    """Sign a specific prospect or free agent chosen by the player.
+
+    Returns ``None`` when ``prospect_id`` matches no available signee.
+    """
+    class_year = season_number or 1
+    chosen = next(
+        (
+            prospect
+            for prospect in _available_prospect_players(conn, class_year)
+            if prospect.player_id == prospect_id
+        ),
+        None,
+    )
+    if chosen is not None:
+        return _commit_prospect_signing(conn, chosen, player_club_id, class_year)
+    free_agents = load_free_agents(conn)
+    chosen_fa = next((p for p in free_agents if p.id == prospect_id), None)
+    if chosen_fa is None:
+        return None
+    return _commit_free_agent_signing(
+        conn, chosen_fa, free_agents, player_club_id, season_number
+    )
+
+
+def sign_best_rookie(
+    conn: sqlite3.Connection,
+    player_club_id: str,
+    season_number: int,
+) -> Optional[Player]:
+    """Sign the highest-rated available prospect or free agent to the player's club."""
+    class_year = season_number or 1
+    available_prospects = _available_prospect_players(conn, class_year)
+    if available_prospects:
+        selected_prospect = sorted(
+            available_prospects,
+            key=lambda prospect: (-prospect.true_overall(), prospect.player_id),
+        )[0]
+        return _commit_prospect_signing(conn, selected_prospect, player_club_id, class_year)
+    free_agents = load_free_agents(conn)
+    if not free_agents:
+        conn.commit()
+        return None
+    selected = sorted(free_agents, key=lambda player: (-player.overall_skill(), player.id))[0]
+    return _commit_free_agent_signing(
+        conn, selected, free_agents, player_club_id, season_number
+    )
 
 
 def begin_next_season(
@@ -758,7 +853,7 @@ def build_offseason_ceremony_beat(
             lines.append(f"Signed this recruitment: {int(summary.get('signed_count', 0))}")
             lines.append(f"Snipes recorded: {int(summary.get('sniped_count', 0))}")
             if signed is not None:
-                lines.append(f"Your latest signing: {signed.name} ({signed.overall():.1f} OVR)")
+                lines.append(f"Your latest signing: {signed.name} ({signed.overall_skill():.1f} OVR)")
             lines.append("")
             lines.append("Current roster sizes:")
             for club_id, size in roster_sizes:
@@ -766,11 +861,11 @@ def build_offseason_ceremony_beat(
             return OffseasonCeremonyBeat(key, "Recruitment Day", "\n".join(lines))
         lines = ["v1 Draft is active: sign one rookie into your roster before beginning next season."]
         if signed is not None:
-            lines.append(f"Signed rookie: {signed.name} ({signed.overall():.1f} OVR)")
+            lines.append(f"Signed rookie: {signed.name} ({signed.overall_skill():.1f} OVR)")
         else:
             lines.append(f"Available rookies: {len(rookies)}")
-            for player in sorted(rookies, key=lambda item: (-item.overall(), item.id))[:5]:
-                lines.append(f"  {player.name}: OVR {player.overall():.1f} age {player.age}")
+            for player in sorted(rookies, key=lambda item: (-item.overall_skill(), item.id))[:5]:
+                lines.append(f"  {player.name}: OVR {player.overall_skill():.1f} age {player.age}")
         lines.append("")
         lines.append("Current roster sizes:")
         for club_id, size in roster_sizes:
@@ -801,8 +896,32 @@ __all__ = [
     "finalize_season",
     "initialize_manager_offseason",
     "sign_best_rookie",
+    "sign_chosen_rookie",
+    "available_recruitment_choices",
     "begin_next_season",
     "build_offseason_ceremony_beat",
     "create_next_manager_season",
     "apply_scouting_carry_forward",
 ]
+
+
+# ----------------------------------------------------------------------
+# Offseason state row loader (formerly manager_helpers)
+# ----------------------------------------------------------------------
+
+def load_offseason_state_rows(conn: sqlite3.Connection, key: str) -> List[Mapping[str, Any]]:
+    payload = load_json_state(conn, key, [])
+    if not isinstance(payload, list):
+        raise CorruptSaveError(f"Corrupt JSON for state {key}: expected list")
+    return payload
+
+
+
+# Public aliases for legacy names that moved here from the Tk-era manager_gui.
+apply_scouting_carry_forward_at_transition = apply_scouting_carry_forward
+career_rows_for_player = _career_rows_for_player
+
+
+def update_manager_career_summaries(conn, season, rosters, awards):
+    """Legacy 4-arg wrapper. The canonical 3-arg form is ``_update_career_summaries``."""
+    _update_career_summaries(conn, rosters, awards)

@@ -16,14 +16,35 @@ STARTERS_COUNT = 6
 
 _ROLE_NAMES = ["Captain", "Striker", "Anchor", "Runner", "Rookie", "Utility"]
 
-_ROLE_LIABILITIES = {
-    0: {PlayerArchetype.POWER},
-    1: {PlayerArchetype.DEFENSE},
-    2: {PlayerArchetype.AGILITY},
-    3: {PlayerArchetype.POWER},
-    4: set(),
-    5: set(),
+COURT_SLOT_PREFERENCES: dict[int, set[PlayerArchetype]] = {
+    0: {PlayerArchetype.DODGER_ANCHOR, PlayerArchetype.CATCHER},
+    1: {PlayerArchetype.DODGER_ANCHOR, PlayerArchetype.BALL_HAWK},
+    2: {PlayerArchetype.THROWER, PlayerArchetype.BALL_HAWK},
+    3: {PlayerArchetype.THROWER, PlayerArchetype.CATCHER},
 }
+
+_HYBRID_DECOMPOSITION: dict[PlayerArchetype, tuple[PlayerArchetype, PlayerArchetype]] = {
+    PlayerArchetype.THROWER_CATCHER: (PlayerArchetype.THROWER, PlayerArchetype.CATCHER),
+    PlayerArchetype.THROWER_DODGER: (PlayerArchetype.THROWER, PlayerArchetype.DODGER_ANCHOR),
+    PlayerArchetype.CATCHER_HAWK: (PlayerArchetype.CATCHER, PlayerArchetype.BALL_HAWK),
+    PlayerArchetype.HAWK_DODGER: (PlayerArchetype.BALL_HAWK, PlayerArchetype.DODGER_ANCHOR),
+}
+
+
+def slot_accepts(archetype: PlayerArchetype, slot_prefs: set[PlayerArchetype]) -> bool:
+    if archetype in slot_prefs:
+        return True
+    if archetype in _HYBRID_DECOMPOSITION:
+        primary, secondary = _HYBRID_DECOMPOSITION[archetype]
+        return primary in slot_prefs or secondary in slot_prefs
+    return False
+
+
+_ROLE_LIABILITIES = {
+    slot: {archetype for archetype in PlayerArchetype if not slot_accepts(archetype, prefs)}
+    for slot, prefs in COURT_SLOT_PREFERENCES.items()
+}
+
 
 def check_lineup_liabilities(roster: Sequence[Player], lineup_ids: Sequence[str]) -> List[str]:
     players_by_id = {player.id: player for player in roster}
@@ -31,43 +52,48 @@ def check_lineup_liabilities(roster: Sequence[Player], lineup_ids: Sequence[str]
     warnings = []
     for idx, player in enumerate(starters):
         role_name = _ROLE_NAMES[idx] if idx < len(_ROLE_NAMES) else "Utility"
-        liabilities = _ROLE_LIABILITIES.get(idx, set())
-        if player.archetype in liabilities:
+        prefs = COURT_SLOT_PREFERENCES.get(idx, set())
+        if prefs and not slot_accepts(player.archetype, prefs):
             warnings.append(f"{player.name} is a mismatched {role_name}: lacks appropriate archetype.")
     return warnings
+
 
 def is_liability(team_players: Sequence[Player], player: Player) -> bool:
     try:
         idx = list(team_players).index(player)
-        return player.archetype in _ROLE_LIABILITIES.get(idx, set())
+        prefs = COURT_SLOT_PREFERENCES.get(idx, set())
+        return bool(prefs) and not slot_accepts(player.archetype, prefs)
     except ValueError:
         return False
 
+
 def optimize_ai_lineup(roster: Sequence[Player]) -> List[str]:
     """Greedy heuristic: assign highest OVR players to non-liability slots."""
-    sorted_roster = sorted(roster, key=lambda p: -p.overall())
+    sorted_roster = sorted(roster, key=lambda p: -p.overall_skill())
     lineup: List[Player | None] = [None] * STARTERS_COUNT
     remaining = list(sorted_roster)
 
     for i in range(STARTERS_COUNT):
-        liabilities = _ROLE_LIABILITIES.get(i, set())
-        for p in remaining:
-            if p.archetype not in liabilities:
-                lineup[i] = p
-                remaining.remove(p)
+        prefs = COURT_SLOT_PREFERENCES.get(i, set())
+        for player in remaining:
+            if not prefs or slot_accepts(player.archetype, prefs):
+                lineup[i] = player
+                remaining.remove(player)
                 break
 
     for i in range(STARTERS_COUNT):
         if lineup[i] is None and remaining:
             lineup[i] = remaining.pop(0)
 
-    final_ids = [p.id for p in lineup if p is not None]
-    final_ids.extend(p.id for p in remaining)
+    final_ids = [player.id for player in lineup if player is not None]
+    final_ids.extend(player.id for player in remaining)
     return final_ids
+
 
 @dataclass(frozen=True)
 class ResolvedLineup:
     """Lineup with diagnostics about IDs dropped during resolution."""
+
     lineup: List[str]
     dropped_ids: List[str]
 
@@ -109,7 +135,7 @@ class LineupResolver:
                 dropped.append(player_id)
 
         remaining = [player for player in roster if player.id not in seen]
-        remaining.sort(key=lambda player: (-player.overall(), player.id))
+        remaining.sort(key=lambda player: (-player.overall_skill(), player.id))
         kept.extend(player.id for player in remaining)
 
         return ResolvedLineup(lineup=kept, dropped_ids=dropped)
@@ -119,4 +145,13 @@ class LineupResolver:
         return list(resolved_lineup[:STARTERS_COUNT])
 
 
-__all__ = ["STARTERS_COUNT", "LineupResolver", "ResolvedLineup", "check_lineup_liabilities", "is_liability", "optimize_ai_lineup"]
+__all__ = [
+    "COURT_SLOT_PREFERENCES",
+    "STARTERS_COUNT",
+    "LineupResolver",
+    "ResolvedLineup",
+    "check_lineup_liabilities",
+    "is_liability",
+    "optimize_ai_lineup",
+    "slot_accepts",
+]
