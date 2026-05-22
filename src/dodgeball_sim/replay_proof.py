@@ -4,6 +4,7 @@ from typing import Any, Mapping, Sequence
 
 from .copy_quality import title_label
 from .lineup import _ROLE_LIABILITIES, _ROLE_NAMES
+from .models import PlayerArchetype
 
 
 ThrowEvent = Mapping[str, Any]
@@ -147,11 +148,11 @@ def build_evidence_report(
 
     lanes = [
         {
-            "title": "Result proof",
+            "title": "Match Replay Verified",
             "summary": _result_summary(home_survivors, away_survivors),
             "items": [
                 first_key["summary"] if first_key else "No key throw event was recorded before the final result.",
-                f"{len(proof_events)} throw events were derived from the saved event log.",
+                f"Reconstructed from {len(proof_events)} throws of game tape.",
             ],
         },
         {
@@ -363,15 +364,24 @@ def _liability_map(roster_snapshots: Mapping[str, Sequence[Mapping[str, Any]]]) 
     for players in roster_snapshots.values():
         active = [player for player in players if player.get("match_role") == "active"]
         for index, player in enumerate(active):
-            archetype = str(player.get("archetype", ""))
+            raw_archetype = str(player.get("archetype", ""))
+            archetype_value, archetype_label = _archetype_value_and_label(raw_archetype)
             role_name = _ROLE_NAMES[index] if index < len(_ROLE_NAMES) else "Utility"
             disallowed = {item.value for item in _ROLE_LIABILITIES.get(index, set())}
             liabilities[str(player.get("id", ""))] = {
                 "role_name": role_name,
-                "archetype": archetype,
-                "is_liability": archetype in disallowed,
+                "archetype": archetype_label,
+                "is_liability": archetype_value in disallowed,
             }
     return liabilities
+
+
+def _archetype_value_and_label(raw_archetype: str) -> tuple[str, str]:
+    candidate = str(raw_archetype).strip()
+    for archetype in PlayerArchetype:
+        if candidate in {archetype.value, archetype.display_name}:
+            return archetype.value, archetype.display_name
+    return candidate, candidate
 
 
 def _player_club_map(roster_snapshots: Mapping[str, Sequence[Mapping[str, Any]]]) -> dict[str, str]:

@@ -52,12 +52,12 @@ def _throw_event(resolution: str, *, player_out: dict | None = None) -> dict:
 def _snapshots() -> dict:
     return {
         "home": [
-            {"id": "home_1", "name": "Power Captain", "archetype": "Power", "match_role": "active"},
-            {"id": "home_2", "name": "Home Two", "archetype": "Precision", "match_role": "active"},
+            {"id": "home_1", "name": "Power Captain", "archetype": "thrower", "match_role": "active"},
+            {"id": "home_2", "name": "Home Two", "archetype": "catcher", "match_role": "active"},
         ],
         "away": [
-            {"id": "away_1", "name": "Away Target", "archetype": "Defense", "match_role": "active"},
-            {"id": "away_2", "name": "Away Two", "archetype": "Precision", "match_role": "active"},
+            {"id": "away_1", "name": "Away Target", "archetype": "catcher", "match_role": "active"},
+            {"id": "away_2", "name": "Away Two", "archetype": "thrower", "match_role": "active"},
         ],
     }
 
@@ -107,7 +107,7 @@ def test_replay_proof_uses_narrative_pack_language_for_saved_context():
     assert any("synchronized attack triggered" in item.lower() for item in event["tactic_context"]["items"])
     assert any("High fatigue" in item for item in event["fatigue"]["items"])
     assert event["liability_context"]["items"] == [
-        "Thrower suffered a liability penalty as a mismatched Captain (Power archetype)."
+        "Thrower suffered a liability penalty as a mismatched Captain (Thrower archetype)."
     ]
 
 
@@ -127,3 +127,21 @@ def test_replay_proof_does_not_invent_missing_evidence():
     assert lanes["Tactics proof"]["items"] == ["No saved tactic context was present on throw events."]
     assert lanes["Liability proof"]["items"] == ["No lineup liability appeared in the saved throw evidence."]
     assert lanes["Command plan"]["items"] == ["Neutral or direct simulations do not claim department-order effects."]
+
+
+def test_proof_copy_is_player_facing():
+    """Audit 7.8: 'derived from the saved event log' must not leak to UI."""
+    event = _throw_event("hit")
+    proof = build_replay_proof(
+        [event],
+        name_map={"home_1": "Power Captain", "away_1": "Away Target", "away_2": "Away Two"},
+        roster_snapshots=_snapshots(),
+        home_club_id="home",
+        away_club_id="away",
+    )
+    lanes = {lane["title"]: lane for lane in proof["evidence_report"]["evidence_lanes"]}
+    assert "Result proof" not in lanes
+    assert "Match Replay Verified" in lanes
+    rendered = " ".join(lanes["Match Replay Verified"]["items"])
+    assert "derived from the saved event log" not in rendered
+    assert "Reconstructed from 1 throws of game tape." in rendered
