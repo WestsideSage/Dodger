@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { SaveInfo, SaveListResponse, ClubOption } from '../types';
 import { IdentityStep } from './new-game/IdentityStep';
 import { CoachStep } from './new-game/CoachStep';
@@ -14,6 +14,11 @@ type View = 'list' | 'new' | 'takeover' | 'build_identity' | 'build_coach' | 'bu
 export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
   const [view, setView] = useState<View>('list');
   const [saves, setSaves] = useState<SaveInfo[]>([]);
+  const [showDebugSaves, setShowDebugSaves] = useState(false);
+  const visibleSaves = useMemo(
+    () => showDebugSaves ? saves : saves.filter(s => !s.name.startsWith('qa-playthrough-')),
+    [saves, showDebugSaves]
+  );
   const [activePath, setActivePath] = useState<string | null>(null);
   const [clubs, setClubs] = useState<ClubOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -234,11 +239,24 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
 
             {view === 'list' && (
               <div data-testid="save-list">
+                {!loading && saves.some(s => s.name.startsWith('qa-playthrough-')) && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
+                    <label style={{ fontSize: '0.75rem', opacity: 0.7, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={showDebugSaves}
+                        onChange={e => setShowDebugSaves(e.target.checked)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      Show debug saves
+                    </label>
+                  </div>
+                )}
                 {loading ? (
                   <p style={{ padding: '1.5rem 0', textAlign: 'center', fontSize: '0.875rem', color: '#64748b' }}>
                     Loading saves…
                   </p>
-                ) : saves.length === 0 ? (
+                ) : visibleSaves.length === 0 ? (
                   <div style={{ padding: '2rem 0', textAlign: 'center' }}>
                     <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1rem' }}>No saves found.</p>
                     <button
@@ -261,7 +279,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                   </div>
                 ) : (
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                    {saves.map((save) => (
+                    {visibleSaves.map((save) => (
                       <li
                         key={save.path}
                         data-testid="save-item"
