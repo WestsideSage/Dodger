@@ -25,6 +25,62 @@ _TRAJECTORY_POTENTIAL_FLOOR = {
     "GENERATIONAL": 96.0,
 }
 
+_BASE_PRIMARY_STATS: dict[PlayerArchetype, tuple[str, ...]] = {
+    PlayerArchetype.THROWER: ("accuracy", "power"),
+    PlayerArchetype.CATCHER: ("catch", "catch_courage"),
+    PlayerArchetype.BALL_HAWK: ("stamina", "throw_selection_iq"),
+    PlayerArchetype.DODGER_ANCHOR: ("dodge", "tactical_iq"),
+}
+
+_HYBRID_DECOMPOSITION: dict[PlayerArchetype, tuple[PlayerArchetype, PlayerArchetype]] = {
+    PlayerArchetype.THROWER_CATCHER: (PlayerArchetype.THROWER, PlayerArchetype.CATCHER),
+    PlayerArchetype.THROWER_DODGER: (PlayerArchetype.THROWER, PlayerArchetype.DODGER_ANCHOR),
+    PlayerArchetype.CATCHER_HAWK: (PlayerArchetype.CATCHER, PlayerArchetype.BALL_HAWK),
+    PlayerArchetype.HAWK_DODGER: (PlayerArchetype.BALL_HAWK, PlayerArchetype.DODGER_ANCHOR),
+}
+
+_PRIMARY_WEIGHT = 0.6
+_SECONDARY_WEIGHT = 0.4
+
+
+def _primary_stats_for_archetype(
+    archetype: PlayerArchetype, ratings: PlayerRatings | None = None
+) -> tuple[tuple[str, float], ...]:
+    if archetype in _BASE_PRIMARY_STATS:
+        return tuple((stat, 1.0) for stat in _BASE_PRIMARY_STATS[archetype])
+    if archetype in _HYBRID_DECOMPOSITION:
+        if ratings is not None:
+            base1, base2 = _HYBRID_DECOMPOSITION[archetype]
+            def get_base_score(base_arc: PlayerArchetype) -> float:
+                if base_arc == PlayerArchetype.THROWER:
+                    return ratings.accuracy + ratings.power
+                if base_arc == PlayerArchetype.CATCHER:
+                    return ratings.catch + ratings.catch_courage
+                if base_arc == PlayerArchetype.BALL_HAWK:
+                    return ratings.stamina + ratings.throw_selection_iq
+                if base_arc == PlayerArchetype.DODGER_ANCHOR:
+                    return ratings.dodge + ratings.tactical_iq
+                return 0.0
+
+            score1 = get_base_score(base1)
+            score2 = get_base_score(base2)
+            if score1 > score2:
+                primary, secondary = base1, base2
+            elif score2 > score1:
+                primary, secondary = base2, base1
+            else:
+                if base1.name < base2.name:
+                    primary, secondary = base1, base2
+                else:
+                    primary, secondary = base2, base1
+        else:
+            primary, secondary = _HYBRID_DECOMPOSITION[archetype]
+        return (
+            tuple((stat, _PRIMARY_WEIGHT) for stat in _BASE_PRIMARY_STATS[primary])
+            + tuple((stat, _SECONDARY_WEIGHT) for stat in _BASE_PRIMARY_STATS[secondary])
+        )
+    raise ValueError(f"No primary-stat mapping for archetype {archetype!r}")
+
 
 def apply_season_development(
     player: Player,
@@ -64,6 +120,9 @@ def apply_season_development(
         "catch": 1.0,
         "stamina": 1.0,
         "tactical_iq": 1.0,
+        "catch_courage": 1.0,
+        "throw_selection_iq": 1.0,
+        "conditioning_curve": 1.0,
     }
     
     dev_focus = dev_focus.upper()
@@ -88,22 +147,12 @@ def apply_season_development(
     effective_staff_modifier = max(0.0, staff_development_modifier)
     pool = pool * (1.0 + effective_staff_modifier)
     
-    primary_stats = []
-    if player.archetype == PlayerArchetype.POWER:
-        primary_stats = ["power", "stamina"]
-    elif player.archetype == PlayerArchetype.AGILITY:
-        primary_stats = ["dodge", "stamina", "catch"]
-    elif player.archetype == PlayerArchetype.PRECISION:
-        primary_stats = ["accuracy", "tactical_iq"]
-    elif player.archetype == PlayerArchetype.DEFENSE:
-        primary_stats = ["catch", "dodge", "tactical_iq"]
-    else: # TACTICAL
-        primary_stats = ["tactical_iq", "accuracy", "dodge"]
-
-    base_weight = 0.4 / 6.0
+    primary_stats = _primary_stats_for_archetype(player.archetype, player.ratings)
+    total_primary_weight = sum(weight for _, weight in primary_stats)
+    base_weight = 0.4 / len(multipliers)
     weights = {s: base_weight for s in multipliers}
-    for s in primary_stats:
-        weights[s] += 0.6 / len(primary_stats)
+    for stat_name, stat_weight in primary_stats:
+        weights[stat_name] += 0.6 * (stat_weight / max(total_primary_weight, 1e-9))
 
     ratings = player.ratings
     deltas = {}
@@ -128,6 +177,9 @@ def apply_season_development(
         catch=_apply_delta(ratings.catch, deltas["catch"], potential),
         stamina=_apply_delta(ratings.stamina, deltas["stamina"], potential),
         tactical_iq=_apply_delta(ratings.tactical_iq, deltas["tactical_iq"], potential),
+        catch_courage=_apply_delta(ratings.catch_courage, deltas["catch_courage"], potential),
+        throw_selection_iq=_apply_delta(ratings.throw_selection_iq, deltas["throw_selection_iq"], potential),
+        conditioning_curve=_apply_delta(ratings.conditioning_curve, deltas["conditioning_curve"], potential),
     ).apply_bounds()
     
     return replace(player, ratings=next_ratings, newcomer=False)
@@ -138,7 +190,7 @@ def should_retire(player: Player, career_stats: Mapping[str, float] | None) -> b
     stats = dict(career_stats or {})
     seasons_played = int(stats.get("seasons_played", 0))
     recent_eliminations = float(stats.get("recent_eliminations", stats.get("total_eliminations", 0.0)))
-    overall = player.overall()
+    overall = player.overall_skill()
 
     if player.age >= 40:
         return True
@@ -237,13 +289,16 @@ def _clamp(value: float, low: float, high: float) -> float:
 def calculate_potential_tier(potential: float) -> str:
     if potential >= 90:
         return "Elite"
-    if potential >= 80:
+    if potential >= 82:
         return "High"
-    if potential >= 65:
-        return "Solid"
-    return "Limited"
+    if potential >= 72:
+        return "Mid"
+    if potential >= 62:
+        return "Low"
+    return "Raw"
 
 __all__ = [
+    "_primary_stats_for_archetype",
     "apply_season_development",
     "calculate_potential_tier",
     "fatigue_consistency_modifier",

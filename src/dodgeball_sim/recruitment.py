@@ -3,10 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 import sqlite3
 
+from .archetype_derivation import derive_archetype
 from .config import ScoutingBalanceConfig
-from .models import Player, PlayerRatings, PlayerTraits
+from .models import Player, PlayerArchetype, PlayerRatings, PlayerTraits
 from .rng import DeterministicRNG
 from .scouting_center import Prospect, Trajectory
+from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -78,6 +82,25 @@ _LAST_NAMES = (
 )
 _GROWTH_CURVES = ("early", "steady", "late")
 
+_RECRUITMENT_DISPLAY_NAMES: dict[PlayerArchetype, str] = {
+    PlayerArchetype.THROWER: "Sharpshooter",
+    PlayerArchetype.CATCHER: "Net Specialist",
+    PlayerArchetype.BALL_HAWK: "Ball Hawk",
+    PlayerArchetype.DODGER_ANCHOR: "Iron Anchor",
+    PlayerArchetype.THROWER_CATCHER: "Two-Way Threat",
+    PlayerArchetype.THROWER_DODGER: "Skirmisher",
+    PlayerArchetype.CATCHER_HAWK: "Possession Specialist",
+    PlayerArchetype.HAWK_DODGER: "Hit-and-Run",
+}
+
+
+def _display_name_for_archetype(archetype: PlayerArchetype, ratings: PlayerRatings) -> str:
+    return _RECRUITMENT_DISPLAY_NAMES[archetype]
+
+
+def archetype_for_player(player: Player) -> str:
+    return _display_name_for_archetype(player.archetype, player.ratings)
+
 
 def _unique_name(
     *,
@@ -110,6 +133,13 @@ def generate_rookie_class(
     for index in range(size):
         full_name = _unique_name(rng=rng, used_names=used_names, fallback_tag=f"#{index + 1}")
         growth_curve = rng.choice(_GROWTH_CURVES)
+        ratings = PlayerRatings(
+            accuracy=_rating_roll(rng),
+            power=_rating_roll(rng),
+            dodge=_rating_roll(rng),
+            catch=_rating_roll(rng),
+            stamina=_stamina_roll(rng),
+        ).apply_bounds()
         rookies.append(
             Player(
                 id=f"{season_id}_rookie_{index + 1:02d}",
@@ -117,13 +147,8 @@ def generate_rookie_class(
                 age=18 + int(rng.roll(0, 4)),
                 club_id=None,
                 newcomer=True,
-                ratings=PlayerRatings(
-                    accuracy=_rating_roll(rng),
-                    power=_rating_roll(rng),
-                    dodge=_rating_roll(rng),
-                    catch=_rating_roll(rng),
-                    stamina=_stamina_roll(rng),
-                ).apply_bounds(),
+                ratings=ratings,
+                archetype=derive_archetype(ratings),
                 traits=PlayerTraits(
                     potential=_potential_roll(rng),
                     growth_curve=growth_curve,
@@ -143,17 +168,18 @@ def generate_prospect_pool(
     """Generate hidden prospect truths and a wide public baseline."""
     prospects: list[Prospect] = []
     used_names: set[str] = set()
-    archetype_pool = ("Sharpshooter", "Enforcer", "Escape Artist", "Ball Hawk", "Iron Engine")
+    archetype_pool = tuple(_RECRUITMENT_DISPLAY_NAMES.values())
     trait_pool = ("IRONWALL", "CLUTCH", "QUICK_RELEASE", "GLOVES", "READ_AND_REACT")
 
     for index in range(config.prospect_class_size):
         full_name = _unique_name(rng=rng, used_names=used_names, fallback_tag=f"#{index + 1}")
+        potential_ceiling = rng.roll(55.0, 96.0)
         ratings = {
-            "accuracy": round(rng.roll(45.0, 92.0), 2),
-            "power": round(rng.roll(45.0, 92.0), 2),
-            "dodge": round(rng.roll(45.0, 92.0), 2),
-            "catch": round(rng.roll(45.0, 92.0), 2),
-            "stamina": round(rng.roll(50.0, 88.0), 2),
+            "accuracy": round(rng.roll(35.0, potential_ceiling - 4.0), 2),
+            "power": round(rng.roll(35.0, potential_ceiling - 4.0), 2),
+            "dodge": round(rng.roll(35.0, potential_ceiling - 4.0), 2),
+            "catch": round(rng.roll(35.0, potential_ceiling - 4.0), 2),
+            "stamina": round(rng.roll(40.0, min(88.0, potential_ceiling - 2.0)), 2),
         }
         trajectory = _draw_trajectory(rng, config)
 
@@ -172,7 +198,14 @@ def generate_prospect_pool(
             public_low = max(0, public_high - 2 * half_width)
             public_high = min(100, public_low + 2 * half_width)
 
-        true_archetype = _archetype_for_ratings(ratings)
+        rating_obj = PlayerRatings(
+            accuracy=ratings["accuracy"],
+            power=ratings["power"],
+            dodge=ratings["dodge"],
+            catch=ratings["catch"],
+            stamina=ratings["stamina"],
+        ).apply_bounds()
+        true_archetype = _display_name_for_archetype(derive_archetype(rating_obj), rating_obj)
         if rng.unit() < config.public_archetype_mislabel_rate:
             public_archetype = rng.choice([a for a in archetype_pool if a != true_archetype])
         else:
@@ -241,19 +274,21 @@ def sign_prospect_to_club(
         raise ValueError(f"Prospect {prospect.player_id} is already signed by {existing_owner}")
 
     mark_prospect_signed(conn, season_num, prospect.player_id)
+    ratings = PlayerRatings(
+        accuracy=prospect.hidden_ratings["accuracy"],
+        power=prospect.hidden_ratings["power"],
+        dodge=prospect.hidden_ratings["dodge"],
+        catch=prospect.hidden_ratings["catch"],
+        stamina=prospect.hidden_ratings["stamina"],
+    ).apply_bounds()
     player = Player(
         id=prospect.player_id,
         name=prospect.name,
         age=prospect.age,
         club_id=club_id,
         newcomer=True,
-        ratings=PlayerRatings(
-            accuracy=prospect.hidden_ratings["accuracy"],
-            power=prospect.hidden_ratings["power"],
-            dodge=prospect.hidden_ratings["dodge"],
-            catch=prospect.hidden_ratings["catch"],
-            stamina=prospect.hidden_ratings["stamina"],
-        ).apply_bounds(),
+        ratings=ratings,
+        archetype=derive_archetype(ratings),
         traits=PlayerTraits(
             potential=min(100.0, max(70.0, max(prospect.hidden_ratings.values()) + 8.0)),
             growth_curve=50.0,
@@ -289,21 +324,6 @@ def _draw_trajectory(rng: DeterministicRNG, config: ScoutingBalanceConfig) -> st
             break
     return trajectory
 
-
-def _archetype_for_ratings(ratings: dict[str, float]) -> str:
-    archetype_map = {
-        "accuracy": "Sharpshooter",
-        "power": "Enforcer",
-        "dodge": "Escape Artist",
-        "catch": "Ball Hawk",
-        "stamina": "Iron Engine",
-    }
-    rating_keys = ("accuracy", "power", "dodge", "catch", "stamina")
-    present = {key: ratings.get(key, 0.0) for key in rating_keys}
-    dominant = max(present, key=present.get)
-    return archetype_map[dominant]
-
-
 def _rating_roll(rng: DeterministicRNG) -> float:
     return round(rng.roll(45.0, 78.0), 2)
 
@@ -319,8 +339,218 @@ def _potential_roll(rng: DeterministicRNG) -> float:
 __all__ = [
     "FreeAgent",
     "TransactionEvent",
+    "archetype_for_player",
     "build_transaction_event",
     "generate_prospect_pool",
     "generate_rookie_class",
     "sign_prospect_to_club",
 ]
+
+
+# ----------------------------------------------------------------------
+# Recruitment round helpers (formerly manager_helpers)
+# ----------------------------------------------------------------------
+
+def _default_roster_needs() -> Dict[str, float]:
+    return {
+        "Sharpshooter": 0.5,
+        "Net Specialist": 0.5,
+        "Ball Hawk": 0.5,
+        "Iron Anchor": 0.5,
+        "Two-Way Threat": 0.5,
+        "Skirmisher": 0.5,
+        "Possession Specialist": 0.5,
+        "Hit-and-Run": 0.5,
+    }
+
+def _next_recruitment_round_number(conn: sqlite3.Connection, season_id: str) -> int:
+    prepared = conn.execute(
+        """
+        SELECT round_number
+        FROM recruitment_round
+        WHERE season_id = ? AND status = 'prepared'
+        ORDER BY round_number
+        LIMIT 1
+        """,
+        (season_id,),
+    ).fetchone()
+    if prepared is not None:
+        return int(prepared["round_number"])
+
+    max_round = conn.execute(
+        """
+        SELECT MAX(round_number) AS max_round
+        FROM (
+            SELECT round_number FROM recruitment_round WHERE season_id = ?
+            UNION ALL
+            SELECT round_number FROM recruitment_signing WHERE season_id = ?
+        )
+        """,
+        (season_id, season_id),
+    ).fetchone()
+    return int(max_round["max_round"] or 0) + 1
+
+def _ensure_recruitment_prepared(
+    conn: sqlite3.Connection,
+    root_seed: int,
+    season_id: str,
+    class_year: int,
+    user_club_id: Optional[str] = None,
+    round_number: int = 1,
+) -> Tuple[Any, ...]:
+    from .persistence import (
+        load_all_rosters,
+        load_club_recruitment_profiles,
+        load_prospect_pool,
+        load_recruitment_signings,
+        load_recruitment_board,
+        load_recruitment_offers,
+        load_recruitment_round,
+        save_club_recruitment_profile,
+        save_recruitment_board,
+        save_recruitment_offers,
+        save_recruitment_round,
+    )
+    from .recruitment_domain import (
+        build_recruitment_board,
+        build_recruitment_profile,
+        prepare_ai_offers,
+    )
+
+    existing_round = load_recruitment_round(conn, season_id, round_number)
+    if existing_round is not None:
+        return load_recruitment_offers(conn, season_id, round_number)
+
+    already_signed_ids = {signing.player_id for signing in load_recruitment_signings(conn, season_id)}
+    prospects = [
+        p
+        for p in load_prospect_pool(conn, class_year)
+        if p.player_id not in already_signed_ids
+        and not _is_already_signed(conn, class_year, p.player_id)
+    ]
+    profiles = load_club_recruitment_profiles(conn)
+    rosters = load_all_rosters(conn)
+    active_profiles = []
+    for club_id in sorted(rosters):
+        if user_club_id is not None and club_id == user_club_id:
+            continue
+        profile = profiles.get(club_id)
+        if profile is None:
+            profile = build_recruitment_profile(root_seed, club_id)
+            save_club_recruitment_profile(conn, profile)
+        active_profiles.append(profile)
+
+    boards = {}
+    for profile in active_profiles:
+        board = build_recruitment_board(
+            root_seed=root_seed,
+            season_id=season_id,
+            profile=profile,
+            prospects=prospects,
+            roster_needs=_default_roster_needs(),
+        )
+        save_recruitment_board(conn, season_id, board)
+        boards[profile.club_id] = board or load_recruitment_board(conn, season_id, profile.club_id)
+
+    offers = prepare_ai_offers(root_seed, season_id, round_number, active_profiles, boards, already_signed_ids)
+    save_recruitment_round(conn, season_id, round_number, "prepared", {"prepared_offer_count": len(offers)})
+    save_recruitment_offers(conn, offers)
+    return tuple(offers)
+
+def build_recruitment_day_summary(
+    conn: sqlite3.Connection,
+    season_id: str,
+    class_year: int,
+    user_club_id: Optional[str],
+) -> Dict[str, int]:
+    from .persistence import load_prospect_pool, load_recruitment_signings
+
+    prospects = load_prospect_pool(conn, class_year=class_year)
+    signings = load_recruitment_signings(conn, season_id)
+    signed_ids = {signing.player_id for signing in signings}
+    return {
+        "available_prospects": sum(
+            1
+            for prospect in prospects
+            if prospect.player_id not in signed_ids
+            and not _is_already_signed(conn, class_year, prospect.player_id)
+        ),
+        "signed_count": len(signings),
+        "sniped_count": sum(1 for signing in signings if user_club_id and signing.club_id != user_club_id),
+        "current_round": _next_recruitment_round_number(conn, season_id),
+    }
+
+def conduct_recruitment_round(
+    conn: sqlite3.Connection,
+    root_seed: int,
+    season_id: str,
+    class_year: int,
+    user_club_id: str,
+    selected_player_id: str,
+):
+    from .persistence import (
+        load_clubs,
+        load_prospect_pool,
+        load_recruitment_offers,
+        save_recruitment_round,
+        save_recruitment_signings,
+    )
+    from .recruitment_domain import RecruitmentOffer, resolve_recruitment_round
+
+    round_number = _next_recruitment_round_number(conn, season_id)
+    _ensure_recruitment_prepared(
+        conn,
+        root_seed,
+        season_id,
+        class_year,
+        user_club_id=user_club_id,
+        round_number=round_number,
+    )
+    prepared_offers = load_recruitment_offers(conn, season_id, round_number)
+    prospect = next((p for p in load_prospect_pool(conn, class_year) if p.player_id == selected_player_id), None)
+    if prospect is None:
+        raise ValueError(f"Unknown prospect: {selected_player_id}")
+    user_offer = RecruitmentOffer(
+        season_id=season_id,
+        round_number=round_number,
+        club_id=user_club_id,
+        player_id=selected_player_id,
+        offer_strength=100.0,
+        source="user",
+        need_score=5.0,
+        playing_time_pitch=0.5,
+        prestige=0.5,
+        round_order_value=0.5,
+        visible_reason="user target; private scouting priority",
+    )
+    result = resolve_recruitment_round(
+        season_id,
+        round_number,
+        prepared_offers,
+        user_offer=user_offer,
+        shortlist_player_ids=(selected_player_id,),
+    )
+    save_recruitment_signings(conn, result.signings)
+    save_recruitment_round(
+        conn,
+        season_id,
+        round_number,
+        "resolved",
+        {"signing_count": len(result.signings), "snipe_count": len(result.snipes)},
+    )
+    prospects_by_id = {p.player_id: p for p in load_prospect_pool(conn, class_year)}
+    clubs = load_clubs(conn)
+    for signing in result.signings:
+        if signing.club_id not in clubs or _is_already_signed(conn, class_year, signing.player_id):
+            continue
+        sign_prospect_to_club(conn, prospects_by_id[signing.player_id], signing.club_id, class_year)
+    return result
+
+
+
+def _is_already_signed(conn, class_year, player_id):
+    row = conn.execute(
+        "SELECT is_signed FROM prospect_pool WHERE class_year = ? AND player_id = ?",
+        (class_year, player_id),
+    ).fetchone()
+    return bool(row and row["is_signed"])
