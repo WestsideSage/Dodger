@@ -111,7 +111,7 @@ def test_schedule_reveal_payload_has_fixtures_list():
     assert isinstance(result["fixtures"], list)
 
 
-def test_records_ratified_payload_is_empty_dict():
+def test_records_ratified_payload_has_records_key():
     conn = _empty_conn()
     result = _build_beat_payload(
         "records_ratified",
@@ -126,10 +126,11 @@ def test_records_ratified_payload_is_empty_dict():
         signed_player_id="",
         conn=conn,
     )
-    assert result == {}
+    assert "records" in result
+    assert isinstance(result["records"], list)
 
 
-def test_hof_induction_payload_is_empty_dict():
+def test_hof_induction_payload_has_inductees_key():
     conn = _empty_conn()
     result = _build_beat_payload(
         "hof_induction",
@@ -144,7 +145,8 @@ def test_hof_induction_payload_is_empty_dict():
         signed_player_id="",
         conn=conn,
     )
-    assert result == {}
+    assert "inductees" in result
+    assert isinstance(result["inductees"], list)
 
 
 def test_development_payload_has_players_key():

@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
-from .models import CoachPolicy, MatchSetup, Player, PlayerRatings, PlayerTraits, Team
+from .models import CoachPolicy, MatchSetup, Player, PlayerArchetype, PlayerRatings, PlayerTraits, Team
 
 
 def _coach_policy_from_dict(payload: Dict[str, Any]) -> CoachPolicy:
@@ -23,23 +23,63 @@ def _coach_policy_from_dict(payload: Dict[str, Any]) -> CoachPolicy:
 def _player_from_dict(payload: Dict[str, Any]) -> Player:
     ratings_payload = payload.get("ratings", {})
     traits_payload = payload.get("traits", {})
+
+    required_rating_fields = (
+        "accuracy",
+        "power",
+        "dodge",
+        "catch",
+        "stamina",
+        "tactical_iq",
+        "catch_courage",
+        "throw_selection_iq",
+        "conditioning_curve",
+    )
+    missing = [field for field in required_rating_fields if field not in ratings_payload]
+    if missing:
+        raise ValueError(
+            f"Cannot load player {payload.get('id', '?')!r}: ratings missing v2 fields {missing}. "
+            "Plan B made a clean break with V1-V11 saves/payloads."
+        )
+
+    if "archetype" not in payload:
+        raise ValueError(
+            f"Cannot load player {payload.get('id', '?')!r}: missing 'archetype' key. "
+            "Plan B requires explicit archetype assignment."
+        )
+
+    archetype_value = payload["archetype"]
+    try:
+        archetype = PlayerArchetype(archetype_value)
+    except ValueError as exc:
+        raise ValueError(
+            f"Cannot load player {payload.get('id', '?')!r}: unknown archetype {archetype_value!r}."
+        ) from exc
+
     ratings = PlayerRatings(
-        accuracy=ratings_payload.get("accuracy", 50.0),
-        power=ratings_payload.get("power", 50.0),
-        dodge=ratings_payload.get("dodge", 50.0),
-        catch=ratings_payload.get("catch", 50.0),
-        stamina=ratings_payload.get("stamina", 50.0),
+        accuracy=ratings_payload["accuracy"],
+        power=ratings_payload["power"],
+        dodge=ratings_payload["dodge"],
+        catch=ratings_payload["catch"],
+        stamina=ratings_payload["stamina"],
+        tactical_iq=ratings_payload["tactical_iq"],
+        catch_courage=ratings_payload["catch_courage"],
+        throw_selection_iq=ratings_payload["throw_selection_iq"],
+        conditioning_curve=ratings_payload["conditioning_curve"],
     ).apply_bounds()
+
     traits = PlayerTraits(
         potential=traits_payload.get("potential", 50.0),
         growth_curve=traits_payload.get("growth_curve", 50.0),
         consistency=traits_payload.get("consistency", 50.0),
         pressure=traits_payload.get("pressure", 50.0),
     )
+
     return Player(
         id=payload["id"],
         name=payload.get("name", payload["id"]),
         ratings=ratings,
+        archetype=archetype,
         traits=traits,
     )
 

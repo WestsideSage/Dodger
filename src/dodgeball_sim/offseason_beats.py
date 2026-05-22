@@ -439,7 +439,7 @@ def build_rookie_class_preview(
         source = "legacy_free_agents"
         class_size = len(free_agents)
         archetype_distribution = {}
-        top_band_depth = sum(1 for fa in free_agents if fa.overall() >= _TOP_BAND_THRESHOLD)
+        top_band_depth = sum(1 for fa in free_agents if fa.overall_skill() >= _TOP_BAND_THRESHOLD)
 
     # Step 4: build storylines
     storylines: List[RookieStoryline] = []

@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from dodgeball_sim.persistence import match_setup_to_dict
 from dodgeball_sim.setup_loader import (
     describe_matchup,
@@ -39,6 +41,42 @@ def test_load_setup_from_path():
     assert loaded.team_b.id == "beta"
     desc = describe_matchup(loaded).lower()
     assert "alpha" in desc and "beta" in desc
+
+
+def test_setup_loader_rejects_legacy_player_payload_missing_v2_fields():
+    payload = {
+        "team_a": {
+            "id": "alpha",
+            "name": "Alpha",
+            "players": [
+                {
+                    "id": "a1",
+                    "name": "A1",
+                    "archetype": "thrower",
+                    "ratings": {
+                        "accuracy": 60,
+                        "power": 60,
+                        "dodge": 60,
+                        "catch": 60,
+                        "stamina": 60,
+                        "tactical_iq": 60,
+                    },
+                }
+            ],
+        },
+        "team_b": {"id": "beta", "name": "Beta", "players": []},
+    }
+
+    with pytest.raises(ValueError, match="missing v2 fields"):
+        match_setup_from_dict(payload)
+
+
+def test_setup_loader_rejects_player_payload_missing_archetype():
+    payload = match_setup_to_dict(make_match_setup(make_team("alpha", [make_player("a1")]), make_team("beta", [])))
+    del payload["team_a"]["players"][0]["archetype"]
+
+    with pytest.raises(ValueError, match="missing 'archetype'"):
+        match_setup_from_dict(payload)
 
 
 

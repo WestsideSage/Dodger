@@ -44,10 +44,13 @@ def test_build_recruitment_profile_is_deterministic_and_distinct_by_club():
     assert first.club_id == "aurora"
     assert set(first.archetype_priorities) == {
         "Sharpshooter",
-        "Enforcer",
-        "Escape Artist",
+        "Net Specialist",
         "Ball Hawk",
-        "Iron Engine",
+        "Iron Anchor",
+        "Two-Way Threat",
+        "Skirmisher",
+        "Possession Specialist",
+        "Hit-and-Run",
     }
     assert first != other
 

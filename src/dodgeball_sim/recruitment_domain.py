@@ -7,7 +7,16 @@ from .rng import DeterministicRNG, derive_seed
 from .scouting_center import Prospect
 
 
-ARCHETYPES = ("Sharpshooter", "Enforcer", "Escape Artist", "Ball Hawk", "Iron Engine")
+ARCHETYPES = (
+    "Sharpshooter",
+    "Net Specialist",
+    "Ball Hawk",
+    "Iron Anchor",
+    "Two-Way Threat",
+    "Skirmisher",
+    "Possession Specialist",
+    "Hit-and-Run",
+)
 
 
 @dataclass(frozen=True)

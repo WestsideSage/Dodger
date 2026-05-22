@@ -181,11 +181,22 @@ def build_default_weekly_plan(state: Mapping[str, Any], intent: str = "Win Now")
 
 def refresh_weekly_plan_context(plan: Mapping[str, Any], state: Mapping[str, Any]) -> dict[str, Any]:
     refreshed = dict(plan)
+    opponent = state.get("opponent")
+    is_bye = state.get("is_bye", False)
     refreshed["matchup_details"] = {
         **dict(refreshed.get("matchup_details") or {}),
         **dict(state.get("matchup_details") or {}),
     }
-    refreshed["is_bye"] = state.get("is_bye", False)
+    refreshed["is_bye"] = is_bye
+    refreshed["opponent"] = {
+        "club_id": opponent.club_id if opponent else None,
+        "name": "Bye Week" if is_bye else (opponent.name if opponent else "Season complete"),
+    }
+    opponent_roster = list(state.get("opponent_roster", []))
+    opp_top_six = sorted(opponent_roster, key=lambda p: (-p.overall_skill(), p.id))[:6]
+    refreshed["opponent_lineup"] = {
+        "players": [_player_summary(p) for p in opp_top_six],
+    }
     return refreshed
 
 

@@ -10,11 +10,18 @@ _RATING_MAX = 100.0
 
 
 class PlayerArchetype(str, Enum):
-    POWER = "Power"
-    AGILITY = "Agility"
-    PRECISION = "Precision"
-    DEFENSE = "Defense"
-    TACTICAL = "Tactical"
+    THROWER = "thrower"
+    CATCHER = "catcher"
+    BALL_HAWK = "ball_hawk"
+    DODGER_ANCHOR = "dodger_anchor"
+    THROWER_CATCHER = "thrower_catcher"
+    THROWER_DODGER = "thrower_dodger"
+    CATCHER_HAWK = "catcher_hawk"
+    HAWK_DODGER = "hawk_dodger"
+
+    @property
+    def display_name(self) -> str:
+        return _ARCHETYPE_DISPLAY_NAMES[self]
 
 
 def _clamp_rating(value: float) -> float:
@@ -29,6 +36,9 @@ class PlayerRatings:
     catch: float
     stamina: float = 50.0
     tactical_iq: float = 50.0
+    catch_courage: float = 50.0
+    throw_selection_iq: float = 50.0
+    conditioning_curve: float = 50.0
 
     def normalized_accuracy(self) -> float:
         return self.accuracy / _RATING_MAX
@@ -45,8 +55,35 @@ class PlayerRatings:
     def normalized_tactical_iq(self) -> float:
         return self.tactical_iq / _RATING_MAX
 
+    def normalized_catch_courage(self) -> float:
+        return self.catch_courage / _RATING_MAX
+
+    def normalized_throw_selection_iq(self) -> float:
+        return self.throw_selection_iq / _RATING_MAX
+
+    def normalized_conditioning_curve(self) -> float:
+        return self.conditioning_curve / _RATING_MAX
+
     def fatigue_ceiling(self) -> float:
         return max(10.0, self.stamina)
+
+    def overall_skill(self) -> float:
+        stats = [
+            self.accuracy,
+            self.power,
+            self.dodge,
+            self.catch,
+            self.stamina,
+        ]
+        return sum(stats) / len(stats)
+
+    def identity_profile(self) -> "IdentityProfile":
+        return IdentityProfile(
+            catch_courage=self.catch_courage,
+            throw_selection_iq=self.throw_selection_iq,
+            conditioning_curve=self.conditioning_curve,
+            tactical_iq=self.tactical_iq,
+        )
 
     def apply_bounds(self) -> "PlayerRatings":
         return PlayerRatings(
@@ -56,7 +93,20 @@ class PlayerRatings:
             catch=_clamp_rating(self.catch),
             stamina=_clamp_rating(self.stamina),
             tactical_iq=_clamp_rating(self.tactical_iq),
+            catch_courage=_clamp_rating(self.catch_courage),
+            throw_selection_iq=_clamp_rating(self.throw_selection_iq),
+            conditioning_curve=_clamp_rating(self.conditioning_curve),
         )
+
+
+@dataclass(frozen=True)
+class IdentityProfile:
+    """Behavioral identity traits surfaced as text, never averaged into skill OVR."""
+
+    catch_courage: float
+    throw_selection_iq: float
+    conditioning_curve: float
+    tactical_iq: float
 
 
 @dataclass(frozen=True)
@@ -72,21 +122,26 @@ class Player:
     id: str
     name: str
     ratings: PlayerRatings
+    archetype: PlayerArchetype | None = None
     traits: PlayerTraits = PlayerTraits()
     age: int = 18
     club_id: str | None = None
     newcomer: bool = True
-    archetype: PlayerArchetype = PlayerArchetype.TACTICAL
 
-    def overall(self) -> float:
-        stats = [
-            self.ratings.accuracy,
-            self.ratings.power,
-            self.ratings.dodge,
-            self.ratings.catch,
-            self.ratings.tactical_iq,
-        ]
-        return sum(stats) / len(stats)
+    def __post_init__(self) -> None:
+        if self.archetype is None:
+            raise ValueError("Player archetype is required and cannot be None.")
+        if not isinstance(self.archetype, PlayerArchetype):
+            try:
+                object.__setattr__(self, "archetype", PlayerArchetype(str(self.archetype)))
+            except ValueError as e:
+                raise ValueError(f"Invalid archetype: {self.archetype}") from e
+
+    def overall_skill(self) -> float:
+        return self.ratings.overall_skill()
+
+    def identity_profile(self) -> IdentityProfile:
+        return self.ratings.identity_profile()
 
 
 @dataclass(frozen=True)
@@ -138,6 +193,18 @@ class Team:
         object.__setattr__(self, "players", tuple(self.players))
 
 
+_ARCHETYPE_DISPLAY_NAMES: dict[PlayerArchetype, str] = {
+    PlayerArchetype.THROWER: "Thrower",
+    PlayerArchetype.CATCHER: "Catcher",
+    PlayerArchetype.BALL_HAWK: "Ball Hawk",
+    PlayerArchetype.DODGER_ANCHOR: "Dodger Anchor",
+    PlayerArchetype.THROWER_CATCHER: "Thrower / Catcher",
+    PlayerArchetype.THROWER_DODGER: "Thrower / Dodger",
+    PlayerArchetype.CATCHER_HAWK: "Catcher / Ball Hawk",
+    PlayerArchetype.HAWK_DODGER: "Ball Hawk / Dodger",
+}
+
+
 @dataclass(frozen=True)
 class MatchSetup:
     team_a: Team
@@ -172,6 +239,7 @@ class TeamState:
 
 __all__ = [
     "CoachPolicy",
+    "IdentityProfile",
     "MatchSetup",
     "Player",
     "PlayerArchetype",

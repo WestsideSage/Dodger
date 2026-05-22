@@ -6,6 +6,7 @@ from dodgeball_sim.models import Player, PlayerRatings, CoachPolicy
 
 
 def _make_player(pid: str, club: str) -> Player:
+    from dodgeball_sim.models import PlayerArchetype
     return Player(
         id=pid,
         name=pid.upper(),
@@ -13,6 +14,7 @@ def _make_player(pid: str, club: str) -> Player:
             accuracy=50, power=50, dodge=50, catch=50, stamina=60, tactical_iq=50
         ),
         club_id=club,
+        archetype=PlayerArchetype.CATCHER,
     )
 
 

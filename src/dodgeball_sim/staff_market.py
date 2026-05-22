@@ -8,6 +8,23 @@ from .rng import DeterministicRNG, derive_seed
 
 STAFF_ACTION_STATE_KEY = "staff_market_actions_json"
 
+# Honest per-department effect summary. Only the "training" lane currently has a
+# real mechanical hook (offseason player development); the rest describe the
+# recommendation surface that department drives. See the staff_market honesty
+# rule below.
+_STAFF_EFFECT_LABELS = {
+    "tactics": "Tactics recommendations and replay-proof preparation.",
+    "training": "Development focus advice and offseason player-growth impact.",
+    "conditioning": "Fatigue-risk recommendations and recovery planning.",
+    "medical": "Availability warnings and overuse-risk reporting.",
+    "scouting": "Recruiting fit explanations and prospect board clarity.",
+    "culture": "Promise-risk framing and command-plan stability.",
+}
+
+
+def staff_effect_summary(department: str) -> str:
+    return _STAFF_EFFECT_LABELS.get(department, "Program recommendations.")
+
 
 def build_staff_market_state(
     conn: sqlite3.Connection,
@@ -16,7 +33,10 @@ def build_staff_market_state(
     player_club_id: str,
     root_seed: int,
 ) -> dict[str, Any]:
-    current_staff = load_department_heads(conn)
+    current_staff = [
+        {**head, "effect_summary": staff_effect_summary(head["department"])}
+        for head in load_department_heads(conn)
+    ]
     facilities = load_club_facilities(conn, player_club_id, season_id)
     recent_actions = list(load_json_state(conn, STAFF_ACTION_STATE_KEY, []))
     filled_departments = {action.get("department") for action in recent_actions}
@@ -56,16 +76,8 @@ def _candidate_for_head(head: dict[str, Any], root_seed: int, season_id: str) ->
 
 
 def _staff_effect_lanes(department: str, primary: float, secondary: float) -> list[str]:
-    labels = {
-        "tactics": "Tactics recommendations and replay-proof preparation.",
-        "training": "Development focus advice and offseason player-growth impact.",
-        "conditioning": "Fatigue-risk recommendations and recovery planning.",
-        "medical": "Availability warnings and overuse-risk reporting.",
-        "scouting": "Recruiting fit explanations and prospect board clarity.",
-        "culture": "Promise-risk framing and command-plan stability.",
-    }
     return [
-        labels.get(department, "Program recommendations."),
+        staff_effect_summary(department),
         f"Visible staff ratings would become {primary:.1f}/{secondary:.1f}.",
     ]
 
@@ -94,4 +106,4 @@ def _staff_voice(department: str, rng: DeterministicRNG) -> str:
     return rng.choice(voices.get(department, ["Build the program with proof."]))
 
 
-__all__ = ["STAFF_ACTION_STATE_KEY", "build_staff_market_state"]
+__all__ = ["STAFF_ACTION_STATE_KEY", "build_staff_market_state", "staff_effect_summary"]

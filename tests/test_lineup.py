@@ -3,16 +3,19 @@ from dodgeball_sim.models import Player, PlayerRatings, PlayerTraits
 
 
 def _p(player_id: str, overall: float = 60.0) -> Player:
+    from dodgeball_sim.archetype_derivation import derive_archetype
+    ratings = PlayerRatings(
+        accuracy=overall,
+        power=overall,
+        dodge=overall,
+        catch=overall,
+        stamina=overall,
+    )
     return Player(
         id=player_id,
         name=player_id.title(),
-        ratings=PlayerRatings(
-            accuracy=overall,
-            power=overall,
-            dodge=overall,
-            catch=overall,
-            stamina=overall,
-        ),
+        ratings=ratings,
+        archetype=derive_archetype(ratings),
         traits=PlayerTraits(),
     )
 

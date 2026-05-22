@@ -128,7 +128,7 @@ def test_carry_forward_decay_at_season_transition():
         save_scouting_state,
     )
     from dodgeball_sim.scouting_center import ScoutingState
-    from dodgeball_sim.manager_gui import apply_scouting_carry_forward_at_transition
+    from dodgeball_sim.offseason_ceremony import apply_scouting_carry_forward_at_transition
 
     save_scouting_state(
         conn,
@@ -161,7 +161,7 @@ def test_carry_forward_skips_signed_prospects():
     signed = load_prospect_pool(conn, class_year=1)[0]
     from dodgeball_sim.persistence import load_scouting_state, mark_prospect_signed, save_scouting_state
     from dodgeball_sim.scouting_center import ScoutingState
-    from dodgeball_sim.manager_gui import apply_scouting_carry_forward_at_transition
+    from dodgeball_sim.offseason_ceremony import apply_scouting_carry_forward_at_transition
 
     save_scouting_state(
         conn,

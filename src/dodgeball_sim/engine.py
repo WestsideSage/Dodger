@@ -238,7 +238,7 @@ class MatchEngine:
         from .lineup import is_liability
         thrower_liable = is_liability(offense.team.players, thrower.player)
         target_liable = is_liability(defense.team.players, target.player)
-        
+
         thrower.throws_attempted += 1
         self._apply_fatigue(thrower, delta=1.0, meta_patch=meta_patch, is_thrower=True, is_liable=thrower_liable)
         if rush_context["fatigue_delta"]:
@@ -371,7 +371,7 @@ class MatchEngine:
         if not candidates:
             raise RuntimeError("No available targets")
         noise_roll = rng.unit()
-        
+
         tactical_iq_eff = 0.5
         if thrower_state and offense_team:
             tactical_iq = thrower_state.player.ratings.tactical_iq
@@ -383,7 +383,7 @@ class MatchEngine:
         scores = []
         for player_state in candidates:
             player = player_state.player
-            normalized_overall = player.overall() / 100.0
+            normalized_overall = player.overall_skill() / 100.0
             vulnerability = 1 - player.ratings.normalized_dodge()
             ball_holder_pressure = (
                 (policy.target_ball_holder - 0.5)
@@ -580,11 +580,3 @@ __all__ = [
     "compute_throw_probabilities",
     "run_match",
 ]
-
-
-
-
-
-
-
-

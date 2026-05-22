@@ -21,6 +21,30 @@ from .replay_proof import build_replay_proof, event_detail, event_label
 from .official_persistence import replay_state_from_dict, replay_state_to_dict
 from .stats import PlayerMatchStats
 from .web_status_service import career_state_payload
+from typing import Any, Dict, Iterable
+from .models import MatchSetup, Team
+from .stats import PlayerMatchStats, extract_all_stats
+from .copy_quality import title_label
+from .analysis import MatchAnalysis
+from .events import MatchEvent
+from .narration import Lookup, narrate_event
+from .dynasty_office import player_role, team_overall
+from typing import Any, Dict, Iterable
+from .models import MatchSetup, Team
+from .stats import PlayerMatchStats, extract_all_stats
+from .copy_quality import title_label
+from .analysis import MatchAnalysis
+from .events import MatchEvent
+from .narration import Lookup, narrate_event
+from .dynasty_office import player_role, team_overall
+from typing import Any, Dict, Iterable
+from .models import MatchSetup, Team
+from .stats import PlayerMatchStats, extract_all_stats
+from .copy_quality import title_label
+from .analysis import MatchAnalysis
+from .events import MatchEvent
+from .narration import Lookup, narrate_event
+from .dynasty_office import player_role, team_overall
 
 
 class ReplayError(RuntimeError):
@@ -223,3 +247,173 @@ def score_player(stats: PlayerMatchStats | None) -> float:
         - stats.times_eliminated * 2.0
         + stats.clutch_events
     )
+
+
+# ----------------------------------------------------------------------
+# Friendly preview / replay display / bulk-sim digest (formerly manager_helpers)
+# ----------------------------------------------------------------------
+
+def team_snapshot(team: Team) -> str:
+    top = sorted(team.players, key=lambda player: player.overall_skill(), reverse=True)[:3]
+    lines = [
+        f"{team.name}",
+        f"Overall {team_overall(team):.1f} | Chemistry {team.chemistry:.2f}",
+        "Top Rotation:",
+    ]
+    for player in top:
+        lines.append(f"  {player.name} - {player_role(player)} ({player.overall_skill():.1f})")
+    return "\n".join(lines)
+
+def friendly_preview_text(setup: MatchSetup) -> str:
+    """Return a compact text preview for the sample friendly matchup."""
+    return "\n\n".join((team_snapshot(setup.team_a), team_snapshot(setup.team_b)))
+
+def friendly_match_stats(setup: MatchSetup, events: Iterable[Any]) -> Dict[str, PlayerMatchStats]:
+    """Extract in-memory friendly stats without touching persistence."""
+    return extract_all_stats(
+        list(events),
+        setup.team_a.id,
+        setup.team_b.id,
+        [player.id for player in setup.team_a.players],
+        [player.id for player in setup.team_b.players],
+    )
+
+def format_bulk_sim_digest(
+    *,
+    matches_simmed: int,
+    first_week: int | None,
+    last_week: int | None,
+    user_record: str,
+    standings_note: str,
+    notable_lines: Iterable[str],
+    scouting_note: str,
+    recruitment_note: str,
+    next_action: str,
+) -> str:
+    """Return the V3 digest first-read after bulk simulation."""
+    if first_week is None or last_week is None:
+        weeks = "No weeks advanced"
+    elif first_week == last_week:
+        weeks = f"Week {first_week}"
+    else:
+        weeks = f"Weeks {first_week}-{last_week}"
+    lines = [
+        f"{matches_simmed} Matches Simmed",
+        weeks,
+        f"Your Club: {user_record}",
+        "",
+        "Standings Movement:",
+        standings_note or "No standings movement.",
+        "",
+        "Notable Performances:",
+    ]
+    notables = list(notable_lines)
+    lines.extend(f"- {line}" for line in notables) if notables else lines.append("- No standout stat lines.")
+    lines.extend([
+        "",
+        "Scouting:",
+        scouting_note or "No scouting updates.",
+        "",
+        "Recruitment:",
+        recruitment_note or "No recruitment updates.",
+        "",
+        f"Next Recommended Action: {next_action}",
+    ])
+    return "\n".join(lines)
+
+def replay_event_label(event, name_map: dict | None = None) -> str:
+    """Short broadcast label for an engine event. name_map resolves player IDs to display names."""
+    _names = name_map or {}
+    if event.event_type == "match_end":
+        winner = event.outcome.get("winner")
+        return f"Final whistle: {winner or 'draw'}"
+    if event.event_type != "throw":
+        return title_label(event.event_type)
+    resolution = str(event.outcome.get("resolution", "throw"))
+    thrower_id = event.actors.get("thrower", "-")
+    target_id = event.actors.get("target", "-")
+    thrower = _names.get(thrower_id, thrower_id)
+    target = _names.get(target_id, target_id)
+    if resolution == "hit":
+        return f"HIT: {thrower} tags {target}"
+    if resolution == "failed_catch":
+        return f"DROP: {target} cannot hold {thrower}'s throw"
+    if resolution == "catch":
+        return f"CATCH: {target} turns over {thrower}"
+    if resolution == "dodged":
+        return f"DODGE: {target} slips {thrower}"
+    if resolution == "miss":
+        return f"MISS: {thrower} misses {target}"
+    return f"{resolution.upper()}: {thrower} to {target}"
+
+def replay_phase_delay(event) -> int:
+    """Milliseconds to hold an event during automatic replay."""
+    if event.event_type == "match_end":
+        return 1500
+    resolution = event.outcome.get("resolution")
+    if resolution in ("hit", "failed_catch", "catch"):
+        return 900
+    if resolution == "dodged":
+        return 650
+    return 420
+
+
+# ---------------------------------------------------------------------------
+# Display/formatting helpers (formerly ui_formatters.py)
+# ---------------------------------------------------------------------------
+
+def format_event_row(event: MatchEvent, lookup: Lookup) -> tuple[str, str, str, str, str]:
+    actor = lookup.player(event.actors.get("thrower", event.actors.get("winner", "")))
+    target = lookup.player(event.actors.get("target", ""))
+    outcome = event.outcome.get("resolution") or event.outcome.get("winner") or event.event_type.upper()
+    return (f"{event.tick:03d}", event.event_type.upper(), actor or "-", target or "-", str(outcome).upper())
+
+def format_event_details(event: MatchEvent, lookup: Lookup) -> str:
+    lines = [
+        f"Tick {event.tick} | {event.event_type.upper()} | phase={event.phase}",
+        narrate_event(event, lookup),
+    ]
+    if event.actors:
+        lines.append("")
+        lines.append("Actors")
+        for key, value in event.actors.items():
+            label = lookup.player(value) or lookup.team(value) or value
+            lines.append(f"  {key}: {label}")
+    if event.probabilities:
+        lines.append("")
+        lines.append("Probabilities")
+        for key, value in event.probabilities.items():
+            lines.append(f"  {key}: {value:.2f}")
+    if event.rolls:
+        lines.append("")
+        lines.append("RNG Rolls")
+        for key, value in event.rolls.items():
+            lines.append(f"  {key}: {value:.2f}")
+    if event.context:
+        lines.append("")
+        lines.append("Context")
+        for key, value in event.context.items():
+            lines.append(f"  {key}: {value}")
+    if event.state_diff:
+        lines.append("")
+        lines.append("State Diff")
+        for key, value in event.state_diff.items():
+            lines.append(f"  {key}: {value}")
+    return "\n".join(lines)
+
+def format_analysis_report(analysis: MatchAnalysis, lookup: Lookup) -> str:
+    lines: list[str] = []
+    if analysis.hero:
+        lines.append(
+            f"Hero Moment: {lookup.player(analysis.hero.player_id)} kept {lookup.team(analysis.hero.team_id)} alive."
+        )
+    if analysis.momentum:
+        swing = max(analysis.momentum, key=lambda point: abs(point.differential))
+        if swing.differential > 0:
+            direction = "Team A"
+        elif swing.differential < 0:
+            direction = "Team B"
+        else:
+            direction = "Neither side"
+        lines.append(f"Biggest swing: {direction} at tick {swing.tick} ({swing.differential:+d}).")
+    return "\n".join(lines) if lines else "No analysis available yet."

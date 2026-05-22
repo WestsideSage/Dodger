@@ -232,6 +232,10 @@ class WeeklyCommandPlanUpdate(BaseModel):
     lineup_player_ids: list[str] | None = None
 
 
+class OffseasonRecruitRequest(BaseModel):
+    prospect_id: str | None = None
+
+
 class CareerStateResponse(BaseModel):
     state: str
     season_number: int
@@ -286,6 +290,9 @@ class StandingsResponse(BaseModel):
     season_id: str
     standings: list[StandingItem]
     recent_matches: list[dict[str, Any]] | None = None
+    total_weeks: int = 0
+    current_week: int = 0
+    playoff_spots: int = 4
 
 
 class ScheduleItem(BaseModel):
@@ -714,23 +721,26 @@ def api_build_from_scratch(req: BuildFromScratchRequest):
     pool = generate_prospect_pool(2026, rng, DEFAULT_SCOUTING_CONFIG)
     roster_map = {p.player_id: p for p in pool}
     from dodgeball_sim.models import Player, PlayerRatings, PlayerTraits
+    from dodgeball_sim.archetype_derivation import derive_archetype
     custom_roster = []
     for pid in req.roster_player_ids:
         if pid in roster_map:
             prospect = roster_map[pid]
+            ratings = PlayerRatings(
+                accuracy=prospect.hidden_ratings["accuracy"],
+                power=prospect.hidden_ratings["power"],
+                dodge=prospect.hidden_ratings["dodge"],
+                catch=prospect.hidden_ratings["catch"],
+                stamina=prospect.hidden_ratings["stamina"],
+            ).apply_bounds()
             custom_roster.append(Player(
                 id=prospect.player_id,
                 name=prospect.name,
                 age=prospect.age,
                 club_id=club_id,
                 newcomer=True,
-                ratings=PlayerRatings(
-                    accuracy=prospect.hidden_ratings["accuracy"],
-                    power=prospect.hidden_ratings["power"],
-                    dodge=prospect.hidden_ratings["dodge"],
-                    catch=prospect.hidden_ratings["catch"],
-                    stamina=prospect.hidden_ratings["stamina"],
-                ).apply_bounds(),
+                ratings=ratings,
+                archetype=derive_archetype(ratings),
                 traits=PlayerTraits(
                     potential=min(100.0, max(70.0, max(prospect.hidden_ratings.values()) + 8.0)),
                     growth_curve=50.0,
@@ -832,9 +842,9 @@ def advance_offseason_beat(conn = Depends(get_db)):
 
 
 @app.post("/api/offseason/recruit")
-def offseason_recruit(conn = Depends(get_db)):
+def offseason_recruit(request: OffseasonRecruitRequest | None = None, conn = Depends(get_db)):
     try:
-        return recruit_offseason_payload(conn)
+        return recruit_offseason_payload(conn, request.prospect_id if request else None)
     except OffseasonError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
@@ -879,7 +889,7 @@ def get_history_my_program(club_id: str, conn = Depends(get_db)):
             if t["club_id"] == club_id and t["trophy_type"] == "championship"
         )
         avg_ovr = (
-            round(sum(p.overall() for p in current_roster) / len(current_roster), 1)
+            round(sum(p.overall_skill() for p in current_roster) / len(current_roster), 1)
             if current_roster else 0
         )
         hero["season_1"] = _standing_hero(all_seasons[0])
@@ -1012,7 +1022,7 @@ def get_history_my_program(club_id: str, conn = Depends(get_db)):
             "seasons_played": int((career or {}).get("seasons_played", 0)),
             "career_elims": int((career or {}).get("total_eliminations", 0)),
             "championships": int((career or {}).get("championships", 0)),
-            "ovr_final": float(r.get("overall", round(p.overall(), 1))),
+            "ovr_final": float(r.get("overall", round(p.overall_skill(), 1))),
             "potential_tier": calculate_potential_tier(p.traits.potential),
         })
 

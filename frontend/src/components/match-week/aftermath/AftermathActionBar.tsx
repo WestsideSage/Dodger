@@ -1,12 +1,20 @@
+function advanceLabel(result?: string): string {
+  if (result === 'Win') return 'BANK THE RESULT →';
+  if (result === 'Loss') return 'MOVE ON →';
+  return 'SHAKE IT OFF →';
+}
+
 export function AftermathActionBar({
   onAdvance,
   onViewReplay,
   matchId,
+  result,
   isAdvancing = false,
 }: {
   onAdvance: () => void;
   onViewReplay?: () => void;
   matchId?: string;
+  result?: string;
   isAdvancing?: boolean;
 }) {
   const hasReplay = Boolean(matchId && onViewReplay);
@@ -23,7 +31,7 @@ export function AftermathActionBar({
         disabled={isAdvancing}
         className={`command-action-bar-primary${isAdvancing ? ' is-advancing' : ''}`}
       >
-        {isAdvancing ? 'ADVANCING...' : 'ADVANCE TO NEXT WEEK →'}
+        {isAdvancing ? 'ADVANCING...' : advanceLabel(result)}
       </button>
     </div>
   );

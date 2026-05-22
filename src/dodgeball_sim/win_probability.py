@@ -24,7 +24,7 @@ def _sigmoid(x: float) -> float:
 def _team_average_overall(team: Team) -> float:
     if not team.players:
         return 0.0
-    return sum(player.overall() for player in team.players) / len(team.players)
+    return sum(player.overall_skill() for player in team.players) / len(team.players)
 
 
 def pre_match_expected_outcome(team_a: Team, team_b: Team) -> float:

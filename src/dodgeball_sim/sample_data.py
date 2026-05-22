@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import List
 
+from .archetype_derivation import derive_archetype
 from .league import Club
 from .models import CoachPolicy, MatchSetup, Player, PlayerRatings, PlayerTraits, Team
 from .setup_loader import describe_matchup
@@ -24,7 +25,13 @@ def _player(
         catch=catch,
         stamina=stamina,
     ).apply_bounds()
-    return Player(id=player_id, name=name, ratings=ratings, traits=PlayerTraits())
+    return Player(
+        id=player_id,
+        name=name,
+        ratings=ratings,
+        archetype=derive_archetype(ratings),
+        traits=PlayerTraits(),
+    )
 
 
 def _team(

@@ -8,6 +8,7 @@ from .career_state import CareerState
 from .development import calculate_potential_tier
 from .offseason_ceremony import (
     OFFSEASON_CEREMONY_BEATS,
+    available_recruitment_choices,
     build_offseason_ceremony_beat,
     compute_active_beats,
     create_next_manager_season,
@@ -57,6 +58,9 @@ def build_beat_payload(
     dev_rows: Optional[list] = None,
     player_club_id: str = "",
     rookie_preview_json: Optional[str] = None,
+    records_json: Optional[str] = None,
+    hof_json: Optional[str] = None,
+    season_number: int = 1,
     conn: sqlite3.Connection,
 ) -> dict:
     dev_rows = dev_rows or []
@@ -127,7 +131,7 @@ def build_beat_payload(
                     "season_stat": int(season_stat),
                     "season_stat_label": season_stat_label,
                     "career_stat": int(career_stat),
-                    "ovr": int(round(player.overall())) if player else 0,
+                    "ovr": int(round(player.overall_skill())) if player else 0,
                     "extra_stats": (
                         {
                             "throw_elims": int(stats.eliminations_by_throw),
@@ -226,6 +230,12 @@ def build_beat_payload(
             ]
         }
 
+    if beat_key == "records_ratified":
+        return {"records": _parse_record_entries(records_json)}
+
+    if beat_key == "hof_induction":
+        return {"inductees": _parse_hof_entries(hof_json)}
+
     if beat_key == "recruitment":
         player_signing = None
         if signed_player_id:
@@ -233,10 +243,14 @@ def build_beat_payload(
             if player:
                 player_signing = {
                     "name": player.name,
-                    "ovr": int(round(player.overall())),
+                    "ovr": int(round(player.overall_skill())),
                     "age": player.age,
                 }
-        return {"player_signing": player_signing, "other_signings": []}
+        return {
+            "player_signing": player_signing,
+            "other_signings": [],
+            "available_prospects": available_recruitment_choices(conn, season_number),
+        }
 
     if beat_key == "schedule_reveal":
         if next_preview is None:
@@ -335,8 +349,8 @@ def build_beat_response(conn: sqlite3.Connection, cursor) -> dict[str, Any]:
 
     dev_rows = _load_json_list(conn, "offseason_development_json")
     ret_rows = _load_json_list(conn, "offseason_retirements_json")
-    records_json = get_state(conn, "offseason_records_json")
-    hof_json = get_state(conn, "offseason_hof_json")
+    records_json = get_state(conn, "offseason_records_ratified_json")
+    hof_json = get_state(conn, "offseason_hof_inducted_json")
     rookie_preview_json = get_state(conn, "offseason_rookie_preview_json")
     player_club_id = get_state(conn, "player_club_id") or ""
 
@@ -373,6 +387,9 @@ def build_beat_response(conn: sqlite3.Connection, cursor) -> dict[str, Any]:
         dev_rows=dev_rows,
         player_club_id=player_club_id,
         rookie_preview_json=rookie_preview_json,
+        records_json=records_json,
+        hof_json=hof_json,
+        season_number=cursor.season_number or 1,
         conn=conn,
     )
 
@@ -407,6 +424,53 @@ def _load_json_list(conn: sqlite3.Connection, key: str) -> list:
     except (TypeError, json.JSONDecodeError):
         return []
     return loaded if isinstance(loaded, list) else []
+
+
+def _json_list(raw: Optional[str]) -> list:
+    try:
+        loaded = json.loads(raw or "[]")
+    except (TypeError, json.JSONDecodeError):
+        return []
+    return loaded if isinstance(loaded, list) else []
+
+
+def _parse_record_entries(raw: Optional[str]) -> list[dict[str, Any]]:
+    """Structured league-record entries for the records_ratified beat card."""
+    out: list[dict[str, Any]] = []
+    for entry in _json_list(raw):
+        if not isinstance(entry, dict):
+            continue
+        out.append(
+            {
+                "record_type": str(entry.get("record_type", "")),
+                "holder_name": str(entry.get("holder_name", entry.get("holder_id", "Unknown"))),
+                "previous_value": float(entry.get("previous_value", 0.0)),
+                "new_value": float(entry.get("new_value", 0.0)),
+                "detail": str(entry.get("detail", "")),
+            }
+        )
+    return out
+
+
+def _parse_hof_entries(raw: Optional[str]) -> list[dict[str, Any]]:
+    """Structured Hall of Fame inductee entries for the hof_induction beat card."""
+    out: list[dict[str, Any]] = []
+    for entry in _json_list(raw):
+        if not isinstance(entry, dict):
+            continue
+        out.append(
+            {
+                "player_name": str(entry.get("player_name", entry.get("player_id", "Unknown"))),
+                "legacy_score": float(entry.get("legacy_score", 0.0)),
+                "threshold": float(entry.get("threshold", 0.0)),
+                "reasons": [str(reason) for reason in (entry.get("reasons", []) or [])],
+                "seasons_played": int(entry.get("seasons_played", 0)),
+                "championships": int(entry.get("championships", 0)),
+                "awards_won": int(entry.get("awards_won", 0)),
+                "total_eliminations": int(entry.get("total_eliminations", 0)),
+            }
+        )
+    return out
 
 
 def load_all_clubs(conn: sqlite3.Connection):

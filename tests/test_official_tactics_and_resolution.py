@@ -18,11 +18,13 @@ from dodgeball_sim.sequence import SequenceOfPlay, resolve_sequence
 
 
 def _p(pid, accuracy=60, power=60, dodge=50, catch=50):
+    from dodgeball_sim.models import PlayerArchetype
     return Player(
         id=pid, name=pid,
         ratings=PlayerRatings(
             accuracy=accuracy, power=power, dodge=dodge, catch=catch
         ),
+        archetype=PlayerArchetype.CATCHER,
     )
 
 

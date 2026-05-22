@@ -30,11 +30,13 @@ class SanityProbeReport:
 
 
 def _make_player(pid: str, club: str) -> Player:
+    from dodgeball_sim.models import PlayerArchetype
     return Player(
         id=pid,
         name=pid.upper(),
         ratings=PlayerRatings(55, 55, 55, 55, 60, 55),
         club_id=club,
+        archetype=PlayerArchetype.CATCHER,
     )
 
 

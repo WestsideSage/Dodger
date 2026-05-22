@@ -8,9 +8,11 @@ from dodgeball_sim.rulesets import RulesetSelection
 
 
 def _team(prefix: str):
+    from dodgeball_sim.models import PlayerArchetype
     players = tuple(
         Player(id=f"{prefix}{i}", name=f"{prefix}{i}",
-               ratings=PlayerRatings(60, 60, 50, 50))
+               ratings=PlayerRatings(60, 60, 50, 50),
+               archetype=PlayerArchetype.CATCHER)
         for i in range(6)
     )
     return Team(id=prefix, name=prefix, players=players)

@@ -5,10 +5,10 @@ def test_throw_context_required_keys_match_engine_output():
     """Verify engine throw events contain all required ThrowContext keys."""
     from dodgeball_sim.event_types import ThrowContext
     from dodgeball_sim.engine import MatchEngine
-    from dodgeball_sim.models import MatchSetup, Team, Player, PlayerRatings
+    from dodgeball_sim.models import MatchSetup, Team, Player, PlayerRatings, PlayerArchetype
 
     def _player(pid):
-        return Player(id=pid, name=pid, ratings=PlayerRatings(accuracy=60, power=60, dodge=60, catch=60))
+        return Player(id=pid, name=pid, ratings=PlayerRatings(accuracy=60, power=60, dodge=60, catch=60), archetype=PlayerArchetype.CATCHER)
 
     team_a = Team(id="a", name="A", players=tuple(_player(f"a{i}") for i in range(6)))
     team_b = Team(id="b", name="B", players=tuple(_player(f"b{i}") for i in range(6)))
@@ -31,10 +31,10 @@ def test_match_start_context_required_keys_match_engine_output():
     """Verify engine match_start event contains all required MatchStartContext keys."""
     from dodgeball_sim.event_types import MatchStartContext
     from dodgeball_sim.engine import MatchEngine
-    from dodgeball_sim.models import MatchSetup, Team, Player, PlayerRatings
+    from dodgeball_sim.models import MatchSetup, Team, Player, PlayerRatings, PlayerArchetype
 
     def _player(pid):
-        return Player(id=pid, name=pid, ratings=PlayerRatings(accuracy=60, power=60, dodge=60, catch=60))
+        return Player(id=pid, name=pid, ratings=PlayerRatings(accuracy=60, power=60, dodge=60, catch=60), archetype=PlayerArchetype.CATCHER)
 
     team_a = Team(id="a", name="A", players=tuple(_player(f"a{i}") for i in range(6)))
     team_b = Team(id="b", name="B", players=tuple(_player(f"b{i}") for i in range(6)))
@@ -57,10 +57,10 @@ def test_match_end_context_required_keys_match_engine_output():
     """Verify engine match_end event contains all required MatchEndContext keys."""
     from dodgeball_sim.event_types import MatchEndContext
     from dodgeball_sim.engine import MatchEngine
-    from dodgeball_sim.models import MatchSetup, Team, Player, PlayerRatings
+    from dodgeball_sim.models import MatchSetup, Team, Player, PlayerRatings, PlayerArchetype
 
     def _player(pid):
-        return Player(id=pid, name=pid, ratings=PlayerRatings(accuracy=60, power=60, dodge=60, catch=60))
+        return Player(id=pid, name=pid, ratings=PlayerRatings(accuracy=60, power=60, dodge=60, catch=60), archetype=PlayerArchetype.CATCHER)
 
     team_a = Team(id="a", name="A", players=tuple(_player(f"a{i}") for i in range(6)))
     team_b = Team(id="b", name="B", players=tuple(_player(f"b{i}") for i in range(6)))
@@ -82,12 +82,13 @@ def test_match_end_context_required_keys_match_engine_output():
 def test_engine_emits_typed_events():
     """End-to-end: engine events have context shapes matching their TypedDict."""
     from dodgeball_sim.engine import MatchEngine
-    from dodgeball_sim.models import MatchSetup, Team, Player, PlayerRatings
+    from dodgeball_sim.models import MatchSetup, Team, Player, PlayerRatings, PlayerArchetype
 
     def _player(pid: str) -> Player:
         return Player(
             id=pid, name=pid,
             ratings=PlayerRatings(accuracy=60, power=60, dodge=60, catch=60),
+            archetype=PlayerArchetype.CATCHER,
         )
 
     team_a = Team(id="a", name="A", players=tuple(_player(f"a{i}") for i in range(6)))

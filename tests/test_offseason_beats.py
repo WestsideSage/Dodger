@@ -158,6 +158,7 @@ def test_ratify_records_payload_round_trips_through_dynasty_state():
 
 
 def _hof_player(player_id: str, name: str, age: int = 35) -> Player:
+    from dodgeball_sim.models import PlayerArchetype
     return Player(
         id=player_id,
         name=name,
@@ -165,6 +166,7 @@ def _hof_player(player_id: str, name: str, age: int = 35) -> Player:
         age=age,
         club_id="aurora",
         newcomer=False,
+        archetype=PlayerArchetype.CATCHER,
     )
 
 

@@ -45,6 +45,45 @@ def test_simulate_week_with_intent_override(tmp_path):
     assert result["plan"]["intent"] == "Develop Youth"
 
 
+def test_simulate_week_advances_bye_without_skipping_league_matches(tmp_path):
+    from dodgeball_sim.game_loop import current_week
+    from dodgeball_sim.persistence import (
+        get_state,
+        load_career_state_cursor,
+        load_command_history,
+        load_completed_match_ids,
+        load_season,
+    )
+    from dodgeball_sim.use_cases import simulate_week
+
+    conn = _career_conn(tmp_path)
+    season_id = get_state(conn, "active_season_id")
+    player_club_id = get_state(conn, "player_club_id")
+    season = load_season(conn, season_id)
+    week_one_ids = {match.match_id for match in season.matches_for_week(1)}
+    player_week_one_ids = {
+        match.match_id
+        for match in season.matches_for_week(1)
+        if player_club_id in (match.home_club_id, match.away_club_id)
+    }
+    conn.execute(
+        "DELETE FROM scheduled_matches WHERE season_id = ? AND week = 1 AND (home_club_id = ? OR away_club_id = ?)",
+        (season_id, player_club_id, player_club_id),
+    )
+    conn.commit()
+
+    result = simulate_week(conn, update={"intent": "Preserve Health"})
+
+    assert result["status"] == "success"
+    assert result["dashboard"]["result"] == "Bye Week"
+    assert result["aftermath"]["match_card"] is None
+    assert (week_one_ids - player_week_one_ids) <= load_completed_match_ids(conn, season_id)
+    assert not (player_week_one_ids & load_completed_match_ids(conn, season_id))
+    assert current_week(conn, load_season(conn, season_id)) == 2
+    assert load_career_state_cursor(conn).week == 2
+    assert load_command_history(conn, season_id) == []
+
+
 def test_simulate_week_raises_on_empty_db():
     from dodgeball_sim.use_cases import SimulateWeekError, simulate_week
 

@@ -8,6 +8,8 @@ from .season import StandingsRow
 
 
 PLAYOFF_FORMAT = "top4_single_elimination"
+# Number of regular-season clubs that qualify for the playoff bracket.
+PLAYOFF_FIELD_SIZE = 4
 
 
 @dataclass(frozen=True)
@@ -150,6 +152,7 @@ def playoff_stage_label(season_id: str, match_id: str) -> str:
 
 __all__ = [
     "PLAYOFF_FORMAT",
+    "PLAYOFF_FIELD_SIZE",
     "PlayoffBracket",
     "SeasonOutcome",
     "create_final_match",

@@ -428,7 +428,7 @@ def test_training_staff_rating_changes_user_club_offseason_development():
             root_seed=20260426,
         )
         roster = load_all_rosters(conn)[club_id]
-        return sum(player.overall() for player in roster)
+        return sum(player.overall_skill() for player in roster)
 
     weak_staff_total = run_with_training_rating(50.0)
     elite_staff_total = run_with_training_rating(100.0)

@@ -18,6 +18,7 @@ from dodgeball_sim.command_center import (
 )
 from dodgeball_sim.ai_program_manager import prepare_ai_plans_for_matches
 from dodgeball_sim.game_loop import (
+    current_week,
     recompute_regular_season_standings,
     simulate_scheduled_match,
 )
@@ -32,6 +33,7 @@ from dodgeball_sim.persistence import (
     get_state,
     load_all_rosters,
     load_career_state_cursor,
+    load_clubs,
     load_completed_match_ids,
     load_season,
     load_standings,
@@ -43,6 +45,111 @@ from dodgeball_sim.persistence import (
 from dodgeball_sim.view_models import normalize_root_seed
 
 __all__ = ["SimulateWeekError", "simulate_week"]
+
+
+def _simulate_bye_week(
+    conn: sqlite3.Connection,
+    *,
+    state: Mapping[str, Any],
+    plan: dict[str, Any],
+    cursor,
+) -> dict[str, Any]:
+    player_club_id = state["player_club_id"]
+    season_id = state["season_id"]
+    week = int(state["week"])
+    season = load_season(conn, season_id)
+    clubs = load_clubs(conn)
+    completed = load_completed_match_ids(conn, season_id)
+    week_matches = [
+        match
+        for match in sorted(season.matches_for_week(week), key=lambda item: item.match_id)
+        if match.match_id not in completed
+        and player_club_id not in (match.home_club_id, match.away_club_id)
+    ]
+
+    records = []
+    if week_matches:
+        rosters = load_all_rosters(conn)
+        root_seed = normalize_root_seed(get_state(conn, "root_seed", "1"), default_on_invalid=True)
+        if ensure_ai_rosters_playable(conn, clubs, rosters, root_seed, season_id, player_club_id):
+            rosters = load_all_rosters(conn)
+        _validate_match_rosters(week_matches, rosters)
+        difficulty = get_state(conn, "difficulty", "pro") or "pro"
+        prepare_ai_plans_for_matches(
+            conn,
+            season_id=season_id,
+            season=season,
+            matches=week_matches,
+            clubs=clubs,
+            rosters=rosters,
+            player_club_id=player_club_id,
+            standings_rows=load_standings(conn, season_id),
+            apply_plan=_apply_command_plan_to_match,
+            load_plan=load_weekly_command_plan,
+            save_plan=save_weekly_command_plan,
+        )
+        records = [
+            simulate_scheduled_match(
+                conn,
+                scheduled=week_match,
+                clubs=clubs,
+                rosters=rosters,
+                root_seed=root_seed,
+                difficulty=difficulty,
+            )
+            for week_match in week_matches
+        ]
+        recompute_regular_season_standings(conn, season)
+
+    season = load_season(conn, season_id)
+    season, next_chosen, stop_reason = _choose_next_user_match_after_automation(
+        conn, season, clubs, player_club_id
+    )
+    if next_chosen:
+        cursor = dataclasses.replace(
+            cursor,
+            state=CareerState.SEASON_ACTIVE_PRE_MATCH,
+            week=next_chosen[0].week,
+            match_id=None,
+        )
+    elif stop_reason == "season_complete":
+        cursor = advance(cursor, CareerState.SEASON_COMPLETE_OFFSEASON_BEAT, week=0, match_id=None)
+    else:
+        cursor = dataclasses.replace(cursor, week=current_week(conn, season) or week)
+    save_career_state_cursor(conn, cursor)
+    conn.commit()
+
+    dashboard = {
+        "season_id": season_id,
+        "week": week,
+        "match_id": None,
+        "opponent_name": "Bye Week",
+        "result": "Bye Week",
+        "lanes": [
+            {
+                "title": "League Calendar",
+                "summary": f"Bye week advanced after {len(records)} league matches.",
+                "items": [
+                    "No opponent was scheduled for your club.",
+                    "The league calendar advanced to the next available user match.",
+                ],
+            }
+        ],
+    }
+    return {
+        "status": "success",
+        "message": "Bye week advanced.",
+        "plan": plan,
+        "dashboard": dashboard,
+        "next_state": cursor.state.value,
+        "aftermath": {
+            "headline": "Bye Week Complete",
+            "match_card": None,
+            "player_growth_deltas": [],
+            "standings_shift": [],
+            "recruit_reactions": [],
+        },
+    }
 
 
 def _build_aftermath(
@@ -63,10 +170,23 @@ def _build_aftermath(
 
     root_seed_val = get_state(conn, "root_seed") or "1"
     rng = DeterministicRNG(derive_seed(int(root_seed_val), "headline", season_id, str(record.week)))
-    headline = render_headline(dashboard["result"], "expected", rng)
     box = record.result.box_score["teams"]
     home_survivors = int(box[record.home_club_id]["totals"]["living"])
     away_survivors = int(box[record.away_club_id]["totals"]["living"])
+    player_survivors: int | None = None
+    opponent_survivors: int | None = None
+    if player_club_id is not None:
+        if record.home_club_id == player_club_id:
+            player_survivors, opponent_survivors = home_survivors, away_survivors
+        elif record.away_club_id == player_club_id:
+            player_survivors, opponent_survivors = away_survivors, home_survivors
+    headline = render_headline(
+        dashboard["result"],
+        "expected",
+        rng,
+        player_survivors=player_survivors,
+        opponent_survivors=opponent_survivors,
+    )
 
     standings_shift: list[dict] = []
     if standings_before is not None and standings_after is not None and clubs is not None:
@@ -185,7 +305,9 @@ def simulate_week(
 
     save_weekly_command_plan(conn, plan)
 
-    from dodgeball_sim.persistence import load_clubs
+    if state.get("is_bye"):
+        return _simulate_bye_week(conn, state=state, plan=plan, cursor=cursor)
+
     season = load_season(conn, season_id)
     clubs = load_clubs(conn)
     season, chosen, stop_reason = _choose_next_user_match_after_automation(conn, season, clubs, player_club_id)

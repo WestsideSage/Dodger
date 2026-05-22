@@ -49,7 +49,7 @@ def test_credibility_counts_career_wins_across_seasons():
     # Now let's fetch the dynasty office state (which calls build_recruiting_state with all-seasons history)
     state = build_dynasty_office_state(conn)
     recruiting = state["recruiting"]
-    
+
     evidence = " ".join(recruiting["credibility"]["evidence"])
     assert "2 career command-history wins and 0 losses." in evidence
     assert "0 youth-development command weeks across your career." in evidence

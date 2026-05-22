@@ -1,12 +1,12 @@
 from dodgeball_sim.models import CoachPolicy
-from dodgeball_sim import gui, manager_gui
+from dodgeball_sim import command_center
 from dodgeball_sim.config import DEFAULT_CONFIG
 from dodgeball_sim.engine import MatchEngine, compute_throw_probabilities
 from dodgeball_sim.models import MatchSetup, PlayerState
 from dodgeball_sim.randomizer import generate_random_setup
 from dodgeball_sim.rng import DeterministicRNG
 from dodgeball_sim.setup_loader import match_setup_from_dict
-from dodgeball_sim.ui_formatters import policy_effect, policy_rows
+from dodgeball_sim.command_center import policy_effect, policy_rows
 from tests.factories import make_player, make_team
 
 
@@ -107,10 +107,7 @@ def test_gui_policy_key_lists_match_v2d_order():
         "catch_bias",
     ]
 
-    assert list(manager_gui.POLICY_KEYS) == expected
-    assert gui._POLICY_KEYS == expected
-
-
+    assert list(command_center.POLICY_KEYS) == expected
 def test_policy_effect_explains_new_tendencies():
     assert policy_effect("target_ball_holder", 0.7) == "High - prioritizes opponents controlling the ball."
     assert policy_effect("rush_proximity", 0.5) == "Balanced - adjusts how close rushes must be before pressure."

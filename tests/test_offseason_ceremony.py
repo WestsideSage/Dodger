@@ -84,10 +84,10 @@ def test_offseason_dev_path_loads_department_head_and_applies_modifier():
         "SELECT value FROM dynasty_state WHERE key = 'player_club_id'"
     ).fetchone()["value"]
 
-    avg_ovr_base = sum(p.overall() for p in updated_base.get(player_club_base, [])) / max(
+    avg_ovr_base = sum(p.overall_skill() for p in updated_base.get(player_club_base, [])) / max(
         len(updated_base.get(player_club_base, [])), 1
     )
-    avg_ovr_hired = sum(p.overall() for p in updated_hired.get(player_club_hired, [])) / max(
+    avg_ovr_hired = sum(p.overall_skill() for p in updated_hired.get(player_club_hired, [])) / max(
         len(updated_hired.get(player_club_hired, [])), 1
     )
 

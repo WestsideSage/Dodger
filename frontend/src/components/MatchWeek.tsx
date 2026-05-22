@@ -105,6 +105,16 @@ export function MatchWeek({
       .catch(err => setError(err.message));
   };
 
+  const saveDevFocus = (devFocus: string) => {
+    setError(null);
+    return commandApi.savePlan({ intent: selectedIntent, department_orders: { dev_focus: devFocus } })
+      .then((payload: CommandCenterResponse) => {
+        setData(payload);
+        setLocalIntent(undefined);
+      })
+      .catch(err => setError(err.message));
+  };
+
   const simulate = () => {
     setError(null);
     setIsTransitioning(true);
@@ -196,6 +206,7 @@ export function MatchWeek({
         data={data}
         simulate={simulate}
         onSavePlan={savePlan}
+        onSaveDevFocus={saveDevFocus}
         selectedIntent={selectedIntent}
         onIntentChange={handleIntentChange}
         planConfirmed={planConfirmed}
@@ -306,6 +317,7 @@ export function MatchWeek({
               onAdvance={handleAdvanceWeek}
               onViewReplay={onOpenReplay ? () => onOpenReplay(matchId) : undefined}
               matchId={matchId}
+              result={activeResult.dashboard.result}
               isAdvancing={isAdvancingWeek}
             />
           </div>

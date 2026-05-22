@@ -4,6 +4,7 @@ from dodgeball_sim.win_probability import per_event_wp_delta, pre_match_expected
 
 
 def _player(player_id: str, overall: float) -> Player:
+    from dodgeball_sim.models import PlayerArchetype
     return Player(
         id=player_id,
         name=player_id.title(),
@@ -15,6 +16,7 @@ def _player(player_id: str, overall: float) -> Player:
             stamina=overall,
         ),
         traits=PlayerTraits(),
+        archetype=PlayerArchetype.CATCHER,
     )
 
 
