@@ -67,8 +67,8 @@ def _credibility(
     )
     score = max(0, min(100, 50 + prestige * 2 + wins * 4 - losses * 3 + youth_weeks * 2))
     evidence = [
-        f"{wins} command-history wins and {losses} losses.",
-        f"{youth_weeks} youth-development command weeks.",
+        f"{wins} career command-history wins and {losses} losses.",
+        f"{youth_weeks} youth-development command weeks across your career.",
         f"Club prestige score {prestige}.",
     ]
     if not history:

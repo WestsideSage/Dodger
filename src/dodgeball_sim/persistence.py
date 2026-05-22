@@ -44,7 +44,7 @@ def _player_to_dict(player: Player) -> Dict[str, Any]:
         "age": player.age,
         "club_id": player.club_id,
         "newcomer": player.newcomer,
-        "archetype": player.archetype.value,
+        "archetype": player.archetype.value if isinstance(player.archetype, PlayerArchetype) else str(player.archetype),
         "ratings": {
             "accuracy": ratings.accuracy,
             "power": ratings.power,
@@ -52,6 +52,9 @@ def _player_to_dict(player: Player) -> Dict[str, Any]:
             "catch": ratings.catch,
             "stamina": ratings.stamina,
             "tactical_iq": ratings.tactical_iq,
+            "catch_courage": ratings.catch_courage,
+            "throw_selection_iq": ratings.throw_selection_iq,
+            "conditioning_curve": ratings.conditioning_curve,
         },
         "traits": {
             "potential": player.traits.potential,
@@ -65,20 +68,53 @@ def _player_to_dict(player: Player) -> Dict[str, Any]:
 def _player_from_dict(d: Dict[str, Any]) -> Player:
     r = d.get("ratings", {})
     t = d.get("traits", {})
+    required_rating_fields = (
+        "accuracy",
+        "power",
+        "dodge",
+        "catch",
+        "stamina",
+        "tactical_iq",
+        "catch_courage",
+        "throw_selection_iq",
+        "conditioning_curve",
+    )
+    missing = [field for field in required_rating_fields if field not in r]
+    if missing:
+        raise ValueError(
+            f"Cannot load player {d.get('id', '?')!r}: ratings missing v2 fields {missing}. "
+            "Plan B made a clean break with V1-V11 saves (brief §8)."
+        )
+    if "archetype" not in d:
+        raise ValueError(
+            f"Cannot load player {d.get('id', '?')!r}: missing 'archetype' key. "
+            "Plan B requires explicit archetype assignment."
+        )
+    archetype_value = d["archetype"]
+    try:
+        archetype = PlayerArchetype(archetype_value)
+    except ValueError as exc:
+        raise ValueError(
+            f"Cannot load player {d.get('id', '?')!r}: unknown archetype {archetype_value!r}. "
+            f"Valid values: {[member.value for member in PlayerArchetype]}"
+        ) from exc
     return Player(
         id=d["id"],
         name=d["name"],
         age=d.get("age", 18),
         club_id=d.get("club_id"),
         newcomer=d.get("newcomer", True),
-        archetype=PlayerArchetype(d.get("archetype", "Tactical")),
+        archetype=archetype,
         ratings=PlayerRatings(
-            accuracy=r.get("accuracy", 60.0),
-            power=r.get("power", 60.0),
-            dodge=r.get("dodge", 60.0),
-            catch=r.get("catch", 60.0),
-            stamina=r.get("stamina", 60.0),
-            tactical_iq=r.get("tactical_iq", 50.0),
+            accuracy=r["accuracy"],
+            power=r["power"],
+            dodge=r["dodge"],
+            catch=r["catch"],
+            stamina=r["stamina"],
+            tactical_iq=r["tactical_iq"],
+            catch_courage=r["catch_courage"],
+            throw_selection_iq=r["throw_selection_iq"],
+            conditioning_curve=r["conditioning_curve"],
         ),
         traits=PlayerTraits(
             potential=t.get("potential", 60),
@@ -2142,6 +2178,34 @@ def load_command_history(conn: sqlite3.Connection, season_id: str) -> List[Dict[
     ]
 
 
+def load_command_history_all_seasons(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
+    """Return every command-history row across every season, oldest first.
+
+    Audit 7.4: credibility must reflect career performance, not just the active season.
+    """
+    rows = conn.execute(
+        """
+        SELECT * FROM command_history
+        ORDER BY season_id, week, history_id
+        """
+    ).fetchall()
+    return [
+        {
+            "history_id": int(row["history_id"]),
+            "season_id": row["season_id"],
+            "week": int(row["week"]),
+            "club_id": row["club_id"],
+            "match_id": row["match_id"],
+            "opponent_club_id": row["opponent_club_id"],
+            "intent": row["intent"],
+            "plan": json.loads(row["plan_json"]),
+            "dashboard": json.loads(row["dashboard_json"]),
+            "created_at": row["created_at"],
+        }
+        for row in rows
+    ]
+
+
 def get_state(
     conn: sqlite3.Connection, key: str, default: Optional[str] = None
 ) -> Optional[str]:
@@ -3134,6 +3198,7 @@ __all__ = [
     "load_weekly_command_plan",
     "save_command_history_record",
     "load_command_history",
+    "load_command_history_all_seasons",
     "get_state",
     "set_state",
     "load_json_state",
