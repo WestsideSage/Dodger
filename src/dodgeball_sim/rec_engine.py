@@ -22,7 +22,7 @@ from .catch_queue import CatchQueueState, enqueue_out_player, return_player_on_c
 from .engine_driver import DriverMatchInput, DriverMatchOutput
 from .fatigue import FatigueParams, FatigueState, accumulate, effectiveness, recover
 from .flood_throws import FloodThrowTracker, PendingThrow
-from .models import CoachPolicy, Player
+from .models import CoachPolicy, Player, PlayerRatings
 from .moment_events import (
     Comeback,
     DramaticCatch,
@@ -54,6 +54,36 @@ THROW_EXERTION_COST: float = 0.09
 
 ACTIVE_RECOVERY_SECONDS: float = 0.5
 """Short between-rally recovery for players still on court."""
+
+
+def _fatigue_params_for_ratings(ratings: PlayerRatings) -> FatigueParams:
+    return FatigueParams(conditioning_curve=float(ratings.conditioning_curve))
+
+
+def _response_branch_for_courage(*, courage: float, response_roll: float) -> str:
+    c = max(0.0, min(100.0, float(courage)))
+    catch_share = 0.05 + 0.55 * (c / 100.0)
+    block_share = 0.30 - 0.10 * abs(c - 50.0) / 50.0
+    if response_roll < catch_share:
+        return "catch"
+    if response_roll < catch_share + block_share:
+        return "block"
+    return "dodge"
+
+
+def _should_throw_under_iq(
+    *,
+    iq: float,
+    expected_value: float,
+    stall_seconds: float,
+    stall_cap: float,
+) -> bool:
+    iq_norm = max(0.0, min(100.0, float(iq))) / 100.0
+    stall_pressure = max(0.0, min(1.0, stall_seconds / max(stall_cap, 0.001)))
+    if stall_pressure >= 0.8:
+        return True
+    threshold = (0.05 + 0.35 * iq_norm) * (1.0 - stall_pressure)
+    return expected_value >= threshold
 
 
 @dataclass
@@ -176,12 +206,11 @@ class RecTier1Driver:
                 )
             )
 
-        # Fatigue: derive params from stamina
+        # Fatigue: sourced from the v2 conditioning_curve field.
         fatigue_params: Dict[str, FatigueParams] = {}
         fatigue: Dict[str, FatigueState] = {}
         for pid in list(mi.starters_a) + list(mi.starters_b):
-            stamina = float(mi.player_lookup[pid].ratings.stamina)
-            fatigue_params[pid] = FatigueParams(conditioning_curve=stamina)
+            fatigue_params[pid] = _fatigue_params_for_ratings(mi.player_lookup[pid].ratings)
             fatigue[pid] = FatigueState.fresh()
 
         queues = {
@@ -364,8 +393,8 @@ class RecTier1Driver:
             )
             deficit_at_low = other_starters - low
             if (
-                deficit_at_low >= 3
-                and my_active >= opp
+                deficit_at_low >= 2
+                and my_active >= opp - 2
                 and not rt.comeback_emitted_for[team_id]
             ):
                 rt.moment_events.append(
@@ -394,9 +423,19 @@ class RecTier1Driver:
             ]
             if not active:
                 continue
+            stall_state = rt.stall_a if team_id == team_a else rt.stall_b
             candidates = []
             for p in active:
                 eff = effectiveness(rt.fatigue[p.player_id])
+                player = mi.player_lookup[p.player_id]
+                expected_value = (player.ratings.accuracy / 100.0) * eff
+                if not _should_throw_under_iq(
+                    iq=player.ratings.throw_selection_iq,
+                    expected_value=expected_value,
+                    stall_seconds=stall_state.seconds_holding,
+                    stall_cap=rt.rules.stall_cap_seconds,
+                ):
+                    continue
                 if rt.rng.random() < 0.4 * eff:
                     candidates.append(p.player_id)
             result[team_id] = candidates[:3]
@@ -436,50 +475,88 @@ class RecTier1Driver:
         dodge = (target.ratings.dodge / 100.0) * target_eff
         catch_skill = (target.ratings.catch / 100.0) * target_eff
 
-        roll = rt.rng.random()
-        if roll < catch_skill * 0.4:
-            self._mark_out(rt, thrower_id, thrower_team_id, team_a, team_b)
-            catcher_team = target_state.team_id
-            ret_event, returning_pid = return_player_on_catch(
-                rt.queues[catcher_team],
-                sequence_id=f"t{rt.tick}",
-                match_id=mi.match_id,
-            )
-            if ret_event is not None and returning_pid is not None:
-                rt.events.append({"type": "catch_return", "catcher": target_state.player_id})
-                returning = rt.players[returning_pid]
-                returning.status = OfficialPlayerStatus.ACTIVE
-                # Count toward comeback
-                rt.comeback_catches[catcher_team] = rt.comeback_catches.get(catcher_team, 0) + 1
-                # Emit DramaticCatch
-                active_a_now = sum(
-                    1 for p in rt.players.values()
-                    if p.team_id == team_a and p.status == OfficialPlayerStatus.ACTIVE
-                )
-                active_b_now = sum(
-                    1 for p in rt.players.values()
-                    if p.team_id == team_b and p.status == OfficialPlayerStatus.ACTIVE
-                )
-                rt.moment_events.append(
-                    DramaticCatch(
-                        match_id=mi.match_id,
-                        tick=rt.tick,
-                        catcher_id=target_state.player_id,
-                        catcher_team_id=catcher_team,
-                        thrower_id=thrower_id,
-                        thrower_team_id=thrower_team_id,
-                        returning_player_id=returning_pid,
-                        active_count_a=active_a_now,
-                        active_count_b=active_b_now,
-                    )
-                )
-        elif roll < catch_skill * 0.4 + accuracy * (1.0 - dodge):
-            self._mark_out(rt, target_state.player_id, target_state.team_id, team_a, team_b)
-            rt.events.append({"type": "hit", "thrower": thrower_id, "target": target_state.player_id})
-        else:
+        connect_roll = rt.rng.random()
+        if connect_roll >= accuracy * (1.0 - dodge):
             rt.events.append({"type": "miss", "thrower": thrower_id, "target": target_state.player_id})
+            reset_on_throw_call(rt, thrower_team_id, team_a)
+            return
+
+        branch = _response_branch_for_courage(
+            courage=target.ratings.catch_courage,
+            response_roll=rt.rng.random(),
+        )
+        if branch == "catch":
+            if rt.rng.random() < catch_skill:
+                self._mark_out(rt, thrower_id, thrower_team_id, team_a, team_b)
+                catcher_team = target_state.team_id
+                ret_event, returning_pid = return_player_on_catch(
+                    rt.queues[catcher_team],
+                    sequence_id=f"t{rt.tick}",
+                    match_id=mi.match_id,
+                )
+                if ret_event is not None and returning_pid is not None:
+                    rt.events.append({"type": "catch_return", "catcher": target_state.player_id})
+                    returning = rt.players[returning_pid]
+                    returning.status = OfficialPlayerStatus.ACTIVE
+                    rt.comeback_catches[catcher_team] = rt.comeback_catches.get(catcher_team, 0) + 1
+                    self._emit_dramatic_catch(
+                        rt,
+                        mi,
+                        target_state,
+                        thrower_id,
+                        thrower_team_id,
+                        returning_pid,
+                        team_a,
+                        team_b,
+                    )
+                else:
+                    rt.events.append({"type": "catch_clean", "catcher": target_state.player_id})
+            else:
+                self._mark_out(rt, target_state.player_id, target_state.team_id, team_a, team_b)
+                rt.events.append({"type": "catch_failed_hit", "thrower": thrower_id, "target": target_state.player_id})
+        elif branch == "block":
+            rt.events.append({"type": "block", "thrower": thrower_id, "blocker": target_state.player_id})
+        else:
+            if rt.rng.random() < dodge:
+                rt.events.append({"type": "dodge", "thrower": thrower_id, "target": target_state.player_id})
+            else:
+                self._mark_out(rt, target_state.player_id, target_state.team_id, team_a, team_b)
+                rt.events.append({"type": "hit", "thrower": thrower_id, "target": target_state.player_id})
 
         reset_on_throw_call(rt, thrower_team_id, team_a)
+
+    def _emit_dramatic_catch(
+        self,
+        rt: _MatchRuntime,
+        mi: DriverMatchInput,
+        target_state: OfficialPlayerState,
+        thrower_id: str,
+        thrower_team_id: str,
+        returning_pid: str,
+        team_a: str,
+        team_b: str,
+    ) -> None:
+        active_a_now = sum(
+            1 for player in rt.players.values()
+            if player.team_id == team_a and player.status == OfficialPlayerStatus.ACTIVE
+        )
+        active_b_now = sum(
+            1 for player in rt.players.values()
+            if player.team_id == team_b and player.status == OfficialPlayerStatus.ACTIVE
+        )
+        rt.moment_events.append(
+            DramaticCatch(
+                match_id=mi.match_id,
+                tick=rt.tick,
+                catcher_id=target_state.player_id,
+                catcher_team_id=target_state.team_id,
+                thrower_id=thrower_id,
+                thrower_team_id=thrower_team_id,
+                returning_player_id=returning_pid,
+                active_count_a=active_a_now,
+                active_count_b=active_b_now,
+            )
+        )
 
     def _mark_out(
         self,
