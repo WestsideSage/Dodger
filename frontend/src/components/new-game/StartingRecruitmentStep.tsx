@@ -62,6 +62,9 @@ export function StartingRecruitmentStep({
         <p style={{ margin: '0.375rem 0 0', fontSize: '0.8125rem', color: '#64748b' }}>
           Select at least 6 players (max 10). {rosterIds.size > 0 && `${rosterIds.size} selected.`}
         </p>
+        <p style={{ fontSize: '0.75rem', opacity: 0.7, color: '#94a3b8', marginTop: '0.375rem', marginBottom: '0.5rem' }}>
+          Each prospect shows <strong>NOW / PEAK</strong> — current rating today and the ceiling they could reach.
+        </p>
       </div>
 
       {loadError && (
@@ -86,7 +89,7 @@ export function StartingRecruitmentStep({
               type="button"
               role="checkbox"
               aria-checked={selected}
-              aria-label={`${p.name}, ${p.hometown}, ${p.public_archetype}, overall ${ovrLow}-${ovrHigh}`}
+              aria-label={`${p.name}, ${p.hometown}, ${p.public_archetype}, overall ${ovrLow} now, ${ovrHigh} peak`}
               onClick={() => {
                 if (canSelect) toggleProspect(p.player_id);
               }}
@@ -116,10 +119,14 @@ export function StartingRecruitmentStep({
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, marginLeft: '1rem' }}>
                 <div style={{ textAlign: 'right' }}>
-                  <div className="dm-data" style={{ fontWeight: 800, color: selected ? '#22d3ee' : '#94a3b8', fontSize: '0.9375rem' }}>
-                    {ovrLow}-{ovrHigh}
+                  <div className="dm-data" style={{ fontWeight: 800, color: selected ? '#22d3ee' : '#94a3b8', fontSize: '0.875rem' }} title="Current rating today / Potential ceiling">
+                    <strong>{ovrLow}</strong>
+                    <span style={{ opacity: 0.5 }}> / </span>
+                    <strong>{ovrHigh}</strong>
+                    <span style={{ fontSize: '0.5625rem', opacity: 0.6, marginLeft: '0.25rem' }}>
+                      NOW/PEAK
+                    </span>
                   </div>
-                  <div style={{ fontSize: '0.5625rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#475569' }}>OVR</div>
                 </div>
                 <div style={{ width: '18px', height: '18px', borderRadius: '9999px', border: selected ? '2px solid #22d3ee' : '2px solid #334155', background: selected ? 'rgba(34,211,238,0.15)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   {selected && <span style={{ color: '#22d3ee', fontSize: '0.625rem', lineHeight: 1 }}>OK</span>}
