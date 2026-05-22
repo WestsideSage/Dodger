@@ -13,6 +13,7 @@ from .persistence import (
     load_all_rosters,
     load_clubs,
     load_command_history,
+    load_command_history_all_seasons,
     load_json_state,
     load_playoff_bracket,
     load_prospect_pool,
@@ -29,6 +30,33 @@ from .recruiting_office import (
 from .recruitment import generate_prospect_pool
 from .rng import DeterministicRNG, derive_seed
 from .staff_market import STAFF_ACTION_STATE_KEY, build_staff_market_state
+from typing import Dict, List, Mapping, Optional
+from statistics import mean
+from dataclasses import dataclass
+from .models import Player, Team
+from .stats import PlayerMatchStats
+from .season import StandingsRow, Season
+from .scheduler import ScheduledMatch
+from .playoffs import is_playoff_match_id
+from .league import Club
+from typing import Dict, List, Mapping, Optional
+from statistics import mean
+from dataclasses import dataclass
+from .models import Player, Team
+from .stats import PlayerMatchStats
+from .season import StandingsRow, Season
+from .scheduler import ScheduledMatch
+from .playoffs import is_playoff_match_id
+from .league import Club
+from typing import Dict, List, Mapping, Optional
+from statistics import mean
+from dataclasses import dataclass
+from .models import Player, Team
+from .stats import PlayerMatchStats
+from .season import StandingsRow, Season
+from .scheduler import ScheduledMatch
+from .playoffs import is_playoff_match_id
+from .league import Club
 
 
 def _ensure_dynasty_keys(conn: sqlite3.Connection) -> None:
@@ -54,7 +82,7 @@ def build_dynasty_office_state(conn: sqlite3.Connection) -> dict[str, Any]:
 
     season = load_season(conn, season_id)
     clubs = load_clubs(conn)
-    history = load_command_history(conn, season_id)
+    history = load_command_history_all_seasons(conn)
     root_seed = _root_seed(conn)
     week = current_week(conn, season) or 0
     return {
@@ -294,3 +322,146 @@ __all__ = [
     "hire_staff_candidate",
     "save_recruiting_promise",
 ]
+
+
+# ----------------------------------------------------------------------
+# League leader / player profile / display helpers (formerly manager_helpers)
+# ----------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class LeagueLeader:
+    category: str
+    player_id: str
+    club_id: str
+    value: float
+
+@dataclass(frozen=True)
+class PlayerProfileDetails:
+    title: str
+    text: str
+
+def _score_player(stats: Optional[PlayerMatchStats]) -> float:
+    if stats is None:
+        return 0.0
+    return (
+        stats.eliminations_by_throw * 3.0
+        + stats.catches_made * 4.0
+        + stats.dodges_successful * 1.5
+        + stats.revivals_caused * 2.0
+        - stats.times_eliminated * 2.0
+        + stats.clutch_events
+    )
+
+def _standings_with_all_clubs(standings: List[StandingsRow], clubs: Dict[str, Club]) -> List[StandingsRow]:
+    by_id = {row.club_id: row for row in standings}
+    rows = [
+        by_id.get(club_id, StandingsRow(club_id, wins=0, losses=0, draws=0, elimination_differential=0, points=0))
+        for club_id in clubs
+    ]
+    rows.sort(key=lambda row: (-row.points, -row.elimination_differential, row.club_id))
+    return rows
+
+def _regular_season_matches(season: Season) -> List[ScheduledMatch]:
+    return [
+        match for match in season.scheduled_matches
+        if not is_playoff_match_id(season.season_id, match.match_id)
+    ]
+
+def player_role(player: Player) -> str:
+    ratings = {
+        "Sniper": player.ratings.accuracy,
+        "Power Arm": player.ratings.power,
+        "Dodger": player.ratings.dodge,
+        "Catcher": player.ratings.catch,
+    }
+    return max(ratings.items(), key=lambda item: item[1])[0]
+
+def team_overall(team: Team) -> float:
+    if not team.players:
+        return 0.0
+    return mean(player.overall_skill() for player in team.players)
+
+def build_league_leaders(
+    player_stats: Mapping[str, PlayerMatchStats],
+    player_club_map: Mapping[str, str],
+    limit: int = 3,
+) -> Dict[str, List[LeagueLeader]]:
+    """Build v1 league leader boards from persisted player stats."""
+    specs = {
+        "Eliminations": lambda stats: float(stats.eliminations_by_throw),
+        "Catches": lambda stats: float(stats.catches_made),
+        "MVP Score": _score_player,
+    }
+    leaders: Dict[str, List[LeagueLeader]] = {}
+    for category, scorer in specs.items():
+        rows = [
+            LeagueLeader(category, player_id, player_club_map.get(player_id, ""), scorer(stats))
+            for player_id, stats in player_stats.items()
+        ]
+        rows.sort(key=lambda row: (-row.value, row.player_id))
+        leaders[category] = rows[:limit]
+    return leaders
+
+def build_player_profile_details(
+    player: Player,
+    club_name: str,
+    season_stats: Optional[PlayerMatchStats] = None,
+    matches_played: int = 0,
+    career_summary: Optional[Mapping[str, float]] = None,
+) -> PlayerProfileDetails:
+    """Build display-ready player profile details without touching GUI state."""
+    ratings = player.ratings
+    status = "Rookie" if player.newcomer else "Veteran"
+    lines = [
+        f"{player.name}",
+        f"Club: {club_name}",
+        f"Role: {player_role(player)}",
+        f"Age: {player.age} | Status: {status}",
+        "",
+        "Ratings",
+        f"  OVR: {player.overall_skill():.1f}",
+        f"  Accuracy: {ratings.accuracy:.1f}",
+        f"  Power: {ratings.power:.1f}",
+        f"  Dodge: {ratings.dodge:.1f}",
+        f"  Catch: {ratings.catch:.1f}",
+        f"  Stamina: {ratings.stamina:.1f}",
+        "",
+        "Current Season",
+    ]
+    if season_stats is None:
+        lines.append("  No persisted season stats yet.")
+    else:
+        lines.extend(
+            [
+                f"  Matches: {matches_played}",
+                f"  Throws: {season_stats.throws_attempted}",
+                f"  Eliminations: {season_stats.eliminations_by_throw}",
+                f"  Catches: {season_stats.catches_made}",
+                f"  Dodges: {season_stats.dodges_successful}",
+                f"  Times Eliminated: {season_stats.times_eliminated}",
+                f"  Plus/Minus: {season_stats.elimination_plus_minus:+}",
+                f"  MVP Score: {_score_player(season_stats):.1f}",
+            ]
+        )
+
+    lines.append("")
+    lines.append("Career")
+    if not career_summary or career_summary.get("seasons_played", 0) <= 0:
+        lines.append("  No persisted career totals yet.")
+    else:
+        lines.extend(
+            [
+                f"  Seasons: {career_summary.get('seasons_played', 0):.0f}",
+                f"  Eliminations: {career_summary.get('total_eliminations', 0):.0f}",
+                f"  Catches: {career_summary.get('total_catches_made', 0):.0f}",
+                f"  Dodges: {career_summary.get('total_dodges_successful', 0):.0f}",
+                f"  Times Eliminated: {career_summary.get('total_times_eliminated', 0):.0f}",
+                f"  Recent Eliminations: {career_summary.get('recent_eliminations', 0):.0f}",
+            ]
+        )
+    return PlayerProfileDetails(title=player.name, text="\n".join(lines))
+
+
+# ---------------------------------------------------------------------------
+# V2-A scouting helper builders
+# ---------------------------------------------------------------------------
