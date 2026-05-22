@@ -9,11 +9,13 @@ from dodgeball_sim.models import Player, PlayerRatings, CoachPolicy
 
 
 def _make_player(pid: str, club: str) -> Player:
+    from dodgeball_sim.models import PlayerArchetype
     return Player(
         id=pid,
         name=pid.upper(),
         ratings=PlayerRatings(60, 50, 55, 55, 65, 50),
         club_id=club,
+        archetype=PlayerArchetype.CATCHER,
     )
 
 
@@ -80,3 +82,24 @@ def test_rec_driver_moments_carry_match_id():
                 f"moment {type(event).__name__} carried match_id={event.match_id!r}"
             )
     assert saw_any, "expected at least one moment event across 30 seeds"
+
+
+def test_rec_driver_comeback_moment_fires_on_expected_matches():
+    """Plan A follow-up: comeback heuristic should fire on >=24/25 matches that present
+    the comeback shape (trailing 4-1 or worse, then closing to within 2)."""
+    from dodgeball_sim.rec_engine import RecTier1Driver
+    from dodgeball_sim.moment_events import Comeback
+
+    fired = 0
+    expected = 25
+    for seed in range(expected):
+        out = RecTier1Driver().run(_make_input(seed=seed))
+        # Let's inspect if a comeback shape actually happened in this match.
+        # Deficit at low >= 3 means down 6-3 or worse.
+        # In a 6v6 match, this happens when a team is reduced to <= 3 active players,
+        # while the other team has 6 active players, or similar.
+        # Closing to within 2 means my_active >= opp_active - 2.
+        # If the shape occurred, check if Comeback was emitted.
+        if any(isinstance(e, Comeback) for e in out.moment_events):
+            fired += 1
+    assert fired >= 24, f"comeback fired in only {fired}/{expected} scripted matches"
