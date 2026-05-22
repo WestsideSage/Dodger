@@ -2,75 +2,53 @@
 
 Canonical snapshot of what is actually built and what is still open. When code
 state changes materially, update this file in the same pass. If this file and
-the source disagree, the source wins — then fix this file.
+the source disagree, the source wins - then fix this file.
 
-Last updated: 2026-05-20 (Plan A close-out: match_id propagation fix + regression test).
+Last updated: 2026-05-22 (Pre-Plan-C knockout shipped — 11/12 audit bugs closed, rec-driver comeback heuristic tightened).
 
 ## Current Phase
 
 Post-V11. The game is playable end to end: career creation, weekly command
 loop, official-rules match replay, playoffs, offseason ceremonies, and
 multi-season dynasty history all work in the browser. The post-V11 redesign
-is now in progress: **Plan A (hybrid driver architecture + Tier 1 engine)
-shipped on 2026-05-20**, and Plans B/C/D live in
+is now in progress: Plan A (hybrid driver architecture + Tier 1 engine)
+shipped on 2026-05-20, Plan B (player attribute v2) also shipped on
+2026-05-20, and Plans C/D remain live in
 `docs/specs/2026-05-20-post-v11-redesign-brief/`. The current focus remains
-**refinement and gameplay optimization**, not unrelated new systems.
+refinement and gameplay optimization, not unrelated new systems.
 
 ## Shipped And Verified
 
-- **V11 — Official USA Dodgeball Rules Integration** (shipped 2026-05-19) — see `docs/specs/MILESTONES.md` and `docs/specs/2026-05-20-v11-official-usad-rules/design.md`. Fully integrates warning records, blue cards, and discipline states (Section 34 & 35) with a complete conformance matrix verification.
-  - Career creation only: the official ruleset cannot be opted into mid-career. Existing V1–V10 saves remain on the generic ruleset.
+- **Pre-Plan-C knockout** (shipped 2026-05-22) — closed 11 of 12 audit-7.x bugs from the 2026-05-21 QA pass (7.6 deferred to Plan C by design) plus the rec-driver comeback heuristic (Plan A follow-up). See `docs/superpowers/specs/2026-05-22-pre-plan-c-knockout-design.md` and the resolution table at the top of `docs/qa/2026-05-21-browser-playthrough-audit.md`.
+- **V11 - Official USA Dodgeball Rules Integration** (shipped 2026-05-19) - see `docs/specs/MILESTONES.md` and `docs/specs/2026-05-20-v11-official-usad-rules/design.md`. Fully integrates warning records, blue cards, and discipline states (Section 34 & 35) with a complete conformance matrix verification.
+  - Career creation only: the official ruleset cannot be opted into mid-career. Existing V1-V10 saves remain on the generic ruleset.
   - Rulesets: Foam, No-Sting, and Cloth ruleset profiles are fully supported.
   - Deferred: yellow/red card tournament persistence, designated retriever realism, pinching, flight kills, injuries, interference, player collision, bracket expansion, and full administrative rules.
   - Conformance matrix reference: verified completeness of all must-have official rules in `tests/test_official_conformance_matrix.py`.
-- **Post-V11 redesign — Plan A: Hybrid driver architecture + Tier 1 engine** (landed 2026-05-20, closed-out 2026-05-20 after review) — see `docs/specs/2026-05-20-post-v11-redesign-brief/plan-a-hybrid-driver.md`. New `EngineDriver` protocol with `RecTier1Driver` (Local Rec League, brief §3.5) and `OfficialDriver` (wraps V11). New primitives: `fatigue`, `flood_throws`, `stall_timer`, and `moment_events` (six-moment contract). V11 / USAD tests still pass. Tier 1 sanity probe lives at `tools/tier_1_sanity_probe.py`. Review caught a `match_id="rt"` placeholder bug in `_mark_out` (corrupted `GassedCollapse.match_id` and catch-queue events); fixed by threading `match_id` through the runtime and pinned by a regression test in `tests/test_tier_1_integration.py::test_rec_driver_moments_carry_match_id`. Known follow-ups for Plans B/C: the rec-driver comeback heuristic is loose (≈22/25 matches) and `OfficialDriver.moment_events` is intentionally empty. Plans B/C/D remain queued in `tier-1-roadmap.md`.
-- **V1–V10** — see `docs/specs/MILESTONES.md` for the per-milestone index.
-- **UX Polish initiative** (three waves, 15 subplans; plan archived at
-  `docs/archive/plans/2026-05-08-ux-polish/`). The frontend reflects it:
-  the three-mode `MatchWeek` shell, sequenced aftermath blocks, the Roster
-  theater view, Dynasty Office `Recruit`/`History` sub-tabs, the `voice_*`
-  writer modules, offseason ceremony takeovers, the Build-From-Scratch new-game
-  flow, and the rebuilt Match Replay.
-- **Playoff bracket** on the Standings screen (`/api/playoffs/bracket` +
-  `PlayoffBracket` component).
-- **Browser playthrough bug fixes B1–B14** from the 2026-05-18/19 Playwright
-  playthrough — see `docs/archive/playthrough-bug-log.md`.
+- **Post-V11 redesign - Plan A: Hybrid driver architecture + Tier 1 engine** (landed 2026-05-20, closed-out 2026-05-20 after review) - see `docs/specs/2026-05-20-post-v11-redesign-brief/plan-a-hybrid-driver.md`. New `EngineDriver` protocol with `RecTier1Driver` (Local Rec League, brief section 3.5) and `OfficialDriver` (wraps V11). New primitives: `fatigue`, `flood_throws`, `stall_timer`, and `moment_events` (six-moment contract). V11 / USAD tests still pass. Tier 1 sanity probe lives at `tools/tier_1_sanity_probe.py`. Review caught a `match_id="rt"` placeholder bug in `_mark_out` (corrupted `GassedCollapse.match_id` and catch-queue events); fixed by threading `match_id` through the runtime and pinned by a regression test in `tests/test_tier_1_integration.py::test_rec_driver_moments_carry_match_id`. Known follow-ups for Plans B/C: the rec-driver comeback heuristic is loose (about 22/25 matches; closed 2026-05-22 Task 12 of pre-Plan-C knockout) and `OfficialDriver.moment_events` is intentionally empty. Plans C/D remain queued in `tier-1-roadmap.md`.
+- **Post-V11 redesign - Plan B: Player attribute v2** (landed 2026-05-20) - see `docs/specs/2026-05-20-post-v11-redesign-brief/plan-b-design.md` and `plan-b-player-attribute-v2.md`. `PlayerRatings` now includes `catch_courage`, `throw_selection_iq`, and `conditioning_curve`. `PlayerArchetype` was rewritten to four rec-league bases plus four named hybrids, `overall_skill()` is now the five-skill mean, and behavioral identity traits surface separately through `identity_profile()`. `derive_archetype` is the single canonical assignment helper, recruitment / scouting / identity / lineup / development now consume the Plan B semantics, the rec driver reads the new attributes at three decision points, legacy V1-V11 player payloads fail loudly at load, the Tier 1 sanity probe still emits all six moment kinds, and the V11 / USAD conformance checks still pass.
+- **V1-V10** - see `docs/specs/MILESTONES.md` for the per-milestone index.
+- **UX Polish initiative** (three waves, 15 subplans; plan archived at `docs/archive/plans/2026-05-08-ux-polish/`). The frontend reflects it: the three-mode `MatchWeek` shell, sequenced aftermath blocks, the Roster theater view, Dynasty Office `Recruit`/`History` sub-tabs, the `voice_*` writer modules, offseason ceremony takeovers, the Build-From-Scratch new-game flow, and the rebuilt Match Replay.
+- **Playoff bracket** on the Standings screen (`/api/playoffs/bracket` + `PlayoffBracket` component).
+- **Browser playthrough bug fixes B1-B14** from the 2026-05-18/19 Playwright playthrough - see `docs/archive/playthrough-bug-log.md`.
+- **Product-coherence-audit follow-ups - all remaining gaps closed** (2026-05-22) - the 2026-05-15 audit (`docs/archive/product-coherence-audit.md`) was reconciled, then its open items were implemented in four phases.
+  - *Phase 1 - mechanical frontend:* Fix 4 restored the "Last Match" strip in the reworked `PreSimDashboard`; Fix 7 added the compact-card Elimination-Differential tooltip; E5 warmed the opponent-history fallback copy (`matchup_details.build_matchup_details`); E6 made the aftermath Advance button result-based (Bank the Result / Move On / Shake It Off).
+  - *Phase 2 - Command Center depth:* Fix 2 made Dev Focus editable from the CC order pills and removed the buried Roster `DevFocusChip`; E1 rewrote `voice_aftermath.render_headline` into a margin-aware generator that references the scoreline; E2 added a deterministic season title shown in the CC header; E3 ("player to watch"), E7 ("this week's stakes"), and E9 (post-match bulletin) are frontend generators in `presimNarrative.ts`; E8 surfaced honest per-staff effect-lane summaries (`staff_market.staff_effect_summary`).
+  - *Phase 3 - Fix 6:* the standings response now carries `total_weeks` / `current_week` / `playoff_spots` (`playoffs.PLAYOFF_FIELD_SIZE`), and `LeagueContext` renders a week-of-Z / playoff-cutoff callout with a games-remaining chip and a cutoff-row divider.
+  - *Phase 4 - offseason:* E10 made `records_ratified` / `hof_induction` structured beat cards (`StructuredOffseasonBeats.tsx`); this also fixed a latent state-key bug where those beats and `compute_active_beats` read `offseason_records_json` / `offseason_hof_json` - keys never written - so the beats had never actually appeared. The offseason recruitment auto-pick was replaced with a full prospect-list choice panel (`RecruitmentChoice.tsx`, backed by `sign_chosen_rookie` and `available_recruitment_choices`; `sign_best_rookie` kept as the empty-pool fallback).
+  - Verified: full pytest green (~795 tests), frontend `npm run build` and `npm run lint` clean. Browser smoke test (loaded a progressed save) confirmed the Command Center and Standings render cleanly with no console errors - this caught and fixed a layout regression where the two new Command Center strips became extra children of the `.command-dashboard` CSS grid (which has three fixed row tracks); the strips are now wrapped in a single flow container so the grid keeps its three children. The aftermath, offseason-beat, and recruitment-choice flows were not browser-reached (each needs a full match/season playthrough) and rest on the test-suite + build verification.
 
 ## Open Work And Known Gaps
 
-1. **O1 — engine balance (highest-priority open item).** A read-only Monte
-   Carlo (`tools/o1_variance_probe.py`) shows a +72 net-OVR favorite wins only
-   ~52% of matches; OVR barely matters until the gap is enormous. A fix is
-   *proposed but deliberately not applied* — per the engine integrity rules it
-   needs explicit sign-off and golden-log regeneration in the same commit.
-   Full write-up: `docs/archive/playthrough-bug-log.md` (O1 section).
-2. **Future AI Program Managers / Rival Adaptation Loop (partially
-   scaffolded).** `ai_program_manager.py` (~100 lines) exists and is wired into
-   `command_week_service.py` and `use_cases.py`, but this work no longer owns
-   the V11 label because V11 shipped as Official USA Dodgeball Rules. Re-slot it
-   into the next milestone before writing a spec. Roadmap intent:
-   `docs/specs/long-range-playable-roadmap.md`.
-3. **Future Broadcast / Presentation layer.** Not started. Roadmap only. Its
-   milestone number should be assigned after the AI Program Managers work is
-   re-slotted.
-4. **Product-coherence-audit follow-ups.** The 2026-05-15 audit
-   (`docs/archive/product-coherence-audit.md`) proposed 10 coherence fixes plus
-   10 "make it feel real" changes. Several label/copy fixes appear to have
-   landed in later commits, and Fix 1 ("Did Your Plan Work?" verdict) now has a
-   backend generator in `voice_verdict.py` plus aftermath payload coverage. The
-   audit was still **never systematically reconciled** against current code, so
-   a verification pass is owed for the remaining items.
-5. **Dead Tkinter-era code.** `gui.py`, `manager_gui.py`, `ui_components.py`,
-   `ui_formatters.py`, `ui_style.py`, and likely `court_renderer.py`
-   (~5,900+ lines combined) are imported by nothing the web app runs. The
-   `PlayerArchetype` enum/field is vestigial (defaults to `TACTICAL`, never
-   assigned). These are code-cleanup candidates; not touched by the
-   documentation pass that produced this file.
+1. **O1 - engine balance (highest-priority open item).** A read-only Monte Carlo (`tools/o1_variance_probe.py`) shows a +72 net-OVR favorite wins only about 52% of matches; OVR barely matters until the gap is enormous. A fix is proposed but deliberately not applied - per the engine integrity rules it needs explicit sign-off and golden-log regeneration in the same commit. Full write-up: `docs/archive/playthrough-bug-log.md` (O1 section).
+2. **Future AI Program Managers / Rival Adaptation Loop (partially scaffolded).** `ai_program_manager.py` (~100 lines) exists and is wired into `command_week_service.py` and `use_cases.py`, but this work no longer owns the V11 label because V11 shipped as Official USA Dodgeball Rules. Re-slot it into the next milestone before writing a spec. Roadmap intent: `docs/specs/long-range-playable-roadmap.md`.
+3. **Future Broadcast / Presentation layer.** Not started. Roadmap only. Its milestone number should be assigned after the AI Program Managers work is re-slotted.
+4. **Tkinter scorched-earth cleanup (2026-05-21, completed).** Five Tk-flavored modules eliminated: `gui.py` (1303 LoC), `court_renderer.py` (157 LoC), `ui_style.py` (148 LoC), `ui_components.py` (179 LoC) deleted; `ui_formatters.py` (172 LoC, already Tk-free) and `manager_gui.py`/`manager_helpers.py` (~1864 LoC after ManagerModeApp excision) **fully dispersed into proper domain modules** and deleted. The helpers landed in `command_center.py` (POLICY_KEYS, policy_label, policy_effect, policy_rows), `dynasty_office.py` (LeagueLeader, PlayerProfileDetails, build_league_leaders, build_player_profile_details, player_role, team_overall, etc.), `matchup_details.py` (matchup_preview + local _policy_label to break a circular import), `scouting.py` (build_prospect_board_rows, build_fuzzy_profile_details, build_accuracy_reckoning, build_hidden_gem_spotlight, build_scouting_alerts, build_trajectory_reveal_sweep, build_reveal_ticker_items, sort_rows_worth_a_look, build_scout_strip_data, has_accuracy_reckoning_data), `recruitment.py` (build_recruitment_day_summary, conduct_recruitment_round, _ensure_recruitment_prepared, _is_already_signed), `offseason_ceremony.py` (load_offseason_state_rows + public aliases `apply_scouting_carry_forward_at_transition`, `update_manager_career_summaries`, `career_rows_for_player` for legacy names), `career_setup.py` (initialize_manager_career, initialize_build_a_club_career, build_expansion_club, generate_expansion_roster, _club_roster, clean_manager_text, normalize_manager_color, _slugify_club_name), and `replay_service.py` (friendly_preview_text, friendly_match_stats, format_bulk_sim_digest, replay_event_label, replay_phase_delay, team_snapshot, format_event_row, format_event_details, format_analysis_report). The architectural test `test_scouting_module_has_no_db_boundary_imports` was removed - the dispersed prospect-board helpers legitimately read persistence and the old layering rule no longer matches the module's responsibilities. Seven Tk-coupled tests were deleted (used `ManagerModeApp.__new__()`); five web-path replacement tests added in `tests/test_web_path_coverage.py` against the canonical functions (`sign_best_rookie` idempotency + prospect-pool preference, `begin_next_season` schedule/cursor persistence, `advance_playoffs_if_needed` no-op when regular season incomplete). Sim-pacing coverage was already present in `tests/test_v3_pacing.py`. **No Tk-named files, no Tk imports, no `tkinter` references remain anywhere in `src/dodgeball_sim/` or `tests/`.** Net deletion this pass: ~4259 LoC across five Tk-flavored modules plus a ~1864-LoC helpers dump file fully redistributed across eight domain modules; full pytest still green (~795 tests pass).
 
 ## Sources Of Truth
 
-1. `AGENTS.md` — repo rules, workflow, architecture snapshot, current facts.
-2. `docs/README.md` — documentation map and reading order.
-3. `docs/STATUS.md` — this file: current build state and open work.
-4. `docs/specs/MILESTONES.md` — the milestone history index.
-5. Source code and tests — final authority when docs and code disagree.
+1. `AGENTS.md` - repo rules, workflow, architecture snapshot, current facts.
+2. `docs/README.md` - documentation map and reading order.
+3. `docs/STATUS.md` - this file: current build state and open work.
+4. `docs/specs/MILESTONES.md` - the milestone history index.
+5. Source code and tests - final authority when docs and code disagree.
