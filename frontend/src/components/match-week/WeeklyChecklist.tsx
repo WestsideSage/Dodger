@@ -56,6 +56,7 @@ export function WeeklyChecklist({
           )}
         </div>
 
+        {/* Gated on planConfirmed to flip right-rail Plan Status to OK after lock */}
         <div>
           <p className="dm-kicker" style={{ marginBottom: '0.375rem' }}>Plan Status</p>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
