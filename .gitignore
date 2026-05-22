@@ -68,3 +68,8 @@ worktrees/
 .env
 .env.*
 !.env.example
+
+# Local playthrough / QA artifacts
+/0*.png
+/1*.png
+.playwright-mcp/
