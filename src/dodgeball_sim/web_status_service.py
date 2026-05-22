@@ -26,34 +26,18 @@ from .persistence import (
     load_weekly_command_plan,
     save_club,
 )
-from .playoffs import playoff_stage_label
+from .playoffs import PLAYOFF_FIELD_SIZE, playoff_stage_label
 from .view_models import build_schedule_rows, build_wire_items
 
 
-_ARCHETYPE_BY_RATING = {
-    "accuracy": "Sharpshooter",
-    "power": "Enforcer",
-    "dodge": "Escape Artist",
-    "catch": "Ball Hawk",
-    "stamina": "Iron Engine",
-}
-
-
 def player_archetype_label(player) -> str:
-    """Derive the player's on-court role from their dominant rating.
+    """Expose the same recruiting-facing label used elsewhere in Plan B.
 
-    Mirrors recruitment's archetype assignment so the roster, recruit board,
-    and scout reads all describe a player the same way.
+    Keeps roster, recruit-board, and scout-facing copy aligned.
     """
-    ratings = {
-        "accuracy": player.ratings.accuracy,
-        "power": player.ratings.power,
-        "dodge": player.ratings.dodge,
-        "catch": player.ratings.catch,
-        "stamina": player.ratings.stamina,
-    }
-    dominant = max(ratings, key=ratings.get)
-    return _ARCHETYPE_BY_RATING[dominant]
+    from .recruitment import archetype_for_player
+
+    return archetype_for_player(player)
 
 
 def career_state_payload(cursor: CareerStateCursor) -> dict[str, Any]:
@@ -100,11 +84,11 @@ def build_roster_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     enriched = []
     for player in roster:
         player_dict = dataclasses.asdict(player)
-        player_dict["overall"] = int(round(player.overall()))
+        player_dict["overall"] = int(round(player.overall_skill()))
         player_dict["role"] = player_archetype_label(player)
         player_dict["potential_tier"] = calculate_potential_tier(player.traits.potential)
         player_dict["scouting_confidence"] = 3
-        player_dict["weekly_ovr_history"] = [int(round(player.overall()))]
+        player_dict["weekly_ovr_history"] = [int(round(player.overall_skill()))]
         if "traits" in player_dict:
             player_dict["traits"].pop("potential", None)
         enriched.append(player_dict)
@@ -168,7 +152,7 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
                 "points": row.points if row else 0,
                 "elimination_differential": row.elimination_differential if row else 0,
                 "is_user_club": club_id == player_club_id,
-                "latest_approach": latest_plan["intent"] if latest_plan else None,
+                "latest_approach": latest_plan["intent"] if latest_plan else "Balanced",
             }
         )
     rows.sort(key=lambda item: (-item["points"], -item["elimination_differential"], item["club_id"]))
@@ -184,10 +168,14 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         (season_id,),
     ).fetchall()
 
+    season = load_season(conn, season_id)
     return {
         "season_id": season_id,
         "standings": rows,
         "recent_matches": [recent_match_item(row, clubs) for row in recent],
+        "total_weeks": season.total_weeks(),
+        "current_week": current_week or season.total_weeks(),
+        "playoff_spots": PLAYOFF_FIELD_SIZE,
     }
 
 
