@@ -123,14 +123,15 @@ export function PreSimDashboard({
   const seasonName = seasonTitle(data.season_id);
   const bulletin = lastRecord ? bulletinLine(lastRecord, data.player_club_name) : null;
   const watchLine = playerToWatch(activePlayers);
+  const isBye = Boolean(plan.is_bye);
 
   const readinessChecks = useMemo(() => [
-    { id: 'scout', label: 'Opponent file available', shortLabel: 'Scout', detail: 'Scout report, threat profile, and staff recommendation available.', ready: Boolean(plan.matchup_details || plan.recommendations.length) },
+    { id: 'scout', label: isBye ? 'Bye week - no scouting needed' : 'Opponent file available', shortLabel: 'Scout', detail: isBye ? 'No scouting needed for a bye week.' : 'Scout report, threat profile, and staff recommendation available.', ready: true },
     { id: 'gameplan', label: 'Command intent selected', shortLabel: 'Intent', detail: selectedIntent, ready: Boolean(selectedIntent) },
     { id: 'training', label: 'Training order saved', shortLabel: 'Training', detail: humanize(plan.department_orders?.training), ready: Boolean(plan.department_orders?.training) },
     { id: 'rotation', label: 'Playable rotation present', shortLabel: 'Rotation', detail: `${activePlayers.length} listed starters`, ready: activePlayers.length >= 6 },
     { id: 'health', label: 'Starter stamina checked', shortLabel: 'Health', detail: activePlayers.some(player => typeof player.stamina === 'number') ? `${Math.round(Math.min(...activePlayers.map(player => player.stamina ?? 100)))} minimum stamina` : 'No stamina warnings reported', ready: activePlayers.every(player => player.stamina === undefined || player.stamina >= 35) },
-  ], [activePlayers, plan.department_orders?.training, plan.matchup_details, plan.recommendations.length, selectedIntent]);
+  ], [activePlayers, plan.department_orders?.training, selectedIntent, isBye]);
 
   const readyCount = readinessChecks.filter(check => check.ready).length;
   const isReadyToLock = readyCount === readinessChecks.length;
@@ -142,25 +143,31 @@ export function PreSimDashboard({
   const topOvr = activePlayers.length > 0 ? Math.max(...activePlayers.map(player => player.overall)) : 0;
   const topPlayer = activePlayers.find(player => player.overall === topOvr) ?? null;
   const ovrGap = threat.ovr ? parseInt(threat.ovr) - Math.round(topOvr) : null;
-  const hasApproachConflict = selectedIntent === 'Win Now' && (threat.role === 'Tactical' || threat.role === 'Pressure');
+  const hasApproachConflict = !isBye && selectedIntent === 'Win Now' && (threat.role === 'Tactical' || threat.role === 'Pressure');
   const counterApproach = threat.role ? (roleCounterMap[threat.role] ?? 'Control') : 'Control';
-  const hasFatigueIssue = activePlayers.filter(player => player.stamina !== undefined && player.stamina < 60).length > 1;
-  const hasPlanConflict = hasApproachConflict || hasFatigueIssue;
+  const hasFatigueIssue = !isBye && activePlayers.filter(player => player.stamina !== undefined && player.stamina < 60).length > 1;
+  const hasPlanConflict = !isBye && (hasApproachConflict || hasFatigueIssue);
   const scoutGapRead = ovrGap !== null && topPlayer
     ? ovrGap > 0
       ? `Primary threat outrates ${topPlayer.name} by +${ovrGap} OVR. `
       : `${topPlayer.name} covers the primary threat by +${Math.abs(ovrGap)} OVR. `
     : '';
-  const scoutRead = `${scoutGapRead}${hasApproachConflict ? `${currentApproach} approach is exposed vs ${threat.role} threat.` : hasFatigueIssue ? 'Starter fatigue lowers margin for error this week.' : 'Current approach aligns with the opponent profile.'}`;
-  const planRead = hasApproachConflict ? `${currentApproach} is exposed vs ${threat.role} threat.` : hasFatigueIssue ? 'Starter fatigue is elevated.' : 'Current approach aligns with the opponent profile.';
-  const recommendationLabel = hasPlanConflict ? `Adjust to ${hasFatigueIssue ? 'Defensive' : counterApproach}` : 'Keep current plan';
+  const scoutRead = isBye
+    ? 'This is a bye week. No opponent to scout. Use this time to rest players and plan training.'
+    : `${scoutGapRead}${hasApproachConflict ? `${currentApproach} approach is exposed vs ${threat.role} threat.` : hasFatigueIssue ? 'Starter fatigue lowers margin for error this week.' : 'Current approach aligns with the opponent profile.'}`;
+  const planRead = isBye
+    ? 'Bye week.'
+    : hasApproachConflict ? `${currentApproach} is exposed vs ${threat.role} threat.` : hasFatigueIssue ? 'Starter fatigue is elevated.' : 'Current approach aligns with the opponent profile.';
+  const recommendationLabel = isBye
+    ? 'n/a'
+    : hasPlanConflict ? `Adjust to ${hasFatigueIssue ? 'Defensive' : counterApproach}` : 'Keep current plan';
 
   const currentMatch = useMemo(
     () =>
       [...schedule]
         .sort((a, b) => a.week - b.week)
-        .find(match => match.is_user_match && match.status !== 'played') ?? null,
-    [schedule],
+        .find(match => match.is_user_match && match.status !== 'played' && match.week === data.week) ?? null,
+    [schedule, data.week],
   );
   const displayWeek = currentMatch?.week ?? data.week;
   const gamesRemaining = schedule.filter(match => match.is_user_match && match.status !== 'played').length;
@@ -176,7 +183,13 @@ export function PreSimDashboard({
   const netStarterEdge = Math.round((yourStarterTotal - oppStarterTotal) * 10) / 10;
   const playerEdgeLabel = netStarterEdge === 0 ? 'Even starter line' : `${data.player_club_name} ${netStarterEdge > 0 ? '+' : ''}${formatEdge(netStarterEdge)} net OVR`;
   const primaryActionLabel = planConfirmed ? 'SIMULATE WEEK' : 'LOCK PLAN';
-  const primaryActionHint = planConfirmed ? 'The weekly plan is locked. Run the match when you are ready to move the season forward.' : isReadyToLock ? 'No blockers. Review the decision, then lock the plan.' : `${itemsRemaining} checklist item${itemsRemaining === 1 ? '' : 's'} still need attention before plan lock.`;
+  const primaryActionHint = planConfirmed
+    ? 'The weekly plan is locked. Run the match when you are ready to move the season forward.'
+    : isBye
+    ? 'The plan is ready. Lock it to advance to the next week.'
+    : isReadyToLock
+    ? 'No blockers. Review the decision, then lock the plan.'
+    : `${itemsRemaining} checklist item${itemsRemaining === 1 ? '' : 's'} still need attention before plan lock.`;
   const unresolvedIssue = !isReadyToLock ? readinessChecks.find(check => !check.ready)?.label ?? 'Review plan setup' : 'No blockers';
 
   return (
@@ -190,10 +203,16 @@ export function PreSimDashboard({
           </span>
           <span title="Upcoming match week">Week {displayWeek}</span>
           <span>{leagueRank ? `League Rank #${leagueRank}` : 'Rank n/a'}</span>
-          <span title="Away team @ home team">{awayTeamName} @ {homeTeamName}</span>
-          <span title="Opponent record">{details.opponent_record}</span>
+          {isBye ? (
+            <span style={{ color: '#38bdf8', fontWeight: 600 }}>BYE WEEK</span>
+          ) : (
+            <>
+              <span title="Away team @ home team">{awayTeamName} @ {homeTeamName}</span>
+              <span title="Opponent record">{details.opponent_record}</span>
+            </>
+          )}
           <span title="Your form over the last 5 games">{recentRecord}</span>
-          <span title="Starter overall edge vs opponent">{playerEdgeLabel}</span>
+          {!isBye && <span title="Starter overall edge vs opponent">{playerEdgeLabel}</span>}
         </div>
       </section>
 
@@ -250,7 +269,39 @@ export function PreSimDashboard({
         </div>
       )}
 
-      {!planConfirmed && (
+      {!planConfirmed && isBye && (
+        <div
+          data-testid="presim-this-week"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.3rem',
+            padding: '0.55rem 0.85rem',
+            background: '#0a1628',
+            border: '1px solid #1e293b',
+            borderLeft: '3px solid #38bdf8',
+            borderRadius: '4px',
+          }}
+        >
+          <p style={{ margin: 0, fontSize: '0.82rem', color: '#e2e8f0', lineHeight: 1.45 }}>
+            <span
+              style={{
+                fontFamily: 'JetBrains Mono, monospace',
+                fontSize: '0.62rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                color: '#38bdf8',
+                marginRight: '0.5rem',
+              }}
+            >
+              This Week
+            </span>
+            Bye Week — no match. Confirm the plan to advance to next week.
+          </p>
+        </div>
+      )}
+
+      {!planConfirmed && !isBye && (
         <div
           data-testid="presim-this-week"
           style={{
@@ -444,8 +495,24 @@ export function PreSimDashboard({
           </div>
 
           <div className="command-control-squad">
-            <div className="command-panel-heading"><div><p className="dm-kicker">Lineup Leverage</p></div></div>
-            <MatchCard yourPlayers={activePlayers} oppPlayers={opponentPlayers} yourTeamName={data.player_club_name} oppTeamName={plan.opponent.name} compact maxVisibleRows={2} />
+            <div className="command-panel-heading"><div><p className="dm-kicker">{isBye ? 'Bye Week Rest' : 'Lineup Leverage'}</p></div></div>
+            {isBye ? (
+              <div
+                style={{
+                  padding: '1rem',
+                  background: '#0f172a',
+                  border: '1px dashed #334155',
+                  borderRadius: '4px',
+                  textAlign: 'center',
+                  color: '#94a3b8',
+                  fontSize: '0.8rem',
+                }}
+              >
+                No match scheduled for Week {data.week}. Your starters will recover extra stamina.
+              </div>
+            ) : (
+              <MatchCard yourPlayers={activePlayers} oppPlayers={opponentPlayers} yourTeamName={data.player_club_name} oppTeamName={plan.opponent.name} compact maxVisibleRows={2} />
+            )}
           </div>
 
           <p className="command-lock-note">{primaryActionHint}</p>
