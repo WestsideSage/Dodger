@@ -10,6 +10,7 @@ does not expose an explicit end_tick (see src/dodgeball_sim/engine_driver.py).
 """
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from math import sqrt
 from typing import Any
@@ -148,6 +149,80 @@ def run_ovr_curve(
     return tuple(results)
 
 
+_MOMENT_KINDS = (
+    "dramatic_catch",
+    "late_game_escape",
+    "one_v_one_finale",
+    "gassed_collapse",
+    "flood_throw",
+    "comeback",
+)
+
+
+def _all_outputs(results: tuple[RungResult, ...]) -> tuple[Any, ...]:
+    return tuple(out for rung in results for out in rung.outputs)
+
+
+def summarize_moments(results: tuple[RungResult, ...]) -> dict[str, dict[str, float]]:
+    """Per-moment-kind statistics across every match in `results`."""
+    outputs = _all_outputs(results)
+    match_count = len(outputs)
+    totals: Counter[str] = Counter()
+    matches_with: Counter[str] = Counter()
+    for out in outputs:
+        seen: set[str] = set()
+        for event in out.moment_events:
+            kind = event.kind.value if hasattr(event.kind, "value") else str(event.kind)
+            totals[kind] += 1
+            seen.add(kind)
+        for kind in seen:
+            matches_with[kind] += 1
+    summary: dict[str, dict[str, float]] = {}
+    for kind in _MOMENT_KINDS:
+        summary[kind] = {
+            "per_match": totals[kind] / match_count if match_count else 0.0,
+            "pct_matches_with": matches_with[kind] / match_count if match_count else 0.0,
+            "total": totals[kind],
+        }
+    return summary
+
+
+def _percentile(sorted_values: list[int], pct: float) -> int:
+    if not sorted_values:
+        return 0
+    idx = min(len(sorted_values) - 1, max(0, int(round((pct / 100.0) * (len(sorted_values) - 1)))))
+    return sorted_values[idx]
+
+
+def summarize_match_lengths(results: tuple[RungResult, ...]) -> dict[str, int]:
+    """P25 / P50 / P75 / P95 of `len(events)` across every match."""
+    outputs = _all_outputs(results)
+    lengths = sorted(len(out.events) for out in outputs)
+    return {
+        "p25": _percentile(lengths, 25),
+        "p50": _percentile(lengths, 50),
+        "p75": _percentile(lengths, 75),
+        "p95": _percentile(lengths, 95),
+    }
+
+
+def summarize_outcomes(results: tuple[RungResult, ...]) -> dict[str, int]:
+    """Aggregate fav / dog / draw counts and percentages across `results`."""
+    outputs = _all_outputs(results)
+    fav = sum(1 for out in outputs if out.winner_team_id == "fav")
+    dog = sum(1 for out in outputs if out.winner_team_id == "dog")
+    draw = sum(1 for out in outputs if out.winner_team_id is None)
+    total = len(outputs) or 1
+    return {
+        "fav": fav,
+        "dog": dog,
+        "draw": draw,
+        "fav_pct": round(100.0 * fav / total, 1),
+        "dog_pct": round(100.0 * dog / total, 1),
+        "draw_pct": round(100.0 * draw / total, 1),
+    }
+
+
 __all__ = [
     "make_player",
     "make_team",
@@ -155,4 +230,7 @@ __all__ = [
     "RungResult",
     "wilson_ci",
     "run_ovr_curve",
+    "summarize_moments",
+    "summarize_match_lengths",
+    "summarize_outcomes",
 ]

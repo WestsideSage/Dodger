@@ -117,3 +117,43 @@ def test_run_ovr_curve_seed_offset_shifts_results():
     a_winners = tuple(out.winner_team_id for out in a[0].outputs)
     b_winners = tuple(out.winner_team_id for out in b[0].outputs)
     assert a_winners != b_winners or a[0].fav_wins != b[0].fav_wins
+
+
+from tools.probe_lib import summarize_match_lengths, summarize_moments, summarize_outcomes
+
+
+def _fixture_results():
+    return run_ovr_curve(RecTier1Driver(), rungs=(0, 4), trials_per_rung=3)
+
+
+def test_summarize_moments_emits_six_kinds():
+    results = _fixture_results()
+    summary = summarize_moments(results)
+    expected = {
+        "dramatic_catch",
+        "late_game_escape",
+        "one_v_one_finale",
+        "gassed_collapse",
+        "flood_throw",
+        "comeback",
+    }
+    assert set(summary.keys()) == expected
+    for entry in summary.values():
+        assert set(entry.keys()) == {"per_match", "pct_matches_with", "total"}
+        assert entry["per_match"] >= 0.0
+        assert 0.0 <= entry["pct_matches_with"] <= 1.0
+        assert entry["total"] >= 0
+
+
+def test_summarize_match_lengths_quartiles():
+    results = _fixture_results()
+    lengths = summarize_match_lengths(results)
+    assert set(lengths.keys()) == {"p25", "p50", "p75", "p95"}
+    assert lengths["p25"] <= lengths["p50"] <= lengths["p75"] <= lengths["p95"]
+
+
+def test_summarize_outcomes_counts_fav_dog_draw():
+    results = _fixture_results()
+    outcomes = summarize_outcomes(results)
+    assert set(outcomes.keys()) == {"fav", "dog", "draw", "fav_pct", "dog_pct", "draw_pct"}
+    assert outcomes["fav"] + outcomes["dog"] + outcomes["draw"] == 6
