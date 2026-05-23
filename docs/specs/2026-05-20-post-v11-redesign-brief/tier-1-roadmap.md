@@ -1,7 +1,7 @@
 # Tier 1 Match Loop - Plan Roadmap
 
 Date: 2026-05-20 (last updated 2026-05-22)
-Status: Active. Plans A and B landed on 2026-05-20; Plan C landed 2026-05-22. **Plan D is the next strict step.**
+Status: **Tier 1 Match Loop milestone complete.** Plans A and B landed 2026-05-20; Plan C and Plan D landed 2026-05-22.
 Parent brief: [brief.md](./brief.md)
 
 This is the parent roadmap for the **Tier 1 Match Loop** milestone - the
@@ -30,10 +30,11 @@ modules - *not moved*) plus new primitives (`fatigue`, `flood_throws`,
 | **A** | **Hybrid driver architecture + Tier 1 engine** | Architectural risk gate | V11 baseline | High - factoring without breaking USAD |
 | **B** | **Player attribute v2** | Data-model upgrade | landed 2026-05-20 | - |
 | **C** | **Tier 1 player-facing surface** | Tactics, replay, aftermath | landed 2026-05-22 | - |
-| D | Simulation-health probe | Verification harness | A + B + C | Low |
+| **D** | **Simulation-health probe** | Verification harness | landed 2026-05-22 | - |
 
-**Order is strict.** C is now landed, which unblocks D. D replaces
-`tools/o1_variance_probe.py`.
+**Order is strict.** All four plans (A/B/C/D) have landed. The Tier 1
+Match Loop milestone is complete. The O1 rebalancing pass is the next
+follow-up; Plan D's xfail-strict gate flips green when it lands.
 
 The full Plan A file is at
 [plan-a-hybrid-driver.md](./plan-a-hybrid-driver.md). C and D are
@@ -98,7 +99,7 @@ comes.
 - Multi-tier UI vocabulary switching (single rec-league register only).
 - Stats screens redesign (Plan D adjacent).
 
-## Plan D stub - Simulation-health probe
+## Plan D - Simulation-health probe (landed 2026-05-22)
 
 **Inputs from Plans A + B + C:**
 - Both drivers fully working.
