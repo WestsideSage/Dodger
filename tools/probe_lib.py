@@ -11,6 +11,8 @@ does not expose an explicit end_tick (see src/dodgeball_sim/engine_driver.py).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import sqrt
+from typing import Any
 
 from dodgeball_sim.engine_driver import DriverMatchInput
 from dodgeball_sim.models import CoachPolicy, Player, PlayerArchetype, PlayerRatings
@@ -74,4 +76,30 @@ def make_match_input(
     )
 
 
-__all__ = ["make_player", "make_team", "make_match_input"]
+@dataclass(frozen=True)
+class RungResult:
+    net_ovr_edge: int
+    trials: int
+    fav_wins: int
+    win_rate: float
+    ci_low: float
+    ci_high: float
+    outputs: tuple[Any, ...]
+
+
+def wilson_ci(successes: int, trials: int, z: float = 1.96) -> tuple[float, float]:
+    """Two-sided Wilson 95% CI for a binomial proportion.
+
+    Returns (0.0, 0.0) for trials == 0. Clamps upper bound at 1.0 so a
+    perfect score reports a finite interval.
+    """
+    if trials <= 0:
+        return (0.0, 0.0)
+    p = successes / trials
+    denom = 1.0 + z * z / trials
+    center = (p + z * z / (2.0 * trials)) / denom
+    spread = (z * sqrt(p * (1.0 - p) / trials + z * z / (4.0 * trials * trials))) / denom
+    return (max(0.0, center - spread), min(1.0, center + spread))
+
+
+__all__ = ["make_player", "make_team", "make_match_input", "RungResult", "wilson_ci"]
