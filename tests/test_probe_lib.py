@@ -52,3 +52,39 @@ def test_make_match_input_honors_custom_prefix_and_policies():
     assert mi.match_id == "health_7"
     assert mi.policy_a is custom
     assert mi.policy_b is custom
+
+
+from tools.probe_lib import RungResult, wilson_ci
+
+
+def test_wilson_ci_known_values():
+    # 50 successes in 100 trials: Wilson 95% CI ≈ (0.404, 0.596).
+    low, high = wilson_ci(50, 100)
+    assert abs(low - 0.4038) < 1e-3
+    assert abs(high - 0.5962) < 1e-3
+
+
+def test_wilson_ci_handles_zero_trials():
+    low, high = wilson_ci(0, 0)
+    assert low == 0.0
+    assert high == 0.0
+
+
+def test_wilson_ci_handles_perfect_score():
+    low, high = wilson_ci(100, 100)
+    assert low > 0.9
+    assert high >= 0.9999
+
+
+def test_rung_result_carries_required_fields():
+    rr = RungResult(
+        net_ovr_edge=24,
+        trials=100,
+        fav_wins=55,
+        win_rate=0.55,
+        ci_low=0.45,
+        ci_high=0.65,
+        outputs=(),
+    )
+    assert rr.net_ovr_edge == 24
+    assert rr.fav_wins == 55
