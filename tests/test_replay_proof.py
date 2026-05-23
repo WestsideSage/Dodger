@@ -23,16 +23,15 @@ def _throw_event(resolution: str, *, player_out: dict | None = None) -> dict:
             },
             "catch_decision": {"attempt": True, "threshold": 0.45},
             "policy_snapshot": {
-                "target_stars": 0.72,
-                "tempo": 0.55,
-                "catch_bias": 0.50,
+                "approach": "mixed",
+                "target_focus": "their_stars",
+                "catch_posture": "opportunistic",
+                "rush_commit": "balanced",
+                "rush_target": "center",
             },
             "rush_context": {
                 "active": True,
-                "rush_frequency": 0.8,
-                "rush_proximity": 0.7,
                 "proximity_modifier": 0.03,
-                "fatigue_delta": 0.4,
             },
             "sync_context": {"is_synced": True, "sync_modifier": 0.05},
             "fatigue": {

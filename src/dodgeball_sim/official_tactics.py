@@ -15,8 +15,54 @@ import random
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Tuple
 
-from .models import CoachPolicy, Player
+from .models import Approach, CatchPosture, CoachPolicy, Player, TargetFocus
 from .player_state import OfficialPlayerState, OfficialPlayerStatus
+
+
+def _thrower_base(policy: CoachPolicy, player: Player) -> float:
+    ratings = player.ratings
+    if policy.approach == Approach.AGGRESSIVE:
+        return 0.7 * ratings.normalized_power() + 0.3 * ratings.normalized_accuracy()
+    if policy.approach == Approach.PATIENT:
+        return 0.25 * ratings.normalized_power() + 0.75 * ratings.normalized_accuracy()
+    return 0.5 * ratings.normalized_power() + 0.5 * ratings.normalized_accuracy()
+
+
+def _target_base(
+    policy: CoachPolicy,
+    *,
+    normalized_overall: float,
+    vulnerability: float,
+    is_recent_pressure_target: bool,
+) -> float:
+    if policy.target_focus == TargetFocus.THEIR_STARS:
+        return normalized_overall + 0.15 * vulnerability
+    if policy.target_focus == TargetFocus.BALL_HOLDERS:
+        return (1.0 if is_recent_pressure_target else 0.0) + 0.15 * vulnerability
+    return vulnerability + 0.05 * (1.0 - normalized_overall)
+
+
+def _catch_thresholds(policy: CoachPolicy) -> tuple[float, float]:
+    if policy.catch_posture == CatchPosture.GO_FOR_CATCHES:
+        base_threshold = 0.35
+        posture_adjustment = -0.15
+    elif policy.catch_posture == CatchPosture.PLAY_SAFE:
+        base_threshold = 0.65
+        posture_adjustment = 0.1
+    else:
+        base_threshold = 0.5
+        posture_adjustment = 0.0
+    threshold = base_threshold + posture_adjustment
+    dodge_guard_offset = -0.15 + posture_adjustment
+    return threshold, dodge_guard_offset
+
+
+def _tempo_level(policy: CoachPolicy) -> float:
+    if policy.approach == Approach.AGGRESSIVE:
+        return 0.75
+    if policy.approach == Approach.PATIENT:
+        return 0.3
+    return 0.5
 
 
 def _active_players(
@@ -32,11 +78,7 @@ def select_thrower(
     policy: CoachPolicy,
     rng: random.Random,
 ) -> Optional[OfficialPlayerState]:
-    """Choose a thrower from live players holding a ball.
-
-    Score = risk_tolerance * normalized_power + (1 - risk_tolerance) * normalized_accuracy.
-    Ties broken by player_id for determinism.
-    """
+    """Choose a thrower from live players holding a ball."""
 
     if not candidates:
         return None
@@ -44,11 +86,7 @@ def select_thrower(
     noise = rng.random() * 0.05  # small deterministic jitter
     for state in candidates:
         player = player_lookup[state.player_id]
-        ratings = player.ratings
-        base = (
-            policy.risk_tolerance * ratings.normalized_power()
-            + (1.0 - policy.risk_tolerance) * ratings.normalized_accuracy()
-        )
+        base = _thrower_base(policy, player)
         score = base + noise * (rng.random() - 0.5)
         scored.append((score, state.player_id, state))
     scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
@@ -73,15 +111,11 @@ def select_target(
         player = player_lookup[state.player_id]
         normalized_overall = player.overall_skill() / 100.0
         vulnerability = 1.0 - player.ratings.normalized_dodge()
-        ball_holder_pressure = (
-            (policy.target_ball_holder - 0.5)
-            if state.player_id == recent_pressure_player_id
-            else 0.0
-        )
-        base = (
-            policy.target_stars * normalized_overall
-            + (1.0 - policy.target_stars) * vulnerability
-            + policy.target_ball_holder * ball_holder_pressure
+        base = _target_base(
+            policy,
+            normalized_overall=normalized_overall,
+            vulnerability=vulnerability,
+            is_recent_pressure_target=state.player_id == recent_pressure_player_id,
         )
         score = base + noise * (rng.random() - 0.5)
         scored.append((score, state.player_id, state))
@@ -105,10 +139,8 @@ def decide_catch_attempt(
     player = player_lookup[target.player_id]
     normalized_catch = player.ratings.normalized_catch()
     normalized_dodge = player.ratings.normalized_dodge()
-    base_threshold = 0.3 + 0.4 * (1.0 - policy.risk_tolerance)
-    catch_bias_adjustment = (0.5 - policy.catch_bias) * 0.4
-    threshold = base_threshold + catch_bias_adjustment
-    dodge_guard = normalized_dodge - 0.15 + catch_bias_adjustment
+    threshold, dodge_guard_offset = _catch_thresholds(policy)
+    dodge_guard = normalized_dodge + dodge_guard_offset
     attempt = normalized_catch >= max(threshold, dodge_guard)
     return CatchDecision(
         attempt=attempt,
@@ -134,12 +166,11 @@ def proactive_action_weights(
     """
 
     weights: List[float] = []
-    tempo = policy.tempo
-    risk = policy.risk_tolerance
+    tempo = _tempo_level(policy)
+    power_bias = 0.7 if policy.approach == Approach.AGGRESSIVE else 0.25 if policy.approach == Approach.PATIENT else 0.5
     for kind in legal_kinds:
         if kind == "throw":
-            # Tempo and risk push toward throwing. Clock pressure forces it.
-            w = 1.0 + tempo * 1.5 + risk * 0.5
+            w = 1.0 + tempo * 1.5 + power_bias * 0.5
             if clock_pressure:
                 w += 5.0
             weights.append(w)

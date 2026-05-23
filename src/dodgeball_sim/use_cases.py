@@ -17,6 +17,7 @@ from dodgeball_sim.command_center import (
     refresh_weekly_plan_context,
 )
 from dodgeball_sim.ai_program_manager import prepare_ai_plans_for_matches
+from dodgeball_sim.aftermath_context import AftermathContext, moment_events_from_payload
 from dodgeball_sim.game_loop import (
     current_week,
     recompute_regular_season_standings,
@@ -28,6 +29,7 @@ from dodgeball_sim.match_orchestration import (
     _choose_next_user_match_after_automation,
     _validate_match_rosters,
 )
+from dodgeball_sim.models import CoachPolicy
 from dodgeball_sim.offseason_ceremony import ensure_ai_rosters_playable
 from dodgeball_sim.persistence import (
     get_state,
@@ -164,28 +166,21 @@ def _build_aftermath(
     player_club_id: str | None = None,
 ) -> dict[str, Any]:
     """Build the aftermath payload for a simulated week."""
-    from dodgeball_sim.rng import DeterministicRNG, derive_seed
-    from dodgeball_sim.voice_aftermath import render_headline
-    from dodgeball_sim.voice_verdict import render_verdict
+    from dodgeball_sim.voice_aftermath import render_body
+    from dodgeball_sim.voice_verdict import render_headline, render_verdict
 
-    root_seed_val = get_state(conn, "root_seed") or "1"
-    rng = DeterministicRNG(derive_seed(int(root_seed_val), "headline", season_id, str(record.week)))
     box = record.result.box_score["teams"]
     home_survivors = int(box[record.home_club_id]["totals"]["living"])
     away_survivors = int(box[record.away_club_id]["totals"]["living"])
-    player_survivors: int | None = None
-    opponent_survivors: int | None = None
-    if player_club_id is not None:
-        if record.home_club_id == player_club_id:
-            player_survivors, opponent_survivors = home_survivors, away_survivors
-        elif record.away_club_id == player_club_id:
-            player_survivors, opponent_survivors = away_survivors, home_survivors
-    headline = render_headline(
-        dashboard["result"],
-        "expected",
-        rng,
-        player_survivors=player_survivors,
-        opponent_survivors=opponent_survivors,
+    start_context = record.result.events[0].context if record.result.events else {}
+    end_context = record.result.events[-1].context if record.result.events else {}
+    team_policies = (
+        dict(start_context.get("team_policies", {}))
+        if isinstance(start_context, Mapping)
+        else {}
+    )
+    parsed_moments = moment_events_from_payload(
+        end_context.get("moment_events", []) if isinstance(end_context, Mapping) else []
     )
 
     standings_shift: list[dict] = []
@@ -205,6 +200,7 @@ def _build_aftermath(
         standings_shift.sort(key=lambda item: item["new_rank"])
 
     verdict: str | None = None
+    body: tuple[str, ...] = ()
     if plan is not None and player_club_id is not None and clubs is not None:
         opponent_club_id = record.away_club_id if record.home_club_id == player_club_id else record.home_club_id
         winner = record.result.winner_team_id
@@ -212,6 +208,21 @@ def _build_aftermath(
         club = clubs.get(player_club_id)
         if club is not None and player_club_id in box and opponent_club_id in box:
             base_tactics = club.coach_policy.as_dict()
+            player_policy = CoachPolicy.from_dict(
+                dict(team_policies.get(player_club_id) or plan.get("tactics") or base_tactics)
+            )
+            opponent_policy = CoachPolicy.from_dict(
+                dict(team_policies.get(opponent_club_id) or CoachPolicy().as_dict())
+            )
+            voice_ctx = AftermathContext(
+                match_result=record.result,
+                moment_events=parsed_moments,
+                policy_team=player_policy,
+                policy_opponent=opponent_policy,
+                tier=1,
+            )
+            headline = render_headline(voice_ctx)
+            body = render_body(voice_ctx)
             verdict = render_verdict(
                 intent=str(plan.get("intent", "")),
                 tactics=dict(plan.get("tactics") or {}),
@@ -220,6 +231,10 @@ def _build_aftermath(
                 player_team_box=box[player_club_id],
                 opponent_team_box=box[opponent_club_id],
             )
+        else:
+            headline = dashboard["result"]
+    else:
+        headline = dashboard["result"]
 
     aftermath: dict[str, Any] = {
         "headline": headline,
@@ -233,6 +248,7 @@ def _build_aftermath(
         "player_growth_deltas": [],
         "standings_shift": standings_shift,
         "recruit_reactions": [],
+        "body": list(body),
     }
     if verdict is not None:
         aftermath["verdict"] = verdict
@@ -291,14 +307,9 @@ def simulate_week(
             plan["department_orders"] = {**plan["department_orders"], **department_orders}
         tactics = update.get("tactics")
         if tactics:
-            plan["tactics"] = {
-                **plan["tactics"],
-                **{
-                    key: max(0.0, min(1.0, float(value)))
-                    for key, value in tactics.items()
-                    if key in plan["tactics"]
-                },
-            }
+            policy_values = dict(plan.get("tactics") or {})
+            policy_values.update(dict(tactics))
+            plan["tactics"] = CoachPolicy.from_dict(policy_values).as_dict()
         lineup_player_ids = update.get("lineup_player_ids")
         if lineup_player_ids:
             plan["lineup"]["player_ids"] = lineup_player_ids

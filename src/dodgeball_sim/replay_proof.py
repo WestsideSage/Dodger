@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
 
+from .command_center import policy_effect, policy_label, POLICY_KEYS
 from .copy_quality import title_label
 from .lineup import _ROLE_LIABILITIES, _ROLE_NAMES
-from .models import PlayerArchetype
+from .models import CoachPolicy, PlayerArchetype
 
 
 ThrowEvent = Mapping[str, Any]
@@ -427,31 +428,25 @@ def _command_plan_items(command_plan: Mapping[str, Any]) -> list[str]:
     dev_focus = command_plan.get("department_orders", {}).get("dev_focus")
     if dev_focus:
         items.append(f"Development focus: {title_label(str(dev_focus))}.")
-    tactics = command_plan.get("tactics", {})
-    if float(tactics.get("target_stars", 0.0)) >= 0.65:
-        items.append("Star containment shaped the target plan.")
-    else:
-        items.append("Target pressure was spread across the opposing lineup.")
-    if float(tactics.get("rush_frequency", 0.0)) >= 0.65:
-        items.append("Rush pressure was emphasized in the saved plan.")
-    else:
-        items.append("Rush pressure was used selectively in the saved plan.")
-    if float(tactics.get("sync_throws", 0.0)) >= 0.55:
-        items.append("Sync throws were emphasized when the timing window opened.")
-    if float(tactics.get("catch_bias", 0.0)) >= 0.55:
-        items.append("Catch chances were encouraged when defenders had a clean read.")
+    tactics = command_plan.get("tactics")
+    if isinstance(tactics, Mapping):
+        try:
+            policy = CoachPolicy.from_dict(dict(tactics))
+        except ValueError:
+            policy = None
+        if policy is not None:
+            for key in POLICY_KEYS:
+                items.append(f"{policy_label(key)}: {policy_effect(policy, key)}")
     return items or ["Command plan was saved, but no displayable orders were present."]
 
 
 def _policy_snapshot_note(policy: Mapping[str, Any]) -> str:
-    target_stars = float(policy.get("target_stars", 0.0))
-    tempo = float(policy.get("tempo", 0.0))
-    catch_bias = float(policy.get("catch_bias", 0.0))
-    notes: list[str] = []
-    notes.append("star-focused targets" if target_stars >= 0.65 else "spread target pressure")
-    notes.append("higher tempo" if tempo >= 0.6 else "controlled tempo")
-    notes.append("aggressive catch reads" if catch_bias >= 0.6 else "selective catch reads")
-    return "Tactical posture: " + ", ".join(notes) + "."
+    try:
+        parsed = CoachPolicy.from_dict(dict(policy))
+    except ValueError:
+        return "Tactical posture was present, but the saved policy snapshot was invalid."
+    notes = [policy_effect(parsed, key) for key in ("approach", "target_focus", "catch_posture")]
+    return "Tactical posture: " + "; ".join(notes) + "."
 
 
 __all__ = [

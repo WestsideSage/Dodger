@@ -143,11 +143,25 @@ def simulate_match(
             adapter = OfficialEngineAdapter(selection)
             result = adapter.run_generic(setup, seed=match_seed, match_id=str(scheduled.match_id))
         else:
-            engine = MatchEngine()
-            result = engine.run(setup, seed=match_seed, difficulty=difficulty, meta_patch=meta_patch)
+            from .rec_adapter import RecEngineAdapter
+
+            adapter = RecEngineAdapter()
+            result = adapter.run_generic(
+                setup,
+                seed=match_seed,
+                match_id=str(scheduled.match_id),
+                difficulty=difficulty,
+            )
     else:
-        engine = MatchEngine()
-        result = engine.run(setup, seed=match_seed, difficulty=difficulty, meta_patch=meta_patch)
+        from .rec_adapter import RecEngineAdapter
+
+        adapter = RecEngineAdapter()
+        result = adapter.run_generic(
+            setup,
+            seed=match_seed,
+            match_id=str(scheduled.match_id),
+            difficulty=difficulty,
+        )
 
     home_hash = _hash_players(home_roster)
     away_hash = _hash_players(away_roster)

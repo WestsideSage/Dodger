@@ -12,8 +12,20 @@ _GOLDEN_FILE = Path(__file__).parent / "golden_logs" / "phase1_baseline.json"
 
 
 def _baseline_setup():
-    aurora_policy = CoachPolicy(target_stars=0.75, risk_tolerance=0.55, sync_throws=0.3, tempo=0.45, rush_frequency=0.4)
-    lunar_policy = CoachPolicy(target_stars=0.65, risk_tolerance=0.5, sync_throws=0.25, tempo=0.5, rush_frequency=0.5)
+    aurora_policy = CoachPolicy(
+        approach="aggressive",
+        target_focus="their_stars",
+        catch_posture="go_for_catches",
+        rush_commit="balanced",
+        rush_target="center",
+    )
+    lunar_policy = CoachPolicy(
+        approach="mixed",
+        target_focus="spread",
+        catch_posture="opportunistic",
+        rush_commit="balanced",
+        rush_target="center",
+    )
 
     aurora = make_team(
         "aurora",

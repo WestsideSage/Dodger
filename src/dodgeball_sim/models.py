@@ -24,6 +24,36 @@ class PlayerArchetype(str, Enum):
         return _ARCHETYPE_DISPLAY_NAMES[self]
 
 
+class Approach(str, Enum):
+    AGGRESSIVE = "aggressive"
+    PATIENT = "patient"
+    MIXED = "mixed"
+
+
+class TargetFocus(str, Enum):
+    THEIR_STARS = "their_stars"
+    BALL_HOLDERS = "ball_holders"
+    SPREAD = "spread"
+
+
+class CatchPosture(str, Enum):
+    GO_FOR_CATCHES = "go_for_catches"
+    PLAY_SAFE = "play_safe"
+    OPPORTUNISTIC = "opportunistic"
+
+
+class OpeningRushCommit(str, Enum):
+    ALL_IN = "all_in"
+    BALANCED = "balanced"
+    HOLD_BACK = "hold_back"
+
+
+class OpeningRushTarget(str, Enum):
+    NEAREST = "nearest"
+    STRONGEST_SIDE = "strongest_side"
+    CENTER = "center"
+
+
 def _clamp_rating(value: float) -> float:
     return max(_RATING_MIN, min(_RATING_MAX, float(value)))
 
@@ -146,39 +176,88 @@ class Player:
 
 @dataclass(frozen=True)
 class CoachPolicy:
-    target_stars: float = 0.7
-    target_ball_holder: float = 0.5
-    risk_tolerance: float = 0.5
-    sync_throws: float = 0.2
-    rush_frequency: float = 0.5
-    rush_proximity: float = 0.5
-    tempo: float = 0.5
-    catch_bias: float = 0.5
+    approach: Approach = Approach.MIXED
+    target_focus: TargetFocus = TargetFocus.SPREAD
+    catch_posture: CatchPosture = CatchPosture.OPPORTUNISTIC
+    rush_commit: OpeningRushCommit = OpeningRushCommit.BALANCED
+    rush_target: OpeningRushTarget = OpeningRushTarget.CENTER
 
-    def normalized(self) -> "CoachPolicy":
-        return CoachPolicy(
-            target_stars=_clamp_rating(self.target_stars * 100.0) / _RATING_MAX,
-            target_ball_holder=_clamp_rating(self.target_ball_holder * 100.0) / _RATING_MAX,
-            risk_tolerance=_clamp_rating(self.risk_tolerance * 100.0) / _RATING_MAX,
-            sync_throws=_clamp_rating(self.sync_throws * 100.0) / _RATING_MAX,
-            rush_frequency=_clamp_rating(self.rush_frequency * 100.0) / _RATING_MAX,
-            rush_proximity=_clamp_rating(self.rush_proximity * 100.0) / _RATING_MAX,
-            tempo=_clamp_rating(self.tempo * 100.0) / _RATING_MAX,
-            catch_bias=_clamp_rating(self.catch_bias * 100.0) / _RATING_MAX,
-        )
-
-    def as_dict(self) -> dict:
-        normalized = self.normalized()
-        return {
-            "target_stars": normalized.target_stars,
-            "target_ball_holder": normalized.target_ball_holder,
-            "risk_tolerance": normalized.risk_tolerance,
-            "sync_throws": normalized.sync_throws,
-            "rush_frequency": normalized.rush_frequency,
-            "rush_proximity": normalized.rush_proximity,
-            "tempo": normalized.tempo,
-            "catch_bias": normalized.catch_bias,
+    def __post_init__(self) -> None:
+        enum_fields = {
+            "approach": Approach,
+            "target_focus": TargetFocus,
+            "catch_posture": CatchPosture,
+            "rush_commit": OpeningRushCommit,
+            "rush_target": OpeningRushTarget,
         }
+        for field_name, enum_type in enum_fields.items():
+            value = getattr(self, field_name)
+            if isinstance(value, enum_type):
+                continue
+            try:
+                object.__setattr__(self, field_name, enum_type(str(value)))
+            except ValueError as exc:
+                raise ValueError(f"Unknown CoachPolicy {field_name}: {value}") from exc
+
+    def as_dict(self) -> dict[str, str]:
+        return {
+            "approach": self.approach.value,
+            "target_focus": self.target_focus.value,
+            "catch_posture": self.catch_posture.value,
+            "rush_commit": self.rush_commit.value,
+            "rush_target": self.rush_target.value,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, object]) -> "CoachPolicy":
+        if not isinstance(payload, dict):
+            raise ValueError("CoachPolicy payload must be a dict.")
+
+        legacy_keys = {
+            "target_stars",
+            "target_ball_holder",
+            "risk_tolerance",
+            "sync_throws",
+            "rush_frequency",
+            "rush_proximity",
+            "tempo",
+            "catch_bias",
+        }
+        found_legacy_keys = sorted(legacy_keys.intersection(payload))
+        if found_legacy_keys:
+            legacy_names = ", ".join(found_legacy_keys)
+            raise ValueError(
+                f"Legacy CoachPolicy payload detected during Plan C migration: {legacy_names}."
+            )
+
+        required_keys = (
+            "approach",
+            "target_focus",
+            "catch_posture",
+            "rush_commit",
+            "rush_target",
+        )
+        missing_keys = [key for key in required_keys if key not in payload]
+        if missing_keys:
+            raise ValueError(
+                "CoachPolicy v2 payload is missing required keys: "
+                + ", ".join(missing_keys)
+            )
+
+        unexpected_keys = sorted(key for key in payload if key not in required_keys)
+        if unexpected_keys:
+            raise ValueError(
+                "CoachPolicy v2 payload contains unknown keys: "
+                + ", ".join(unexpected_keys)
+            )
+
+        return cls(
+            approach=payload["approach"],
+            target_focus=payload["target_focus"],
+            catch_posture=payload["catch_posture"],
+            rush_commit=payload["rush_commit"],
+            rush_target=payload["rush_target"],
+        )
 
 
 @dataclass(frozen=True)
@@ -186,7 +265,7 @@ class Team:
     id: str
     name: str
     players: Tuple[Player, ...]
-    coach_policy: CoachPolicy = CoachPolicy()
+    coach_policy: CoachPolicy = field(default_factory=CoachPolicy)
     chemistry: float = 0.5  # 0..1
 
     def __post_init__(self) -> None:

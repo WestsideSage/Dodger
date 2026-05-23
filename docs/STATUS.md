@@ -4,7 +4,7 @@ Canonical snapshot of what is actually built and what is still open. When code
 state changes materially, update this file in the same pass. If this file and
 the source disagree, the source wins - then fix this file.
 
-Last updated: 2026-05-22 (Pre-Plan-C knockout shipped — 11/12 audit bugs closed, rec-driver comeback heuristic tightened).
+Last updated: 2026-05-22 (Plan C landed — `CoachPolicy` v2 enums, rec-driver knob wiring, voice register, Command Center PolicyEditor, moment-aware ReplayTimeline + banners + comeback card).
 
 ## Current Phase
 
@@ -19,6 +19,7 @@ refinement and gameplay optimization, not unrelated new systems.
 
 ## Shipped And Verified
 
+- **Post-V11 redesign - Plan C: Tier 1 player-facing surface** (landed 2026-05-22) — see `docs/specs/2026-05-20-post-v11-redesign-brief/plan-c-tier1-surface.md`. `CoachPolicy` is now a five-enum v2 model (Approach / TargetFocus / CatchPosture / OpeningRushCommit / OpeningRushTarget); legacy 8-float payloads raise on load. `RecTier1Driver` consumes all four pre-match knobs (`_opening_rush`, throw-eagerness multiplier, target-focus scoring, catch-posture renormalization). `OfficialDriver` accepts v2 policy through a branch-equivalent semantic-intent mapping; V11 / USAD conformance still green. Voice modules (`voice_verdict`, `voice_aftermath`, `voice_pregame`) read `AftermathContext` + moment events and route every player-facing string through `voice_register.tier1` (Tier 1 rec-league register). Command Center renders `PolicyEditor` with full radiogroup aria + arrow-key navigation; `POST /api/tactics` accepts v2 strings and rejects legacy floats with HTTP 400; `GET /api/voice-register/{tier}` exposes the register to the frontend. `ReplayTimeline` was rewritten to render moment-aware inline beats with `LateGameBanner`, `OneVOneBanner`, and `ComebackCard`; moment events carry server-rendered `display_text` so the frontend renders fully formatted strings. `ReplaySpeedControl` replaces the old cycle button with 1x/2x/4x/instant. Playwright walk: `tests/e2e/tier1_recognition.spec.ts`. Audit-7.6 (deferred at the 2026-05-22 pre-Plan-C knockout) is implicitly resolved by the new v2 policy editor surface — the legacy float pill display is gone. Plan D is the next strict step in the post-V11 brief.
 - **Pre-Plan-C knockout** (shipped 2026-05-22) — closed 11 of 12 audit-7.x bugs from the 2026-05-21 QA pass (7.6 deferred to Plan C by design) plus the rec-driver comeback heuristic (Plan A follow-up). See `docs/superpowers/specs/2026-05-22-pre-plan-c-knockout-design.md` and the resolution table at the top of `docs/qa/2026-05-21-browser-playthrough-audit.md`.
 - **V11 - Official USA Dodgeball Rules Integration** (shipped 2026-05-19) - see `docs/specs/MILESTONES.md` and `docs/specs/2026-05-20-v11-official-usad-rules/design.md`. Fully integrates warning records, blue cards, and discipline states (Section 34 & 35) with a complete conformance matrix verification.
   - Career creation only: the official ruleset cannot be opted into mid-career. Existing V1-V10 saves remain on the generic ruleset.

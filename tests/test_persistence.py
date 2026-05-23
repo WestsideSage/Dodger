@@ -36,12 +36,12 @@ def _make_setup():
     team_a = make_team(
         "alpha",
         [make_player("a1", accuracy=70), make_player("a2", dodge=65)],
-        policy=CoachPolicy(target_stars=0.7),
+        policy=CoachPolicy(target_focus="their_stars"),
     )
     team_b = make_team(
         "beta",
         [make_player("b1", power=72), make_player("b2", catch=68)],
-        policy=CoachPolicy(target_stars=0.7),
+        policy=CoachPolicy(target_focus="their_stars"),
     )
     return make_match_setup(team_a, team_b)
 

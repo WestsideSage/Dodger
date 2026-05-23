@@ -35,7 +35,7 @@ def _active(pid, team):
 
 
 def test_select_thrower_prefers_higher_accuracy_at_low_risk():
-    policy = CoachPolicy(risk_tolerance=0.0)  # all accuracy weight
+    policy = CoachPolicy(approach="patient")
     lookup = {"hi": _p("hi", accuracy=90), "lo": _p("lo", accuracy=40)}
     states = [_active("hi", "A"), _active("lo", "A")]
     rng = random.Random(0)
@@ -44,15 +44,15 @@ def test_select_thrower_prefers_higher_accuracy_at_low_risk():
 
 
 def test_select_thrower_prefers_power_at_high_risk():
-    policy = CoachPolicy(risk_tolerance=1.0)
+    policy = CoachPolicy(approach="aggressive")
     lookup = {"acc": _p("acc", accuracy=90, power=30), "pwr": _p("pwr", accuracy=30, power=90)}
     states = [_active("acc", "A"), _active("pwr", "A")]
     chosen = select_thrower(candidates=states, player_lookup=lookup, policy=policy, rng=random.Random(0))
     assert chosen.player_id == "pwr"
 
 
-def test_select_target_prefers_star_at_high_target_stars():
-    policy = CoachPolicy(target_stars=1.0, target_ball_holder=0.0)
+def test_select_target_prefers_star_focus():
+    policy = CoachPolicy(target_focus="their_stars")
     lookup = {"star": _p("star", accuracy=90, power=90, dodge=90, catch=90),
               "scrub": _p("scrub", accuracy=20, power=20, dodge=20, catch=20)}
     states = [_active("star", "B"), _active("scrub", "B")]
@@ -63,8 +63,8 @@ def test_select_target_prefers_star_at_high_target_stars():
     assert chosen.player_id == "star"
 
 
-def test_select_target_prefers_vulnerable_at_low_target_stars():
-    policy = CoachPolicy(target_stars=0.0, target_ball_holder=0.0)
+def test_select_target_prefers_vulnerable_under_spread_focus():
+    policy = CoachPolicy(target_focus="spread")
     lookup = {"safe": _p("safe", dodge=90), "vuln": _p("vuln", dodge=10)}
     states = [_active("safe", "B"), _active("vuln", "B")]
     chosen = select_target(
@@ -75,7 +75,7 @@ def test_select_target_prefers_vulnerable_at_low_target_stars():
 
 
 def test_decide_catch_attempt_high_catch_high_risk():
-    policy = CoachPolicy(risk_tolerance=1.0, catch_bias=1.0)
+    policy = CoachPolicy(catch_posture="go_for_catches")
     lookup = {"c": _p("c", catch=90, dodge=20)}
     target = _active("c", "B")
     decision = decide_catch_attempt(target=target, player_lookup=lookup, policy=policy)
@@ -83,7 +83,7 @@ def test_decide_catch_attempt_high_catch_high_risk():
 
 
 def test_decide_catch_attempt_low_catch_low_risk():
-    policy = CoachPolicy(risk_tolerance=0.0, catch_bias=0.0)
+    policy = CoachPolicy(catch_posture="play_safe")
     lookup = {"c": _p("c", catch=20, dodge=80)}
     target = _active("c", "B")
     decision = decide_catch_attempt(target=target, player_lookup=lookup, policy=policy)

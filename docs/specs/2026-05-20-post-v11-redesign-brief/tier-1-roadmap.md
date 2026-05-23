@@ -1,7 +1,7 @@
 # Tier 1 Match Loop - Plan Roadmap
 
-Date: 2026-05-20
-Status: Active. Plans A and B landed on 2026-05-20; C/D stubbed.
+Date: 2026-05-20 (last updated 2026-05-22)
+Status: Active. Plans A and B landed on 2026-05-20; Plan C landed 2026-05-22. **Plan D is the next strict step.**
 Parent brief: [brief.md](./brief.md)
 
 This is the parent roadmap for the **Tier 1 Match Loop** milestone - the
@@ -29,11 +29,11 @@ modules - *not moved*) plus new primitives (`fatigue`, `flood_throws`,
 |---|---|---|---|---|
 | **A** | **Hybrid driver architecture + Tier 1 engine** | Architectural risk gate | V11 baseline | High - factoring without breaking USAD |
 | **B** | **Player attribute v2** | Data-model upgrade | landed 2026-05-20 | - |
-| C | Tier 1 player-facing surface | Tactics, replay, aftermath | A + B | Medium - design density |
+| **C** | **Tier 1 player-facing surface** | Tactics, replay, aftermath | landed 2026-05-22 | - |
 | D | Simulation-health probe | Verification harness | A + B + C | Low |
 
-**Order is strict.** B is now landed, which unblocks C. D still runs
-last and replaces `tools/o1_variance_probe.py`.
+**Order is strict.** C is now landed, which unblocks D. D replaces
+`tools/o1_variance_probe.py`.
 
 The full Plan A file is at
 [plan-a-hybrid-driver.md](./plan-a-hybrid-driver.md). C and D are
@@ -71,7 +71,7 @@ comes.
 - Command Center showing the new attributes (Plan C work).
 - AI Program Manager use of attributes (cuttable subsystem #9).
 
-## Plan C stub - Tier 1 player-facing surface
+## Plan C - Tier 1 player-facing surface (landed 2026-05-22)
 
 **Inputs from Plans A + B:**
 - Tier 1 driver emits the six moment events (Plan A defines the

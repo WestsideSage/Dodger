@@ -1,5 +1,6 @@
 import type {
   ClubOption,
+  CoachPolicy,
   CommandCenterResponse,
   CommandCenterSimResponse,
   DynastyOfficeResponse,
@@ -85,10 +86,14 @@ export const commandApi = {
   center: () => apiGet<CommandCenterResponse>('/api/command-center'),
   savePlan: (body: Partial<CommandCenterResponse['plan']> & { intent?: string }) =>
     apiPost<CommandCenterResponse>('/api/command-center/plan', body),
+  saveTactics: (body: CoachPolicy) =>
+    apiPost<CoachPolicy>('/api/tactics', body),
   simulate: (body: { intent?: string }) =>
     apiPost<CommandCenterSimResponse>('/api/command-center/simulate', body),
   replay: (matchId: string) =>
     apiGet<MatchReplayResponse>(`/api/matches/${encodeURIComponent(matchId)}/replay`),
+  voiceRegister: (tier: number) =>
+    apiGet<Record<string, string>>(`/api/voice-register/${tier}`),
 };
 
 export const dynastyApi = {

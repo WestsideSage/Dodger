@@ -3,7 +3,20 @@ from __future__ import annotations
 import random
 
 from .archetype_derivation import derive_archetype, primary_and_secondary_bases
-from .models import CoachPolicy, MatchSetup, Player, PlayerArchetype, PlayerRatings, PlayerTraits, Team
+from .models import (
+    Approach,
+    CatchPosture,
+    CoachPolicy,
+    MatchSetup,
+    OpeningRushCommit,
+    OpeningRushTarget,
+    Player,
+    PlayerArchetype,
+    PlayerRatings,
+    PlayerTraits,
+    TargetFocus,
+    Team,
+)
 from .persistence import match_setup_to_dict
 from .setup_loader import match_setup_from_dict
 
@@ -91,9 +104,6 @@ def randomize_setup(setup: MatchSetup, variation: float = 8.0, seed: int | None 
     for key in ("team_a", "team_b"):
         team = payload[key]
         team["chemistry"] = _clamp(team.get("chemistry", 0.5) + rng.uniform(-0.1, 0.1), 0.0, 1.0)
-        policy = team.get("coach_policy", {})
-        for policy_key, value in list(policy.items()):
-            policy[policy_key] = _clamp(value + rng.uniform(-0.15, 0.15), 0.0, 1.0)
         for player in team.get("players", []):
             ratings = player.get("ratings", {})
             for stat in _PLAYER_STATS:
@@ -124,14 +134,11 @@ def _random_team(
         if team_id not in excluded:
             break
     policy = CoachPolicy(
-        target_stars=_clamp(rng.random(), 0.2, 0.9),
-        target_ball_holder=_clamp(rng.random(), 0.2, 0.9),
-        risk_tolerance=_clamp(rng.random(), 0.2, 0.9),
-        sync_throws=_clamp(rng.random(), 0.1, 0.8),
-        rush_frequency=_clamp(rng.random(), 0.2, 0.9),
-        rush_proximity=_clamp(rng.random(), 0.2, 0.9),
-        tempo=_clamp(rng.random(), 0.3, 0.8),
-        catch_bias=_clamp(rng.random(), 0.2, 0.9),
+        approach=rng.choice(list(Approach)),
+        target_focus=rng.choice(list(TargetFocus)),
+        catch_posture=rng.choice(list(CatchPosture)),
+        rush_commit=rng.choice(list(OpeningRushCommit)),
+        rush_target=rng.choice(list(OpeningRushTarget)),
     )
     count = rng.randint(min_players, max_players)
     players = []

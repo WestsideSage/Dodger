@@ -8,16 +8,9 @@ from .models import CoachPolicy, MatchSetup, Player, PlayerArchetype, PlayerRati
 
 
 def _coach_policy_from_dict(payload: Dict[str, Any]) -> CoachPolicy:
-    return CoachPolicy(
-        target_stars=float(payload.get("target_stars", 0.5)),
-        target_ball_holder=float(payload.get("target_ball_holder", 0.5)),
-        risk_tolerance=float(payload.get("risk_tolerance", 0.5)),
-        sync_throws=float(payload.get("sync_throws", 0.2)),
-        rush_frequency=float(payload.get("rush_frequency", 0.5)),
-        rush_proximity=float(payload.get("rush_proximity", 0.5)),
-        tempo=float(payload.get("tempo", 0.5)),
-        catch_bias=float(payload.get("catch_bias", 0.5)),
-    )
+    if not payload:
+        return CoachPolicy()
+    return CoachPolicy.from_dict(payload)
 
 
 def _player_from_dict(payload: Dict[str, Any]) -> Player:
@@ -109,10 +102,10 @@ def load_match_setup_from_path(path: str | Path) -> MatchSetup:
 
 def describe_matchup(setup: MatchSetup) -> str:
     def _team_desc(team: Team) -> str:
-        policy = team.coach_policy.normalized()
+        policy = team.coach_policy.as_dict()
         return (
             f"{team.name} (chemistry {team.chemistry:.2f}, "
-            f"target_stars={policy.target_stars:.2f}, risk={policy.risk_tolerance:.2f})"
+            f"approach={policy['approach']}, target_focus={policy['target_focus']})"
         )
 
     return f"{_team_desc(setup.team_a)} vs\n{_team_desc(setup.team_b)}"

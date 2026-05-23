@@ -3,25 +3,13 @@ from __future__ import annotations
 import sqlite3
 from typing import Mapping
 
-from .models import Player, MatchSetup
 from .dynasty_office import team_overall
-from .models import MatchSetup
-from .dynasty_office import team_overall
+from .models import MatchSetup, Player
 
 
-def _policy_label(value: float) -> str:
-    if value >= 0.8:
-        return "Very High"
-    if value >= 0.65:
-        return "High"
-    if value >= 0.45:
-        return "Balanced"
-    if value >= 0.25:
-        return "Low"
-    return "Very Low"
-
-
-policy_label = _policy_label
+def _humanize_policy(value: str) -> str:
+    text = value.replace("_", " ")
+    return text[:1].upper() + text[1:]
 
 
 def build_matchup_details(
@@ -113,28 +101,14 @@ def matchup_preview(setup: MatchSetup) -> str:
     stronger = team_a if a_overall >= b_overall else team_b
     weaker = team_b if stronger is team_a else team_a
     delta = abs(a_overall - b_overall)
+    team_a_approach = _humanize_policy(team_a.coach_policy.approach.value).lower()
+    team_b_focus = _humanize_policy(team_b.coach_policy.target_focus.value).lower()
     style_line = (
-        f"{team_a.name} tempo {policy_label(team_a.coach_policy.tempo)} vs "
-        f"{team_b.name} risk {policy_label(team_b.coach_policy.risk_tolerance)}."
+        f"{team_a.name} {team_a_approach} approach "
+        f"vs {team_b.name} {team_b_focus} targets."
     )
     pressure_line = (
         f"{stronger.name} enters with a {delta:.1f} overall edge. "
         f"{weaker.name} needs catches and chemistry swings to flip the script."
     )
     return f"{style_line}\n{pressure_line}"
-
-
-
-def _policy_label(value: float) -> str:
-    if value >= 0.8:
-        return "Very High"
-    if value >= 0.65:
-        return "High"
-    if value >= 0.45:
-        return "Balanced"
-    if value >= 0.25:
-        return "Low"
-    return "Very Low"
-
-
-policy_label = _policy_label

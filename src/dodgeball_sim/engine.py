@@ -8,7 +8,19 @@ from .config import BalanceConfig, DEFAULT_CONFIG, DifficultyProfile, get_config
 from .development import fatigue_consistency_modifier, pressure_context
 from .events import MatchEvent
 from .meta import MetaPatch
-from .models import CoachPolicy, MatchSetup, Player, PlayerState, Team, TeamState
+from .models import (
+    Approach,
+    CatchPosture,
+    CoachPolicy,
+    MatchSetup,
+    OpeningRushCommit,
+    OpeningRushTarget,
+    Player,
+    PlayerState,
+    TargetFocus,
+    Team,
+    TeamState,
+)
 from .rng import DeterministicRNG
 
 
@@ -164,8 +176,8 @@ class MatchEngine:
         meta_patch: MetaPatch | None = None,
         recent_pressure_player_id: str | None = None,
     ) -> MatchEvent:
-        offense_policy = offense.team.coach_policy.normalized()
-        defense_policy = defense.team.coach_policy.normalized()
+        offense_policy = offense.team.coach_policy
+        defense_policy = defense.team.coach_policy
         thrower, throw_context = self._select_thrower(offense, offense_policy, rng, difficulty)
         target, target_context = self._select_target(
             defense,
@@ -178,7 +190,7 @@ class MatchEngine:
         )
         rush_context = self._rush_context(cfg, offense_policy, rng)
 
-        is_synced = rng.unit() < offense_policy.sync_throws
+        is_synced = rng.unit() < self._sync_throw_chance(offense_policy)
         sync_modifier = 0.05 if is_synced else 0.0
 
         calc = compute_throw_probabilities(
@@ -279,7 +291,7 @@ class MatchEngine:
                 outcome.update({"resolution": "hit", "player_out": target.player.id})
                 state_diff = {"player_out": {"team": defense.team.id, "player_id": target.player.id}}
 
-        tempo_step = 1 + int(offense_policy.tempo * cfg.tempo_tick_bonus)
+        tempo_step = 1 + int(self._tempo_level(offense_policy) * cfg.tempo_tick_bonus)
         if is_synced:
             tempo_step += 1
         tick += tempo_step
@@ -337,7 +349,12 @@ class MatchEngine:
         noise_roll = rng.unit()
         for player_state in candidates:
             ratings = player_state.player.ratings
-            base = policy.risk_tolerance * ratings.normalized_power() + (1 - policy.risk_tolerance) * ratings.normalized_accuracy()
+            if policy.approach == Approach.AGGRESSIVE:
+                base = 0.7 * ratings.normalized_power() + 0.3 * ratings.normalized_accuracy()
+            elif policy.approach == Approach.PATIENT:
+                base = 0.25 * ratings.normalized_power() + 0.75 * ratings.normalized_accuracy()
+            else:
+                base = 0.5 * ratings.normalized_power() + 0.5 * ratings.normalized_accuracy()
             base -= player_state.fatigue * 0.005
             score = (1 - difficulty.decision_noise) * base + difficulty.decision_noise * noise_roll
             scores.append((score, player_state))
@@ -385,16 +402,14 @@ class MatchEngine:
             player = player_state.player
             normalized_overall = player.overall_skill() / 100.0
             vulnerability = 1 - player.ratings.normalized_dodge()
-            ball_holder_pressure = (
-                (policy.target_ball_holder - 0.5)
-                if player.id == recent_pressure_player_id
-                else 0.0
-            )
-            base = (
-                policy.target_stars * normalized_overall
-                + (1 - policy.target_stars) * vulnerability
-                + policy.target_ball_holder * ball_holder_pressure
-            )
+            is_recent_pressure_target = player.id == recent_pressure_player_id
+            ball_holder_pressure = 1.0 if is_recent_pressure_target else 0.0
+            if policy.target_focus == TargetFocus.THEIR_STARS:
+                base = normalized_overall + 0.15 * vulnerability
+            elif policy.target_focus == TargetFocus.BALL_HOLDERS:
+                base = ball_holder_pressure + 0.15 * vulnerability
+            else:
+                base = vulnerability + 0.05 * (1.0 - normalized_overall)
             score = (1 - player_noise) * base + player_noise * noise_roll
             scores.append((score, player_state, normalized_overall, vulnerability, ball_holder_pressure))
         scores.sort(key=lambda item: (item[0], item[1].player.id), reverse=True)
@@ -413,22 +428,30 @@ class MatchEngine:
             ],
             "recent_pressure_player_id": recent_pressure_player_id,
             "noise_roll": round(noise_roll, 6),
+            "target_focus": policy.target_focus.value,
         }
         return winner, meta
 
     def _should_attempt_catch(self, target: PlayerState, policy: CoachPolicy) -> Tuple[bool, Dict[str, Any]]:
         normalized_catch = target.player.ratings.normalized_catch()
         normalized_dodge = target.player.ratings.normalized_dodge()
-        base_threshold = 0.3 + 0.4 * (1 - policy.risk_tolerance)
-        catch_bias_adjustment = (0.5 - policy.catch_bias) * 0.4
-        threshold = base_threshold + catch_bias_adjustment
-        dodge_guard = normalized_dodge - 0.15 + catch_bias_adjustment
+        if policy.catch_posture == CatchPosture.GO_FOR_CATCHES:
+            base_threshold = 0.35
+            posture_adjustment = -0.15
+        elif policy.catch_posture == CatchPosture.PLAY_SAFE:
+            base_threshold = 0.65
+            posture_adjustment = 0.1
+        else:
+            base_threshold = 0.5
+            posture_adjustment = 0.0
+        threshold = base_threshold + posture_adjustment
+        dodge_guard = normalized_dodge - 0.15 + posture_adjustment
         attempt = normalized_catch >= max(threshold, dodge_guard)
         meta = {
             "threshold": round(threshold, 4),
             "base_threshold": round(base_threshold, 4),
-            "catch_bias": round(policy.catch_bias, 4),
-            "catch_bias_adjustment": round(catch_bias_adjustment, 4),
+            "catch_posture": policy.catch_posture.value,
+            "posture_adjustment": round(posture_adjustment, 4),
             "dodge_guard": round(dodge_guard, 4),
             "normalized_catch": round(normalized_catch, 4),
             "normalized_dodge": round(normalized_dodge, 4),
@@ -437,17 +460,44 @@ class MatchEngine:
         return attempt, meta
 
     def _rush_context(self, cfg: BalanceConfig, policy: CoachPolicy, rng: DeterministicRNG) -> Dict[str, Any]:
-        active = rng.unit() < policy.rush_frequency
-        raw_modifier = (policy.rush_proximity - 0.5) * cfg.rush_accuracy_modifier_max if active else 0.0
-        fatigue_delta = max(0.0, policy.rush_proximity - 0.5) * cfg.rush_fatigue_cost_max if active else 0.0
+        if policy.rush_commit == OpeningRushCommit.ALL_IN:
+            active_chance = 1.0
+        elif policy.rush_commit == OpeningRushCommit.HOLD_BACK:
+            active_chance = 0.25
+        else:
+            active_chance = 0.6
+        active = rng.unit() < active_chance
+        if policy.rush_target == OpeningRushTarget.STRONGEST_SIDE:
+            rush_lane_pressure = 0.8
+        elif policy.rush_target == OpeningRushTarget.NEAREST:
+            rush_lane_pressure = 0.25
+        else:
+            rush_lane_pressure = 0.5
+        raw_modifier = (rush_lane_pressure - 0.5) * cfg.rush_accuracy_modifier_max if active else 0.0
+        fatigue_delta = max(0.0, rush_lane_pressure - 0.5) * cfg.rush_fatigue_cost_max if active else 0.0
         return {
             "active": active,
-            "rush_frequency": round(policy.rush_frequency, 4),
-            "rush_proximity": round(policy.rush_proximity, 4),
+            "rush_commit": policy.rush_commit.value,
+            "rush_target": policy.rush_target.value,
+            "activity_chance": round(active_chance, 4),
             "proximity_modifier": round(raw_modifier, 4),
             "fatigue_delta": round(fatigue_delta, 4),
             "rng_namespace": None,
         }
+
+    def _sync_throw_chance(self, policy: CoachPolicy) -> float:
+        if policy.approach == Approach.AGGRESSIVE:
+            return 0.55
+        if policy.approach == Approach.PATIENT:
+            return 0.2
+        return 0.35
+
+    def _tempo_level(self, policy: CoachPolicy) -> float:
+        if policy.approach == Approach.AGGRESSIVE:
+            return 0.75
+        if policy.approach == Approach.PATIENT:
+            return 0.3
+        return 0.5
 
     def _winner_id(self, teams: Iterable[TeamState]) -> str | None:
         living_counts = {team.team.id: len(team.living_players()) for team in teams}

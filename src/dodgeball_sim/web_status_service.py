@@ -100,7 +100,7 @@ def build_roster_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     }
 
 
-def build_tactics_payload(conn: sqlite3.Connection) -> dict[str, float]:
+def build_tactics_payload(conn: sqlite3.Connection) -> dict[str, str]:
     player_club_id = get_state(conn, "player_club_id")
     if not player_club_id:
         raise ValueError("No player club assigned")
@@ -111,7 +111,7 @@ def build_tactics_payload(conn: sqlite3.Connection) -> dict[str, float]:
     return club.coach_policy.as_dict()
 
 
-def update_tactics_payload(conn: sqlite3.Connection, policy_values: dict[str, float]) -> dict[str, str]:
+def update_tactics_payload(conn: sqlite3.Connection, policy_values: dict[str, Any]) -> dict[str, str]:
     player_club_id = get_state(conn, "player_club_id")
     if not player_club_id:
         raise ValueError("No player club assigned")
@@ -121,7 +121,7 @@ def update_tactics_payload(conn: sqlite3.Connection, policy_values: dict[str, fl
     if club is None:
         raise LookupError("Club not found")
 
-    new_policy = CoachPolicy(**policy_values)
+    new_policy = CoachPolicy.from_dict(policy_values)
     updated_club = dataclasses.replace(club, coach_policy=new_policy)
     roster = load_club_roster(conn, player_club_id)
     save_club(conn, updated_club, roster)
