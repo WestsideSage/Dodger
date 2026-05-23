@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from math import sqrt
 from typing import Any
 
-from dodgeball_sim.engine_driver import DriverMatchInput
+from dodgeball_sim.engine_driver import DriverMatchInput, EngineDriver
 from dodgeball_sim.models import CoachPolicy, Player, PlayerArchetype, PlayerRatings
 
 
@@ -102,4 +102,57 @@ def wilson_ci(successes: int, trials: int, z: float = 1.96) -> tuple[float, floa
     return (max(0.0, center - spread), min(1.0, center + spread))
 
 
-__all__ = ["make_player", "make_team", "make_match_input", "RungResult", "wilson_ci"]
+def run_ovr_curve(
+    driver: EngineDriver,
+    *,
+    rungs: tuple[int, ...] = (0, 4, 8, 12),
+    trials_per_rung: int = 400,
+    base_rating: float = 63.0,
+    seed_offset: int = 0,
+) -> tuple[RungResult, ...]:
+    """Run a Monte Carlo OVR-edge curve through `driver`.
+
+    Each rung's per-player edge becomes a net six-player OVR edge. Favorite
+    rating = base_rating + per_player_edge; dog = base_rating.
+
+    Seeding: seed = rung_index * 10_000 + trial_index + seed_offset.
+    """
+    results: list[RungResult] = []
+    for rung_index, edge in enumerate(rungs):
+        fav_wins = 0
+        outputs: list[Any] = []
+        for trial in range(trials_per_rung):
+            seed = rung_index * 10_000 + trial + seed_offset
+            mi = make_match_input(
+                seed=seed,
+                rating_a=base_rating + edge,
+                rating_b=base_rating,
+            )
+            out = driver.run(mi)
+            outputs.append(out)
+            if out.winner_team_id == "fav":
+                fav_wins += 1
+        win_rate = fav_wins / trials_per_rung if trials_per_rung else 0.0
+        ci_low, ci_high = wilson_ci(fav_wins, trials_per_rung)
+        results.append(
+            RungResult(
+                net_ovr_edge=edge * 6,
+                trials=trials_per_rung,
+                fav_wins=fav_wins,
+                win_rate=win_rate,
+                ci_low=ci_low,
+                ci_high=ci_high,
+                outputs=tuple(outputs),
+            )
+        )
+    return tuple(results)
+
+
+__all__ = [
+    "make_player",
+    "make_team",
+    "make_match_input",
+    "RungResult",
+    "wilson_ci",
+    "run_ovr_curve",
+]
