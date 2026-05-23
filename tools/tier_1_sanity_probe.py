@@ -1,22 +1,29 @@
 """Tier 1 sanity probe — Plan A gate.
 
 Runs N Tier 1 matches end-to-end and asserts that they all resolve,
-emit at least one moment event on average, and produce no exceptions.
+emit at least one moment event on average, and produce all six moment
+kinds at least once.
 
-Plan D will introduce the full simulation-health probe with statistical
-outputs across both drivers. This probe is intentionally small.
+Plan D introduced `tools/probe_lib.py`; this probe now consumes
+`make_match_input` from there. Output is unchanged.
 """
 
 from __future__ import annotations
 
+import sys
 from collections import Counter
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import List
 
-from dodgeball_sim.engine_driver import DriverMatchInput
-from dodgeball_sim.models import CoachPolicy, Player, PlayerRatings
+# Support both direct script execution and module invocation
+if str(Path(__file__).parent.parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from dodgeball_sim.moment_events import MomentKind
 from dodgeball_sim.rec_engine import RecTier1Driver
+
+from tools.probe_lib import make_match_input
 
 
 @dataclass
@@ -29,35 +36,6 @@ class SanityProbeReport:
     moment_kind_counts: Counter = field(default_factory=Counter)
 
 
-def _make_player(pid: str, club: str) -> Player:
-    from dodgeball_sim.models import PlayerArchetype
-    return Player(
-        id=pid,
-        name=pid.upper(),
-        ratings=PlayerRatings(55, 55, 55, 55, 60, 55),
-        club_id=club,
-        archetype=PlayerArchetype.CATCHER,
-    )
-
-
-def _make_input(seed: int) -> DriverMatchInput:
-    starters_a = tuple(f"a{i}" for i in range(6))
-    starters_b = tuple(f"b{i}" for i in range(6))
-    players = {pid: _make_player(pid, "a") for pid in starters_a}
-    players.update({pid: _make_player(pid, "b") for pid in starters_b})
-    return DriverMatchInput(
-        match_id=f"sanity_{seed}",
-        team_a_id="a",
-        team_b_id="b",
-        starters_a=starters_a,
-        starters_b=starters_b,
-        player_lookup=players,
-        policy_a=CoachPolicy(),
-        policy_b=CoachPolicy(),
-        seed=seed,
-    )
-
-
 def run_sanity_probe(matches: int = 25, seed_start: int = 1) -> SanityProbeReport:
     report = SanityProbeReport()
     driver = RecTier1Driver()
@@ -65,7 +43,7 @@ def run_sanity_probe(matches: int = 25, seed_start: int = 1) -> SanityProbeRepor
         seed = seed_start + i
         report.matches_run += 1
         try:
-            out = driver.run(_make_input(seed))
+            out = driver.run(make_match_input(seed, match_id_prefix="sanity"))
         except Exception as e:  # pragma: no cover - probe-level safety
             report.exceptions.append(f"seed={seed}: {type(e).__name__}: {e}")
             continue
