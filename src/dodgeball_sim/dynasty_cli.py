@@ -21,7 +21,17 @@ from .career import aggregate_career, build_signature_moment, evaluate_hall_of_f
 from .identity import build_identity_profile
 from .league import Club, Conference, League
 from .meta import MetaPatch, RuleSetOverrides
-from .models import CoachPolicy, Player, PlayerRatings, PlayerTraits
+from .models import (
+    Approach,
+    CatchPosture,
+    CoachPolicy,
+    OpeningRushCommit,
+    OpeningRushTarget,
+    Player,
+    PlayerRatings,
+    PlayerTraits,
+    TargetFocus,
+)
 from .news import MatchdayResult, generate_matchday_news
 from .persistence import (
     fetch_player_career_summary,
@@ -165,11 +175,11 @@ def _generate_league_clubs(
     rosters: Dict[str, List[Player]] = {}
     for club_id, name, colors, region, founded in chosen_defs:
         policy = CoachPolicy(
-            target_stars=_clamp(rng.gauss(0.5, 0.15), 0.2, 0.9),
-            risk_tolerance=_clamp(rng.gauss(0.5, 0.15), 0.2, 0.9),
-            sync_throws=_clamp(rng.gauss(0.4, 0.15), 0.1, 0.8),
-            tempo=_clamp(rng.gauss(0.5, 0.12), 0.3, 0.8),
-            rush_frequency=_clamp(rng.gauss(0.5, 0.15), 0.2, 0.9),
+            approach=rng.choice(list(Approach)),
+            target_focus=rng.choice(list(TargetFocus)),
+            catch_posture=rng.choice(list(CatchPosture)),
+            rush_commit=rng.choice(list(OpeningRushCommit)),
+            rush_target=rng.choice(list(OpeningRushTarget)),
         )
         clubs.append(Club(
             club_id=club_id,

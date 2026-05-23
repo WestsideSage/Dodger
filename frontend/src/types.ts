@@ -36,15 +36,18 @@ export interface RosterResponse {
     default_lineup: string[];
 }
 
+export type Approach = 'aggressive' | 'patient' | 'mixed';
+export type TargetFocus = 'their_stars' | 'ball_holders' | 'spread';
+export type CatchPosture = 'go_for_catches' | 'play_safe' | 'opportunistic';
+export type OpeningRushCommit = 'all_in' | 'balanced' | 'hold_back';
+export type OpeningRushTarget = 'nearest' | 'strongest_side' | 'center';
+
 export interface CoachPolicy {
-    target_stars: number;
-    target_ball_holder: number;
-    risk_tolerance: number;
-    sync_throws: number;
-    rush_frequency: number;
-    rush_proximity: number;
-    tempo: number;
-    catch_bias: number;
+    approach: Approach;
+    target_focus: TargetFocus;
+    catch_posture: CatchPosture;
+    rush_commit: OpeningRushCommit;
+    rush_target: OpeningRushTarget;
 }
 
 export interface StatusResponse {
@@ -77,11 +80,12 @@ export interface MatchStartContext {
     config_version: string;
     difficulty: string;
     meta_patch: Record<string, unknown> | null;
-    team_policies: Record<string, Record<string, number>>;
+    team_policies: Record<string, CoachPolicy>;
 }
 
 export interface MatchEndContext {
     reason: string;
+    moment_events?: MomentEvent[];
 }
 
 export interface ThrowContext {
@@ -89,7 +93,7 @@ export interface ThrowContext {
     thrower_selection: Record<string, unknown>;
     target_selection: Record<string, unknown>;
     difficulty: string;
-    policy_snapshot: Record<string, number>;
+    policy_snapshot: CoachPolicy;
     chemistry_delta: number;
     meta_patch: Record<string, unknown> | null;
     rush_context: Record<string, unknown>;
@@ -104,12 +108,84 @@ export interface ThrowContext {
 
 export type ReplayEventContext = MatchStartContext | MatchEndContext | ThrowContext;
 
+export interface DramaticCatchMoment {
+    kind: 'dramatic_catch';
+    match_id: string;
+    tick: number;
+    catcher_id: string;
+    catcher_team_id: string;
+    thrower_id: string;
+    thrower_team_id: string;
+    returning_player_id: string;
+    active_count_a: number;
+    active_count_b: number;
+    display_text?: string;
+}
+
+export interface LateGameEscapeMoment {
+    kind: 'late_game_escape';
+    match_id: string;
+    tick: number;
+    survivor_id: string;
+    survivor_team_id: string;
+    attacker_team_id: string;
+    attacker_count: number;
+    display_text?: string;
+}
+
+export interface OneVOneFinaleMoment {
+    kind: 'one_v_one_finale';
+    match_id: string;
+    tick: number;
+    player_a_id: string;
+    player_b_id: string;
+    tick_started: number;
+    display_text?: string;
+}
+
+export interface GassedCollapseMoment {
+    kind: 'gassed_collapse';
+    match_id: string;
+    tick: number;
+    player_id: string;
+    team_id: string;
+    fatigue_pct: number;
+    display_text?: string;
+}
+
+export interface FloodThrowMoment {
+    kind: 'flood_throw';
+    match_id: string;
+    tick: number;
+    thrower_team_id: string;
+    thrower_ids: string[];
+    display_text?: string;
+}
+
+export interface ComebackMoment {
+    kind: 'comeback';
+    match_id: string;
+    tick: number;
+    team_id: string;
+    deficit_at_low_point: number;
+    catches_during_comeback: number;
+    display_text?: string;
+}
+
+export type MomentEvent =
+  | DramaticCatchMoment
+  | LateGameEscapeMoment
+  | OneVOneFinaleMoment
+  | GassedCollapseMoment
+  | FloodThrowMoment
+  | ComebackMoment;
+
 export interface ReplayEvent {
     index: number;
     tick: number;
-    event_type: 'match_start' | 'match_end' | 'throw';
+    event_type: 'match_start' | 'match_end' | 'throw' | 'stall_reset';
     phase: string;
-    actors: Record<string, string>;
+    actors: Record<string, string | null>;
     context: ReplayEventContext;
     probabilities: Record<string, number>;
     rolls: Record<string, number>;
@@ -238,6 +314,7 @@ export interface MatchReplayResponse {
     away_survivors: number;
     config_version?: string | null;  // V11: "official:..." when run under official ruleset
     events: ReplayEvent[];
+    moment_events: MomentEvent[];
     proof_events: ReplayProofEvent[];
     key_play_indices: number[];
     official_state?: OfficialReplayState | null;
@@ -468,6 +545,7 @@ export interface Aftermath {
         interest_delta: string;
         evidence: string;
     }>;
+    body: string[];
     verdict?: string;
 }
 

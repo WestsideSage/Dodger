@@ -379,10 +379,21 @@ def _throw_action_weight(
     team_id: str,
 ) -> float:
     player = player_lookup[action.actor_id]
-    rating_weight = (
-        player.ratings.normalized_accuracy() * (1.0 - policy.risk_tolerance)
-        + player.ratings.normalized_power() * policy.risk_tolerance
-    )
+    if policy.approach == Approach.AGGRESSIVE:
+        rating_weight = (
+            player.ratings.normalized_accuracy() * 0.3
+            + player.ratings.normalized_power() * 0.7
+        )
+    elif policy.approach == Approach.PATIENT:
+        rating_weight = (
+            player.ratings.normalized_accuracy() * 0.75
+            + player.ratings.normalized_power() * 0.25
+        )
+    else:
+        rating_weight = (
+            player.ratings.normalized_accuracy() * 0.5
+            + player.ratings.normalized_power() * 0.5
+        )
     burden_weight = 1.25 if burden_team_id == team_id else 1.0
     return max(0.01, rating_weight * burden_weight)
 
@@ -393,7 +404,7 @@ def _throw_action_weight(
 
 import random as _random
 
-from .models import CoachPolicy, Player
+from .models import Approach, CoachPolicy, Player
 from .official_resolution import resolve_throw
 from .official_tactics import select_target
 

@@ -15,14 +15,23 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Mapping, Sequence, Tuple
 
 from .ball_state import BallState, OfficialBall
 from .catch_queue import CatchQueueState, enqueue_out_player, return_player_on_catch
 from .engine_driver import DriverMatchInput, DriverMatchOutput
 from .fatigue import FatigueParams, FatigueState, accumulate, effectiveness, recover
 from .flood_throws import FloodThrowTracker, PendingThrow
-from .models import CoachPolicy, Player, PlayerRatings
+from .models import (
+    Approach,
+    CatchPosture,
+    CoachPolicy,
+    OpeningRushCommit,
+    OpeningRushTarget,
+    Player,
+    PlayerRatings,
+    TargetFocus,
+)
 from .moment_events import (
     Comeback,
     DramaticCatch,
@@ -55,15 +64,62 @@ THROW_EXERTION_COST: float = 0.09
 ACTIVE_RECOVERY_SECONDS: float = 0.5
 """Short between-rally recovery for players still on court."""
 
+APPROACH_GATE_MULT = {
+    Approach.AGGRESSIVE: 0.85,
+    Approach.MIXED: 1.0,
+    Approach.PATIENT: 1.20,
+}
+
+_POSTURE_MULTIPLIERS = {
+    CatchPosture.GO_FOR_CATCHES: {"catch": 1.4, "block": 1.0, "dodge": 0.7},
+    CatchPosture.OPPORTUNISTIC: {"catch": 1.0, "block": 1.0, "dodge": 1.0},
+    CatchPosture.PLAY_SAFE: {"catch": 0.7, "block": 1.0, "dodge": 1.4},
+}
+
+_OPENING_RUSH_SPRINTERS = {
+    OpeningRushCommit.ALL_IN: 6,
+    OpeningRushCommit.BALANCED: 4,
+    OpeningRushCommit.HOLD_BACK: 2,
+}
+
+_OPENING_RUSH_THROW_CAP = {
+    OpeningRushCommit.ALL_IN: 4,
+    OpeningRushCommit.BALANCED: 3,
+    OpeningRushCommit.HOLD_BACK: 2,
+}
+
 
 def _fatigue_params_for_ratings(ratings: PlayerRatings) -> FatigueParams:
     return FatigueParams(conditioning_curve=float(ratings.conditioning_curve))
 
 
-def _response_branch_for_courage(*, courage: float, response_roll: float) -> str:
+def _response_weights_for_courage(*, courage: float) -> tuple[float, float, float]:
     c = max(0.0, min(100.0, float(courage)))
     catch_share = 0.05 + 0.55 * (c / 100.0)
     block_share = 0.30 - 0.10 * abs(c - 50.0) / 50.0
+    dodge_share = max(0.0, 1.0 - catch_share - block_share)
+    return catch_share, block_share, dodge_share
+
+
+def _response_branch_for_courage(*, courage: float, response_roll: float) -> str:
+    catch_share, block_share, _dodge_share = _response_weights_for_courage(courage=courage)
+    if response_roll < catch_share:
+        return "catch"
+    if response_roll < catch_share + block_share:
+        return "block"
+    return "dodge"
+
+
+def _response_branch_for_policy(*, courage: float, posture: CatchPosture | str, response_roll: float) -> str:
+    catch_share, block_share, dodge_share = _response_weights_for_courage(courage=courage)
+    posture_value = posture if isinstance(posture, CatchPosture) else CatchPosture(str(posture))
+    multipliers = _POSTURE_MULTIPLIERS[posture_value]
+    catch_share *= multipliers["catch"]
+    block_share *= multipliers["block"]
+    dodge_share *= multipliers["dodge"]
+    total = catch_share + block_share + dodge_share
+    catch_share /= total
+    block_share /= total
     if response_roll < catch_share:
         return "catch"
     if response_roll < catch_share + block_share:
@@ -77,12 +133,13 @@ def _should_throw_under_iq(
     expected_value: float,
     stall_seconds: float,
     stall_cap: float,
+    gate_multiplier: float = 1.0,
 ) -> bool:
     iq_norm = max(0.0, min(100.0, float(iq))) / 100.0
     stall_pressure = max(0.0, min(1.0, stall_seconds / max(stall_cap, 0.001)))
     if stall_pressure >= 0.8:
         return True
-    threshold = (0.05 + 0.35 * iq_norm) * (1.0 - stall_pressure)
+    threshold = (0.05 + 0.35 * iq_norm) * gate_multiplier * (1.0 - stall_pressure)
     return expected_value >= threshold
 
 
@@ -110,6 +167,8 @@ class _MatchRuntime:
     comeback_emitted_for: Dict[str, bool] = field(default_factory=dict)
     low_water_active: Dict[str, int] = field(default_factory=dict)
     comeback_catches: Dict[str, int] = field(default_factory=dict)
+    recent_targets_by_team: Dict[str, List[str]] = field(default_factory=dict)
+    opening_rush_by_team: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
 
 class RecTier1Driver:
@@ -237,6 +296,19 @@ class RecTier1Driver:
                 mi.team_b_id: len(mi.starters_b),
             },
             comeback_catches={mi.team_a_id: 0, mi.team_b_id: 0},
+            recent_targets_by_team={mi.team_a_id: [], mi.team_b_id: []},
+            opening_rush_by_team={
+                mi.team_a_id: self._opening_rush(
+                    team_id=mi.team_a_id,
+                    starters=mi.starters_a,
+                    policy=self._policy_for_team(mi, mi.team_a_id),
+                ),
+                mi.team_b_id: self._opening_rush(
+                    team_id=mi.team_b_id,
+                    starters=mi.starters_b,
+                    policy=self._policy_for_team(mi, mi.team_b_id),
+                ),
+            },
         )
 
     # ------------------------------------------------------------------
@@ -266,11 +338,12 @@ class RecTier1Driver:
 
         # 2. Record throws into flood tracker; resolve each
         for team_id, thrower_ids in throwers_by_team.items():
+            is_synced = len(thrower_ids) >= 2
             for thrower_id in thrower_ids:
                 rt.flood_tracker.record(
                     PendingThrow(thrower_id=thrower_id, team_id=team_id, tick=rt.tick)
                 )
-                self._resolve_throw(rt, mi, thrower_id, team_id, team_a, team_b)
+                self._resolve_throw(rt, mi, thrower_id, team_id, team_a, team_b, is_synced=is_synced)
 
         # 3. Stall handling
         self._update_stall(rt, team_a, team_b, threw_a=bool(throwers_by_team.get(team_a)),
@@ -394,7 +467,7 @@ class RecTier1Driver:
             deficit_at_low = other_starters - low
             if (
                 deficit_at_low >= 2
-                and my_active >= opp - 2
+                and my_active >= opp - 3
                 and not rt.comeback_emitted_for[team_id]
             ):
                 rt.moment_events.append(
@@ -424,8 +497,14 @@ class RecTier1Driver:
             if not active:
                 continue
             stall_state = rt.stall_a if team_id == team_a else rt.stall_b
+            policy = self._policy_for_team(mi, team_id)
+            gate_multiplier = APPROACH_GATE_MULT[policy.approach]
+            opening_rush = rt.opening_rush_by_team.get(team_id, {})
+            opening_sprinters = set(opening_rush.get("sprinter_ids", []))
             candidates = []
             for p in active:
+                if rt.tick == 0 and policy.rush_commit == OpeningRushCommit.HOLD_BACK and p.player_id not in opening_sprinters:
+                    continue
                 eff = effectiveness(rt.fatigue[p.player_id])
                 player = mi.player_lookup[p.player_id]
                 expected_value = (player.ratings.accuracy / 100.0) * eff
@@ -434,11 +513,15 @@ class RecTier1Driver:
                     expected_value=expected_value,
                     stall_seconds=stall_state.seconds_holding,
                     stall_cap=rt.rules.stall_cap_seconds,
+                    gate_multiplier=gate_multiplier,
                 ):
                     continue
                 if rt.rng.random() < 0.4 * eff:
                     candidates.append(p.player_id)
-            result[team_id] = candidates[:3]
+            throw_cap = 3
+            if rt.tick == 0:
+                throw_cap = _OPENING_RUSH_THROW_CAP[policy.rush_commit]
+            result[team_id] = candidates[:throw_cap]
         return result
 
     def _resolve_throw(
@@ -449,6 +532,8 @@ class RecTier1Driver:
         thrower_team_id: str,
         team_a: str,
         team_b: str,
+        *,
+        is_synced: bool,
     ) -> None:
         opp_team = team_b if thrower_team_id == team_a else team_a
         opp_active = [
@@ -458,16 +543,72 @@ class RecTier1Driver:
         if not opp_active:
             return
 
+        offense_policy = self._policy_for_team(mi, thrower_team_id)
         thrower = mi.player_lookup[thrower_id]
-        target_state = rt.rng.choice(opp_active)
+        target_scores = self._target_scores(
+            defense_states=opp_active,
+            player_lookup=mi.player_lookup,
+            policy=offense_policy,
+            ball_holder_ids=self._ball_holder_ids(rt, opp_team),
+            recent_targets=rt.recent_targets_by_team.get(opp_team, []),
+        )
+        target_state = target_scores[0][2]
         target = mi.player_lookup[target_state.player_id]
+        rt.recent_targets_by_team.setdefault(opp_team, [])
+        rt.recent_targets_by_team[opp_team] = [
+            target_state.player_id,
+            *[
+                player_id
+                for player_id in rt.recent_targets_by_team[opp_team]
+                if player_id != target_state.player_id
+            ],
+        ][:6]
 
         thrower_eff = effectiveness(rt.fatigue[thrower_id])
         target_eff = effectiveness(rt.fatigue[target_state.player_id])
+        rush_context = self._rush_context_for_throw(rt, mi, thrower_team_id, thrower_id)
+        sync_context = {
+            "is_synced": is_synced,
+            "sync_modifier": 0.05 if is_synced else 0.0,
+        }
+        event_base = {
+            "tick": rt.tick,
+            "thrower": thrower_id,
+            "thrower_team": thrower_team_id,
+            "target": target_state.player_id,
+            "target_team": target_state.team_id,
+            "policy_snapshot": offense_policy.as_dict(),
+            "target_selection": {
+                "scores": [
+                    {"player_id": state.player_id, "score": round(score, 4)}
+                    for score, _player_id, state in target_scores[:3]
+                ],
+                "recent_pressure_player_id": (
+                    rt.recent_targets_by_team.get(opp_team, [None, None])[1]
+                    if len(rt.recent_targets_by_team.get(opp_team, [])) > 1
+                    else None
+                ),
+            },
+            "rush_context": rush_context,
+            "sync_context": sync_context,
+            "fatigue": {
+                "thrower_fatigue": round(rt.fatigue[thrower_id].value, 4),
+                "target_fatigue": round(rt.fatigue[target_state.player_id].value, 4),
+            },
+        }
 
         if rt.rng.random() < 0.05:
-            self._mark_out(rt, thrower_id, thrower_team_id, team_a, team_b)
-            rt.events.append({"type": "headshot_thrower_out", "thrower": thrower_id})
+            state_diff = self._mark_out(rt, thrower_id, thrower_team_id, team_a, team_b)
+            rt.events.append(
+                {
+                    **event_base,
+                    "type": "headshot_thrower_out",
+                    "target": None,
+                    "target_team": None,
+                    "catch_decision": None,
+                    "state_diff": state_diff,
+                }
+            )
             reset_on_throw_call(rt, thrower_team_id, team_a)
             return
 
@@ -477,17 +618,32 @@ class RecTier1Driver:
 
         connect_roll = rt.rng.random()
         if connect_roll >= accuracy * (1.0 - dodge):
-            rt.events.append({"type": "miss", "thrower": thrower_id, "target": target_state.player_id})
+            rt.events.append(
+                {
+                    **event_base,
+                    "type": "miss",
+                    "catch_decision": None,
+                    "state_diff": {},
+                }
+            )
             reset_on_throw_call(rt, thrower_team_id, team_a)
             return
 
-        branch = _response_branch_for_courage(
+        catch_decision = {
+            "attempt": False,
+            "catch_posture": self._policy_for_team(mi, opp_team).catch_posture.value,
+            "normalized_catch": round(target.ratings.normalized_catch(), 4),
+            "normalized_dodge": round(target.ratings.normalized_dodge(), 4),
+        }
+        branch = _response_branch_for_policy(
             courage=target.ratings.catch_courage,
+            posture=self._policy_for_team(mi, opp_team).catch_posture,
             response_roll=rt.rng.random(),
         )
         if branch == "catch":
+            catch_decision["attempt"] = True
             if rt.rng.random() < catch_skill:
-                self._mark_out(rt, thrower_id, thrower_team_id, team_a, team_b)
+                state_diff = self._mark_out(rt, thrower_id, thrower_team_id, team_a, team_b)
                 catcher_team = target_state.team_id
                 ret_event, returning_pid = return_player_on_catch(
                     rt.queues[catcher_team],
@@ -495,7 +651,15 @@ class RecTier1Driver:
                     match_id=mi.match_id,
                 )
                 if ret_event is not None and returning_pid is not None:
-                    rt.events.append({"type": "catch_return", "catcher": target_state.player_id})
+                    rt.events.append(
+                        {
+                            **event_base,
+                            "type": "catch_return",
+                            "catch_decision": catch_decision,
+                            "state_diff": state_diff,
+                            "returning_player_id": returning_pid,
+                        }
+                    )
                     returning = rt.players[returning_pid]
                     returning.status = OfficialPlayerStatus.ACTIVE
                     rt.comeback_catches[catcher_team] = rt.comeback_catches.get(catcher_team, 0) + 1
@@ -510,20 +674,184 @@ class RecTier1Driver:
                         team_b,
                     )
                 else:
-                    rt.events.append({"type": "catch_clean", "catcher": target_state.player_id})
+                    rt.events.append(
+                        {
+                            **event_base,
+                            "type": "catch_clean",
+                            "catch_decision": catch_decision,
+                            "state_diff": state_diff,
+                        }
+                    )
             else:
-                self._mark_out(rt, target_state.player_id, target_state.team_id, team_a, team_b)
-                rt.events.append({"type": "catch_failed_hit", "thrower": thrower_id, "target": target_state.player_id})
+                state_diff = self._mark_out(rt, target_state.player_id, target_state.team_id, team_a, team_b)
+                rt.events.append(
+                    {
+                        **event_base,
+                        "type": "catch_failed_hit",
+                        "catch_decision": catch_decision,
+                        "state_diff": state_diff,
+                    }
+                )
         elif branch == "block":
-            rt.events.append({"type": "block", "thrower": thrower_id, "blocker": target_state.player_id})
+            rt.events.append(
+                {
+                    **event_base,
+                    "type": "block",
+                    "catch_decision": catch_decision,
+                    "state_diff": {},
+                }
+            )
         else:
             if rt.rng.random() < dodge:
-                rt.events.append({"type": "dodge", "thrower": thrower_id, "target": target_state.player_id})
+                rt.events.append(
+                    {
+                        **event_base,
+                        "type": "dodge",
+                        "catch_decision": catch_decision,
+                        "state_diff": {},
+                    }
+                )
             else:
-                self._mark_out(rt, target_state.player_id, target_state.team_id, team_a, team_b)
-                rt.events.append({"type": "hit", "thrower": thrower_id, "target": target_state.player_id})
+                state_diff = self._mark_out(rt, target_state.player_id, target_state.team_id, team_a, team_b)
+                rt.events.append(
+                    {
+                        **event_base,
+                        "type": "hit",
+                        "catch_decision": catch_decision,
+                        "state_diff": state_diff,
+                    }
+                )
 
         reset_on_throw_call(rt, thrower_team_id, team_a)
+
+    def _policy_for_team(self, mi: DriverMatchInput, team_id: str) -> CoachPolicy:
+        raw = mi.policy_a if team_id == mi.team_a_id else mi.policy_b
+        if isinstance(raw, CoachPolicy):
+            return raw
+        if isinstance(raw, Mapping):
+            return CoachPolicy.from_dict(dict(raw))
+        return CoachPolicy()
+
+    def _ball_holder_ids(self, rt: _MatchRuntime, team_id: str) -> set[str]:
+        active_players = sorted(
+            (
+                player.player_id
+                for player in rt.players.values()
+                if player.team_id == team_id and player.status == OfficialPlayerStatus.ACTIVE
+            )
+        )
+        held_ball_count = sum(1 for ball in rt.balls if ball.side == team_id)
+        return set(active_players[:held_ball_count])
+
+    def _recency_weight(self, recent_targets: Sequence[str], target_id: str) -> float:
+        for index, recent_target_id in enumerate(recent_targets):
+            if recent_target_id != target_id:
+                continue
+            return max(0.0, 1.0 - 0.5 * index)
+        return 0.0
+
+    def _select_target_state(
+        self,
+        *,
+        defense_states: Sequence[OfficialPlayerState],
+        player_lookup: Mapping[str, Player],
+        policy: CoachPolicy,
+        ball_holder_ids: set[str],
+        recent_targets: Sequence[str],
+    ) -> OfficialPlayerState:
+        scored = self._target_scores(
+            defense_states=defense_states,
+            player_lookup=player_lookup,
+            policy=policy,
+            ball_holder_ids=ball_holder_ids,
+            recent_targets=recent_targets,
+        )
+        return scored[0][2]
+
+    def _target_scores(
+        self,
+        *,
+        defense_states: Sequence[OfficialPlayerState],
+        player_lookup: Mapping[str, Player],
+        policy: CoachPolicy,
+        ball_holder_ids: set[str],
+        recent_targets: Sequence[str],
+    ) -> list[tuple[float, str, OfficialPlayerState]]:
+        scored: list[tuple[float, str, OfficialPlayerState]] = []
+        for state in defense_states:
+            player = player_lookup[state.player_id]
+            overall = player.overall_skill() / 100.0
+            base_targetability = 1.0 - player.ratings.normalized_dodge()
+            if policy.target_focus == TargetFocus.THEIR_STARS:
+                score = 0.7 * overall + 0.3 * base_targetability
+            elif policy.target_focus == TargetFocus.BALL_HOLDERS:
+                score = 0.7 * (1.0 if state.player_id in ball_holder_ids else 0.0) + 0.3 * base_targetability
+            else:
+                score = 0.7 * (1.0 - self._recency_weight(recent_targets, state.player_id)) + 0.3 * base_targetability
+            scored.append((score, state.player_id, state))
+        scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
+        return scored
+
+    def _opening_rush(
+        self,
+        *,
+        team_id: str,
+        starters: Sequence[str],
+        policy: CoachPolicy,
+    ) -> dict[str, Any]:
+        sprinter_count = min(len(starters), _OPENING_RUSH_SPRINTERS[policy.rush_commit])
+        sprinter_ids = list(starters[:sprinter_count])
+        hold_back_ids = list(starters[sprinter_count:])
+        prefix = (team_id or "x").lower()[0]
+        if policy.rush_target == OpeningRushTarget.CENTER:
+            target_pool = ("ball_center_0", "ball_center_1", "ball_center_2")
+            ball_targets = {
+                player_id: target_pool[index % len(target_pool)]
+                for index, player_id in enumerate(sprinter_ids)
+            }
+        elif policy.rush_target == OpeningRushTarget.STRONGEST_SIDE:
+            target_pool = (f"ball_{prefix}_0", f"ball_{prefix}_1", f"ball_{prefix}_2")
+            ball_targets = {
+                player_id: target_pool[index % len(target_pool)]
+                for index, player_id in enumerate(sprinter_ids)
+            }
+        else:
+            ball_targets = {
+                player_id: f"ball_{prefix}_{index}"
+                for index, player_id in enumerate(sprinter_ids)
+            }
+        return {
+            "sprinter_ids": sprinter_ids,
+            "hold_back_ids": hold_back_ids,
+            "ball_targets": ball_targets,
+        }
+
+    def _rush_context_for_throw(
+        self,
+        rt: _MatchRuntime,
+        mi: DriverMatchInput,
+        team_id: str,
+        thrower_id: str,
+    ) -> dict[str, Any]:
+        policy = self._policy_for_team(mi, team_id)
+        opening = rt.opening_rush_by_team.get(team_id, {})
+        is_active_rush = rt.tick == 0 and thrower_id in set(opening.get("sprinter_ids", []))
+        proximity_modifier = 0.0
+        if is_active_rush:
+            if policy.rush_commit == OpeningRushCommit.ALL_IN:
+                proximity_modifier = 0.1
+            elif policy.rush_commit == OpeningRushCommit.BALANCED:
+                proximity_modifier = 0.06
+            else:
+                proximity_modifier = 0.03
+        return {
+            "active": is_active_rush,
+            "rush_commit": policy.rush_commit.value,
+            "rush_target": policy.rush_target.value,
+            "ball_target": opening.get("ball_targets", {}).get(thrower_id),
+            "proximity_modifier": proximity_modifier,
+            "fatigue_delta": 0.04 if is_active_rush else 0.0,
+        }
 
     def _emit_dramatic_catch(
         self,
@@ -565,10 +893,10 @@ class RecTier1Driver:
         team_id: str,
         team_a: str,
         team_b: str,
-    ) -> None:
+    ) -> dict[str, Any]:
         player = rt.players.get(player_id)
         if player is None or player.status != OfficialPlayerStatus.ACTIVE:
-            return
+            return {}
         # Gassed collapse check before status change
         fstate = rt.fatigue.get(player_id)
         if fstate is not None and fstate.is_gassed():
@@ -588,6 +916,7 @@ class RecTier1Driver:
             is_starter=player.is_starter,
             match_id=rt.match_id,
         )
+        return {"player_out": {"team": team_id, "player_id": player_id}}
 
     def _update_stall(
         self,
@@ -615,13 +944,13 @@ class RecTier1Driver:
                 if b.side == team_a:
                     b.side = team_b
             rt.stall_a = StallTimerState.fresh()
-            rt.events.append({"type": "stall_reset", "from": team_a})
+            rt.events.append({"type": "stall_reset", "tick": rt.tick, "from": team_a})
         if should_reset_balls(rt.stall_b):
             for b in rt.balls:
                 if b.side == team_b:
                     b.side = team_a
             rt.stall_b = StallTimerState.fresh()
-            rt.events.append({"type": "stall_reset", "from": team_b})
+            rt.events.append({"type": "stall_reset", "tick": rt.tick, "from": team_b})
 
 
 def reset_on_throw_call(rt: _MatchRuntime, team_id: str, team_a: str) -> None:
@@ -631,4 +960,9 @@ def reset_on_throw_call(rt: _MatchRuntime, team_id: str, team_a: str) -> None:
         rt.stall_b = reset_on_throw(rt.stall_b)
 
 
-__all__ = ["RecTier1Driver"]
+__all__ = [
+    "APPROACH_GATE_MULT",
+    "RecTier1Driver",
+    "_response_branch_for_policy",
+    "_should_throw_under_iq",
+]

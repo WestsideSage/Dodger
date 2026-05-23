@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiGet } from '../../../api/client';
 import type {
+  CoachPolicy,
   CommandCenterResponse,
   ScheduleResponse,
   ScheduleRow,
@@ -9,6 +10,7 @@ import type {
 } from '../../../types';
 import { WeeklyChecklist } from '../WeeklyChecklist';
 import { MatchCard } from './MatchCard';
+import { PolicyEditor } from './PolicyEditor';
 import { seasonTitle, bulletinLine, stakesLine, playerToWatch } from './presimNarrative';
 
 const approaches = [
@@ -21,12 +23,6 @@ const approaches = [
 const intentLabels = new Map(approaches.map(approach => [approach.id, approach.label]));
 const roleCounterMap: Record<string, string> = { Tactical: 'Control', Pressure: 'Defensive', Balanced: 'Balanced' };
 const DEV_FOCUS_OPTIONS = ['BALANCED', 'YOUTH_ACCELERATION', 'TACTICAL_DRILLS', 'STRENGTH_AND_CONDITIONING'];
-
-function pct(value: number | undefined) {
-  if (typeof value !== 'number') return 'n/a';
-  return `${Math.round(value * 100)}%`;
-}
-
 
 function humanize(value: string | undefined) {
   if (!value) return 'Not set';
@@ -60,6 +56,7 @@ export function PreSimDashboard({
   data,
   simulate,
   onSavePlan,
+  onSavePolicy,
   onSaveDevFocus,
   selectedIntent,
   onIntentChange,
@@ -68,6 +65,7 @@ export function PreSimDashboard({
   data: CommandCenterResponse;
   simulate: () => void;
   onSavePlan: (intent: string, confirm: boolean) => void;
+  onSavePolicy: (policy: CoachPolicy) => Promise<void> | void;
   onSaveDevFocus: (devFocus: string) => void;
   selectedIntent: string;
   onIntentChange: (intent: string) => void;
@@ -390,21 +388,7 @@ export function PreSimDashboard({
             </div>
 
             <div className="command-priority-column">
-              <p className="command-field-label">Tactical Profile</p>
-              <div className="command-meter-stack">
-                {[
-                  { label: 'Target Stars', value: plan.tactics?.target_stars, tone: 'pressure' },
-                  { label: 'Catch Bias', value: plan.tactics?.catch_bias, tone: 'control' },
-                  { label: 'Risk', value: plan.tactics?.risk_tolerance, tone: 'risk' },
-                  { label: 'Tempo', value: plan.tactics?.tempo, tone: 'tempo' },
-                ].map(stat => (
-                  <article key={stat.label} className={`command-meter-row is-${stat.tone}`}>
-                    <span>{stat.label}</span>
-                    <b><i style={{ width: pct(stat.value) }} /></b>
-                    <strong>{pct(stat.value)}</strong>
-                  </article>
-                ))}
-              </div>
+              <PolicyEditor policy={plan.tactics} disabled={planConfirmed} onChange={onSavePolicy} error={null} />
             </div>
           </div>
 

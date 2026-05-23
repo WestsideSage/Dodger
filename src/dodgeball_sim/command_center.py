@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 
 from .game_loop import current_week
 from .models import CoachPolicy, Player
@@ -67,24 +67,54 @@ def _lineup_recommendation(roster: list[Player], default_lineup: list[str] | Non
     }
 
 
-def _policy_for_intent(policy: CoachPolicy, intent: str) -> dict[str, float]:
+def _policy_for_intent(policy: CoachPolicy, intent: str) -> dict[str, str]:
     values = policy.as_dict()
     if intent == "Win Now":
-        values.update({"target_stars": max(values["target_stars"], 0.75), "catch_bias": max(values["catch_bias"], 0.55)})
+        values.update(
+            {
+                "approach": "aggressive",
+                "target_focus": "their_stars",
+                "catch_posture": "go_for_catches",
+                "rush_commit": "all_in",
+                "rush_target": "center",
+            }
+        )
     elif intent == "Develop Youth":
-        values.update({"risk_tolerance": min(values["risk_tolerance"], 0.45), "tempo": min(values["tempo"], 0.45)})
+        values.update(
+            {
+                "approach": "patient",
+                "target_focus": "spread",
+                "catch_posture": "opportunistic",
+                "rush_commit": "balanced",
+                "rush_target": "nearest",
+            }
+        )
     elif intent == "Preserve Health":
-        values.update({"rush_frequency": min(values["rush_frequency"], 0.25), "tempo": min(values["tempo"], 0.35)})
+        values.update(
+            {
+                "approach": "patient",
+                "target_focus": "spread",
+                "catch_posture": "play_safe",
+                "rush_commit": "hold_back",
+                "rush_target": "nearest",
+            }
+        )
     elif intent == "Prepare For Playoffs":
-        values.update({"sync_throws": max(values["sync_throws"], 0.55), "target_ball_holder": max(values["target_ball_holder"], 0.6)})
-    return {key: round(float(value), 2) for key, value in values.items()}
+        values.update(
+            {
+                "approach": "mixed",
+                "target_focus": "ball_holders",
+                "catch_posture": "opportunistic",
+                "rush_commit": "balanced",
+                "rush_target": "strongest_side",
+            }
+        )
+    return values
 
 
 from dodgeball_sim.rng import DeterministicRNG, derive_seed
-from dodgeball_sim.voice_pregame import render_matchup_framing
-from typing import Iterable
-from typing import Iterable
-from typing import Iterable
+from dodgeball_sim.voice_pregame import render_policy_line
+from dodgeball_sim.voice_register import tier1
 
 def build_command_center_state(conn: sqlite3.Connection) -> dict[str, Any]:
     season_id = get_state(conn, "active_season_id")
@@ -145,15 +175,14 @@ def build_default_weekly_plan(state: Mapping[str, Any], intent: str = "Win Now")
     warnings = _lineup_warnings(list(state["roster"]), lineup["player_ids"], intent, tactics)
     is_bye = state.get("is_bye", False)
     recommendations = _staff_recommendations(heads, intent, "Bye Week" if is_bye else (opponent.name if opponent else "the next opponent"))
-    
-    rng = DeterministicRNG(derive_seed(state.get("root_seed", 1), "framing", state["season_id"], str(state["week"])))
     opponent_name = "Bye Week" if is_bye else (opponent.name if opponent else "Season complete")
+    policy = CoachPolicy.from_dict(tactics)
     matchup_details = {
         "opponent_record": "No record",
         "last_meeting": "None",
         "key_matchup": "No opponent file available.",
         **dict(state.get("matchup_details") or {}),
-        "framing_line": render_matchup_framing(club.name, opponent_name, rng),
+        "framing_line": render_policy_line(policy),
     }
     
     return {
@@ -224,7 +253,7 @@ def _staff_recommendations(heads: list[dict[str, Any]], intent: str, opponent_na
     ]
 
 
-def _lineup_warnings(roster: list[Player], player_ids: list[str], intent: str, tactics: Mapping[str, float]) -> list[str]:
+def _lineup_warnings(roster: list[Player], player_ids: list[str], intent: str, tactics: Mapping[str, str]) -> list[str]:
     from .lineup import check_lineup_liabilities
     starters = set(player_ids)
     warnings: list[str] = []
@@ -244,7 +273,7 @@ def _lineup_warnings(roster: list[Player], player_ids: list[str], intent: str, t
     ]
     if weak_starters and intent == "Win Now":
         warnings.append(f"{weak_starters[0].name} is a weak starter and may be targeted.")
-    if tactics.get("rush_frequency", 0.0) > 0.75:
+    if tactics.get("rush_commit") == "all_in":
         warnings.append("Heavy rush pressure is creating extreme fatigue risk. Consider rotating your front line more often.")
     return warnings
 
@@ -340,52 +369,52 @@ __all__ = [
 # ----------------------------------------------------------------------
 
 POLICY_KEYS = (
-    "target_stars",
-    "target_ball_holder",
-    "risk_tolerance",
-    "sync_throws",
-    "rush_frequency",
-    "rush_proximity",
-    "tempo",
-    "catch_bias",
+    "approach",
+    "target_focus",
+    "catch_posture",
+    "rush_commit",
+    "rush_target",
 )
 
-def policy_label(value: float) -> str:
-    if value >= 0.8:
-        return "Very High"
-    if value >= 0.65:
-        return "High"
-    if value >= 0.45:
-        return "Balanced"
-    if value >= 0.25:
-        return "Low"
-    return "Very Low"
+_POLICY_LABELS = {
+    "approach": "Approach",
+    "target_focus": "Target focus",
+    "catch_posture": "Catch posture",
+    "rush_commit": "Opening rush: commit",
+    "rush_target": "Opening rush: target",
+}
 
-def policy_effect(key: str, value: float) -> str:
-    label = policy_label(value)
-    mapping = {
-        "target_stars": f"{label} - focuses high-value opponents first.",
-        "target_ball_holder": f"{label} - prioritizes opponents controlling the ball.",
-        "risk_tolerance": f"{label} - accepts tighter odds for outs.",
-        "sync_throws": f"{label} - looks for coordinated volleys and stamina burn.",
-        "rush_frequency": f"{label} - changes how often the team forces pressure.",
-        "rush_proximity": f"{label} - adjusts how close rushes must be before pressure.",
-        "tempo": f"{label} - sets the pace of possessions and resets.",
-        "catch_bias": f"{label} - changes how willingly defenders try catches.",
-    }
-    return mapping.get(key, label)
+_POLICY_OPTION_VALUES = {
+    "approach": ("aggressive", "patient", "mixed"),
+    "target_focus": ("their_stars", "ball_holders", "spread"),
+    "catch_posture": ("go_for_catches", "play_safe", "opportunistic"),
+    "rush_commit": ("all_in", "balanced", "hold_back"),
+    "rush_target": ("nearest", "strongest_side", "center"),
+}
 
-def policy_rows(policy: CoachPolicy) -> Iterable[tuple[str, float, str]]:
-    policy_dict = policy.as_dict()
-    for key in (
-        "target_stars",
-        "target_ball_holder",
-        "risk_tolerance",
-        "sync_throws",
-        "rush_frequency",
-        "rush_proximity",
-        "tempo",
-        "catch_bias",
-    ):
-        value = policy_dict[key]
-        yield key.replace("_", " ").title(), value, policy_effect(key, value)
+
+def policy_label(key: str) -> str:
+    return _POLICY_LABELS.get(key, key.replace("_", " ").title())
+
+
+def policy_effect(policy: CoachPolicy, key: str) -> str:
+    selected_value = policy.as_dict()[key]
+    return tier1(f"policy.{key}.{selected_value}.preview")
+
+
+def policy_rows(policy: CoachPolicy) -> Iterable[dict[str, Any]]:
+    selected = policy.as_dict()
+    for key in POLICY_KEYS:
+        yield {
+            "key": key,
+            "label": policy_label(key),
+            "options": [
+                {
+                    "value": value,
+                    "label": tier1(f"policy.{key}.{value}.label"),
+                    "preview": tier1(f"policy.{key}.{value}.preview"),
+                    "selected": value == selected[key],
+                }
+                for value in _POLICY_OPTION_VALUES[key]
+            ],
+        }

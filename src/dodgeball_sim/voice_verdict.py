@@ -17,7 +17,12 @@ This module is pure: same inputs → same string, no DB or I/O.
 """
 from __future__ import annotations
 
-from typing import Mapping
+from typing import Any, Mapping
+
+from .aftermath_context import AftermathContext
+from .moment_events import MomentKind
+from .rng import DeterministicRNG
+from .voice_register import tier1
 
 # Player-facing Approach label for each backend Intent. Intents not in this
 # mapping (e.g. "Develop Youth", "Balanced" handled below) get a neutral
@@ -29,9 +34,172 @@ _APPROACH_LABEL: dict[str, str] = {
     "Preserve Health": "Defensive",
 }
 
+HEADLINE_PRIORITY = [
+    MomentKind.ONE_V_ONE_FINALE.value,
+    MomentKind.COMEBACK.value,
+    MomentKind.LATE_GAME_ESCAPE.value,
+    MomentKind.DRAMATIC_CATCH.value,
+    MomentKind.FLOOD_THROW.value,
+    MomentKind.GASSED_COLLAPSE.value,
+]
+
+_WIN_TEMPLATES = [
+    "A decisive Win for the squad.",
+    "The team secures a hard-fought Win.",
+    "An impressive Win that sends a message.",
+]
+
+_LOSS_TEMPLATES = [
+    "A tough Loss the squad will want to forget.",
+    "The team falls to a hard Loss.",
+    "A costly Loss that raises questions.",
+]
+
+_DRAW_TEMPLATES = [
+    "A hard-fought Draw - honors even.",
+    "Neither side blinked: a Draw.",
+    "The squad settles for a Draw.",
+]
+
+_MARGIN_TEMPLATES: dict[tuple[str, str], list[str]] = {
+    ("Win", "shutout"): [
+        "A {score} shutout Win - the squad never let them breathe.",
+        "Total control in a {score} shutout Win.",
+    ],
+    ("Win", "dominant"): [
+        "A commanding {score} Win for the squad.",
+        "A {score} Win that was never in doubt.",
+    ],
+    ("Win", "solid"): [
+        "A solid {score} Win on the court.",
+        "The squad banks a {score} Win.",
+    ],
+    ("Win", "narrow"): [
+        "A nervy {score} Win, decided in the margins.",
+        "A {score} Win that came down to the final exchanges.",
+    ],
+    ("Loss", "shutout"): [
+        "Shut out {score} - a Loss to bury quickly.",
+        "Nothing landed: a {score} Loss without a survivor.",
+    ],
+    ("Loss", "heavy"): [
+        "A heavy {score} Loss the staff will dissect.",
+        "Outclassed in a {score} Loss.",
+    ],
+    ("Loss", "clear"): [
+        "A clear {score} Loss for the squad.",
+        "A {score} Loss this week.",
+    ],
+    ("Loss", "narrow"): [
+        "A {score} Loss by the finest of margins.",
+        "So close: a {score} Loss decided late.",
+    ],
+    ("Draw", "draw"): [
+        "A {score} Draw - honors even on the court.",
+        "Neither side blinked: a {score} Draw.",
+    ],
+}
+
 
 def approach_label_for_intent(intent: str) -> str:
     return _APPROACH_LABEL.get(intent, intent)
+
+
+def render_headline(ctx: AftermathContext) -> str:
+    for kind in HEADLINE_PRIORITY:
+        matching = [event for event in ctx.moment_events if event.kind.value == kind]
+        if not matching:
+            continue
+        chosen = max(matching, key=lambda event: event.tick)
+        return _moment_headline(ctx, chosen)
+    return _margin_fallback(ctx)
+
+
+def _moment_headline(ctx: AftermathContext, moment: Any) -> str:
+    kind = moment.kind.value
+    if kind == MomentKind.ONE_V_ONE_FINALE.value:
+        return tier1(
+            "moment.one_v_one_finale.headline",
+            a=ctx.player_name(moment.player_a_id),
+            b=ctx.player_name(moment.player_b_id),
+        )
+    if kind == MomentKind.COMEBACK.value:
+        return tier1(
+            "moment.comeback.headline",
+            team=ctx.team_name(moment.team_id),
+            deficit=moment.deficit_at_low_point,
+            catches=moment.catches_during_comeback,
+        )
+    if kind == MomentKind.LATE_GAME_ESCAPE.value:
+        return tier1(
+            "moment.late_game_escape.headline",
+            survivor=ctx.player_name(moment.survivor_id),
+            attacker_count=moment.attacker_count,
+        )
+    if kind == MomentKind.DRAMATIC_CATCH.value:
+        return tier1(
+            "moment.dramatic_catch.headline",
+            catcher=ctx.player_name(moment.catcher_id),
+            returning=ctx.player_name(moment.returning_player_id),
+        )
+    if kind == MomentKind.FLOOD_THROW.value:
+        return tier1(
+            "moment.flood_throw.headline",
+            team=ctx.team_name(moment.thrower_team_id),
+            count=len(moment.thrower_ids),
+        )
+    return tier1(
+        "moment.gassed_collapse.headline",
+        player=ctx.player_name(moment.player_id),
+    )
+
+
+def _margin_tier(result: str, mine: int, theirs: int) -> str:
+    if result == "Win":
+        if theirs == 0:
+            return "shutout"
+        if mine >= theirs * 2:
+            return "dominant"
+        if mine - theirs <= 1:
+            return "narrow"
+        return "solid"
+    if result == "Loss":
+        if mine == 0:
+            return "shutout"
+        if theirs >= mine * 2:
+            return "heavy"
+        if theirs - mine <= 1:
+            return "narrow"
+        return "clear"
+    return "draw"
+
+
+def _margin_fallback(ctx: AftermathContext) -> str:
+    winner_id = ctx.match_result.winner_team_id
+    teams = ctx.match_result.box_score.get("teams", {})
+    if len(teams) >= 2:
+        team_ids = list(teams.keys())
+        first_id, second_id = team_ids[0], team_ids[1]
+        first_living = ctx.survivors_for(first_id)
+        second_living = ctx.survivors_for(second_id)
+        if first_living is not None and second_living is not None:
+            if winner_id is None:
+                result = "Draw"
+                mine, theirs = first_living, second_living
+            elif winner_id == first_id:
+                result = "Win"
+                mine, theirs = first_living, second_living
+            else:
+                result = "Loss"
+                mine, theirs = second_living, first_living
+            templates = _MARGIN_TEMPLATES.get((result, _margin_tier(result, mine, theirs)))
+            if templates:
+                return DeterministicRNG(ctx.match_result.seed).choice(templates).format(score=f"{mine}-{theirs}")
+    if winner_id is None:
+        return DeterministicRNG(ctx.match_result.seed).choice(_DRAW_TEMPLATES)
+    if winner_id:
+        return DeterministicRNG(ctx.match_result.seed).choice(_WIN_TEMPLATES)
+    return DeterministicRNG(ctx.match_result.seed).choice(_LOSS_TEMPLATES)
 
 
 def _result_clause(result: str) -> str:
@@ -42,14 +210,14 @@ def _result_clause(result: str) -> str:
     return "and the match drew"
 
 
-def _round_policy(policy: Mapping[str, float]) -> dict[str, float]:
-    return {key: round(float(value), 2) for key, value in policy.items()}
+def _normalize_policy(policy: Mapping[str, Any]) -> dict[str, str]:
+    return {key: str(value) for key, value in policy.items()}
 
 
-def _is_noop(tactics: Mapping[str, float], base_tactics: Mapping[str, float]) -> bool:
+def _is_noop(tactics: Mapping[str, Any], base_tactics: Mapping[str, Any]) -> bool:
     if not tactics or not base_tactics:
         return False
-    return _round_policy(tactics) == _round_policy(base_tactics)
+    return _normalize_policy(tactics) == _normalize_policy(base_tactics)
 
 
 def _aggressive_signature(player_box: Mapping, opponent_box: Mapping) -> tuple[bool, int, int]:
@@ -160,8 +328,8 @@ def _neutral_fallback(result: str) -> str:
 def render_verdict(
     *,
     intent: str,
-    tactics: Mapping[str, float],
-    base_tactics: Mapping[str, float],
+    tactics: Mapping[str, Any],
+    base_tactics: Mapping[str, Any],
     result: str,
     player_team_box: Mapping,
     opponent_team_box: Mapping,

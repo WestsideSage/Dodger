@@ -41,4 +41,10 @@ def test_ai_weekly_plan_contains_real_tactics_and_playable_lineup():
     assert plan["player_club_id"] == "northwood"
     assert plan["intent"] in {"Balanced", "Win Now", "Develop Youth", "Preserve Health", "Prepare For Playoffs"}
     assert len(plan["lineup"]["player_ids"]) == 6
-    assert set(plan["tactics"]) >= {"target_stars", "risk_tolerance", "tempo"}
+    assert set(plan["tactics"]) == {
+        "approach",
+        "target_focus",
+        "catch_posture",
+        "rush_commit",
+        "rush_target",
+    }

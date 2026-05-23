@@ -113,6 +113,7 @@ from dodgeball_sim.replay_service import (
     acknowledge_match_payload,
     match_replay_payload,
 )
+from dodgeball_sim.voice_register import for_tier
 from dodgeball_sim.offseason_service import (
     OffseasonError,
     advance_offseason_beat_payload,
@@ -209,14 +210,11 @@ def _read_save_meta(path: Path) -> dict:
 # --- Pydantic Models ---
 
 class CoachPolicyUpdate(BaseModel):
-    target_stars: float = Field(ge=0.0, le=1.0, allow_inf_nan=False)
-    target_ball_holder: float = Field(ge=0.0, le=1.0, allow_inf_nan=False)
-    risk_tolerance: float = Field(ge=0.0, le=1.0, allow_inf_nan=False)
-    sync_throws: float = Field(ge=0.0, le=1.0, allow_inf_nan=False)
-    rush_frequency: float = Field(ge=0.0, le=1.0, allow_inf_nan=False)
-    rush_proximity: float = Field(ge=0.0, le=1.0, allow_inf_nan=False)
-    tempo: float = Field(ge=0.0, le=1.0, allow_inf_nan=False)
-    catch_bias: float = Field(ge=0.0, le=1.0, allow_inf_nan=False)
+    approach: str
+    target_focus: str
+    catch_posture: str
+    rush_commit: str
+    rush_target: str
 
 
 class SimCommand(BaseModel):
@@ -228,7 +226,7 @@ class SimCommand(BaseModel):
 class WeeklyCommandPlanUpdate(BaseModel):
     intent: str | None = None
     department_orders: dict[str, str] | None = None
-    tactics: dict[str, float] | None = None
+    tactics: dict[str, Any] | None = None
     lineup_player_ids: list[str] | None = None
 
 
@@ -264,14 +262,11 @@ class RosterResponse(BaseModel):
 
 
 class TacticsResponse(BaseModel):
-    target_stars: float
-    target_ball_holder: float
-    risk_tolerance: float
-    sync_throws: float
-    rush_frequency: float
-    rush_proximity: float
-    tempo: float
-    catch_bias: float
+    approach: str
+    target_focus: str
+    catch_posture: str
+    rush_commit: str
+    rush_target: str
 
 
 class StandingItem(BaseModel):
@@ -386,6 +381,7 @@ class MatchReplayResponse(BaseModel):
     away_survivors: int
     config_version: str | None = None  # V11: "official:..." when run under official ruleset
     events: list[dict[str, Any]]
+    moment_events: list[dict[str, Any]] = Field(default_factory=list)
     proof_events: list[dict[str, Any]] = Field(default_factory=list)
     key_play_indices: list[int] = Field(default_factory=list)
     report: dict[str, Any]
@@ -541,9 +537,9 @@ def hire_dynasty_staff(request: StaffHireRequest, conn = Depends(get_db)) -> dic
 
 
 @app.post("/api/tactics", response_model=dict[str, str])
-def update_tactics(policy: CoachPolicyUpdate, conn = Depends(get_db)) -> dict[str, str]:
+def update_tactics(policy: dict[str, Any], conn = Depends(get_db)) -> dict[str, str]:
     try:
-        return update_tactics_payload(conn, policy.model_dump())
+        return update_tactics_payload(conn, policy)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
@@ -647,6 +643,14 @@ def acknowledge_match_report(match_id: str, conn = Depends(get_db)) -> Acknowled
         return acknowledge_match_payload(conn, match_id)
     except ReplayError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+@app.get("/api/voice-register/{tier}")
+def get_voice_register(tier: int) -> dict[str, str]:
+    try:
+        return for_tier(tier)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 # --- Save Management ---

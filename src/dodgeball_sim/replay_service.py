@@ -19,6 +19,7 @@ from .persistence import (
 )
 from .replay_proof import build_replay_proof, event_detail, event_label
 from .official_persistence import replay_state_from_dict, replay_state_to_dict
+from .voice_register import TIER1_REGISTER, tier1
 from .stats import PlayerMatchStats
 from .web_status_service import career_state_payload
 from typing import Any, Dict, Iterable
@@ -45,6 +46,67 @@ from .analysis import MatchAnalysis
 from .events import MatchEvent
 from .narration import Lookup, narrate_event
 from .dynasty_office import player_role, team_overall
+
+
+def _enrich_moment_display(
+    moment: dict[str, Any],
+    name_map: dict[str, str],
+    team_name_map: dict[str, str],
+) -> dict[str, Any]:
+    kind = moment.get("kind")
+
+    def player(pid: Any) -> str:
+        if not isinstance(pid, str) or not pid:
+            return "Unknown player"
+        return name_map.get(pid, pid)
+
+    def team(tid: Any) -> str:
+        if not isinstance(tid, str) or not tid:
+            return "Unknown team"
+        return team_name_map.get(tid, tid)
+
+    enriched = dict(moment)
+    try:
+        if kind == "dramatic_catch":
+            enriched["display_text"] = tier1(
+                "moment.dramatic_catch.beat",
+                catcher=player(moment.get("catcher_id")),
+                returning=player(moment.get("returning_player_id")),
+            )
+        elif kind == "gassed_collapse":
+            enriched["display_text"] = tier1(
+                "moment.gassed_collapse.beat",
+                player=player(moment.get("player_id")),
+            )
+        elif kind == "flood_throw":
+            thrower_ids = moment.get("thrower_ids") or []
+            enriched["display_text"] = tier1(
+                "moment.flood_throw.beat",
+                team=team(moment.get("thrower_team_id")),
+                count=len(thrower_ids) if isinstance(thrower_ids, list) else 0,
+            )
+        elif kind == "late_game_escape":
+            enriched["display_text"] = tier1(
+                "banner.late_game_escape",
+                survivor=player(moment.get("survivor_id")),
+                attacker_count=moment.get("attacker_count", 0),
+            )
+        elif kind == "one_v_one_finale":
+            enriched["display_text"] = tier1(
+                "banner.one_v_one_finale",
+                a=player(moment.get("player_a_id")),
+                b=player(moment.get("player_b_id")),
+            )
+        elif kind == "comeback":
+            enriched["display_text"] = tier1(
+                "card.comeback",
+                team=team(moment.get("team_id")),
+                deficit=moment.get("deficit_at_low_point", 0),
+                catches=moment.get("catches_during_comeback", 0),
+            )
+    except KeyError:
+        pass
+    return enriched
 
 
 class ReplayError(RuntimeError):
@@ -105,6 +167,19 @@ def match_replay_payload(conn: sqlite3.Connection, match_id: str) -> dict[str, A
                 replay_state_from_dict(official_state_data),
                 include_events=False,
             )
+    moment_events = []
+    if events:
+        match_end_context = events[-1].get("context") or {}
+        if isinstance(match_end_context, dict):
+            raw_moments = match_end_context.get("moment_events")
+            if isinstance(raw_moments, list):
+                moment_events = raw_moments
+    team_name_map = {row["home_club_id"]: home.name, row["away_club_id"]: away.name}
+    moment_events = [
+        _enrich_moment_display(moment, name_map, team_name_map)
+        for moment in moment_events
+        if isinstance(moment, dict)
+    ]
 
     stats = stats_for_match(conn, match_id)
     proof = build_replay_proof(
@@ -165,6 +240,7 @@ def match_replay_payload(conn: sqlite3.Connection, match_id: str) -> dict[str, A
         "away_survivors": row["away_survivors"],
         "config_version": row["config_version"] if "config_version" in row.keys() else None,
         "events": events,
+        "moment_events": moment_events,
         "proof_events": proof["proof_events"],
         "key_play_indices": proof["key_play_indices"],
         "report": report,

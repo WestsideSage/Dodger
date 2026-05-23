@@ -15,6 +15,7 @@ from .ai_program_manager import prepare_ai_plans_for_matches
 from .game_loop import current_week, recompute_regular_season_standings, simulate_scheduled_match
 from .match_orchestration import _choose_next_user_match_after_automation
 from .match_orchestration import _apply_command_plan_to_match
+from .models import CoachPolicy
 from .offseason_ceremony import ensure_ai_rosters_playable
 from .persistence import (
     get_state,
@@ -84,10 +85,8 @@ def save_command_center_plan_payload(conn: sqlite3.Connection, update: dict[str,
     tactics = update.get("tactics")
     if tactics:
         merged_tactics = dict(plan["tactics"])
-        for key, value in tactics.items():
-            if key in merged_tactics:
-                merged_tactics[key] = max(0.0, min(1.0, float(value)))
-        plan["tactics"] = merged_tactics
+        merged_tactics.update(tactics)
+        plan["tactics"] = CoachPolicy.from_dict(merged_tactics).as_dict()
 
     lineup_player_ids = update.get("lineup_player_ids")
     if lineup_player_ids:

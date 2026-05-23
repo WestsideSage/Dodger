@@ -245,10 +245,8 @@ def _apply_command_plan_to_match(conn, plan: dict[str, Any], match_id: str, club
         raise SimulateWeekError(f"Club {club_id} not found")
     tactics = plan.get("tactics", {})
     policy_values = club.coach_policy.as_dict()
-    for key in policy_values:
-        if key in tactics:
-            policy_values[key] = max(0.0, min(1.0, float(tactics[key])))
-    updated_club = dataclasses.replace(club, coach_policy=CoachPolicy(**policy_values))
+    policy_values.update(tactics)
+    updated_club = dataclasses.replace(club, coach_policy=CoachPolicy.from_dict(policy_values))
     save_club(conn, updated_club, load_club_roster(conn, club_id))
     lineup_ids = plan.get("lineup", {}).get("player_ids") or []
     if lineup_ids:

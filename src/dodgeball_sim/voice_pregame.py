@@ -1,4 +1,15 @@
+from .models import CoachPolicy
 from .rng import DeterministicRNG
+from .voice_register import tier1
+
+
+def render_policy_line(policy: CoachPolicy) -> str:
+    return (
+        "Today we're "
+        f"{tier1(f'policy.approach.{policy.approach.value}.label')}, "
+        f"focused on {tier1(f'policy.target_focus.{policy.target_focus.value}.label')}, "
+        f"and {tier1(f'policy.catch_posture.{policy.catch_posture.value}.label')}."
+    )
 
 def render_matchup_framing(home: str, away: str, rng: DeterministicRNG, **kwargs) -> str:
     templates = [

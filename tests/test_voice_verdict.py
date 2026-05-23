@@ -22,19 +22,16 @@ from dodgeball_sim.voice_verdict import render_verdict
 
 # Engine default CoachPolicy().as_dict() — see models.py CoachPolicy
 DEFAULT_BASE = {
-    "target_stars": 0.7,
-    "target_ball_holder": 0.5,
-    "risk_tolerance": 0.5,
-    "sync_throws": 0.2,
-    "rush_frequency": 0.5,
-    "rush_proximity": 0.5,
-    "tempo": 0.5,
-    "catch_bias": 0.5,
+    "approach": "mixed",
+    "target_focus": "spread",
+    "catch_posture": "opportunistic",
+    "rush_commit": "balanced",
+    "rush_target": "center",
 }
 
 
 def _round(d: dict) -> dict:
-    return {k: round(float(v), 2) for k, v in d.items()}
+    return {k: str(v) for k, v in d.items()}
 
 
 def _policy_with(**overrides) -> dict:
@@ -48,14 +45,35 @@ def _tactics_for(intent: str, base: dict | None = None) -> dict:
     base = dict(base or DEFAULT_BASE)
     values = dict(base)
     if intent == "Win Now":
-        values["target_stars"] = max(values["target_stars"], 0.75)
-        values["catch_bias"] = max(values["catch_bias"], 0.55)
+        values.update(
+            {
+                "approach": "aggressive",
+                "target_focus": "their_stars",
+                "catch_posture": "go_for_catches",
+                "rush_commit": "all_in",
+                "rush_target": "center",
+            }
+        )
     elif intent == "Preserve Health":
-        values["rush_frequency"] = min(values["rush_frequency"], 0.25)
-        values["tempo"] = min(values["tempo"], 0.35)
+        values.update(
+            {
+                "approach": "patient",
+                "target_focus": "spread",
+                "catch_posture": "play_safe",
+                "rush_commit": "hold_back",
+                "rush_target": "nearest",
+            }
+        )
     elif intent == "Prepare For Playoffs":
-        values["sync_throws"] = max(values["sync_throws"], 0.55)
-        values["target_ball_holder"] = max(values["target_ball_holder"], 0.6)
+        values.update(
+            {
+                "approach": "mixed",
+                "target_focus": "ball_holders",
+                "catch_posture": "opportunistic",
+                "rush_commit": "balanced",
+                "rush_target": "strongest_side",
+            }
+        )
     return _round(values)
 
 
@@ -291,7 +309,13 @@ def test_balanced_has_no_signature_claim(result):
 def test_aggressive_is_noop_when_base_already_satisfies_clamps():
     """If the club's base policy already meets/exceeds the Aggressive clamps,
     selecting Aggressive changes nothing — the verdict must say so."""
-    saturated_base = _policy_with(target_stars=0.9, catch_bias=0.7)
+    saturated_base = _policy_with(
+        approach="aggressive",
+        target_focus="their_stars",
+        catch_posture="go_for_catches",
+        rush_commit="all_in",
+        rush_target="center",
+    )
     tactics = _tactics_for("Win Now", base=saturated_base)
     assert tactics == saturated_base  # sanity: the clamps are no-ops here
     verdict = render_verdict(
@@ -313,7 +337,13 @@ def test_aggressive_is_noop_when_base_already_satisfies_clamps():
 def test_defensive_noop_overrides_signature_claim():
     """Even when the signature would otherwise be present, a no-op must report
     no-op — the player's choice didn't actually change anything."""
-    saturated_base = _policy_with(rush_frequency=0.1, tempo=0.2)
+    saturated_base = _policy_with(
+        approach="patient",
+        target_focus="spread",
+        catch_posture="play_safe",
+        rush_commit="hold_back",
+        rush_target="nearest",
+    )
     tactics = _tactics_for("Preserve Health", base=saturated_base)
     assert tactics == saturated_base
     verdict = render_verdict(

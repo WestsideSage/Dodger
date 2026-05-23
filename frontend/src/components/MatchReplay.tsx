@@ -1,5 +1,6 @@
 import { memo, useMemo, useEffect, useState, useCallback } from 'react';
 import type { MatchReplayResponse, ReplayProofEvent } from '../types';
+import { ReplaySpeedControl, type ReplaySpeed } from './match-week/aftermath/ReplaySpeedControl';
 
 interface PlayerInfo {
   id: string;
@@ -696,7 +697,7 @@ function KeyPlaysPanel({ data, currentIndex, onJump }: { data: MatchReplayRespon
 export default function MatchReplay({ data, onContinue }: { data: MatchReplayResponse; onContinue: () => void }) {
   const [eventIndex, setEventIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playSpeed, setPlaySpeed] = useState<'Fast' | 'Normal' | 'Slow'>('Normal');
+  const [playSpeed, setPlaySpeed] = useState<ReplaySpeed>('2x');
   const [activeTab, setActiveTab] = useState<'pbp' | 'keyplays' | 'stats'>('pbp');
   const [flashTargetId, setFlashTargetId] = useState<string | null>(null);
   const [activeResolution, setActiveResolution] = useState<string | null>(null);
@@ -805,7 +806,8 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
       const t = setTimeout(() => setIsPlaying(false), 0);
       return () => clearTimeout(t);
     }
-    const speedDivisor = playSpeed === 'Normal' ? 3 : 1;
+    const speedDivisor =
+      playSpeed === '1x' ? 1 : playSpeed === '2x' ? 2 : playSpeed === '4x' ? 4 : 1;
     const t = setTimeout(() => setEventIndex((i) => i + 1), 900 / speedDivisor);
     return () => clearTimeout(t);
   }, [isPlaying, eventIndex, playSpeed, totalEvents]);
@@ -813,15 +815,12 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
   const stepBack = useCallback(() => { setIsPlaying(false); setEventIndex((i) => Math.max(0, i - 1)); }, []);
   const stepForward = useCallback(() => { setIsPlaying(false); setEventIndex((i) => Math.min(totalEvents - 1, i + 1)); }, [totalEvents]);
   const togglePlay = useCallback(() => setIsPlaying((p) => !p), []);
-  const cycleSpeed = useCallback(() => {
-    setPlaySpeed((speed) => {
-      const nextSpeed = speed === 'Normal' ? 'Fast' : speed === 'Fast' ? 'Slow' : 'Normal';
-      if (nextSpeed === 'Fast') {
-        setEventIndex(totalEvents - 1);
-        setIsPlaying(false);
-      }
-      return nextSpeed;
-    });
+  const setSpeed = useCallback((speed: ReplaySpeed) => {
+    setPlaySpeed(speed);
+    if (speed === 'instant') {
+      setEventIndex(totalEvents - 1);
+      setIsPlaying(false);
+    }
   }, [totalEvents]);
 
   const jumpToKeyEvent = useCallback(() => {
@@ -919,7 +918,7 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
           {isPlaying ? 'PAUSE' : 'PLAY'}
         </button>
         <button aria-label="Next replay event" onClick={stepForward} disabled={eventIndex >= totalEvents - 1} style={{ background: 'transparent', border: '1px solid #334155', borderRadius: 4, color: eventIndex >= totalEvents - 1 ? '#334155' : '#94a3b8', padding: '4px 10px', cursor: eventIndex >= totalEvents - 1 ? 'default' : 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>{'>'}</button>
-        <button onClick={cycleSpeed} style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 4, color: '#f97316', padding: '4px 10px', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, letterSpacing: 1 }}>{playSpeed}</button>
+        <ReplaySpeedControl speed={playSpeed} onChange={setSpeed} />
         <div
           className="dm-replay-scrubber"
           style={{ height: 8, background: '#1e293b', borderRadius: 4, cursor: 'pointer', position: 'relative', flex: 1 }}

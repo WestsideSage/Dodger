@@ -105,6 +105,29 @@ export function MatchWeek({
       .catch(err => setError(err.message));
   };
 
+  const savePolicy = async (policy: CommandCenterResponse['plan']['tactics']) => {
+    if (!data) return;
+    const previousPlan = data.plan;
+    setError(null);
+    setData({
+      ...data,
+      plan: {
+        ...data.plan,
+        tactics: policy,
+      },
+    });
+    try {
+      const payload = await commandApi.savePlan({ intent: selectedIntent, tactics: policy });
+      setData(payload);
+      setLocalIntent(undefined);
+    } catch (err) {
+      setData({ ...data, plan: previousPlan });
+      const message = err instanceof Error ? err.message : 'Unable to save policy.';
+      setError(message);
+      throw err;
+    }
+  };
+
   const saveDevFocus = (devFocus: string) => {
     setError(null);
     return commandApi.savePlan({ intent: selectedIntent, department_orders: { dev_focus: devFocus } })
@@ -206,6 +229,7 @@ export function MatchWeek({
         data={data}
         simulate={simulate}
         onSavePlan={savePlan}
+        onSavePolicy={savePolicy}
         onSaveDevFocus={saveDevFocus}
         selectedIntent={selectedIntent}
         onIntentChange={handleIntentChange}
@@ -282,6 +306,28 @@ export function MatchWeek({
                 {aftermath.verdict}
               </p>
             )}
+            {aftermath.body.length > 0 && (
+              <div style={{ display: 'grid', gap: '0.55rem', marginTop: '0.85rem' }}>
+                {aftermath.body.map((paragraph, index) => (
+                  <p
+                    key={`${index}-${paragraph.slice(0, 12)}`}
+                    data-testid="aftermath-body-paragraph"
+                    style={{
+                      margin: 0,
+                      padding: '0.7rem 0.85rem',
+                      background: '#08101f',
+                      border: '1px solid #1e293b',
+                      borderRadius: '4px',
+                      color: '#cbd5e1',
+                      lineHeight: 1.5,
+                      fontSize: '0.82rem',
+                    }}
+                  >
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -307,7 +353,7 @@ export function MatchWeek({
               standingsShift={aftermath.standings_shift}
               recruitReactions={aftermath.recruit_reactions}
             />
-            <ReplayTimeline lanes={activeResult.dashboard.lanes} />
+            <ReplayTimeline replay={replayForMatch} lanes={activeResult.dashboard.lanes} />
           </div>
         )}
 

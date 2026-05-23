@@ -78,7 +78,14 @@ def test_command_center_default_plan_includes_staff_recommendations_and_warnings
     assert plan["recommendations"]
     assert "tactics" in plan["department_orders"]
     assert plan["lineup"]["player_ids"]
-    assert plan["tactics"]["target_stars"] >= 0.0
+    assert set(plan["tactics"]) == {
+        "approach",
+        "target_focus",
+        "catch_posture",
+        "rush_commit",
+        "rush_target",
+    }
+    assert plan["tactics"]["approach"] in {"aggressive", "mixed", "patient"}
 
 
 def test_post_week_dashboard_is_derived_from_persisted_match_facts():

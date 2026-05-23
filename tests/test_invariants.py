@@ -106,8 +106,8 @@ def test_symmetry_swaps_outcomes():
         make_player("beta_1", accuracy=70, power=55, dodge=58),
         make_player("beta_2", accuracy=58, power=62, dodge=52),
     ]
-    team_a = make_team("alpha", team_a_players, policy=CoachPolicy(target_stars=0.8))
-    team_b = make_team("beta", team_b_players, policy=CoachPolicy(target_stars=0.8))
+    team_a = make_team("alpha", team_a_players, policy=CoachPolicy(target_focus="their_stars"))
+    team_b = make_team("beta", team_b_players, policy=CoachPolicy(target_focus="their_stars"))
     setup = make_match_setup(team_a, team_b)
     swapped = make_match_setup(team_b, team_a)
 
@@ -173,7 +173,7 @@ def test_coach_policy_targeting_is_legible():
     star_id = "beta_star"
     weak_id = "beta_weak"
 
-    def _make_setup(target_weight: float) -> MatchSetup:
+    def _make_setup(target_focus: str) -> MatchSetup:
         offense = make_team(
             "alpha",
             [
@@ -181,7 +181,7 @@ def test_coach_policy_targeting_is_legible():
                 make_player("alpha_support", accuracy=62, power=58),
                 make_player("alpha_rookie", accuracy=58, power=55),
             ],
-            policy=CoachPolicy(target_stars=target_weight, risk_tolerance=0.45),
+            policy=CoachPolicy(target_focus=target_focus, approach="mixed"),
         )
         defense = make_team(
             "beta",
@@ -190,14 +190,14 @@ def test_coach_policy_targeting_is_legible():
                 make_player("beta_balanced", accuracy=62, dodge=60, catch=60),
                 make_player(weak_id, accuracy=55, dodge=40, catch=35),
             ],
-            policy=CoachPolicy(target_stars=0.6),
+            policy=CoachPolicy(target_focus="their_stars"),
         )
         return make_match_setup(offense, defense)
 
-    def _target_counts(target_weight: float) -> Counter:
+    def _target_counts(target_focus: str) -> Counter:
         counts: Counter[str] = Counter()
         for seed in range(700, 705):
-            setup = _make_setup(target_weight)
+            setup = _make_setup(target_focus)
             result = engine.run(setup, seed=seed, difficulty="elite")
             offense_id = setup.team_a.id
             for event in result.events:
@@ -205,11 +205,11 @@ def test_coach_policy_targeting_is_legible():
                     continue
                 counts[event.actors["target"]] += 1
                 snapshot = event.context.get("policy_snapshot", {})
-                assert math.isclose(snapshot["target_stars"], target_weight, abs_tol=1e-6)
+                assert snapshot["target_focus"] == target_focus
         return counts
 
-    high_counts = _target_counts(0.9)
-    low_counts = _target_counts(0.1)
+    high_counts = _target_counts("their_stars")
+    low_counts = _target_counts("spread")
 
     assert high_counts[star_id] > low_counts[star_id]
     assert low_counts[weak_id] > high_counts[weak_id]

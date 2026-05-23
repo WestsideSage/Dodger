@@ -280,7 +280,8 @@ def test_command_center_match_replay_includes_saved_plan_evidence():
     assert replay.status_code == 200
     lanes = {lane["title"]: lane for lane in replay.json()["report"]["evidence_lanes"]}
     assert lanes["Command plan"]["summary"] == "Intent: Prepare For Playoffs."
-    assert any("sync throws" in item.lower() for item in lanes["Command plan"]["items"])
+    assert any("target focus:" in item.lower() for item in lanes["Command plan"]["items"])
+    assert any("opening rush" in item.lower() for item in lanes["Command plan"]["items"])
 
 
 def test_match_replay_report_copy_does_not_expose_raw_ids_or_tuning_labels():
@@ -477,7 +478,7 @@ def test_sim_command_rejects_non_active_lifecycle_states():
     assert "season_active_pre_match" in response.json()["detail"]
 
 
-def test_tactics_endpoint_rejects_non_finite_and_out_of_range_values():
+def test_tactics_endpoint_rejects_legacy_and_unknown_policy_values():
     conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.row_factory = sqlite3.Row
     create_schema(conn)
@@ -490,10 +491,10 @@ def test_tactics_endpoint_rejects_non_finite_and_out_of_range_values():
     server.app.dependency_overrides[server.get_db] = override_db
     try:
         client = TestClient(server.app)
-        out_of_range = client.post(
+        legacy_shape = client.post(
             "/api/tactics",
             json={
-                "target_stars": -1,
+                "target_stars": 0.7,
                 "target_ball_holder": 0.5,
                 "risk_tolerance": 0.5,
                 "sync_throws": 0.5,
@@ -503,16 +504,21 @@ def test_tactics_endpoint_rejects_non_finite_and_out_of_range_values():
                 "catch_bias": 0.5,
             },
         )
-        nan_token = client.post(
+        unknown_value = client.post(
             "/api/tactics",
-            content=b'{"target_stars":NaN,"target_ball_holder":0.5,"risk_tolerance":0.5,"sync_throws":0.5,"rush_frequency":0.5,"rush_proximity":0.5,"tempo":0.5,"catch_bias":0.5}',
-            headers={"content-type": "application/json"},
+            json={
+                "approach": "reckless",
+                "target_focus": "spread",
+                "catch_posture": "opportunistic",
+                "rush_commit": "balanced",
+                "rush_target": "center",
+            },
         )
     finally:
         server.app.dependency_overrides.clear()
 
-    assert out_of_range.status_code == 422
-    assert nan_token.status_code == 422
+    assert legacy_shape.status_code == 400
+    assert unknown_value.status_code == 400
 
 
 def test_roster_endpoint_reports_corrupt_roster_save_without_uncontrolled_500():
