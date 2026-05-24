@@ -113,6 +113,7 @@ from dodgeball_sim.replay_service import (
     acknowledge_match_payload,
     match_replay_payload,
 )
+from dodgeball_sim.highlights import build_highlight_package
 from dodgeball_sim.voice_register import for_tier
 from dodgeball_sim.offseason_service import (
     OffseasonError,
@@ -279,6 +280,8 @@ class StandingItem(BaseModel):
     elimination_differential: int
     is_user_club: bool
     latest_approach: str | None = None
+    program_archetype: str | None = None
+    program_trajectory_label: str | None = None
 
 
 class StandingsResponse(BaseModel):
@@ -386,6 +389,9 @@ class MatchReplayResponse(BaseModel):
     key_play_indices: list[int] = Field(default_factory=list)
     report: dict[str, Any]
     official_state: dict[str, Any] | None = None
+    broadcast_frame: dict[str, Any] | None = None
+    playoff_frame: dict[str, Any] | None = None
+    commentary_inserts: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class AcknowledgeMatchResponse(BaseModel):
@@ -635,6 +641,24 @@ def get_match_replay(match_id: str, conn = Depends(get_db)) -> MatchReplayRespon
         return match_replay_payload(conn, match_id)
     except ReplayError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+@app.get("/api/matches/{match_id}/highlights", response_model=dict[str, Any])
+def get_match_highlights(match_id: str, conn = Depends(get_db)) -> dict[str, Any]:
+    try:
+        replay = match_replay_payload(conn, match_id)
+    except ReplayError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    beats = build_highlight_package(
+        events=replay["events"],
+        proof_events=replay["proof_events"],
+        moment_events=replay["moment_events"],
+        name_map={},
+    )
+    return {
+        "match_id": match_id,
+        "beats": [beat.to_dict() for beat in beats],
+    }
 
 
 @app.post("/api/matches/{match_id}/acknowledge", response_model=AcknowledgeMatchResponse)
@@ -1056,12 +1080,15 @@ def get_history_my_program(club_id: str, conn = Depends(get_db)):
             })
     banners.sort(key=lambda b: b["season"])
 
+    from .persistence import load_program_trajectories
     return {
         "club_id": club_id,
         "hero": hero,
         "timeline": timeline,
         "alumni": alumni,
         "banners": banners,
+        "program_archetype": clubs[club_id].program_archetype if club_id in clubs else "Balanced Rebuild",
+        "program_trajectories": load_program_trajectories(conn, club_id),
     }
 
 

@@ -190,6 +190,7 @@ function App() {
         <div className="dm-content">
           {commandReplay && (
             <MatchReplay
+              key={commandReplay.match_id}
               data={commandReplay}
               onContinue={() => setCommandReplay(null)}
             />

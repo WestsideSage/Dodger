@@ -19,6 +19,7 @@ class Club:
     secondary_color: str = ""
     venue_name: str = ""
     tagline: str = ""
+    program_archetype: str = "Balanced Rebuild"
 
 
 @dataclass(frozen=True)

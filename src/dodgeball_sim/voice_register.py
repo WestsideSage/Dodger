@@ -55,6 +55,15 @@ TIER1_REGISTER: dict[str, str] = {
     "banner.late_game_escape": "{survivor} is alone against {attacker_count}.",
     "banner.one_v_one_finale": "{a} vs {b} - last two standing.",
     "card.comeback": "{team} were down {deficit} - clawed it back with {catches} catches.",
+    "broadcast.rivalry_tag": "Rivalry Game",
+    "broadcast.playoff_final.title": "Title Game",
+    "broadcast.playoff_semifinal.title": "Win Or Go Home",
+    "broadcast.highlight.opening": "Opening Crack",
+    "broadcast.highlight.swing": "Momentum Swing",
+    "broadcast.highlight.finish": "Winning Play",
+    "broadcast.commentary.record_eliminations": "{player} already owns the league career eliminations mark and just added another.",
+    "broadcast.commentary.record_catches": "{player} already owns the league career catches mark and just stole another body.",
+    "broadcast.commentary.record_dodges": "{player} already owns the league career dodges mark and just slipped another throw.",
 }
 
 

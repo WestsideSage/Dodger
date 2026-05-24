@@ -142,12 +142,32 @@ export function Standings() {
                     <td className="dm-data" style={{ textAlign: 'center', color: '#64748b', width: '2rem' }}>
                       {i + 1}
                     </td>
-                    <td style={{ fontWeight: 600, color: '#fff', fontFamily: 'var(--font-body)' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                        {row.club_name}
-                        {i === 0 && <span className="dm-badge dm-badge-cyan">1st</span>}
-                        {row.is_user_club && <span className="dm-badge dm-badge-slate">You</span>}
-                      </span>
+                    <td style={{ fontWeight: 600, color: '#fff', fontFamily: 'var(--font-body)', padding: '0.65rem 0.5rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {row.club_name}
+                          {i === 0 && <span className="dm-badge dm-badge-cyan">1st</span>}
+                          {row.is_user_club && <span className="dm-badge dm-badge-slate">You</span>}
+                        </div>
+                        {row.program_archetype && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.7rem', fontWeight: 500 }}>
+                            <span
+                              style={{
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                                background: '#1e293b',
+                                border: '1px solid #334155',
+                                color: '#38bdf8',
+                                display: 'inline-block',
+                              }}
+                            >
+                              {row.program_archetype}
+                            </span>
+                            <span style={{ color: '#64748b' }}>•</span>
+                            <span style={{ color: '#94a3b8' }}>{row.program_trajectory_label}</span>
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="dm-data" style={{ textAlign: 'right', color: '#10b981' }}>{row.wins}</td>
                     <td className="dm-data" style={{ textAlign: 'right', color: '#f43f5e' }}>{row.losses}</td>
@@ -191,7 +211,14 @@ export function Standings() {
                   <div className="standings-card-header">
                     <div>
                       <p className="dm-kicker" style={{ margin: 0 }}>Rank #{i + 1}</p>
-                      <h3>{row.club_name}</h3>
+                      <h3 style={{ margin: '0.1rem 0' }}>{row.club_name}</h3>
+                      {row.program_archetype && (
+                        <p style={{ margin: 0, fontSize: '0.7rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <span style={{ color: '#38bdf8', fontWeight: 600 }}>{row.program_archetype}</span>
+                          <span>•</span>
+                          <span>{row.program_trajectory_label}</span>
+                        </p>
+                      )}
                     </div>
                     <div className="standings-card-points">
                       <span>Points</span>

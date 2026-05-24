@@ -196,10 +196,8 @@ test.describe('Maximized browser playthrough and V11 QA Pass', () => {
       await page.getByRole('button', { name: /Command Center/i }).click();
       
       // Click Advance
-      const advanceBtn = page.getByRole('button', { name: /advance to next week/i });
-      if (await advanceBtn.isVisible()) {
-        await advanceBtn.click();
-      }
+      const advanceBtn = page.getByTestId('after-action-bar').locator('button.command-action-bar-primary');
+      await advanceBtn.click();
 
       await expect(page.getByText('WEEK 2', { exact: false })).toBeVisible();
 

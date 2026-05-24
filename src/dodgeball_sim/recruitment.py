@@ -53,16 +53,16 @@ def deduct_recruiting_slot(conn: sqlite3.Connection, season_id: str, week: int, 
     from .persistence import get_state, set_state
     if verb not in DEFAULT_RECRUITMENT_BUDGET:
         raise ValueError(f"Unknown recruiting verb: {verb}")
-    
+
     key = f"recruiting_slots_used_{season_id}_{week}"
     raw = get_state(conn, key)
     used = __import__("json").loads(raw) if raw else {}
     current_used = used.get(verb, 0)
     max_allowed = DEFAULT_RECRUITMENT_BUDGET[verb][1]
-    
+
     if current_used >= max_allowed:
         raise ValueError(f"No {verb} slots remaining this week")
-        
+
     used[verb] = current_used + 1
     set_state(conn, key, __import__("json").dumps(used))
     conn.commit()
@@ -415,6 +415,7 @@ def _ensure_recruitment_prepared(
         build_recruitment_board,
         build_recruitment_profile,
         prepare_ai_offers,
+        RecruitmentBoardRow,
     )
 
     existing_round = load_recruitment_round(conn, season_id, round_number)
@@ -441,6 +442,8 @@ def _ensure_recruitment_prepared(
         active_profiles.append(profile)
 
     boards = {}
+    from .persistence import load_clubs
+    clubs = load_clubs(conn)
     for profile in active_profiles:
         board = build_recruitment_board(
             root_seed=root_seed,
@@ -449,8 +452,57 @@ def _ensure_recruitment_prepared(
             prospects=prospects,
             roster_needs=_default_roster_needs(),
         )
-        save_recruitment_board(conn, season_id, board)
-        boards[profile.club_id] = board or load_recruitment_board(conn, season_id, profile.club_id)
+
+        # Apply V12 AI Recruiting preference weight shim
+        archetype = clubs.get(profile.club_id).program_archetype if profile.club_id in clubs else "Balanced Rebuild"
+        adjusted_board = []
+        for row in board:
+            prospect = next(p for p in prospects if p.player_id == row.player_id)
+            total_score = row.total_score
+
+            if archetype == "Development Factory":
+                # Favors high potential / raw upside (using the high band)
+                ceiling = prospect.public_ratings_band["ovr"][1]
+                total_score += round((ceiling - 60) * 0.3, 4)
+            elif archetype == "Contender":
+                # Favors verified ready-now stars (using the low/floor band)
+                floor = prospect.public_ratings_band["ovr"][0]
+                total_score += round((floor - 50) * 0.3, 4)
+            elif archetype == "Aging Veterans":
+                # Favors ready-now depth immediately
+                midpoint = (prospect.public_ratings_band["ovr"][0] + prospect.public_ratings_band["ovr"][1]) / 2.0
+                total_score += round((midpoint - 55) * 0.2, 4)
+
+            adjusted_board.append(
+                RecruitmentBoardRow(
+                    club_id=row.club_id,
+                    player_id=row.player_id,
+                    rank=row.rank,
+                    public_score=row.public_score,
+                    need_score=row.need_score,
+                    preference_score=row.preference_score,
+                    total_score=round(total_score, 4),
+                    visible_reason=row.visible_reason,
+                )
+            )
+
+        ranked = sorted(adjusted_board, key=lambda r: (-r.total_score, r.player_id))
+        final_board = [
+            RecruitmentBoardRow(
+                club_id=row.club_id,
+                player_id=row.player_id,
+                rank=index,
+                public_score=row.public_score,
+                need_score=row.need_score,
+                preference_score=row.preference_score,
+                total_score=row.total_score,
+                visible_reason=row.visible_reason,
+            )
+            for index, row in enumerate(ranked, start=1)
+        ]
+
+        save_recruitment_board(conn, season_id, final_board)
+        boards[profile.club_id] = final_board or load_recruitment_board(conn, season_id, profile.club_id)
 
     offers = prepare_ai_offers(root_seed, season_id, round_number, active_profiles, boards, already_signed_ids)
     save_recruitment_round(conn, season_id, round_number, "prepared", {"prepared_offer_count": len(offers)})

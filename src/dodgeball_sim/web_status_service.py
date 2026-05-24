@@ -130,6 +130,7 @@ def update_tactics_payload(conn: sqlite3.Connection, policy_values: dict[str, An
 
 
 def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
+    from .persistence import load_program_trajectories
     season_id = get_state(conn, "active_season_id")
     player_club_id = get_state(conn, "player_club_id")
     if not season_id:
@@ -142,6 +143,9 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     for club_id, club in clubs.items():
         row = saved.get(club_id)
         latest_plan = latest_visible_plan(conn, season_id, current_week, club_id)
+        trajectories = load_program_trajectories(conn, club_id)
+        year_num = len(trajectories) + 1
+        traj_label = f"Year {year_num} — {club.program_archetype}"
         rows.append(
             {
                 "club_id": club_id,
@@ -153,6 +157,8 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
                 "elimination_differential": row.elimination_differential if row else 0,
                 "is_user_club": club_id == player_club_id,
                 "latest_approach": latest_plan["intent"] if latest_plan else "Balanced",
+                "program_archetype": club.program_archetype,
+                "program_trajectory_label": traj_label,
             }
         )
     rows.sort(key=lambda item: (-item["points"], -item["elimination_differential"], item["club_id"]))

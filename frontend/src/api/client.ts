@@ -4,6 +4,7 @@ import type {
   CommandCenterResponse,
   CommandCenterSimResponse,
   DynastyOfficeResponse,
+  MatchHighlightsResponse,
   MatchReplayResponse,
   SaveListResponse,
   StatusResponse,
@@ -92,6 +93,8 @@ export const commandApi = {
     apiPost<CommandCenterSimResponse>('/api/command-center/simulate', body),
   replay: (matchId: string) =>
     apiGet<MatchReplayResponse>(`/api/matches/${encodeURIComponent(matchId)}/replay`),
+  highlights: (matchId: string) =>
+    apiGet<MatchHighlightsResponse>(`/api/matches/${encodeURIComponent(matchId)}/highlights`),
   voiceRegister: (tier: number) =>
     apiGet<Record<string, string>>(`/api/voice-register/${tier}`),
 };

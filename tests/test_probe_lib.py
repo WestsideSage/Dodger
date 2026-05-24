@@ -105,14 +105,14 @@ def test_run_ovr_curve_returns_one_result_per_rung():
 
 
 def test_run_ovr_curve_seeds_are_deterministic():
-    a = run_ovr_curve(RecTier1Driver(), rungs=(0,), trials_per_rung=3)
-    b = run_ovr_curve(RecTier1Driver(), rungs=(0,), trials_per_rung=3)
+    a = run_ovr_curve(RecTier1Driver(), rungs=(0,), trials_per_rung=10)
+    b = run_ovr_curve(RecTier1Driver(), rungs=(0,), trials_per_rung=10)
     assert a[0].fav_wins == b[0].fav_wins
 
 
 def test_run_ovr_curve_seed_offset_shifts_results():
-    a = run_ovr_curve(RecTier1Driver(), rungs=(0,), trials_per_rung=3, seed_offset=0)
-    b = run_ovr_curve(RecTier1Driver(), rungs=(0,), trials_per_rung=3, seed_offset=500)
+    a = run_ovr_curve(RecTier1Driver(), rungs=(0,), trials_per_rung=10, seed_offset=0)
+    b = run_ovr_curve(RecTier1Driver(), rungs=(0,), trials_per_rung=10, seed_offset=500)
     # Different seeds: at least one of the underlying outputs differs.
     a_winners = tuple(out.winner_team_id for out in a[0].outputs)
     b_winners = tuple(out.winner_team_id for out in b[0].outputs)

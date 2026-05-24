@@ -18,11 +18,17 @@ def _career_conn() -> sqlite3.Connection:
 
 
 def test_ai_intent_shifts_with_visible_competitive_context():
+    from dodgeball_sim.league import Club
+    from dodgeball_sim.models import CoachPolicy
+
+    contender = Club("contender", "Contender Club", ("blue", "red"), "Midwest", 2026, CoachPolicy(), program_archetype="Contender")
+    rebuilder = Club("rebuild", "Rebuilding Club", ("blue", "red"), "Midwest", 2026, CoachPolicy(), program_archetype="Balanced Rebuild")
+
     front_runner = StandingsRow("northwood", wins=4, losses=0, draws=0, elimination_differential=8, points=12)
     chasing = StandingsRow("northwood", wins=1, losses=3, draws=0, elimination_differential=-4, points=3)
 
-    assert choose_ai_intent(front_runner, week=5, total_weeks=5) == "Prepare For Playoffs"
-    assert choose_ai_intent(chasing, week=4, total_weeks=5) == "Develop Youth"
+    assert choose_ai_intent(front_runner, week=5, total_weeks=5, club=contender) == "Prepare For Playoffs"
+    assert choose_ai_intent(chasing, week=4, total_weeks=5, club=rebuilder) == "Develop Youth"
 
 
 def test_ai_weekly_plan_contains_real_tactics_and_playable_lineup():

@@ -442,11 +442,13 @@ def _parse_record_entries(raw: Optional[str]) -> list[dict[str, Any]]:
             continue
         out.append(
             {
+                "record_id": str(entry.get("record_type", "")),
                 "record_type": str(entry.get("record_type", "")),
                 "holder_name": str(entry.get("holder_name", entry.get("holder_id", "Unknown"))),
                 "previous_value": float(entry.get("previous_value", 0.0)),
                 "new_value": float(entry.get("new_value", 0.0)),
                 "detail": str(entry.get("detail", "")),
+                "proof_source": f"record:{entry.get('record_type', '')}",
             }
         )
     return out
@@ -460,6 +462,7 @@ def _parse_hof_entries(raw: Optional[str]) -> list[dict[str, Any]]:
             continue
         out.append(
             {
+                "player_id": str(entry.get("player_id", "")),
                 "player_name": str(entry.get("player_name", entry.get("player_id", "Unknown"))),
                 "legacy_score": float(entry.get("legacy_score", 0.0)),
                 "threshold": float(entry.get("threshold", 0.0)),
@@ -468,6 +471,7 @@ def _parse_hof_entries(raw: Optional[str]) -> list[dict[str, Any]]:
                 "championships": int(entry.get("championships", 0)),
                 "awards_won": int(entry.get("awards_won", 0)),
                 "total_eliminations": int(entry.get("total_eliminations", 0)),
+                "proof_source": f"career:{entry.get('player_id', '')}",
             }
         )
     return out
