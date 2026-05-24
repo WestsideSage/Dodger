@@ -50,6 +50,8 @@ broadcast labels must be re-numbered before becoming active milestone specs.
 | V9    | Living League Memory Loop                       | Shipped thin (2026-05-06)    | `docs/specs/long-range-playable-roadmap.md`                           | Implemented in the Dynasty Office: records, awards, rivalry, and recent-match memory surfaces that report real saved data or clear limited-state copy. |
 | V10   | Staff Market and Program Arms Race Loop         | Shipped thin (2026-05-06)    | `docs/specs/long-range-playable-roadmap.md`                           | Implemented in the Dynasty Office: deterministic staff candidates, visible staff hires, staff-action history, and current recommendation-facing effects. |
 | V11   | Official USA Dodgeball Rules                    | Shipped (2026-05-19)         | `docs/specs/2026-05-20-v11-official-usad-rules/design.md`             | Fully integrated USA Dodgeball 2026.1 rules (warnings, blue cards, and discipline states) with complete conformance matrix test coverage and E2E verification. |
+| V12   | AI Program Managers and Rival Adaptation Loop   | Shipped (2026-05-24)         | `docs/specs/2026-05-24-v12-ai-program-managers/design.md`             | Re-slotted from the roadmap's former V11 label. Builds on the existing `ai_program_manager.py` scaffold into honest rival programs with weekly plans, archetypes, and adaptation. |
+| V13   | Broadcast and Presentation Layer                | Shipped (2026-05-24)         | `docs/specs/2026-05-24-v13-broadcast-presentation/design.md`          | Re-slotted from the roadmap's former V12 label. Matchup preview framing, highlight packages, playoff overlays, commentary inserts, and proof-backed ceremony cards are live. Outcomes unchanged; raw proof remains. |
 
 ---
 

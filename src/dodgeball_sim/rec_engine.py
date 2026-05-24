@@ -333,11 +333,16 @@ class RecTier1Driver:
         team_a: str,
         team_b: str,
     ) -> None:
-        # 1. Choose throwers
-        throwers_by_team = self._select_throwers(rt, mi, team_a, team_b)
+        # Determine team evaluation order for this tick to eliminate 0-edge asymmetry
+        first_team = team_a if rt.rng.random() < 0.5 else team_b
+        second_team = team_b if first_team == team_a else team_a
 
-        # 2. Record throws into flood tracker; resolve each
-        for team_id, thrower_ids in throwers_by_team.items():
+        # 1. Choose throwers in randomized order
+        throwers_by_team = self._select_throwers(rt, mi, first_team, second_team)
+
+        # 2. Record throws into flood tracker; resolve each in randomized order
+        for team_id in (first_team, second_team):
+            thrower_ids = throwers_by_team.get(team_id, [])
             is_synced = len(thrower_ids) >= 2
             for thrower_id in thrower_ids:
                 rt.flood_tracker.record(
@@ -485,18 +490,18 @@ class RecTier1Driver:
         self,
         rt: _MatchRuntime,
         mi: DriverMatchInput,
-        team_a: str,
-        team_b: str,
+        first_team: str,
+        second_team: str,
     ) -> Dict[str, List[str]]:
-        result: Dict[str, List[str]] = {team_a: [], team_b: []}
-        for team_id in (team_a, team_b):
+        result: Dict[str, List[str]] = {first_team: [], second_team: []}
+        for team_id in (first_team, second_team):
             active = [
                 p for p in rt.players.values()
                 if p.team_id == team_id and p.status == OfficialPlayerStatus.ACTIVE
             ]
             if not active:
                 continue
-            stall_state = rt.stall_a if team_id == team_a else rt.stall_b
+            stall_state = rt.stall_a if team_id == mi.team_a_id else rt.stall_b
             policy = self._policy_for_team(mi, team_id)
             gate_multiplier = APPROACH_GATE_MULT[policy.approach]
             opening_rush = rt.opening_rush_by_team.get(team_id, {})
@@ -597,7 +602,8 @@ class RecTier1Driver:
             },
         }
 
-        if rt.rng.random() < 0.05:
+        headshot_prob = max(0.0, 0.08 - 0.05 * (thrower.ratings.throw_selection_iq / 100.0))
+        if rt.rng.random() < headshot_prob:
             state_diff = self._mark_out(rt, thrower_id, thrower_team_id, team_a, team_b)
             rt.events.append(
                 {
@@ -617,7 +623,9 @@ class RecTier1Driver:
         catch_skill = (target.ratings.catch / 100.0) * target_eff
 
         connect_roll = rt.rng.random()
-        if connect_roll >= accuracy * (1.0 - dodge):
+        base = accuracy / max(0.0001, accuracy + (1.0 - dodge))
+        connect_prob = base ** 0.7
+        if connect_roll >= connect_prob:
             rt.events.append(
                 {
                     **event_base,

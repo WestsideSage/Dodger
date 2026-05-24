@@ -150,7 +150,16 @@ def build_command_center_state(conn: sqlite3.Connection) -> dict[str, Any]:
         "opponent": clubs.get(opponent_id) if opponent_id else None,
         "upcoming_match": upcoming,
         "is_bye": is_bye,
-        "matchup_details": build_matchup_details(conn, season_id=season_id, player_club_id=player_club_id, opponent_id=opponent_id, rosters=rosters, is_bye=is_bye),
+        "matchup_details": build_matchup_details(
+            conn,
+            season_id=season_id,
+            player_club_id=player_club_id,
+            opponent_id=opponent_id,
+            rosters=rosters,
+            match_id=upcoming.match_id if upcoming is not None else None,
+            week=upcoming.week if upcoming is not None else week,
+            is_bye=is_bye,
+        ),
         "roster": list(rosters.get(player_club_id, [])),
         "opponent_roster": list(rosters.get(opponent_id, [])) if opponent_id else [],
         "default_lineup": load_lineup_default(conn, player_club_id),
@@ -182,8 +191,8 @@ def build_default_weekly_plan(state: Mapping[str, Any], intent: str = "Win Now")
         "last_meeting": "None",
         "key_matchup": "No opponent file available.",
         **dict(state.get("matchup_details") or {}),
-        "framing_line": render_policy_line(policy),
     }
+    matchup_details.setdefault("framing_line", render_policy_line(policy))
     
     return {
         "season_id": state["season_id"],

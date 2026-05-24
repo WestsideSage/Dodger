@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { CommandCenterPlan } from '../../types';
+import { BroadcastFrameBlock } from '../BroadcastFrameBlock';
 import { ActionButton } from '../ui';
 
 export function MatchupCard({
@@ -15,7 +16,7 @@ export function MatchupCard({
 }) {
   const [speed, setSpeed] = useState<'Fast' | 'Normal' | 'Slow'>('Normal');
   const details = plan.matchup_details ?? {
-    opponent_record: 'No record', last_meeting: 'None', key_matchup: 'Opponent file unavailable.', framing_line: 'Matchup report unavailable.',
+    opponent_record: 'No record', last_meeting: 'None', key_matchup: 'Opponent file unavailable.', framing_line: 'Matchup report unavailable.', broadcast_frame: null,
   };
 
   return (
@@ -29,6 +30,31 @@ export function MatchupCard({
         <p style={{ fontStyle: 'italic', color: '#94a3b8', margin: 0, fontSize: '0.9375rem', lineHeight: 1.5 }}>
           {details.framing_line}
         </p>
+
+        {details.adaptation_summary && (
+          <div
+            style={{
+              padding: '0.6rem 0.85rem',
+              background: '#451a03',
+              border: '1px solid #78350f',
+              borderRadius: '6px',
+              color: '#fdba74',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              lineHeight: 1.4,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}
+          >
+            <span style={{ fontSize: '1rem' }}>⚠️</span>
+            <span>{details.adaptation_summary}</span>
+          </div>
+        )}
+
+        {details.broadcast_frame && (
+          <BroadcastFrameBlock frame={details.broadcast_frame} title="Broadcast Frame" compact />
+        )}
 
         <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
           <div>

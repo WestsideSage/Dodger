@@ -28,6 +28,13 @@ def test_matchup_details_payload():
         assert 'last_meeting' in details
         assert 'key_matchup' in details
         assert 'framing_line' in details
+        assert 'broadcast_frame' in details
+        assert details['broadcast_frame']['stakes_tag']['label'] in {
+            'Week 1 Opener',
+            'Regular Season',
+            'Playoff Semifinal',
+            'Playoff Final',
+        }
 
         sim = client.post('/api/command-center/simulate', json={'intent': 'Win Now'})
         assert sim.status_code == 200

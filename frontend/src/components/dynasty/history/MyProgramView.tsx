@@ -37,12 +37,27 @@ interface BannerEntry {
   label: string;
 }
 
+interface ProgramTrajectory {
+  club_id: string;
+  season_id: string;
+  archetype: string;
+  dominant_intent: string;
+  record_w: number;
+  record_l: number;
+  record_d: number;
+  top_dev_archetype: string;
+  recruiting_class_strength: string;
+  notes?: Record<string, unknown>;
+}
+
 interface ProgramData {
   club_id: string;
   hero: { season_1?: HeroSeason; current?: HeroSeason };
   timeline: TimelineEvent[];
   alumni: AlumnusEntry[];
   banners: BannerEntry[];
+  program_archetype?: string;
+  program_trajectories?: ProgramTrajectory[];
 }
 
 function HeroCard({ data, label, highlight }: { data: HeroSeason; label: string; highlight: boolean }) {
@@ -69,7 +84,7 @@ function HeroCard({ data, label, highlight }: { data: HeroSeason; label: string;
       )}
       {data.championships !== undefined && data.championships > 0 && (
         <div style={{ fontSize: '0.75rem', color: '#f97316', marginTop: '0.25rem' }}>
-          🏆 {data.championships} title{data.championships !== 1 ? 's' : ''}
+          ðŸ† {data.championships} title{data.championships !== 1 ? 's' : ''}
         </div>
       )}
     </div>
@@ -98,6 +113,74 @@ export function MyProgramView({ clubId, isSelf = true }: { clubId: string; isSel
           <div style={{ display: 'flex', gap: '1rem' }}>
             {hero.season_1 && <HeroCard data={hero.season_1} label="How it started" highlight={false} />}
             {hero.current && <HeroCard data={hero.current} label="Today" highlight={true} />}
+          </div>
+        </div>
+      )}
+
+      {/* Program Trajectory History */}
+      {data.program_trajectories && data.program_trajectories.length > 0 && (
+        <div className="dm-panel">
+          <p className="dm-kicker">Multi-Season Trajectory Log</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {data.program_trajectories.map((traj) => (
+              <div
+                key={traj.season_id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: '#0a1628',
+                  border: '1px solid #1e293b',
+                  borderRadius: '6px',
+                  padding: '0.75rem 1rem',
+                  gap: '1rem',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>
+                    {formatSeasonLabel(traj.season_id)}
+                  </div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff', marginTop: '0.15rem' }}>
+                    {traj.record_w}–{traj.record_l}–{traj.record_d}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase' }}>Archetype</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#38bdf8', marginTop: '0.1rem' }}>
+                      {traj.archetype}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase' }}>Dominant Intent</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#e2e8f0', marginTop: '0.1rem' }}>
+                      {traj.dominant_intent}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase' }}>Top Roster Focus</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#a78bfa', marginTop: '0.1rem', textTransform: 'capitalize' }}>
+                      {traj.top_dev_archetype}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase' }}>Recruiting Class</div>
+                    <div
+                      style={{
+                        fontSize: '0.95rem',
+                        fontWeight: 800,
+                        color: traj.recruiting_class_strength === 'A' ? '#10b981' : traj.recruiting_class_strength === 'B' ? '#34d399' : '#94a3b8',
+                        marginTop: '0.05rem'
+                      }}
+                    >
+                      {traj.recruiting_class_strength}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

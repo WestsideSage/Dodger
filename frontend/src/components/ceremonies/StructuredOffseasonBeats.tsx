@@ -17,6 +17,19 @@ function formatValue(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
+function ProofDetails({ source }: { source: string }) {
+  return (
+    <details style={{ marginTop: '0.35rem' }}>
+      <summary data-testid="broadcast-proof-toggle" style={{ cursor: 'pointer', color: '#64748b', fontSize: '0.72rem' }}>
+        Show proof
+      </summary>
+      <code style={{ display: 'block', marginTop: '0.25rem', color: '#475569', fontSize: '0.72rem' }}>
+        {source}
+      </code>
+    </details>
+  );
+}
+
 function BeatShell({
   beat,
   description,
@@ -97,7 +110,8 @@ export function RecordsRatified({
           <div style={{ display: 'grid', gap: '0.6rem', marginTop: '0.5rem' }}>
             {records.map(record => (
               <div
-                key={record.record_type}
+                key={record.record_id ?? record.record_type}
+                data-broadcast-proof-source={record.proof_source ?? `record:${record.record_type}`}
                 style={{
                   padding: '0.7rem 0.9rem',
                   background: '#0a1220',
@@ -106,10 +120,7 @@ export function RecordsRatified({
                   borderRadius: '4px',
                 }}
               >
-                <p
-                  className="dm-kicker"
-                  style={{ margin: 0, color: '#f97316', fontSize: '0.62rem' }}
-                >
+                <p className="dm-kicker" style={{ margin: 0, color: '#f97316', fontSize: '0.62rem' }}>
                   {titleize(record.record_type)}
                 </p>
                 <p style={{ margin: '0.2rem 0', color: '#f1f5f9', fontWeight: 700 }}>
@@ -123,13 +134,14 @@ export function RecordsRatified({
                     color: '#10b981',
                   }}
                 >
-                  {formatValue(record.previous_value)} → {formatValue(record.new_value)}
+                  {formatValue(record.previous_value)}{' -> '}{formatValue(record.new_value)}
                 </p>
                 {record.detail && (
                   <p style={{ margin: '0.25rem 0 0', fontSize: '0.76rem', color: '#94a3b8' }}>
                     {record.detail}
                   </p>
                 )}
+                <ProofDetails source={record.proof_source ?? `record:${record.record_type}`} />
               </div>
             ))}
           </div>
@@ -165,7 +177,8 @@ export function HallOfFameInduction({
           <div style={{ display: 'grid', gap: '0.6rem', marginTop: '0.5rem' }}>
             {inductees.map(inductee => (
               <div
-                key={inductee.player_name}
+                key={inductee.player_id ?? inductee.player_name}
+                data-broadcast-proof-source={inductee.proof_source ?? `career:${inductee.player_id ?? inductee.player_name}`}
                 style={{
                   padding: '0.8rem 0.95rem',
                   background: '#0a1220',
@@ -205,14 +218,14 @@ export function HallOfFameInduction({
                     color: '#cbd5e1',
                   }}
                 >
-                  {inductee.seasons_played} seasons · {inductee.championships} titles ·{' '}
-                  {inductee.awards_won} awards · {inductee.total_eliminations} career elims
+                  {inductee.seasons_played} seasons | {inductee.championships} titles | {inductee.awards_won} awards | {inductee.total_eliminations} career elims
                 </p>
                 {inductee.reasons.length > 0 && (
                   <p style={{ margin: '0.3rem 0 0', fontSize: '0.76rem', color: '#94a3b8' }}>
-                    {inductee.reasons.join(' · ')}
+                    {inductee.reasons.join(' | ')}
                   </p>
                 )}
+                <ProofDetails source={inductee.proof_source ?? `career:${inductee.player_id ?? inductee.player_name}`} />
               </div>
             ))}
           </div>

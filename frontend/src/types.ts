@@ -326,6 +326,9 @@ export interface MatchReplayResponse {
         turning_point: string;
         evidence_lanes: CommandDashboardLane[];
     };
+    broadcast_frame?: BroadcastFrame | null;
+    playoff_frame?: PlayoffFrame | null;
+    commentary_inserts?: CommentaryInsert[];
 }
 
 export interface StandingRow {
@@ -338,6 +341,8 @@ export interface StandingRow {
     elimination_differential: number;
     is_user_club: boolean;
     latest_approach?: string | null;
+    program_archetype?: string;
+    program_trajectory_label?: string;
 }
 
 export interface StandingsResponse {
@@ -429,6 +434,56 @@ export interface MatchupDetails {
   last_meeting: string;
   key_matchup: string;
   framing_line: string;
+  broadcast_frame?: BroadcastFrame | null;
+  adaptation_summary?: string | null;
+}
+
+export interface BroadcastTag {
+  label: string;
+  tone: string;
+  proof_source: string;
+}
+
+export interface BroadcastHook {
+  text: string;
+  proof_source: string;
+}
+
+export interface BroadcastFrame {
+  stakes_tag?: BroadcastTag | null;
+  rivalry_tag?: BroadcastTag | null;
+  archetype_tag?: BroadcastTag | null;
+  historical_hook?: BroadcastHook | null;
+  voice_slot: string;
+}
+
+export interface PlayoffFrame {
+  label: string;
+  title: string;
+  proof_source: string;
+}
+
+export interface CommentaryInsert {
+  text: string;
+  source_event_id: string | number;
+  source_record_id: string;
+  source_event_index: number;
+  proof_source: string;
+}
+
+export interface HighlightBeat {
+  kind: string;
+  title: string;
+  body: string;
+  tick: number;
+  source_event_id: string | number;
+  source_event_index: number;
+  proof_source: string;
+}
+
+export interface MatchHighlightsResponse {
+  match_id: string;
+  beats: HighlightBeat[];
 }
 
 export interface LineupPlayer {
@@ -654,11 +709,13 @@ export interface RecruitmentBeatPayload {
 }
 
 export interface RatifiedRecordEntry {
+    record_id?: string;
     record_type: string;
     holder_name: string;
     previous_value: number;
     new_value: number;
     detail: string;
+    proof_source?: string;
 }
 
 export interface RecordsRatifiedBeatPayload {
@@ -666,6 +723,7 @@ export interface RecordsRatifiedBeatPayload {
 }
 
 export interface HallOfFameInductee {
+    player_id?: string;
     player_name: string;
     legacy_score: number;
     threshold: number;
@@ -674,6 +732,7 @@ export interface HallOfFameInductee {
     championships: number;
     awards_won: number;
     total_eliminations: number;
+    proof_source?: string;
 }
 
 export interface HofInductionBeatPayload {

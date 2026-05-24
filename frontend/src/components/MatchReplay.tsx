@@ -1,5 +1,8 @@
 import { memo, useMemo, useEffect, useState, useCallback } from 'react';
-import type { MatchReplayResponse, ReplayProofEvent } from '../types';
+import { commandApi } from '../api/client';
+import type { CommentaryInsert, HighlightBeat, MatchReplayResponse, ReplayProofEvent } from '../types';
+import { MatchHighlights } from '../features/replay/MatchHighlights';
+import { BroadcastFrameBlock } from './BroadcastFrameBlock';
 import { ReplaySpeedControl, type ReplaySpeed } from './match-week/aftermath/ReplaySpeedControl';
 
 interface PlayerInfo {
@@ -483,16 +486,44 @@ function EventCard({
 function PlayByPlayPanel({
   events,
   currentIndex,
+  commentaryInserts,
 }: {
   events: ReplayProofEvent[];
   currentIndex: number;
+  commentaryInserts: CommentaryInsert[];
 }) {
+  const visibleEvents = events.filter(event => event.sequence_index <= currentIndex);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-      {events.slice(0, currentIndex + 1).map((ev, i) => (
-        <div key={i} className="dm-feed-item" style={{ background: '#0f172a', border: '1px solid #1e293b', padding: '0.75rem', borderRadius: '4px', fontSize: '0.875rem' }}>
-          <span className="dm-time" style={{ color: '#64748b', fontFamily: 'var(--font-mono-data)', marginRight: '0.5rem', fontSize: '0.75rem' }}>PLAY {i + 1}</span>
-          <span style={{ color: '#e2e8f0' }}>{ev.summary}</span>
+      {visibleEvents.map((ev, i) => (
+        <div key={i} style={{ display: 'grid', gap: '0.4rem' }}>
+          <div className="dm-feed-item" style={{ background: '#0f172a', border: '1px solid #1e293b', padding: '0.75rem', borderRadius: '4px', fontSize: '0.875rem' }}>
+            <span className="dm-time" style={{ color: '#64748b', fontFamily: 'var(--font-mono-data)', marginRight: '0.5rem', fontSize: '0.75rem' }}>PLAY {i + 1}</span>
+            <span style={{ color: '#e2e8f0' }}>{ev.summary}</span>
+          </div>
+          {commentaryInserts
+            .filter(insert => insert.source_event_index === ev.sequence_index)
+            .map(insert => (
+              <div
+                key={`${insert.source_record_id}-${insert.source_event_id}`}
+                data-broadcast-proof-source={insert.proof_source}
+                style={{
+                  background: 'rgba(249,115,22,0.08)',
+                  border: '1px solid rgba(249,115,22,0.2)',
+                  borderLeft: '3px solid #f97316',
+                  padding: '0.65rem 0.8rem',
+                  borderRadius: 4,
+                }}
+              >
+                <div style={{ color: '#f97316', fontFamily: 'JetBrains Mono, monospace', fontSize: 9, letterSpacing: 1, marginBottom: 4 }}>
+                  BROADCAST NOTE
+                </div>
+                <div style={{ color: '#fde68a', fontSize: 12, lineHeight: 1.5 }}>{insert.text}</div>
+                <code style={{ display: 'block', marginTop: 6, color: '#64748b', fontSize: 10 }}>
+                  {insert.proof_source}
+                </code>
+              </div>
+            ))}
         </div>
       ))}
     </div>
@@ -698,7 +729,8 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
   const [eventIndex, setEventIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playSpeed, setPlaySpeed] = useState<ReplaySpeed>('2x');
-  const [activeTab, setActiveTab] = useState<'pbp' | 'keyplays' | 'stats'>('pbp');
+  const [activeTab, setActiveTab] = useState<'highlights' | 'pbp' | 'keyplays' | 'stats'>('highlights');
+  const [highlightBeats, setHighlightBeats] = useState<HighlightBeat[]>([]);
   const [flashTargetId, setFlashTargetId] = useState<string | null>(null);
   const [activeResolution, setActiveResolution] = useState<string | null>(null);
   const [ballAnimKey, setBallAnimKey] = useState('ball-init');
@@ -837,6 +869,20 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
   const isKeyPlay = data.key_play_indices.includes(eventIndex);
   const hasCourtData = playerRegistry.size > 0;
 
+  useEffect(() => {
+    let cancelled = false;
+    commandApi.highlights(data.match_id)
+      .then(payload => {
+        if (!cancelled) setHighlightBeats(payload.beats ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setHighlightBeats([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [data.match_id]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', overflow: 'visible' }}>
       <ScoreHeader
@@ -875,6 +921,36 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
       )}
 
       {/* Court — full width */}
+      {data.playoff_frame && (
+        <div
+          data-testid="playoff-frame"
+          data-broadcast-proof-source={data.playoff_frame.proof_source}
+          style={{
+            background: data.playoff_frame.label === 'Playoff Final'
+              ? 'linear-gradient(90deg, rgba(251,191,36,0.18), rgba(249,115,22,0.08))'
+              : 'linear-gradient(90deg, rgba(249,115,22,0.18), rgba(15,23,42,0.08))',
+            borderTop: '1px solid rgba(249,115,22,0.25)',
+            borderBottom: '1px solid rgba(249,115,22,0.25)',
+            padding: '8px 16px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: '0.75rem',
+            alignItems: 'center',
+          }}
+        >
+          <span style={{ color: '#f8fafc', fontFamily: 'Oswald, sans-serif', fontSize: 15, letterSpacing: 1 }}>
+            {data.playoff_frame.title}
+          </span>
+          <code style={{ color: '#64748b', fontSize: 10 }}>{data.playoff_frame.label}</code>
+        </div>
+      )}
+
+      {data.broadcast_frame && (
+        <div style={{ padding: '10px 12px 0' }}>
+          <BroadcastFrameBlock frame={data.broadcast_frame} title="Broadcast Frame" compact />
+        </div>
+      )}
+
       {data.official_state && <OfficialRulesPanel data={data} />}
 
       <div style={{ background: '#060d1a', padding: '8px 0 4px' }}>
@@ -974,8 +1050,8 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
       {/* Tabbed analysis — full width below court */}
       <div style={{ borderTop: '1px solid #1e293b', flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', borderBottom: '1px solid #1e293b', padding: '0 4px' }}>
-          {(['pbp', 'keyplays', 'stats'] as const).map((tab) => {
-            const labels = { pbp: 'PLAY-BY-PLAY', keyplays: 'KEY PLAYS', stats: 'BOX SCORE' };
+          {(['highlights', 'pbp', 'keyplays', 'stats'] as const).map((tab) => {
+            const labels = { highlights: 'HIGHLIGHTS', pbp: 'PLAY-BY-PLAY', keyplays: 'KEY PLAYS', stats: 'BOX SCORE' };
             const isActive = activeTab === tab;
             return (
               <button
@@ -989,8 +1065,15 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
           })}
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px', maxHeight: '280px' }}>
+          {activeTab === 'highlights' && (
+            <MatchHighlights beats={highlightBeats} onShowInTimeline={jumpTo} />
+          )}
           {activeTab === 'pbp' && (
-            <PlayByPlayPanel events={data.proof_events} currentIndex={eventIndex} />
+            <PlayByPlayPanel
+              events={data.proof_events}
+              currentIndex={eventIndex}
+              commentaryInserts={data.commentary_inserts ?? []}
+            />
           )}
           {activeTab === 'keyplays' && <KeyPlaysPanel data={data} currentIndex={eventIndex} onJump={jumpTo} />}
           {activeTab === 'stats' && <StatsPanel data={data} />}

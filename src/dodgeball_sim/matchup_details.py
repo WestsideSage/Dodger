@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import sqlite3
-from typing import Mapping
+from typing import Any, Mapping
 
+from .broadcast import load_matchup_broadcast_frame
 from .dynasty_office import team_overall
 from .models import MatchSetup, Player
 
@@ -19,13 +20,17 @@ def build_matchup_details(
     player_club_id: str,
     opponent_id: str | None,
     rosters: Mapping[str, list[Player]],
+    match_id: str | None = None,
+    week: int = 1,
     is_bye: bool = False,
-) -> dict[str, str]:
+) -> dict[str, Any]:
     if not opponent_id:
         return {
             "opponent_record": "n/a" if is_bye else "0-0",
             "last_meeting": "None",
-            "key_matchup": "Bye week — no opponent." if is_bye else "Season schedule complete.",
+            "key_matchup": "Bye week - no opponent." if is_bye else "Season schedule complete.",
+            "broadcast_frame": None,
+            "framing_line": "Bye week - no opponent." if is_bye else "Season schedule complete.",
         }
 
     standing = conn.execute(
@@ -60,14 +65,23 @@ def build_matchup_details(
         (season_id, player_club_id, opponent_id, opponent_id, player_club_id),
     ).fetchone()
     if meeting is None:
-        last_meeting = "First meeting — no tape on them yet. Trust your reads."
+        last_meeting = "First meeting - no tape on them yet. Trust your reads."
     else:
         result = "Draw"
         if meeting["winner_club_id"] == player_club_id:
             result = "Win"
         elif meeting["winner_club_id"] == opponent_id:
             result = "Loss"
-        last_meeting = f"Week {int(meeting['week'])}: {result} {int(meeting['home_survivors'])}-{int(meeting['away_survivors'])}"
+        home_survivors = int(meeting["home_survivors"])
+        away_survivors = int(meeting["away_survivors"])
+        if meeting["home_club_id"] == player_club_id:
+            player_score, opp_score = home_survivors, away_survivors
+        else:
+            player_score, opp_score = away_survivors, home_survivors
+        last_meeting = (
+            f"Week {int(meeting['week'])}: {result} "
+            f"{player_score}-{opp_score}"
+        )
 
     opponent_roster = list(rosters.get(opponent_id, []))
     if opponent_roster:
@@ -79,10 +93,35 @@ def build_matchup_details(
     else:
         key_matchup = "Opponent roster unavailable."
 
+    broadcast_frame = load_matchup_broadcast_frame(
+        conn,
+        season_id=season_id,
+        player_club_id=player_club_id,
+        opponent_club_id=opponent_id,
+        match_id=match_id,
+        week=week,
+    )
+
+    adaptation_summary = None
+    if opponent_id and week:
+        from .persistence import load_weekly_command_plan
+        opponent_plan = load_weekly_command_plan(conn, season_id, week, opponent_id)
+        if opponent_plan and "summary" in opponent_plan:
+            summary = opponent_plan["summary"]
+            if "adapted" in summary.lower():
+                adaptation_summary = summary
+
     return {
         "opponent_record": opponent_record,
         "last_meeting": last_meeting,
         "key_matchup": key_matchup,
+        "broadcast_frame": broadcast_frame.to_dict(),
+        "framing_line": (
+            broadcast_frame.historical_hook.text
+            if broadcast_frame.historical_hook is not None
+            else broadcast_frame.stakes_tag.label
+        ),
+        "adaptation_summary": adaptation_summary,
     }
 
 

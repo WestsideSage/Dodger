@@ -8,6 +8,7 @@ import type {
   StandingRow,
   StandingsResponse,
 } from '../../../types';
+import { BroadcastFrameBlock } from '../../BroadcastFrameBlock';
 import { WeeklyChecklist } from '../WeeklyChecklist';
 import { MatchCard } from './MatchCard';
 import { PolicyEditor } from './PolicyEditor';
@@ -99,7 +100,9 @@ export function PreSimDashboard({
     last_meeting: 'First meeting — no tape on them yet. Trust your reads.',
     key_matchup: 'Opponent file unavailable.',
     framing_line: data.current_objective,
+    broadcast_frame: null,
   };
+  const broadcastFrame = details.broadcast_frame ?? null;
   const activePlayers = useMemo(() => plan.lineup?.players?.slice(0, 6) ?? [], [plan.lineup?.players]);
   const opponentPlayers = useMemo(() => plan.opponent_lineup?.players?.slice(0, 6) ?? [], [plan.opponent_lineup?.players]);
   const userStanding = standings.find(row => row.club_id === data.player_club_id);
@@ -346,6 +349,10 @@ export function PreSimDashboard({
             </p>
           )}
         </div>
+      )}
+
+      {!isBye && broadcastFrame && (
+        <BroadcastFrameBlock frame={broadcastFrame} title="Broadcast Frame" compact />
       )}
       </div>
 

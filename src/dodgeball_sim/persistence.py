@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from .career_state import CareerStateCursor
 
 # Increment when new migrations are added.
-CURRENT_SCHEMA_VERSION = 13
+CURRENT_SCHEMA_VERSION = 14
 _MAX_OFFSEASON_BEAT_INDEX = 9
 
 
@@ -843,6 +843,127 @@ def _migrate_v13(conn: sqlite3.Connection) -> None:
         )
 
 
+def classify_club_archetype(club_id: str, is_user: bool, players: list) -> str:
+    if is_user:
+        return "Balanced Rebuild"
+    if not players:
+        return "Balanced Rebuild"
+
+    def get_val(obj, key, default):
+        if hasattr(obj, key):
+            return getattr(obj, key)
+        if isinstance(obj, dict):
+            return obj.get(key, default)
+        return default
+
+    def get_nested(obj, parent_key, child_key, default):
+        if hasattr(obj, parent_key):
+            parent = getattr(obj, parent_key)
+            if hasattr(parent, child_key):
+                return getattr(parent, child_key)
+            if isinstance(parent, dict):
+                return parent.get(child_key, default)
+        if isinstance(obj, dict):
+            parent = obj.get(parent_key, {})
+            if isinstance(parent, dict):
+                return parent.get(child_key, default)
+        return default
+
+    avg_age = sum(get_val(p, "age", 18) for p in players) / len(players)
+    if avg_age >= 26.5:
+        return "Aging Veterans"
+
+    total_acc = 0.0
+    total_pow = 0.0
+    total_dg = 0.0
+    total_ct = 0.0
+    total_st = 0.0
+    total_pot = 0.0
+    for p in players:
+        total_acc += get_nested(p, "ratings", "accuracy", 50.0)
+        total_pow += get_nested(p, "ratings", "power", 50.0)
+        total_dg += get_nested(p, "ratings", "dodge", 50.0)
+        total_ct += get_nested(p, "ratings", "catch", 50.0)
+        total_st += get_nested(p, "ratings", "stamina", 50.0)
+        total_pot += get_nested(p, "traits", "potential", 50.0)
+
+    n = len(players)
+    avg_acc = total_acc / n
+    avg_pow = total_pow / n
+    avg_dg = total_dg / n
+    avg_ct = total_ct / n
+    avg_st = total_st / n
+    avg_pot = total_pot / n
+    avg_ovr = (avg_acc + avg_pow + avg_dg + avg_ct + avg_st) / 5
+
+    if avg_ovr >= 67.0:
+        return "Contender"
+    if avg_age <= 22.5 and avg_pot >= 60.0:
+        return "Development Factory"
+    if (avg_dg + avg_ct) > (avg_acc + avg_pow) + 2.0:
+        return "Defensive Specialist"
+    if (avg_acc + avg_pow) > (avg_dg + avg_ct) + 2.0:
+        return "Power Throwers"
+    return "Balanced Rebuild"
+
+
+def _migrate_v14(conn: sqlite3.Connection) -> None:
+    """V12: AI Program Managers & Trajectory."""
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(clubs)")}
+    if "program_archetype" not in columns:
+        conn.execute(
+            "ALTER TABLE clubs "
+            "ADD COLUMN program_archetype TEXT NOT NULL DEFAULT 'Balanced Rebuild'"
+        )
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS program_trajectory (
+            club_id TEXT NOT NULL,
+            season_id TEXT NOT NULL,
+            archetype TEXT NOT NULL,
+            dominant_intent TEXT NOT NULL,
+            record_w INTEGER NOT NULL,
+            record_l INTEGER NOT NULL,
+            record_d INTEGER NOT NULL,
+            top_dev_archetype TEXT,
+            recruiting_class_strength TEXT,
+            notes_json TEXT,
+            PRIMARY KEY (club_id, season_id)
+        );
+        """
+    )
+
+    user_club_id = ""
+    try:
+        row = conn.execute("SELECT value FROM dynasty_state WHERE key = 'player_club_id'").fetchone()
+        if row:
+            user_club_id = row["value"]
+    except sqlite3.OperationalError:
+        pass
+
+    rosters = {}
+    try:
+        for row in conn.execute("SELECT club_id, players_json FROM club_rosters").fetchall():
+            try:
+                rosters[row["club_id"]] = json.loads(row["players_json"])
+            except Exception:
+                pass
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        for row in conn.execute("SELECT club_id FROM clubs").fetchall():
+            cid = row["club_id"]
+            is_user = (cid == user_club_id)
+            arch = classify_club_archetype(cid, is_user, rosters.get(cid, []))
+            conn.execute(
+                "UPDATE clubs SET program_archetype = ? WHERE club_id = ?",
+                (arch, cid)
+            )
+    except sqlite3.OperationalError:
+        pass
+
+
 _MIGRATIONS: Dict[int, Any] = {
     1: _migrate_v1,
     2: _migrate_v2,
@@ -857,6 +978,7 @@ _MIGRATIONS: Dict[int, Any] = {
     11: _migrate_v11,
     12: _migrate_v12,
     13: _migrate_v13,
+    14: _migrate_v14,
 }
 
 
@@ -1068,13 +1190,14 @@ def save_club(conn: sqlite3.Connection, club: Club, roster: List[Player]) -> Non
         """
         INSERT OR REPLACE INTO clubs
             (club_id, name, colors, home_region, founded_year, coach_policy_json,
-             primary_color, secondary_color, venue_name, tagline)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             primary_color, secondary_color, venue_name, tagline, program_archetype)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             club.club_id, club.name, club.colors, club.home_region,
             club.founded_year, _json_dump(club.coach_policy.as_dict()),
             club.primary_color, club.secondary_color, club.venue_name, club.tagline,
+            club.program_archetype,
         ),
     )
     conn.execute(
@@ -1100,8 +1223,52 @@ def load_clubs(conn: sqlite3.Connection) -> Dict[str, "Club"]:
             secondary_color=row["secondary_color"] if "secondary_color" in keys else "",
             venue_name=row["venue_name"] if "venue_name" in keys else "",
             tagline=row["tagline"] if "tagline" in keys else "",
+            program_archetype=row["program_archetype"] if "program_archetype" in keys else "Balanced Rebuild",
         )
     return clubs
+
+
+def save_program_trajectory(conn: sqlite3.Connection, traj: dict) -> None:
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO program_trajectory
+            (club_id, season_id, archetype, dominant_intent, record_w, record_l, record_d,
+             top_dev_archetype, recruiting_class_strength, notes_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            traj["club_id"], traj["season_id"], traj["archetype"], traj["dominant_intent"],
+            traj["record_w"], traj["record_l"], traj["record_d"],
+            traj.get("top_dev_archetype"), traj.get("recruiting_class_strength"),
+            _json_dump(traj.get("notes", {})),
+        ),
+    )
+
+
+def load_program_trajectories(conn: sqlite3.Connection, club_id: str) -> list[dict]:
+    cursor = conn.execute(
+        """
+        SELECT * FROM program_trajectory
+        WHERE club_id = ?
+        ORDER BY season_id ASC
+        """,
+        (club_id,),
+    )
+    results = []
+    for row in cursor.fetchall():
+        results.append({
+            "club_id": row["club_id"],
+            "season_id": row["season_id"],
+            "archetype": row["archetype"],
+            "dominant_intent": row["dominant_intent"],
+            "record_w": row["record_w"],
+            "record_l": row["record_l"],
+            "record_d": row["record_d"],
+            "top_dev_archetype": row["top_dev_archetype"],
+            "recruiting_class_strength": row["recruiting_class_strength"],
+            "notes": json.loads(row["notes_json"]) if row["notes_json"] else {},
+        })
+    return results
 
 
 def load_club_roster(conn: sqlite3.Connection, club_id: str) -> List[Player]:
@@ -3143,6 +3310,8 @@ __all__ = [
     # Dynasty persistence
     "save_club",
     "load_clubs",
+    "save_program_trajectory",
+    "load_program_trajectories",
     "load_club_roster",
     "load_all_rosters",
     "save_lineup_default",

@@ -268,6 +268,94 @@ def _update_career_summaries(
         save_player_career_stats(conn, player_id, summary)
 
 
+def record_season_program_trajectories(
+    conn: sqlite3.Connection,
+    season: Season,
+    rosters: Mapping[str, List[Player]],
+) -> None:
+    """Compute and save program trajectory record for each club at season end."""
+    from collections import Counter
+    import json
+    from .persistence import (
+        load_clubs,
+        load_standings,
+        save_program_trajectory,
+        load_program_trajectories,
+    )
+
+    clubs = load_clubs(conn)
+
+    try:
+        standings = load_standings(conn, season.season_id)
+        standings_by_club = {row.club_id: row for row in standings}
+    except Exception:
+        standings_by_club = {}
+
+    for club_id, club in clubs.items():
+        # Avoid duplicate writes for the same season
+        existing = load_program_trajectories(conn, club_id)
+        if any(t["season_id"] == season.season_id for t in existing):
+            continue
+
+        standings_row = standings_by_club.get(club_id)
+        w = standings_row.wins if standings_row else 0
+        l = standings_row.losses if standings_row else 0
+        d = standings_row.draws if standings_row else 0
+
+        # Compute dominant intent from weekly plans
+        cursor = conn.execute(
+            "SELECT plan_json FROM weekly_command_plans WHERE season_id = ? AND club_id = ?",
+            (season.season_id, club_id),
+        )
+        intents = []
+        for row in cursor.fetchall():
+            try:
+                plan = json.loads(row["plan_json"])
+                if "intent" in plan:
+                    intents.append(plan["intent"])
+            except Exception:
+                pass
+
+        dominant_intent = Counter(intents).most_common(1)[0][0] if intents else "Balanced"
+
+        # Get top development archetype from roster
+        club_roster = rosters.get(club_id, [])
+        archetypes = [p.archetype.value for p in club_roster if p.archetype]
+        top_dev = Counter(archetypes).most_common(1)[0][0] if archetypes else "Balanced"
+
+        # Compute recruiting class strength from rookies
+        rookies = [p for p in club_roster if getattr(p, "newcomer", False)]
+        if rookies:
+            avg_pot = sum(p.traits.potential for p in rookies) / len(rookies)
+            if avg_pot >= 75:
+                strength = "A"
+            elif avg_pot >= 65:
+                strength = "B"
+            elif avg_pot >= 55:
+                strength = "C"
+            elif avg_pot >= 45:
+                strength = "D"
+            else:
+                strength = "F"
+        else:
+            strength = "C"
+
+        trajectory = {
+            "club_id": club_id,
+            "season_id": season.season_id,
+            "archetype": club.program_archetype,
+            "dominant_intent": dominant_intent,
+            "record_w": w,
+            "record_l": l,
+            "record_d": d,
+            "top_dev_archetype": top_dev,
+            "recruiting_class_strength": strength,
+            "notes": {},
+        }
+
+        save_program_trajectory(conn, trajectory)
+
+
 def finalize_season(
     conn: sqlite3.Connection,
     season: Season,
@@ -312,6 +400,7 @@ def finalize_season(
     ).fetchone()
     if season_outcome and season_outcome["champion_club_id"]:
         save_club_trophy(conn, season_outcome["champion_club_id"], "championship", season.season_id)
+    record_season_program_trajectories(conn, season, rosters)
     conn.commit()
 
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 from typing import List
 
+import dataclasses
 from .career_state import CareerState, CareerStateCursor
 from .config import DEFAULT_SCOUTING_CONFIG
 from .franchise import create_season
@@ -17,6 +18,7 @@ from .persistence import (
     save_season,
     save_season_format,
     set_state,
+    classify_club_archetype,
 )
 from .playoffs import PLAYOFF_FORMAT
 from .randomizer import _FIRST_NAMES, _LAST_NAMES
@@ -178,6 +180,9 @@ def initialize_curated_manager_career(
         rosters[selected_club_id] = custom_roster
 
     for club in clubs:
+        is_user = (club.club_id == selected_club_id)
+        arch = classify_club_archetype(club.club_id, is_user, rosters[club.club_id])
+        club = dataclasses.replace(club, program_archetype=arch)
         save_club(conn, club, rosters[club.club_id])
         save_lineup_default(conn, club.club_id, [player.id for player in rosters[club.club_id]])
 
@@ -367,6 +372,9 @@ def initialize_manager_career(
         for club in clubs
     }
     for club in clubs:
+        is_user = (club.club_id == selected_club_id)
+        arch = classify_club_archetype(club.club_id, is_user, rosters[club.club_id])
+        club = dataclasses.replace(club, program_archetype=arch)
         save_club(conn, club, rosters[club.club_id])
         save_lineup_default(conn, club.club_id, [player.id for player in rosters[club.club_id]])
 
@@ -423,6 +431,9 @@ def initialize_build_a_club_career(
     rosters[expansion_club.club_id] = generate_expansion_roster(expansion_club.club_id, root_seed)
 
     for club in clubs:
+        is_user = (club.club_id == expansion_club.club_id)
+        arch = classify_club_archetype(club.club_id, is_user, rosters[club.club_id])
+        club = dataclasses.replace(club, program_archetype=arch)
         save_club(conn, club, rosters[club.club_id])
         save_lineup_default(conn, club.club_id, [player.id for player in rosters[club.club_id]])
 

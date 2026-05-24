@@ -5,6 +5,11 @@ import sqlite3
 from typing import Any
 
 from .awards import compute_match_mvp
+from .broadcast import (
+    build_commentary_inserts,
+    build_playoff_frame,
+    load_matchup_broadcast_frame,
+)
 from .career_state import CareerState, advance
 from .match_orchestration import _choose_next_user_match_after_automation
 from .persistence import (
@@ -14,6 +19,7 @@ from .persistence import (
     load_career_state_cursor,
     load_clubs,
     load_command_history,
+    load_league_records,
     load_season,
     save_career_state_cursor,
 )
@@ -180,6 +186,27 @@ def match_replay_payload(conn: sqlite3.Connection, match_id: str) -> dict[str, A
         for moment in moment_events
         if isinstance(moment, dict)
     ]
+    player_club_id = get_state(conn, "player_club_id") or row["home_club_id"]
+    if player_club_id not in {row["home_club_id"], row["away_club_id"]}:
+        player_club_id = row["home_club_id"]
+    opponent_club_id = row["away_club_id"] if player_club_id == row["home_club_id"] else row["home_club_id"]
+    broadcast_frame = load_matchup_broadcast_frame(
+        conn,
+        season_id=row["season_id"],
+        player_club_id=player_club_id,
+        opponent_club_id=opponent_club_id,
+        match_id=match_id,
+        week=int(row["week"]),
+    )
+    playoff_frame = build_playoff_frame(season_id=row["season_id"], match_id=match_id)
+    commentary_inserts = [
+        insert.to_dict()
+        for insert in build_commentary_inserts(
+            events,
+            record_items=load_league_records(conn),
+            name_map=name_map,
+        )
+    ]
 
     stats = stats_for_match(conn, match_id)
     proof = build_replay_proof(
@@ -245,6 +272,9 @@ def match_replay_payload(conn: sqlite3.Connection, match_id: str) -> dict[str, A
         "key_play_indices": proof["key_play_indices"],
         "report": report,
         "official_state": official_state,
+        "broadcast_frame": broadcast_frame.to_dict(),
+        "playoff_frame": playoff_frame.to_dict() if playoff_frame is not None else None,
+        "commentary_inserts": commentary_inserts,
     }
 
 

@@ -1,28 +1,89 @@
 from __future__ import annotations
 
+import sqlite3
 from typing import Sequence
 
-from .command_center import DEFAULT_DEPARTMENT_ORDERS, _policy_for_intent
+from .command_center import DEFAULT_DEPARTMENT_ORDERS
 from .league import Club
-from .lineup import optimize_ai_lineup
 from .models import Player
 from .season import StandingsRow
 
+from .ai_intent import choose_ai_intent as _choose_ai_intent
+from .ai_orders import get_ai_department_orders
+from .ai_lineup import optimize_archetype_lineup
+from .ai_tactics import get_ai_tactics
 
-def choose_ai_intent(row: StandingsRow | None, *, week: int, total_weeks: int) -> str:
-    if row is None:
-        return "Balanced"
-    games_played = row.wins + row.losses + row.draws
-    late_season = week >= max(1, total_weeks - 1)
-    if late_season and row.wins > row.losses:
-        return "Prepare For Playoffs"
-    if games_played >= 3 and row.losses > row.wins:
-        return "Develop Youth"
-    if row.elimination_differential <= -3:
-        return "Preserve Health"
-    if row.wins >= row.losses + 1:
-        return "Win Now"
-    return "Balanced"
+
+def choose_ai_intent(
+    row: StandingsRow | None,
+    *,
+    week: int,
+    total_weeks: int,
+    club: Club | None = None,
+    roster: Sequence[Player] | None = None,
+) -> str:
+    """Wrapper for choose_ai_intent to support legacy test compatibility when club/roster are omitted."""
+    if club is None:
+        from .league import Club
+        from .models import CoachPolicy
+        club = Club(
+            club_id="test_club",
+            name="Test Club",
+            colors=("blue", "red"),
+            home_region="Midwest",
+            founded_year=2026,
+            coach_policy=CoachPolicy(),
+            program_archetype="Balanced Rebuild",
+        )
+    if roster is None:
+        roster = []
+    return _choose_ai_intent(row, week=week, total_weeks=total_weeks, club=club, roster=roster)
+
+
+def load_recent_user_win_rate(conn: sqlite3.Connection, player_club_id: str, limit: int = 8) -> float:
+    """Queries the database for the rolling user win rate over the last N matches."""
+    try:
+        cursor = conn.execute(
+            """
+            SELECT winner_team_id, team_a_id, team_b_id
+            FROM matches
+            WHERE team_a_id = ? OR team_b_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (player_club_id, player_club_id, limit),
+        )
+        rows = cursor.fetchall()
+        if not rows:
+            return 0.0
+        wins = sum(1 for r in rows if r["winner_team_id"] == player_club_id)
+        return wins / len(rows)
+    except sqlite3.OperationalError:
+        # Schema may not have matches table yet (e.g. during fresh setup/tests)
+        return 0.0
+
+
+def apply_adaptation_shift(plan: dict, archetype: str) -> None:
+    """Applies exactly one bounded adaptation shift to the weekly plan against the user."""
+    current_intent = plan["intent"]
+    shifted_intent = False
+
+    if archetype in ("Contender", "Power Throwers", "Defensive Specialist"):
+        if current_intent in ("Balanced", "Prepare For Playoffs"):
+            plan["intent"] = "Win Now"
+            shifted_intent = True
+    else:  # Rebuilding / development focus
+        if current_intent in ("Balanced", "Develop Youth"):
+            plan["intent"] = "Preserve Health"
+            shifted_intent = True
+
+    if shifted_intent:
+        plan["summary"] = f"Opponent adapted to your dominant run by shifting their intent to {plan['intent']}."
+    else:
+        plan["department_orders"]["tactics"] = "film study"
+        plan["summary"] = "Opponent adapted to your dominant run by shifting tactics to study extra film."
+
+    plan["lineup"]["summary"] = plan["summary"]
 
 
 def build_ai_weekly_plan(
@@ -33,11 +94,23 @@ def build_ai_weekly_plan(
     roster: Sequence[Player],
     standings_row: StandingsRow | None,
     total_weeks: int,
+    adapt_to_user: bool = False,
 ) -> dict:
-    intent = choose_ai_intent(standings_row, week=week, total_weeks=total_weeks)
-    lineup_ids = optimize_ai_lineup(roster)
+    """Builds a weekly plan for an AI club tailored to its archetype, intent, and roster shape."""
+    intent = choose_ai_intent(
+        standings_row,
+        week=week,
+        total_weeks=total_weeks,
+        club=club,
+        roster=roster,
+    )
+    lineup_ids = optimize_archetype_lineup(roster, club.program_archetype, intent)
     players_by_id = {player.id: player for player in roster}
-    return {
+
+    orders = get_ai_department_orders(club.program_archetype, intent)
+    tactics = get_ai_tactics(club.program_archetype, intent)
+
+    plan = {
         "season_id": season_id,
         "week": week,
         "player_club_id": club.club_id,
@@ -49,8 +122,8 @@ def build_ai_weekly_plan(
             "Preserve Health",
             "Prepare For Playoffs",
         ],
-        "department_orders": dict(DEFAULT_DEPARTMENT_ORDERS),
-        "tactics": _policy_for_intent(club.coach_policy, intent),
+        "department_orders": orders,
+        "tactics": tactics,
         "lineup": {
             "player_ids": lineup_ids,
             "players": [
@@ -65,6 +138,11 @@ def build_ai_weekly_plan(
             "summary": f"{intent} lineup chosen by the AI program staff.",
         },
     }
+
+    if adapt_to_user:
+        apply_adaptation_shift(plan, club.program_archetype)
+
+    return plan
 
 
 def prepare_ai_plans_for_matches(
@@ -81,6 +159,10 @@ def prepare_ai_plans_for_matches(
     load_plan,
     save_plan,
 ) -> None:
+    """Prepares and saves weekly plans for all AI clubs, adapting to the user if they are dominant."""
+    user_win_rate = load_recent_user_win_rate(conn, player_club_id, limit=8)
+    user_dominant = user_win_rate >= 0.70
+
     standings_by_club = {row.club_id: row for row in standings_rows}
     for match in matches:
         for club_id in (match.home_club_id, match.away_club_id):
@@ -88,6 +170,10 @@ def prepare_ai_plans_for_matches(
                 continue
             ai_plan = load_plan(conn, season_id, match.week, club_id)
             if ai_plan is None:
+                # Check if playing against the user
+                is_against_user = (match.home_club_id == player_club_id or match.away_club_id == player_club_id)
+                adapt_to_user = is_against_user and user_dominant
+
                 ai_plan = build_ai_weekly_plan(
                     season_id=season_id,
                     week=match.week,
@@ -95,6 +181,7 @@ def prepare_ai_plans_for_matches(
                     roster=rosters[club_id],
                     standings_row=standings_by_club.get(club_id),
                     total_weeks=season.total_weeks(),
+                    adapt_to_user=adapt_to_user,
                 )
                 save_plan(conn, ai_plan)
             apply_plan(conn, ai_plan, match.match_id, club_id)
