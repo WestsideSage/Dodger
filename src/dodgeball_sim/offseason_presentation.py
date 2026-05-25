@@ -99,7 +99,11 @@ def build_beat_payload(
             season_stats = fetch_season_player_stats(conn, season.season_id)
 
         result = []
+        seen_player_ids: set[str] = set()
         for award in sorted_awards:
+            if award.player_id in seen_player_ids:
+                continue
+            seen_player_ids.add(award.player_id)
             player = find_player(award.player_id)
             career = load_player_career_stats(conn, award.player_id) or {}
             career_throws = int(career.get("total_eliminations", 0))
