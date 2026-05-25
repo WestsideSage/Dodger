@@ -122,6 +122,13 @@ def persist_match_record(
         active_player_ids=record.away_active_player_ids,
     )
 
+    _home_survivors = box[record.home_club_id]["totals"]["living"]
+    _away_survivors = box[record.away_club_id]["totals"]["living"]
+    _winner_club_id = record.result.winner_team_id
+    if _winner_club_id is None and _home_survivors != _away_survivors:
+        _winner_club_id = (
+            record.home_club_id if _home_survivors > _away_survivors else record.away_club_id
+        )
     save_match_result(
         conn,
         match_id=record.match_id,
@@ -129,9 +136,9 @@ def persist_match_record(
         week=record.week,
         home_club_id=record.home_club_id,
         away_club_id=record.away_club_id,
-        winner_club_id=record.result.winner_team_id,
-        home_survivors=box[record.home_club_id]["totals"]["living"],
-        away_survivors=box[record.away_club_id]["totals"]["living"],
+        winner_club_id=_winner_club_id,
+        home_survivors=_home_survivors,
+        away_survivors=_away_survivors,
         home_roster_hash=record.home_roster_hash,
         away_roster_hash=record.away_roster_hash,
         config_version=record.config_version,

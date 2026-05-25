@@ -63,3 +63,27 @@ def test_create_final_match_higher_remaining_seed_hosts_and_outcome_uses_final_w
     assert outcome.champion_club_id == "four"
     assert outcome.runner_up_club_id == "two"
     assert outcome.champion_source == "playoff_final"
+
+
+def test_create_final_match_draw_fallback_uses_better_seed():
+    """If a semifinal winner_club_id is None (true draw), the better seed advances."""
+    standings = [
+        StandingsRow("one", 5, 0, 0, 10, 15),
+        StandingsRow("two", 4, 1, 0, 8, 12),
+        StandingsRow("three", 3, 2, 0, 6, 9),
+        StandingsRow("four", 2, 3, 0, 4, 6),
+    ]
+    bracket, _matches = create_semifinal_bracket("season_1", standings, week=6)
+
+    # m1: one vs four → draw (None); m2: two vs three → "two" won
+    bracket, final = create_final_match(
+        bracket,
+        {"season_1_p_r1_m1": None, "season_1_p_r1_m2": "two"},
+        week=7,
+    )
+
+    # "one" (seed 0) should advance over "four" (seed 3)
+    finalist_ids = {final.home_club_id, final.away_club_id}
+    assert "one" in finalist_ids
+    assert "two" in finalist_ids
+    assert "four" not in finalist_ids

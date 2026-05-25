@@ -583,7 +583,7 @@ def simulate_week(conn = Depends(get_db)) -> SimResponse:
 def recruiting_scout(prospect_id: str, conn = Depends(get_db)):
     from dodgeball_sim.recruitment import deduct_recruiting_slot
     season_id = get_state(conn, "active_season_id")
-    week = int(get_state(conn, "career_week") or 0)
+    week = load_career_state_cursor(conn).week
     try:
         deduct_recruiting_slot(conn, season_id, week, "scout")
         # In a real impl, this would update scouting_state for the prospect
@@ -596,7 +596,7 @@ def recruiting_scout(prospect_id: str, conn = Depends(get_db)):
 def recruiting_contact(prospect_id: str, conn = Depends(get_db)):
     from dodgeball_sim.recruitment import deduct_recruiting_slot
     season_id = get_state(conn, "active_season_id")
-    week = int(get_state(conn, "career_week") or 0)
+    week = load_career_state_cursor(conn).week
     try:
         deduct_recruiting_slot(conn, season_id, week, "contact")
     except ValueError as exc:
@@ -608,7 +608,7 @@ def recruiting_contact(prospect_id: str, conn = Depends(get_db)):
 def recruiting_visit(prospect_id: str, conn = Depends(get_db)):
     from dodgeball_sim.recruitment import deduct_recruiting_slot
     season_id = get_state(conn, "active_season_id")
-    week = int(get_state(conn, "career_week") or 0)
+    week = load_career_state_cursor(conn).week
     try:
         deduct_recruiting_slot(conn, season_id, week, "visit")
     except ValueError as exc:
