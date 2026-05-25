@@ -20,10 +20,21 @@ function colorsToValue(primary: string, secondary: string) {
   return `${primary},${secondary}`;
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
-      <label style={{ display: 'block', fontSize: '0.6875rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', marginBottom: '0.375rem' }}>
+      <label
+        htmlFor={htmlFor}
+        style={{ display: 'block', fontSize: '0.6875rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', marginBottom: '0.375rem' }}
+      >
         {label}
       </label>
       {children}
@@ -73,8 +84,9 @@ export function IdentityStep({
         </h2>
       </div>
 
-      <Field label="Save Name">
+      <Field label="Save Name" htmlFor="identity-save-name">
         <input
+          id="identity-save-name"
           type="text"
           placeholder="My Career"
           value={identity.save_name}
@@ -83,8 +95,9 @@ export function IdentityStep({
         />
       </Field>
 
-      <Field label="Club Name">
+      <Field label="Club Name" htmlFor="identity-club-name">
         <input
+          id="identity-club-name"
           type="text"
           placeholder="e.g. Iron Hawks"
           value={identity.club_name}
@@ -93,8 +106,9 @@ export function IdentityStep({
         />
       </Field>
 
-      <Field label="City">
+      <Field label="City" htmlFor="identity-city">
         <input
+          id="identity-city"
           type="text"
           placeholder="e.g. Northwood"
           value={identity.city}
@@ -103,7 +117,10 @@ export function IdentityStep({
         />
       </Field>
 
-      <Field label="Club Colors">
+      <fieldset style={{ margin: 0, padding: 0, border: 'none' }}>
+        <legend style={{ padding: 0, fontSize: '0.6875rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', marginBottom: '0.375rem' }}>
+          Club Colors
+        </legend>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
           {COLOR_PRESETS.map(preset => {
             const isSelected = identity.colors === colorsToValue(preset.primary, preset.secondary);
@@ -149,7 +166,7 @@ export function IdentityStep({
               : 'Custom kit selected'}
           </span>
         </div>
-      </Field>
+      </fieldset>
 
       {(identity.club_name || identity.city) && (
         <div style={{ background: currentSecondary, border: `1px solid ${currentPrimary}44`, borderLeft: `3px solid ${currentPrimary}`, borderRadius: '4px', padding: '0.75rem 1rem' }}>
