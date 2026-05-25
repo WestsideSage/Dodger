@@ -15,9 +15,15 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
   const [view, setView] = useState<View>('list');
   const [saves, setSaves] = useState<SaveInfo[]>([]);
   const [showDebugSaves, setShowDebugSaves] = useState(false);
+  const DEBUG_PREFIXES = ['qa-playthrough-', 'debug-', 'playtest-', 'ux-teardown-', 'test_', 'e2e-', 'e2e_', 'codex', 'command-aftermath'];
+  const isDebugSave = (name: string) => DEBUG_PREFIXES.some(p => name.startsWith(p));
   const visibleSaves = useMemo(
-    () => showDebugSaves ? saves : saves.filter(s => !s.name.startsWith('qa-playthrough-')),
+    () => showDebugSaves ? saves : saves.filter(s => !isDebugSave(s.name)),
     [saves, showDebugSaves]
+  );
+  const hiddenDebugCount = useMemo(
+    () => saves.filter(s => isDebugSave(s.name)).length,
+    [saves]
   );
   const [activePath, setActivePath] = useState<string | null>(null);
   const [clubs, setClubs] = useState<ClubOption[]>([]);
@@ -239,17 +245,27 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
 
             {view === 'list' && (
               <div data-testid="save-list">
-                {!loading && saves.some(s => s.name.startsWith('qa-playthrough-')) && (
+                {!loading && hiddenDebugCount > 0 && !showDebugSaves && (
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
-                    <label style={{ fontSize: '0.75rem', opacity: 0.7, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={showDebugSaves}
-                        onChange={e => setShowDebugSaves(e.target.checked)}
-                        style={{ cursor: 'pointer' }}
-                      />
-                      Show debug saves
-                    </label>
+                    <span style={{ fontSize: '0.75rem', color: '#475569' }}>
+                      {hiddenDebugCount} debug save{hiddenDebugCount !== 1 ? 's' : ''} hidden ·{' '}
+                      <button
+                        onClick={() => setShowDebugSaves(true)}
+                        style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0, fontSize: '0.75rem', textDecoration: 'underline' }}
+                      >
+                        Show
+                      </button>
+                    </span>
+                  </div>
+                )}
+                {!loading && showDebugSaves && hiddenDebugCount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
+                    <button
+                      onClick={() => setShowDebugSaves(false)}
+                      style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', padding: 0, fontSize: '0.75rem', textDecoration: 'underline' }}
+                    >
+                      Hide debug saves
+                    </button>
                   </div>
                 )}
                 {loading ? (

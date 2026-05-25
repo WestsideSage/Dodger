@@ -153,6 +153,8 @@ def render_body(ctx: AftermathContext) -> tuple[str, ...]:
             )
             break
         if moment.kind.value == "comeback":
+            if moment.team_id != ctx.match_result.winner_team_id:
+                continue
             paragraphs.append(
                 tier1(
                     "moment.comeback.body",

@@ -208,22 +208,28 @@ class CoachPolicy:
             "rush_target": self.rush_target.value,
         }
 
+    _LEGACY_KEYS: frozenset[str] = frozenset({
+        "target_stars",
+        "target_ball_holder",
+        "risk_tolerance",
+        "sync_throws",
+        "rush_frequency",
+        "rush_proximity",
+        "tempo",
+        "catch_bias",
+    })
+
+    @classmethod
+    def from_legacy_dict(cls, payload: dict[str, object]) -> "CoachPolicy":
+        """Return defaults when a pre-Plan-C save is loaded; never raises."""
+        return cls()
+
     @classmethod
     def from_dict(cls, payload: dict[str, object]) -> "CoachPolicy":
         if not isinstance(payload, dict):
             raise ValueError("CoachPolicy payload must be a dict.")
 
-        legacy_keys = {
-            "target_stars",
-            "target_ball_holder",
-            "risk_tolerance",
-            "sync_throws",
-            "rush_frequency",
-            "rush_proximity",
-            "tempo",
-            "catch_bias",
-        }
-        found_legacy_keys = sorted(legacy_keys.intersection(payload))
+        found_legacy_keys = sorted(cls._LEGACY_KEYS.intersection(payload))
         if found_legacy_keys:
             legacy_names = ", ".join(found_legacy_keys)
             raise ValueError(
