@@ -53,6 +53,35 @@ def test_simulate_scheduled_match_persists_record_stats_and_active_snapshot():
     assert len([player for player in snapshot if player["match_role"] == "active"]) == STARTERS_COUNT
 
 
+def test_simulate_scheduled_match_winner_club_id_not_null_when_survivors_differ():
+    """Regression: franchise must persist a non-NULL winner when one team has more survivors."""
+    conn = _conn()
+    season = load_season(conn, "season_1")
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+
+    for match in season.matches_for_week(1):
+        simulate_scheduled_match(
+            conn,
+            scheduled=match,
+            clubs=clubs,
+            rosters=rosters,
+            root_seed=20260426,
+            difficulty="pro",
+        )
+
+    rows = conn.execute(
+        "SELECT match_id, home_survivors, away_survivors, winner_club_id FROM match_records WHERE week = 1"
+    ).fetchall()
+    assert rows, "Expected week-1 match records"
+    for row in rows:
+        home_s, away_s = row["home_survivors"], row["away_survivors"]
+        if home_s != away_s:
+            assert row["winner_club_id"] is not None, (
+                f"Expected non-NULL winner for {row['match_id']} ({home_s} vs {away_s})"
+            )
+
+
 def test_current_week_and_recompute_standings_use_persisted_records():
     conn = _conn()
     season = load_season(conn, "season_1")

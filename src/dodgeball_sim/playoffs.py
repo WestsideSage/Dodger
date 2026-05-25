@@ -96,9 +96,23 @@ def create_final_match(
     if len(semi_matches) != 2:
         raise ValueError("Bracket must have two semifinal matches")
     finalists = tuple(winners_by_match_id.get(match["match_id"]) for match in semi_matches)
-    if any(finalist is None for finalist in finalists):
-        raise ValueError("Both semifinal winners are required")
     seed_rank = {club_id: index for index, club_id in enumerate(bracket.seeds)}
+    # If a semifinal ended as a true draw (equal survivors, time cap), fall
+    # back to the better seed advancing rather than crashing the bracket.
+    resolved: list[str] = []
+    for finalist, semi_match in zip(finalists, semi_matches):
+        if finalist is not None:
+            resolved.append(str(finalist))
+        else:
+            participants = [semi_match.get("home"), semi_match.get("away")]
+            ranked = sorted(
+                (c for c in participants if c is not None),
+                key=lambda c: seed_rank.get(c, 9999),
+            )
+            if not ranked:
+                raise ValueError("Both semifinal winners are required")
+            resolved.append(ranked[0])
+    finalists = tuple(resolved)
     first, second = finalists
     home, away = sorted((str(first), str(second)), key=lambda club_id: seed_rank[club_id])
     final = ScheduledMatch(

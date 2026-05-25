@@ -172,6 +172,11 @@ def _build_aftermath(
     box = record.result.box_score["teams"]
     home_survivors = int(box[record.home_club_id]["totals"]["living"])
     away_survivors = int(box[record.away_club_id]["totals"]["living"])
+    _winner_id = record.result.winner_team_id
+    if _winner_id is None and home_survivors != away_survivors:
+        _winner_id = (
+            record.home_club_id if home_survivors > away_survivors else record.away_club_id
+        )
     start_context = record.result.events[0].context if record.result.events else {}
     end_context = record.result.events[-1].context if record.result.events else {}
     team_policies = (
@@ -241,7 +246,7 @@ def _build_aftermath(
         "match_card": {
             "home_club_id": record.home_club_id,
             "away_club_id": record.away_club_id,
-            "winner_club_id": record.result.winner_team_id,
+            "winner_club_id": _winner_id,
             "home_survivors": home_survivors,
             "away_survivors": away_survivors,
         },

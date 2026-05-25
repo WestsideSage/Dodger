@@ -391,13 +391,23 @@ def advance_playoffs_if_needed(conn: sqlite3.Connection, season: Season, clubs: 
                 continue
             if pending:
                 return season
-            winners = {
-                row["match_id"]: row["winner_club_id"]
-                for row in conn.execute(
-                    "SELECT match_id, winner_club_id FROM match_records WHERE match_id IN (?, ?)",
-                    (f"{season.season_id}_p_r1_m1", f"{season.season_id}_p_r1_m2"),
-                ).fetchall()
-            }
+            winners = {}
+            for row in conn.execute(
+                "SELECT match_id, winner_club_id, home_club_id, away_club_id, home_survivors, away_survivors"
+                " FROM match_records WHERE match_id IN (?, ?)",
+                (f"{season.season_id}_p_r1_m1", f"{season.season_id}_p_r1_m2"),
+            ).fetchall():
+                winner_id = row["winner_club_id"]
+                if winner_id is None:
+                    # Derive from survivors when engine stored NULL (e.g. time-cap equal-count edge case)
+                    if row["home_survivors"] > row["away_survivors"]:
+                        winner_id = row["home_club_id"]
+                    elif row["away_survivors"] > row["home_survivors"]:
+                        winner_id = row["away_club_id"]
+                    else:
+                        # True tie: home side (higher seed by bracket assignment) advances
+                        winner_id = row["home_club_id"]
+                winners[row["match_id"]] = winner_id
             next_week = max(match.week for match in semifinal_matches) + 1
             bracket, final = create_final_match(bracket, winners, next_week)
             save_playoff_bracket(conn, bracket)

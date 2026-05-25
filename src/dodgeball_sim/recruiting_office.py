@@ -5,6 +5,7 @@ from typing import Any
 
 from .config import DEFAULT_SCOUTING_CONFIG
 from .persistence import (
+    load_career_state_cursor,
     load_json_state,
     load_prospect_pool,
 )
@@ -31,10 +32,7 @@ def build_recruiting_state(
     promises = list(load_json_state(conn, PROMISE_STATE_KEY, []))
     credibility = _credibility(conn, season_id, player_club_id, history)
     prospects = _prospect_rows(conn, season_id, root_seed, promises, credibility)
-    week_val = 0
-    row = conn.execute("SELECT value FROM dynasty_state WHERE key='career_week'").fetchone()
-    if row:
-        week_val = int(row[0])
+    week_val = load_career_state_cursor(conn).week
     budget = get_current_recruiting_budget(conn, season_id, week_val)
     return {
         "credibility": credibility,

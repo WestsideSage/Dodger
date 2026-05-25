@@ -1,28 +1,29 @@
 import { useEffect, useState } from 'react';
 import { ActionButton, PageHeader } from '../ui';
 
-export function CeremonyShell({ 
-  title, 
-  eyebrow, 
-  description, 
-  stages, 
-  renderStage, 
+export function CeremonyShell({
+  title,
+  eyebrow,
+  description,
+  stages,
+  renderStage,
   onComplete,
   actionLabel = 'Continue',
   actionDescription = 'Continue to the next offseason beat.',
   isActing = false,
-}: { 
-  title: string, 
-  eyebrow: string, 
-  description: string, 
-  stages: number, 
-  renderStage: (stage: number) => React.ReactNode, 
+}: {
+  title: string,
+  eyebrow: string,
+  description: string,
+  stages: number,
+  renderStage: (stage: number) => React.ReactNode,
   onComplete: () => void,
   actionLabel?: string,
   actionDescription?: string,
   isActing?: boolean,
 }) {
   const [stage, setStage] = useState(0);
+  const animating = stage < stages;
 
   useEffect(() => {
     if (stage >= stages) return;
@@ -51,19 +52,17 @@ export function CeremonyShell({
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
          {renderStage(stage)}
       </div>
-      {stage >= stages && (
-        <div className="dm-panel command-action-bar" style={{ position: 'sticky', bottom: '1rem', marginTop: 'auto' }}>
-          <div>
-            <p className="dm-kicker">Ceremony Control</p>
-            <p>{actionDescription}</p>
-          </div>
-          <div className="command-action-buttons">
-            <ActionButton variant="primary" onClick={onComplete} disabled={isActing}>
-              {isActing ? 'Continuing...' : actionLabel}
-            </ActionButton>
-          </div>
+      <div className="dm-panel command-action-bar" style={{ position: 'sticky', bottom: '1rem', marginTop: 'auto' }}>
+        <div>
+          <p className="dm-kicker">Ceremony Control</p>
+          <p>{animating ? 'Press Space or click anywhere to skip animation.' : actionDescription}</p>
         </div>
-      )}
+        <div className="command-action-buttons">
+          <ActionButton variant="primary" onClick={onComplete} disabled={isActing || animating}>
+            {isActing ? 'Continuing...' : animating ? 'Skip / Continue' : actionLabel}
+          </ActionButton>
+        </div>
+      </div>
     </div>
   );
 }

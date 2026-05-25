@@ -175,6 +175,13 @@ def simulate_match(
     home_survivors = box[home_club.club_id]["totals"]["living"]
     away_survivors = box[away_club.club_id]["totals"]["living"]
     winner_club_id = result.winner_team_id  # team_id == club_id by convention
+    # Engine returns None on a time-cap tie; if survivors differ the engine was
+    # wrong — derive winner from box score so the DB never stores NULL for a
+    # non-draw match (which would propagate to playoff bracket creation).
+    if winner_club_id is None and home_survivors != away_survivors:
+        winner_club_id = (
+            home_club.club_id if home_survivors > away_survivors else away_club.club_id
+        )
 
     # V11: when the official adapter ran, ``result.config_version`` already
     # encodes the ruleset (e.g. ``official:official_foam``); use it so the

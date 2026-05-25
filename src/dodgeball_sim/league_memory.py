@@ -82,7 +82,19 @@ def recent_match_item(row: sqlite3.Row, clubs: dict[str, Any]) -> dict[str, Any]
             f"{home.name if home else row['home_club_id']} {row['home_survivors']}-"
             f"{row['away_survivors']} {away.name if away else row['away_club_id']}"
         ),
-        "winner_name": winner.name if winner else "Draw",
+        "winner_name": (
+            winner.name
+            if winner
+            else (
+                (home.name if home else row["home_club_id"])
+                if row["home_survivors"] > row["away_survivors"]
+                else (
+                    (away.name if away else row["away_club_id"])
+                    if row["away_survivors"] > row["home_survivors"]
+                    else "Draw"
+                )
+            )
+        ),
     }
 
 
