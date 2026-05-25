@@ -1218,7 +1218,11 @@ def load_clubs(conn: sqlite3.Connection) -> Dict[str, "Club"]:
             colors=row["colors"],
             home_region=row["home_region"],
             founded_year=row["founded_year"],
-            coach_policy=CoachPolicy.from_dict(cp_dict),
+            coach_policy=(
+                CoachPolicy.from_legacy_dict(cp_dict)
+                if CoachPolicy._LEGACY_KEYS.intersection(cp_dict)
+                else CoachPolicy.from_dict(cp_dict)
+            ),
             primary_color=row["primary_color"] if "primary_color" in keys else "",
             secondary_color=row["secondary_color"] if "secondary_color" in keys else "",
             venue_name=row["venue_name"] if "venue_name" in keys else "",

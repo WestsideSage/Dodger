@@ -3,7 +3,7 @@ from __future__ import annotations
 from dodgeball_sim.aftermath_context import AftermathContext
 from dodgeball_sim.engine import MatchResult
 from dodgeball_sim.events import MatchEvent
-from dodgeball_sim.moment_events import DramaticCatch
+from dodgeball_sim.moment_events import Comeback, DramaticCatch
 from dodgeball_sim.models import CoachPolicy
 from dodgeball_sim.voice_aftermath import render_body
 
@@ -51,6 +51,31 @@ def test_render_body_with_no_moments_does_not_invent_one():
     assert "maurice" not in rendered
     assert "plucks" not in rendered
     assert "one back on" not in rendered
+
+
+def test_render_body_comeback_only_narrates_for_winner():
+    comeback_winner = Comeback(match_id="m1", tick=7, team_id="A", deficit_at_low_point=2, catches_during_comeback=3)
+    comeback_loser = Comeback(match_id="m1", tick=5, team_id="B", deficit_at_low_point=1, catches_during_comeback=2)
+
+    ctx_winner = AftermathContext(
+        match_result=_match_result(),
+        moment_events=(comeback_winner,),
+        policy_team=CoachPolicy(),
+        policy_opponent=CoachPolicy(),
+        tier=1,
+    )
+    rendered_winner = " ".join(render_body(ctx_winner))
+    assert "comeback" in rendered_winner.lower() or "deficit" in rendered_winner.lower() or "Aurora" in rendered_winner
+
+    ctx_loser = AftermathContext(
+        match_result=_match_result(),
+        moment_events=(comeback_loser,),
+        policy_team=CoachPolicy(),
+        policy_opponent=CoachPolicy(),
+        tier=1,
+    )
+    rendered_loser = " ".join(render_body(ctx_loser))
+    assert "Solstice" not in rendered_loser or "comeback" not in rendered_loser.lower()
 
 
 def _match_result() -> MatchResult:

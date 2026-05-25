@@ -971,9 +971,11 @@ def test_build_offseason_ceremony_uses_expected_beats_and_real_rows():
         SeasonAward("season_1", "mvp", rosters["aurora"][0].id, "aurora", 42.0),
     ]
 
-    champion = build_offseason_ceremony_beat(0, None, clubs, rosters, standings, awards, "aurora")
+    champion = build_offseason_ceremony_beat(
+        OFFSEASON_CEREMONY_BEATS.index("champion"), None, clubs, rosters, standings, awards, "aurora"
+    )
     development = build_offseason_ceremony_beat(
-        5,
+        OFFSEASON_CEREMONY_BEATS.index("development"),
         None,
         clubs,
         rosters,
@@ -992,7 +994,7 @@ def test_build_offseason_ceremony_uses_expected_beats_and_real_rows():
         ],
     )
     retirements = build_offseason_ceremony_beat(
-        6,
+        OFFSEASON_CEREMONY_BEATS.index("retirements"),
         None,
         clubs,
         rosters,
@@ -1010,7 +1012,7 @@ def test_build_offseason_ceremony_uses_expected_beats_and_real_rows():
         ],
     )
     draft = build_offseason_ceremony_beat(
-        8,
+        OFFSEASON_CEREMONY_BEATS.index("recruitment"),
         None,
         clubs,
         rosters,
@@ -1021,8 +1023,8 @@ def test_build_offseason_ceremony_uses_expected_beats_and_real_rows():
     )
 
     assert OFFSEASON_CEREMONY_BEATS == (
-        "champion",
         "recap",
+        "champion",
         "awards",
         "records_ratified",
         "hof_induction",
@@ -1056,7 +1058,7 @@ def test_offseason_champion_beat_prefers_playoff_outcome():
     from dodgeball_sim.playoffs import SeasonOutcome
 
     beat = build_offseason_ceremony_beat(
-        0,
+        OFFSEASON_CEREMONY_BEATS.index("champion"),
         load_season(conn, "season_1"),
         clubs,
         rosters,

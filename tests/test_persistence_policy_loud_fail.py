@@ -8,7 +8,10 @@ import pytest
 from dodgeball_sim.persistence import create_schema, load_clubs
 
 
-def test_load_clubs_rejects_legacy_coach_policy_payloads():
+def test_load_clubs_migrates_legacy_coach_policy_to_defaults():
+    """Pre-Plan-C saves must load without raising; legacy policy silently migrates to v2 defaults."""
+    from dodgeball_sim.models import CoachPolicy
+
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     create_schema(conn)
@@ -48,5 +51,5 @@ def test_load_clubs_rejects_legacy_coach_policy_payloads():
         ("legacy", "[]"),
     )
 
-    with pytest.raises(ValueError, match="target_stars"):
-        load_clubs(conn)
+    clubs = load_clubs(conn)
+    assert clubs["legacy"].coach_policy == CoachPolicy()

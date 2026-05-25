@@ -52,8 +52,8 @@ from .view_models import normalize_root_seed
 
 
 OFFSEASON_CEREMONY_BEATS = (
-    "champion",
     "recap",
+    "champion",
     "awards",
     "records_ratified",
     "hof_induction",

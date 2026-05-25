@@ -782,8 +782,8 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
   }, [data.proof_events, eventIndex]);
 
   const scoreState = currentProof?.score_state ?? null;
-  const homeLiving = scoreState?.home_living ?? homeIds.length;
-  const awayLiving = scoreState?.away_living ?? awayIds.length;
+  const homeLiving = scoreState?.home_living ?? data.home_survivors;
+  const awayLiving = scoreState?.away_living ?? data.away_survivors;
 
   const eliminatedIds = useMemo(() => {
     if (!scoreState) return new Set<string>();

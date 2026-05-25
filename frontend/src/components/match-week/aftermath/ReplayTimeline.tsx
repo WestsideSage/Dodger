@@ -146,7 +146,9 @@ export function ReplayTimeline({
             )
           )}
 
-          {comeback?.display_text && <ComebackCard text={comeback.display_text} />}
+          {comeback?.display_text && replay?.winner_club_id === comeback.team_id && (
+            <ComebackCard text={comeback.display_text} />
+          )}
         </div>
       )}
     </section>

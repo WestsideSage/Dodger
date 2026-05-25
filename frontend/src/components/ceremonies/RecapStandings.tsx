@@ -24,7 +24,7 @@ export function RecapStandings({
                     Final Regular-Season Table
                 </h2>
                 <p style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '1rem' }}>
-                    The top four seeds advance to the playoff bracket, where the champion is decided.
+                    Top four seeds qualify for the playoffs.
                 </p>
             </div>
 
