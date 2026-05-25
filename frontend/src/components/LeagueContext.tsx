@@ -72,7 +72,11 @@ export function Standings() {
           >
             <span>Week {displayWeek} of {data.total_weeks}</span>
             <span style={{ color: '#f97316', fontWeight: 700 }}>Playoff cutoff · Top {playoffSpots}</span>
-            <span>{gamesRemaining} game{gamesRemaining === 1 ? '' : 's'} remaining</span>
+            <span>
+              {gamesRemaining === 1
+                ? 'Regular-Season Finale · Season Ends Next'
+                : `${gamesRemaining} games remaining`}
+            </span>
           </div>
         )}
 
