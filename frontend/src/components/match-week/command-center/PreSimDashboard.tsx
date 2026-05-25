@@ -385,12 +385,22 @@ export function PreSimDashboard({
           <div className="command-plan-grid">
             <div className="command-approach-column">
               <p className="command-field-label">Tactical Approach</p>
-              <div className="command-approach-grid">
-                {approaches.map(option => (
-                  <button key={option.id} type="button" disabled={planConfirmed} className={selectedIntent === option.id ? 'is-selected' : ''} onClick={() => { if (!planConfirmed) onIntentChange(option.id); }}>
-                    <span>{option.label}</span>
-                  </button>
-                ))}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0' }}>
+                <span style={{
+                  display: 'inline-block',
+                  padding: '0.2rem 0.65rem',
+                  borderRadius: '999px',
+                  background: '#1e293b',
+                  border: '1px solid #334155',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  color: '#f97316',
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                }}>
+                  {currentApproach}
+                </span>
+                <span style={{ fontSize: '0.72rem', color: '#475569' }}>Set via Policy Editor →</span>
               </div>
             </div>
 
