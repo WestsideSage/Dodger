@@ -44,10 +44,14 @@ export function CoachStep({
       </div>
 
       <div>
-        <label style={{ display: 'block', fontSize: '0.6875rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', marginBottom: '0.375rem' }}>
+        <label
+          htmlFor="coach-name"
+          style={{ display: 'block', fontSize: '0.6875rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', marginBottom: '0.375rem' }}
+        >
           Coach Name
         </label>
         <input
+          id="coach-name"
           type="text"
           placeholder="e.g. Ray Holloway"
           value={coach.coach_name}
@@ -65,10 +69,10 @@ export function CoachStep({
         />
       </div>
 
-      <div>
-        <label style={{ display: 'block', fontSize: '0.6875rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', marginBottom: '0.5rem' }}>
+      <fieldset style={{ margin: 0, padding: 0, border: 'none' }}>
+        <legend style={{ padding: 0, fontSize: '0.6875rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', marginBottom: '0.5rem' }}>
           Coaching Archetype
-        </label>
+        </legend>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           {Object.entries(ARCHETYPES).map(([key, arch]) => {
             const isSelected = coach.coach_backstory === key;
@@ -102,7 +106,7 @@ export function CoachStep({
             );
           })}
         </div>
-      </div>
+      </fieldset>
 
       {coach.coach_name && (
         <div style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: '4px', padding: '0.75rem 1rem' }}>

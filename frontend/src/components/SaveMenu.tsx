@@ -5,6 +5,12 @@ import { CoachStep } from './new-game/CoachStep';
 import { StartingRecruitmentStep } from './new-game/StartingRecruitmentStep';
 import { saveApi } from '../api/client';
 
+const DEBUG_PREFIXES = ['qa-playthrough-', 'debug-', 'playtest-', 'ux-teardown-', 'test_', 'e2e-', 'e2e_', 'codex', 'command-aftermath'];
+
+function isDebugSaveName(name: string) {
+  return DEBUG_PREFIXES.some(prefix => name.startsWith(prefix));
+}
+
 interface SaveMenuProps {
   onSaveLoaded: () => void;
 }
@@ -15,15 +21,13 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
   const [view, setView] = useState<View>('list');
   const [saves, setSaves] = useState<SaveInfo[]>([]);
   const [showDebugSaves, setShowDebugSaves] = useState(false);
-  const DEBUG_PREFIXES = ['qa-playthrough-', 'debug-', 'playtest-', 'ux-teardown-', 'test_', 'e2e-', 'e2e_', 'codex', 'command-aftermath'];
-  const isDebugSave = (name: string) => DEBUG_PREFIXES.some(p => name.startsWith(p));
   const visibleSaves = useMemo(
-    () => showDebugSaves ? saves : saves.filter(s => !isDebugSave(s.name)),
-    [saves, showDebugSaves]
+    () => showDebugSaves ? saves : saves.filter(save => !isDebugSaveName(save.name)),
+    [saves, showDebugSaves],
   );
   const hiddenDebugCount = useMemo(
-    () => saves.filter(s => isDebugSave(s.name)).length,
-    [saves]
+    () => saves.filter(save => isDebugSaveName(save.name)).length,
+    [saves],
   );
   const [activePath, setActivePath] = useState<string | null>(null);
   const [clubs, setClubs] = useState<ClubOption[]>([]);
