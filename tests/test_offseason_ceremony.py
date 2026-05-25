@@ -186,6 +186,49 @@ def test_compute_season_awards_player_can_win_two_types():
     assert "best_newcomer" not in winners
 
 
+def test_awards_beat_deduplicates_player_appearing_in_multiple_award_types():
+    """If a player wins MVP and best_thrower, they appear only once in the beat payload."""
+    conn = _career_conn()
+    clubs = load_clubs(conn)
+    season_id = get_state(conn, "active_season_id")
+    season = load_season(conn, season_id)
+    rosters = load_all_rosters(conn)
+
+    player_club_id = get_state(conn, "player_club_id")
+    roster = rosters[player_club_id]
+    p1 = roster[0]
+    p2 = roster[1] if len(roster) > 1 else roster[0]
+
+    awards = [
+        _make_award("mvp", p1.id, player_club_id),
+        _make_award("best_thrower", p1.id, player_club_id),
+        _make_award("best_catcher", p2.id, player_club_id),
+    ]
+
+    payload = build_beat_payload(
+        "awards",
+        awards=awards,
+        clubs=clubs,
+        rosters=rosters,
+        standings=[],
+        ret_rows=[],
+        season=season,
+        season_outcome=None,
+        next_preview=None,
+        signed_player_id="",
+        player_club_id=player_club_id,
+        conn=conn,
+    )
+    award_cards = payload["awards"]
+    player_ids_shown = [c["player_name"] for c in award_cards]
+    mvp_card = next((c for c in award_cards if c["award_type"] == "mvp"), None)
+
+    assert mvp_card is not None
+    assert sum(1 for c in award_cards if c["player_name"] == p1.name) == 1, (
+        f"{p1.name} appears more than once: {player_ids_shown}"
+    )
+
+
 def test_compute_active_beats_always_includes_core():
     active = compute_active_beats(
         records_payload_json=None,
