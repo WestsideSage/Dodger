@@ -76,7 +76,11 @@ def extract_player_stats(
             if resolution in ("hit", "failed_catch"):
                 eliminations_by_throw += 1
 
-        # Target stats
+        # Target/Catcher stats
+        catcher_ids = actors.get("catcher_ids", [])
+        is_catcher = player_id in catcher_ids
+        has_explicit_catcher = len(catcher_ids) > 0
+
         if is_target:
             times_targeted += 1
             if resolution == "dodged":
@@ -86,8 +90,13 @@ def extract_player_stats(
                 if resolution == "failed_catch":
                     catches_attempted += 1
             elif resolution == "catch":
-                catches_attempted += 1
-                catches_made += 1
+                if not has_explicit_catcher:
+                    catches_attempted += 1
+                    catches_made += 1
+
+        if is_catcher:
+            catches_attempted += 1
+            catches_made += 1
 
         # Plus-minus: count while player is alive, before marking them out
         if player_alive and elim_info:

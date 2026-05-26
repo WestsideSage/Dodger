@@ -79,6 +79,14 @@ _LAST_NAMES = (
     "Rowe", "Slate", "Frost", "Drake", "Munn", "Cole", "Beck", "Thorn",
     "Bishop", "Vale", "Cross", "Mercer", "Rhodes", "Santos", "Ibarra", "Kline",
     "Novak", "Penn", "Sol", "Tanner", "West", "Yardley", "Zane", "Okafor",
+    "Chavez", "Dupont", "Nakamura", "Jensen", "Olsen", "Griffin", "Sterling", "Hawthorne",
+    "Crosby", "Sinclair", "Garrison", "Fitzgerald", "Kerrigan", "O'Neill", "Rousseau", "Mendoza",
+    "Petrov", "Saito", "Takahashi", "Chen", "Kim", "Park", "Patel", "Sharma",
+    "Singh", "Das", "Ali", "Hassan", "Mensah", "Diallo", "Toure", "Kone",
+    "Ivanov", "Smirnov", "Hansen", "Nielsen", "Johansen", "Moreau", "Dubois", "Leroy",
+    "Garcia", "Martinez", "Rodriguez", "Lopez", "Gonzalez", "Perez", "Sanchez", "Ramirez",
+    "Torres", "Flores", "Sato", "Aura", "Zenith", "Apex", "Prism", "Bloom",
+    "Knox", "Mace", "Ash", "Moss", "Fern", "Shore"
 )
 _GROWTH_CURVES = ("early", "steady", "late")
 

@@ -5,6 +5,9 @@ export interface PlayerRatings {
     catch: number;
     stamina: number;
     tactical_iq: number;
+    catch_courage?: number;
+    throw_selection_iq?: number;
+    conditioning_curve?: number;
 }
 
 export interface PlayerTraits {
@@ -602,6 +605,7 @@ export interface Aftermath {
     }>;
     body: string[];
     verdict?: string;
+    top_performers?: TopPerformer[];
 }
 
 export interface OffseasonAward {

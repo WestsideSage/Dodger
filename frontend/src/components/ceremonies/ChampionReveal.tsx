@@ -1,5 +1,7 @@
-import type { OffseasonBeat } from '../../types';
+import type { OffseasonBeat, PlayoffBracketResponse } from '../../types';
 import { ActionButton } from '../ui';
+import { useApiResource } from '../../hooks/useApiResource';
+import { PlayoffBracket } from '../standings/PlayoffBracket';
 
 type ChampionBeat = Extract<OffseasonBeat, { key: 'champion' }>;
 
@@ -13,6 +15,7 @@ export function ChampionReveal({
     acting?: boolean;
 }) {
     const champion = beat.payload.champion;
+    const { data: bracket } = useApiResource<PlayoffBracketResponse>('/api/playoffs/bracket');
 
     return (
         <section className="command-offseason-shell" data-testid="offseason-champion">
@@ -67,6 +70,12 @@ export function ChampionReveal({
                     </p>
                 )}
             </div>
+
+            {bracket && (
+                <div style={{ marginTop: '2rem', borderTop: '1px solid #1e293b', paddingTop: '2rem', paddingLeft: '1.5rem', paddingRight: '1.5rem' }}>
+                    <PlayoffBracket data={bracket} />
+                </div>
+            )}
 
             <div className="dm-panel command-action-bar">
                 <div>

@@ -5,11 +5,11 @@ from typing import Any
 
 TIER1_REGISTER: dict[str, str] = {
     "policy.approach.aggressive.label": "Aggressive",
-    "policy.approach.aggressive.preview": "Aggressive - your team throws first and accepts the extra heat.",
+    "policy.approach.aggressive.preview": "Aggressive - team throws first and accepts the extra heat.",
     "policy.approach.patient.label": "Patient",
-    "policy.approach.patient.preview": "Patient - your team waits for the clean opening before forcing the play.",
+    "policy.approach.patient.preview": "Patient - team waits for the clean opening before forcing the play.",
     "policy.approach.mixed.label": "Mixed",
-    "policy.approach.mixed.preview": "Mixed - your team balances early pressure with possession control.",
+    "policy.approach.mixed.preview": "Mixed - team balances early pressure with possession control.",
     "policy.target_focus.their_stars.label": "Their stars",
     "policy.target_focus.their_stars.preview": "Their stars - hunt the players who carry the opponent's ceiling.",
     "policy.target_focus.ball_holders.label": "Ball-holders",

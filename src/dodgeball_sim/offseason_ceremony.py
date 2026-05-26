@@ -886,6 +886,7 @@ def build_offseason_ceremony_beat(
                 f"{float(row.get('before', 0)):.1f} -> {float(row.get('after', 0)):.1f} "
                 f"({float(row.get('delta', 0)):+.1f}){marker}"
             )
+        lines.append("\nAll active players have aged by 1 year, and match fatigue has been fully resolved across the league.")
         return OffseasonCeremonyBeat(key, "Development", "\n".join(lines))
 
     if key == "retirements":
