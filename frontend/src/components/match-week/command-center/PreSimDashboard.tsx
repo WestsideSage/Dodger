@@ -9,8 +9,6 @@ import type {
   StandingsResponse,
 } from '../../../types';
 import { BroadcastFrameBlock } from '../../BroadcastFrameBlock';
-import { WeeklyChecklist } from '../WeeklyChecklist';
-import { MatchCard } from './MatchCard';
 import { PolicyEditor } from './PolicyEditor';
 import { seasonTitle, bulletinLine, stakesLine, playerToWatch } from './presimNarrative';
 
@@ -74,6 +72,7 @@ export function PreSimDashboard({
 }) {
   const [standings, setStandings] = useState<StandingRow[]>([]);
   const [schedule, setSchedule] = useState<ScheduleRow[]>([]);
+  const [policyEditorOpen, setPolicyEditorOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,6 +104,13 @@ export function PreSimDashboard({
   const broadcastFrame = details.broadcast_frame ?? null;
   const activePlayers = useMemo(() => plan.lineup?.players?.slice(0, 6) ?? [], [plan.lineup?.players]);
   const opponentPlayers = useMemo(() => plan.opponent_lineup?.players?.slice(0, 6) ?? [], [plan.opponent_lineup?.players]);
+  const policySummary = useMemo(() => [
+    { label: 'Approach', value: humanize(plan.tactics?.approach) },
+    { label: 'Target focus', value: humanize(plan.tactics?.target_focus) },
+    { label: 'Catch posture', value: humanize(plan.tactics?.catch_posture) },
+    { label: 'Opening commit', value: humanize(plan.tactics?.rush_commit) },
+    { label: 'Opening target', value: humanize(plan.tactics?.rush_target) },
+  ], [plan.tactics]);
   const userStanding = standings.find(row => row.club_id === data.player_club_id);
   const anyGamesPlayed = standings.some(row =>
     (row.wins ?? 0) + (row.losses ?? 0) + (row.draws ?? 0) > 0
@@ -362,9 +368,7 @@ export function PreSimDashboard({
             <div>
               <p className="dm-kicker">Plan Editor</p>
               <h3>{currentApproach}</h3>
-            </div>
-            <div className="command-current-plan">
-              <p>{isAggressive ? 'Pressure the weak side and accept higher exposure.' : isDefensive ? 'Protect stamina, lower risk, and win possessions.' : 'Keep the plan balanced across pressure, catches, and tempo.'}</p>
+              <p className="command-plan-subtitle">{isAggressive ? 'Pressure the weak side and accept higher exposure.' : isDefensive ? 'Protect stamina, lower risk, and win possessions.' : 'Keep the plan balanced across pressure, catches, and tempo.'}</p>
             </div>
           </div>
 
@@ -382,32 +386,25 @@ export function PreSimDashboard({
             </div>
           )}
 
-          <div className="command-plan-grid">
-            <div className="command-approach-column">
-              <p className="command-field-label">Tactical Approach</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0' }}>
-                <span style={{
-                  display: 'inline-block',
-                  padding: '0.2rem 0.65rem',
-                  borderRadius: '999px',
-                  background: '#1e293b',
-                  border: '1px solid #334155',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  color: '#f97316',
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                }}>
-                  {currentApproach}
-                </span>
-                <span style={{ fontSize: '0.72rem', color: '#475569' }}>Set via Policy Editor →</span>
+          <div className="command-policy-summary">
+            {policySummary.map(row => (
+              <div key={row.label}>
+                <span>{row.label}</span>
+                <strong>{row.value}</strong>
               </div>
-            </div>
-
-            <div className="command-priority-column">
-              <PolicyEditor policy={plan.tactics} disabled={planConfirmed} onChange={onSavePolicy} error={null} />
-            </div>
+            ))}
           </div>
+
+          {!planConfirmed && (
+            <button
+              type="button"
+              className="command-policy-edit-trigger"
+              onClick={() => setPolicyEditorOpen(true)}
+              data-testid="open-policy-editor"
+            >
+              Edit Policy
+            </button>
+          )}
 
           <div className="command-order-pills">
             <div><span>Training</span><strong>{humanize(plan.department_orders?.training)}</strong></div>
@@ -495,27 +492,6 @@ export function PreSimDashboard({
             <div><span>Next Issue</span><strong>{unresolvedIssue}</strong></div>
           </div>
 
-          <div className="command-control-squad">
-            <div className="command-panel-heading"><div><p className="dm-kicker">{isBye ? 'Bye Week Rest' : 'Lineup Leverage'}</p></div></div>
-            {isBye ? (
-              <div
-                style={{
-                  padding: '1rem',
-                  background: '#0f172a',
-                  border: '1px dashed #334155',
-                  borderRadius: '4px',
-                  textAlign: 'center',
-                  color: '#94a3b8',
-                  fontSize: '0.8rem',
-                }}
-              >
-                No match scheduled for Week {data.week}. Your starters will recover extra stamina.
-              </div>
-            ) : (
-              <MatchCard yourPlayers={activePlayers} oppPlayers={opponentPlayers} yourTeamName={data.player_club_name} oppTeamName={plan.opponent.name} compact maxVisibleRows={2} />
-            )}
-          </div>
-
           <p className="command-lock-note">{primaryActionHint}</p>
           <button
             type="button"
@@ -531,11 +507,29 @@ export function PreSimDashboard({
         </article>
       </section>
 
-      <section className="command-secondary-rail" data-testid="secondary-intel-rail">
-        <div className="command-secondary-body">
-          <WeeklyChecklist plan={plan} onAcceptPlan={() => { if (isReadyToLock) onSavePlan(selectedIntent, true); }} planConfirmed={planConfirmed} showAction={false} bare />
+
+      {policyEditorOpen && (
+        <div
+          className="command-policy-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Edit policy"
+          onClick={() => setPolicyEditorOpen(false)}
+          data-testid="policy-editor-overlay"
+        >
+          <div className="command-policy-overlay-body" onClick={event => event.stopPropagation()}>
+            <button
+              type="button"
+              className="command-policy-overlay-close"
+              onClick={() => setPolicyEditorOpen(false)}
+              aria-label="Close policy editor"
+            >
+              Close
+            </button>
+            <PolicyEditor policy={plan.tactics} disabled={planConfirmed} onChange={onSavePolicy} error={null} />
+          </div>
         </div>
-      </section>
+      )}
     </div>
   );
 }
