@@ -213,8 +213,10 @@ def _proof_event(
     outcome = event.get("outcome") or {}
     state_diff = event.get("state_diff") or {}
     resolution = str(outcome.get("resolution", "throw"))
-    thrower_id = str(actors.get("thrower", ""))
-    target_id = str(actors.get("target", ""))
+    thrower_raw = actors.get("thrower")
+    thrower_id = str(thrower_raw) if thrower_raw is not None else ""
+    target_raw = actors.get("target")
+    target_id = str(target_raw) if target_raw is not None else ""
     is_key_play = resolution in {"hit", "failed_catch", "catch"} or bool(state_diff.get("player_out"))
     tags = [resolution.replace("_", " ").upper()]
     rush_context = context.get("rush_context")
@@ -239,9 +241,9 @@ def _proof_event(
         "sequence_index": sequence_index,
         "tick": event.get("tick", 0),
         "thrower_id": thrower_id,
-        "thrower_name": _player_name(thrower_id, name_map),
+        "thrower_name": _player_name(thrower_raw, name_map),
         "target_id": target_id,
-        "target_name": _player_name(target_id, name_map),
+        "target_name": _player_name(target_raw, name_map),
         "offense_club_id": player_clubs.get(thrower_id, str(actors.get("offense_team", ""))),
         "defense_club_id": player_clubs.get(target_id, str(actors.get("defense_team", ""))),
         "resolution": resolution,

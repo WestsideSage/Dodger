@@ -241,6 +241,40 @@ def _build_aftermath(
     else:
         headline = dashboard["result"]
 
+    try:
+        from dodgeball_sim.persistence import roster_snapshots
+        from dodgeball_sim.replay_service import stats_for_match, score_player
+
+        _clubs = clubs if clubs is not None else load_clubs(conn)
+        snapshots = roster_snapshots(conn, record.match_id, record.home_club_id, record.away_club_id)
+        name_map = {
+            str(player.get("id", "")): str(player.get("name", player.get("id", "")))
+            for players in snapshots.values()
+            for player in players
+        }
+        player_club_map = {
+            str(player.get("id", "")): club_id
+            for club_id, players in snapshots.items()
+            for player in players
+        }
+        stats = stats_for_match(conn, record.match_id)
+        top = sorted(stats.items(), key=lambda item: (-score_player(item[1]), item[0]))[:6]
+        top_performers = [
+            {
+                "player_id": player_id,
+                "player_name": name_map.get(player_id, player_id),
+                "club_name": _clubs[player_club_map.get(player_id, "")].name if player_club_map.get(player_id, "") in _clubs else "Unknown",
+                "score": round(score_player(stat), 1),
+                "eliminations_by_throw": stat.eliminations_by_throw,
+                "catches_made": stat.catches_made,
+                "dodges_successful": stat.dodges_successful,
+            }
+            for player_id, stat in top
+            if score_player(stat) > 0
+        ]
+    except Exception:
+        top_performers = []
+
     aftermath: dict[str, Any] = {
         "headline": headline,
         "match_card": {
@@ -254,6 +288,7 @@ def _build_aftermath(
         "standings_shift": standings_shift,
         "recruit_reactions": [],
         "body": list(body),
+        "top_performers": top_performers,
     }
     if verdict is not None:
         aftermath["verdict"] = verdict

@@ -1,9 +1,15 @@
 import type { Player } from '../../types';
 import { RatingBar } from '../ui';
 
-export function PlayerCompactRow({ player, starter }: { player: Player, starter: boolean }) {
+export function PlayerCompactRow({ player, starter, onClick }: { player: Player, starter: boolean, onClick?: () => void }) {
   return (
-    <tr style={{ background: starter ? 'rgba(34,211,238,0.06)' : undefined }}>
+    <tr 
+      onClick={onClick}
+      style={{ 
+        background: starter ? 'rgba(34,211,238,0.06)' : undefined,
+        cursor: onClick ? 'pointer' : undefined,
+      }}
+    >
       <td style={{ padding: '0.5rem' }}>{player.name}</td>
       <td style={{ padding: '0.5rem' }}><RatingBar rating={player.ratings.accuracy} compact /></td>
       <td style={{ padding: '0.5rem' }}><RatingBar rating={player.ratings.power} compact /></td>

@@ -77,6 +77,29 @@ export function DevelopmentResults({
                 )}
             </div>
 
+            <div style={{
+                background: 'rgba(34, 211, 238, 0.05)',
+                border: '1px solid rgba(34, 211, 238, 0.15)',
+                borderRadius: '8px',
+                padding: '1.25rem',
+                margin: '1.5rem 0 0 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+            }}>
+                <div style={{ fontSize: '2rem' }} aria-hidden="true">⏳</div>
+                <div>
+                  <h4 style={{ margin: '0 0 0.25rem 0', fontSize: '0.9rem', fontWeight: 700, color: '#f8fafc' }}>
+                    League Transition Checklist Completed
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                    • <strong>Aging:</strong> All active players aged by 1 year. <br />
+                    • <strong>Conditioning:</strong> Match fatigue has been fully reset. <br />
+                    • <strong>Roster Stabilization:</strong> Offseason development and skill regression applied.
+                  </p>
+                </div>
+            </div>
+
             <div className="dm-panel command-action-bar">
                 <div>
                     <p className="dm-kicker">Ceremony Control</p>

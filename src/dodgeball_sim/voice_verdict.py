@@ -314,7 +314,7 @@ def _noop_verdict(approach: str, result: str) -> str:
         "Loss": "You lost.",
         "Draw": "The match ended in a draw.",
     }.get(result, "")
-    return f"Your {approach} plan looked identical to your default — no real lever pulled this week. {tail}".strip()
+    return f"Your {approach} plan looked identical to your Base Tactics — no real lever pulled this week. {tail}".strip()
 
 
 def _neutral_fallback(result: str) -> str:

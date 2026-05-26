@@ -58,7 +58,13 @@ _LAST_NAMES = [
     "Ash", "Moss", "Stone", "Fern", "Brook", "Vale", "Reed", "Shore", "Wilder", "Gale",
     "Fox", "Knox", "Ward", "Dale", "Kade", "Bloom", "March", "Stowe", "Kwan", "Archer",
     "Rayne", "Mercer", "Frost", "Pierce", "Marsh", "Valdez", "Okafor", "Sato", "Dusk", "Mace",
-    "Vane", "Hale", "Spire", "Cray",
+    "Vane", "Hale", "Spire", "Cray", "Thorn", "Bishop", "Beck", "Rhodes", "Santos", "Ibarra",
+    "Kline", "Novak", "Penn", "Sol", "Tanner", "West", "Yardley", "Zane", "Lovelace", "Vaughan",
+    "Chavez", "Dupont", "Nakamura", "Jensen", "Olsen", "Griffin", "Sterling", "Hawthorne", "Crosby", "Sinclair",
+    "Garrison", "Fitzgerald", "Kerrigan", "O'Neill", "Rousseau", "Mendoza", "Petrov", "Saito", "Takahashi", "Chen",
+    "Kim", "Park", "Patel", "Sharma", "Singh", "Das", "Ali", "Hassan", "Mensah", "Diallo",
+    "Toure", "Kone", "Ivanov", "Smirnov", "Hansen", "Nielsen", "Johansen", "Moreau", "Dubois", "Leroy",
+    "Garcia", "Martinez", "Rodriguez", "Lopez", "Gonzalez", "Perez", "Sanchez", "Ramirez", "Torres", "Flores"
 ]
 
 

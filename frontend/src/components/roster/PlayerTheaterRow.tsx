@@ -3,9 +3,15 @@ import { RatingBar } from '../ui';
 import { PotentialBadge } from './PotentialBadge';
 import { Sparkline } from './Sparkline';
 
-export function PlayerTheaterRow({ player, starter }: { player: Player, starter: boolean }) {
+export function PlayerTheaterRow({ player, starter, onClick }: { player: Player, starter: boolean, onClick?: () => void }) {
   return (
-    <tr style={{ background: starter ? 'rgba(34,211,238,0.06)' : undefined }}>
+    <tr 
+      onClick={onClick}
+      style={{ 
+        background: starter ? 'rgba(34,211,238,0.06)' : undefined,
+        cursor: onClick ? 'pointer' : undefined,
+      }}
+    >
       <td style={{ padding: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#475569' }}>#{parseInt(player.id.split('_').at(-1) ?? '0', 10) + 1}</div>

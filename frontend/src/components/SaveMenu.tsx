@@ -11,6 +11,29 @@ function isDebugSaveName(name: string) {
   return DEBUG_PREFIXES.some(prefix => name.startsWith(prefix));
 }
 
+const rulesetExplanations: Record<string, { title: string; desc: string; bullet: string }> = {
+  generic: {
+    title: "Classic Dodgeball Rules",
+    desc: "The standard experience. Balanced throwing speed, classical catching dynamics, and medium pacing.",
+    bullet: "• 6v6 Format · Balanced Tempo · Standard 8.25-inch balls · High comeback potential",
+  },
+  official_foam: {
+    title: "USA Dodgeball — Foam Division",
+    desc: "Ultra fast-paced gameplay utilizing low-compression foam balls. Emphasizes agility, continuous firing, and high catch volume.",
+    bullet: "• 6v6 Format · Fast Tempo · 6x 7-inch low-compression foam balls · Agile catches & high-speed action",
+  },
+  official_no_sting: {
+    title: "USA Dodgeball — No-Sting Division",
+    desc: "Tactical, control-oriented ruleset. No-sting balls allow for superior grip, encouraging strategic ball control and precise set-ups.",
+    bullet: "• 6v6 Format · Tactical Pacing · 6x 8-inch low-impact balls · Superior grip & strategic possession",
+  },
+  official_cloth: {
+    title: "USA Dodgeball — Cloth Division",
+    desc: "The pinnacle of power and throw velocity. Small cloth balls travel at intense speeds. Direct hits are highly lethal.",
+    bullet: "• 6v6 Format · Power Pacing · 6x 3-inch/6.5-inch cloth balls · High-velocity throws & lethal direct hits",
+  },
+};
+
 interface SaveMenuProps {
   onSaveLoaded: () => void;
 }
@@ -20,14 +43,15 @@ type View = 'list' | 'new' | 'takeover' | 'build_identity' | 'build_coach' | 'bu
 export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
   const [view, setView] = useState<View>('list');
   const [saves, setSaves] = useState<SaveInfo[]>([]);
+  const isDebugQueryPresent = useMemo(() => window.location.search.includes('debug=true'), []);
   const [showDebugSaves, setShowDebugSaves] = useState(false);
   const visibleSaves = useMemo(
-    () => showDebugSaves ? saves : saves.filter(save => !isDebugSaveName(save.name)),
-    [saves, showDebugSaves],
+    () => (showDebugSaves && isDebugQueryPresent) ? saves : saves.filter(save => !isDebugSaveName(save.name)),
+    [saves, showDebugSaves, isDebugQueryPresent],
   );
   const hiddenDebugCount = useMemo(
-    () => saves.filter(save => isDebugSaveName(save.name)).length,
-    [saves],
+    () => isDebugQueryPresent ? saves.filter(save => isDebugSaveName(save.name)).length : 0,
+    [saves, isDebugQueryPresent],
   );
   const [activePath, setActivePath] = useState<string | null>(null);
   const [clubs, setClubs] = useState<ClubOption[]>([]);
@@ -383,25 +407,130 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
             )}
 
             {view === 'new' && (
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <button
-                  onClick={() => setView('takeover')}
-                  style={{
-                    flex: 1, padding: '2rem 1rem', background: '#0f172a', border: '1px solid #334155', borderRadius: '4px', color: '#e2e8f0', cursor: 'pointer', textAlign: 'center'
-                  }}
-                >
-                  <h3 style={{ margin: '0 0 0.5rem', color: '#22d3ee' }}>Take Over a Program</h3>
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#94a3b8' }}>Select an existing franchise and lead them to glory.</p>
-                </button>
-                <button
-                  onClick={() => setView('build_identity')}
-                  style={{
-                    flex: 1, padding: '2rem 1rem', background: '#0f172a', border: '1px solid #334155', borderRadius: '4px', color: '#e2e8f0', cursor: 'pointer', textAlign: 'center'
-                  }}
-                >
-                  <h3 style={{ margin: '0 0 0.5rem', color: '#f97316' }}>Build from Scratch</h3>
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#94a3b8' }}>Define a custom identity, coach, and recruit your starting 10.</p>
-                </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {/* Ruleset Selection Header & Selector */}
+                <div style={{ background: '#0b1329', border: '1px solid #1e293b', borderRadius: '8px', padding: '1.25rem' }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '0.75rem',
+                    fontFamily: 'var(--font-display)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                    color: '#64748b',
+                    marginBottom: '0.5rem',
+                    fontWeight: 700,
+                  }}>
+                    Select Career Ruleset
+                  </label>
+                  <select
+                    value={rulesetSelection}
+                    onChange={(e) => setRulesetSelection(e.target.value)}
+                    data-testid="ruleset-select-new"
+                    style={{
+                      width: '100%',
+                      borderRadius: '4px',
+                      border: '1px solid #334155',
+                      background: '#0f172a',
+                      padding: '0.625rem 0.75rem',
+                      fontSize: '0.875rem',
+                      color: '#e2e8f0',
+                      outline: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <option value="generic">Generic (Classic Dodger sim)</option>
+                    <option value="official_foam">USA Dodgeball 2026.1 — Foam</option>
+                    <option value="official_no_sting">USA Dodgeball 2026.1 — No-Sting</option>
+                    <option value="official_cloth">USA Dodgeball 2026.1 — Cloth</option>
+                  </select>
+
+                  {/* Dynamic Explanation Card */}
+                  <div style={{
+                    marginTop: '1rem',
+                    background: 'rgba(34, 211, 238, 0.04)',
+                    borderLeft: '3px solid #22d3ee',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '0 4px 4px 0',
+                  }}>
+                    <h4 style={{ margin: '0 0 0.25rem 0', fontSize: '0.875rem', fontWeight: 700, color: '#f8fafc' }}>
+                      {rulesetExplanations[rulesetSelection].title}
+                    </h4>
+                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                      {rulesetExplanations[rulesetSelection].desc}
+                    </p>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#22d3ee', fontWeight: 600 }}>
+                      {rulesetExplanations[rulesetSelection].bullet}
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                  {/* Take Over a Program Button */}
+                  <button
+                    onClick={() => setView('takeover')}
+                    style={{
+                      flex: 1,
+                      padding: '2rem 1.25rem',
+                      background: '#0f172a',
+                      border: '2px solid #f97316',
+                      borderRadius: '8px',
+                      color: '#e2e8f0',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      position: 'relative',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'transform 0.15s, background 0.15s',
+                    }}
+                  >
+                    <span style={{
+                      position: 'absolute',
+                      top: '-10px',
+                      background: '#f97316',
+                      color: '#fff',
+                      fontSize: '0.625rem',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      padding: '0.2rem 0.6rem',
+                      borderRadius: '20px',
+                      letterSpacing: '0.05em',
+                      boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                    }}>
+                      Recommended
+                    </span>
+                    <h3 style={{ margin: '0.5rem 0 0.5rem', color: '#f97316', fontSize: '1.25rem', fontWeight: 800 }}>Take Over a Program</h3>
+                    <p style={{ margin: 0, fontSize: '0.8125rem', color: '#cbd5e1', lineHeight: 1.4 }}>
+                      Lead one of the 6 established league franchises to championship glory.
+                    </p>
+                  </button>
+
+                  {/* Build from Scratch Button */}
+                  <button
+                    onClick={() => setView('build_identity')}
+                    style={{
+                      flex: 1,
+                      padding: '2rem 1.25rem',
+                      background: '#0f172a',
+                      border: '1px solid #334155',
+                      borderRadius: '8px',
+                      color: '#e2e8f0',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'transform 0.15s, background 0.15s',
+                    }}
+                  >
+                    <h3 style={{ margin: '0.5rem 0 0.5rem', color: '#22d3ee', fontSize: '1.25rem', fontWeight: 800 }}>Build from Scratch</h3>
+                    <p style={{ margin: 0, fontSize: '0.8125rem', color: '#cbd5e1', lineHeight: 1.4 }}>
+                      Create a custom club from identity to starting roster.
+                    </p>
+                  </button>
+                </div>
               </div>
             )}
 

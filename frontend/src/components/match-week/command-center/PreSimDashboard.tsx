@@ -60,6 +60,7 @@ export function PreSimDashboard({
   selectedIntent,
   onIntentChange,
   planConfirmed,
+  saving = false,
 }: {
   data: CommandCenterResponse;
   simulate: () => void;
@@ -69,6 +70,7 @@ export function PreSimDashboard({
   selectedIntent: string;
   onIntentChange: (intent: string) => void;
   planConfirmed: boolean;
+  saving?: boolean;
 }) {
   const [standings, setStandings] = useState<StandingRow[]>([]);
   const [schedule, setSchedule] = useState<ScheduleRow[]>([]);
@@ -152,19 +154,36 @@ export function PreSimDashboard({
   const ovrGap = threat.ovr ? parseInt(threat.ovr) - Math.round(topOvr) : null;
   const hasApproachConflict = !isBye && selectedIntent === 'Win Now' && (threat.role === 'Tactical' || threat.role === 'Pressure');
   const counterApproach = threat.role ? (roleCounterMap[threat.role] ?? 'Control') : 'Control';
+  
+  // Fatigue / stamina issue check
   const hasFatigueIssue = !isBye && activePlayers.filter(player => player.stamina !== undefined && player.stamina < 60).length > 1;
-  const hasPlanConflict = !isBye && (hasApproachConflict || hasFatigueIssue);
+  const recommendedIntent = hasFatigueIssue ? 'Preserve Health' : intentForRecommendation(counterApproach);
+  
+  // Hides/resolves advice when currently matching (Item 12 & 15)
+  const hasPlanConflict = !isBye && (hasApproachConflict || hasFatigueIssue) && selectedIntent !== recommendedIntent;
+  
   const scoutGapRead = ovrGap !== null && topPlayer
     ? ovrGap > 0
       ? `Primary threat outrates ${topPlayer.name} by +${ovrGap} OVR. `
       : `${topPlayer.name} covers the primary threat by +${Math.abs(ovrGap)} OVR. `
     : '';
+    
+  // Low Starter Stamina copy alignment (Item 11)
+  const staminaWarningText = 'Low Starter Stamina: multiple starters have low stamina ratings, which will cause them to tire quickly.';
+  const staminaWarningShortText = 'Low Starter Stamina: multiple starters have low stamina ratings, which will cause them to tire quickly during the match.';
+
   const scoutRead = isBye
     ? 'This is a bye week. No opponent to scout. Use this time to rest players and plan training.'
-    : `${scoutGapRead}${hasApproachConflict ? `${currentApproach} approach is exposed vs ${threat.role} threat.` : hasFatigueIssue ? 'Starter fatigue lowers margin for error this week.' : 'Current approach aligns with the opponent profile.'}`;
+    : hasPlanConflict
+      ? `${scoutGapRead}${hasApproachConflict ? `${currentApproach} approach is exposed vs ${threat.role} threat.` : staminaWarningText}`
+      : `${scoutGapRead}Current approach aligns with the opponent profile.`;
+      
   const planRead = isBye
     ? 'Bye week.'
-    : hasApproachConflict ? `${currentApproach} is exposed vs ${threat.role} threat.` : hasFatigueIssue ? 'Starter fatigue is elevated.' : 'Current approach aligns with the opponent profile.';
+    : hasPlanConflict
+      ? (hasApproachConflict ? `${currentApproach} is exposed vs ${threat.role} threat.` : staminaWarningShortText)
+      : 'Current approach aligns with the opponent profile.';
+      
   const recommendationLabel = isBye
     ? 'n/a'
     : hasPlanConflict ? `Adjust to ${hasFatigueIssue ? 'Defensive' : counterApproach}` : 'Keep current plan';
@@ -379,7 +398,7 @@ export function PreSimDashboard({
                 <span>{isAggressive ? 'High Risk' : isDefensive ? 'Low Risk' : 'Medium Risk'}</span>
               </div>
               {hasPlanConflict && (
-                <button type="button" onClick={() => onIntentChange(intentForRecommendation(hasFatigueIssue ? 'Defensive' : counterApproach))}>
+                <button type="button" disabled={saving} onClick={() => onIntentChange(intentForRecommendation(hasFatigueIssue ? 'Defensive' : counterApproach))}>
                   Apply {hasFatigueIssue ? 'Defensive' : counterApproach}
                 </button>
               )}
@@ -449,7 +468,7 @@ export function PreSimDashboard({
             </div>
           </div>
 
-          <p className="command-overview-copy">{scoutRead}</p>
+          <p className="command-overview-copy" title={scoutRead}>{scoutRead}</p>
 
           <div className={`command-threat-row ${ovrGap !== null && ovrGap > 0 ? 'is-disadvantage' : ''}`}>
             <span>Key Threat</span>
@@ -460,13 +479,15 @@ export function PreSimDashboard({
           <div className="command-scout-response">
             <span>Recommendation</span>
             <strong>{recommendationLabel}</strong>
-            {hasPlanConflict && !planConfirmed && <button type="button" onClick={() => onIntentChange(intentForRecommendation(hasFatigueIssue ? 'Defensive' : counterApproach))}>Apply</button>}
+            {hasPlanConflict && !planConfirmed && recommendationLabel !== currentApproach && (
+              <button type="button" disabled={saving} onClick={() => onIntentChange(intentForRecommendation(hasFatigueIssue ? 'Defensive' : counterApproach))}>Apply</button>
+            )}
           </div>
 
           <div className="command-intel-summary-grid">
             <div><span>Starter Edge</span><strong>{playerEdgeLabel}</strong></div>
             <div><span>Last Meeting</span><strong>{details.last_meeting}</strong></div>
-            <div><span>Match Note</span><strong>{latestDashboard?.lanes?.[1]?.summary ?? details.framing_line}</strong></div>
+            <div><span>Match Note</span><strong title={latestDashboard?.lanes?.[1]?.summary ?? details.framing_line}>{latestDashboard?.lanes?.[1]?.summary ?? details.framing_line}</strong></div>
           </div>
         </article>
 
@@ -498,12 +519,12 @@ export function PreSimDashboard({
             data-testid={planConfirmed ? 'simulate-command-week' : 'lock-weekly-plan'}
             aria-label={planConfirmed ? 'Simulate Week' : 'Lock Plan'}
             onClick={() => { if (planConfirmed) { simulate(); return; } if (isReadyToLock) onSavePlan(selectedIntent, true); }}
-            disabled={!planConfirmed && !isReadyToLock}
+            disabled={(!planConfirmed && !isReadyToLock) || saving}
             className="command-primary-lock"
           >
-            {primaryActionLabel}
+            {saving ? 'Processing...' : primaryActionLabel}
           </button>
-          {planConfirmed && <button type="button" onClick={() => onSavePlan(selectedIntent, false)} className="command-secondary-button">Unlock Plan</button>}
+          {planConfirmed && <button type="button" disabled={saving} onClick={() => onSavePlan(selectedIntent, false)} className="command-secondary-button">Unlock Plan</button>}
         </article>
       </section>
 

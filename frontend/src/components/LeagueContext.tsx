@@ -19,7 +19,11 @@ function gb(leaderWins: number, leaderLosses: number, wins: number, losses: numb
 
 function formatApproach(value: string | null | undefined): string {
   if (!value) return 'Not set';
-  return value.replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+  const clean = value.trim();
+  if (clean === 'Win Now') return 'Aggressive';
+  if (clean === 'Prepare For Playoffs') return 'Control';
+  if (clean === 'Preserve Health') return 'Defensive';
+  return clean.replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
 }
 
 export function Standings() {

@@ -740,11 +740,17 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
   // Player registry from proof events
   const playerRegistry = useMemo(() => {
     const reg = new Map<string, PlayerInfo>();
+    const isInvalidId = (id: string | null | undefined) => {
+      if (!id) return true;
+      const clean = id.trim().toLowerCase();
+      return clean === 'none' || clean === '-';
+    };
+
     for (const pe of data.proof_events) {
-      if (!reg.has(pe.thrower_id)) {
+      if (pe.thrower_id && !isInvalidId(pe.thrower_id) && !reg.has(pe.thrower_id)) {
         reg.set(pe.thrower_id, { id: pe.thrower_id, name: pe.thrower_name, label: playerLabel(pe.thrower_name), clubId: pe.offense_club_id });
       }
-      if (!reg.has(pe.target_id)) {
+      if (pe.target_id && !isInvalidId(pe.target_id) && !reg.has(pe.target_id)) {
         reg.set(pe.target_id, { id: pe.target_id, name: pe.target_name, label: playerLabel(pe.target_name), clubId: pe.defense_club_id });
       }
     }

@@ -17,6 +17,7 @@ export function ProspectCard({
   priority: number;
 }) {
   const [loading, setLoading] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
   const doAction = (verb: string) => {
     setLoading(true);
@@ -25,7 +26,16 @@ export function ProspectCard({
         if (!res.ok) return res.json().then(d => { throw new Error(d.detail); });
         return res.json();
       })
-      .then(() => onAction())
+      .then(() => {
+        const labelMap: Record<string, string> = {
+          scout: 'Scouted!',
+          contact: 'Contacted!',
+          visit: 'Visited!',
+        };
+        setFeedbackMessage(labelMap[verb] ?? 'Completed!');
+        setTimeout(() => setFeedbackMessage(null), 3000);
+        onAction();
+      })
       .catch(err => alert(err.message))
       .finally(() => setLoading(false));
   };
@@ -48,8 +58,30 @@ export function ProspectCard({
         overflow: 'hidden',
         borderLeft: '3px solid #22d3ee',
         background: 'linear-gradient(90deg, rgba(34,211,238,0.08), transparent 26rem), #0f172a',
+        position: 'relative',
       }}
     >
+      {feedbackMessage && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(16, 185, 129, 0.9)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#fff',
+          fontWeight: 800,
+          fontSize: '1.25rem',
+          zIndex: 10,
+          borderRadius: '6px',
+        }}>
+          ✓ {feedbackMessage}
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '1rem', padding: '1rem 1.1rem 0.85rem' }}>
         <div style={{ minWidth: 0 }}>
           <p className="dm-kicker" style={{ marginBottom: '0.35rem' }}>Priority #{priority}</p>

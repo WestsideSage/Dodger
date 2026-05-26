@@ -94,21 +94,26 @@ export function MatchWeek({
       .finally(() => setLoading(false));
   };
 
+  const [saving, setSaving] = useState(false);
+
   const savePlan = (intent = selectedIntent, confirm = false) => {
     setError(null);
+    setSaving(true);
     return commandApi.savePlan({ intent })
       .then((payload: CommandCenterResponse) => {
         setData(payload);
         setLocalIntent(undefined);
         setPlanConfirmed(confirm);
       })
-      .catch(err => setError(err.message));
+      .catch(err => setError(err.message))
+      .finally(() => setSaving(false));
   };
 
   const savePolicy = async (policy: CommandCenterResponse['plan']['tactics']) => {
     if (!data) return;
     const previousPlan = data.plan;
     setError(null);
+    setSaving(true);
     setData({
       ...data,
       plan: {
@@ -125,22 +130,27 @@ export function MatchWeek({
       const message = err instanceof Error ? err.message : 'Unable to save policy.';
       setError(message);
       throw err;
+    } finally {
+      setSaving(false);
     }
   };
 
   const saveDevFocus = (devFocus: string) => {
     setError(null);
+    setSaving(true);
     return commandApi.savePlan({ intent: selectedIntent, department_orders: { dev_focus: devFocus } })
       .then((payload: CommandCenterResponse) => {
         setData(payload);
         setLocalIntent(undefined);
       })
-      .catch(err => setError(err.message));
+      .catch(err => setError(err.message))
+      .finally(() => setSaving(false));
   };
 
   const simulate = () => {
     setError(null);
     setIsTransitioning(true);
+    setSaving(true);
     commandApi.simulate({ intent: selectedIntent })
       .then((payload: CommandCenterSimResponse) => {
         setResult(payload);
@@ -152,7 +162,8 @@ export function MatchWeek({
       .catch(err => {
         setError(err.message);
         setIsTransitioning(false);
-      });
+      })
+      .finally(() => setSaving(false));
   };
 
   const handleAdvanceWeek = () => {
@@ -234,6 +245,7 @@ export function MatchWeek({
         selectedIntent={selectedIntent}
         onIntentChange={handleIntentChange}
         planConfirmed={planConfirmed}
+        saving={saving}
       />
     );
   };
@@ -339,7 +351,7 @@ export function MatchWeek({
                 evidenceLanes={replayForMatch?.report.evidence_lanes ?? activeResult.dashboard.lanes}
               />
               <KeyPlayersPanel
-                performers={replayForMatch?.report.top_performers ?? []}
+                performers={replayForMatch?.report.top_performers ?? aftermath.top_performers ?? []}
                 playerClubName={data?.player_club_name}
               />
             </div>

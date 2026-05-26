@@ -11,12 +11,16 @@ export function PotentialBadge({ tier, confidence }: { tier: string; confidence:
   const stars = '★'.repeat(tierStarCount) + '☆'.repeat(5 - tierStarCount);
   const confidencePips = '●'.repeat(confidence) + '○'.repeat(5 - confidence);
   return (
-    <div className="dm-potential-badge" style={{ fontSize: '0.75rem', fontWeight: 600 }}>
-      Potential: <span style={{ color: '#22d3ee' }}>{tier}</span>{' '}
-      <span style={{ color: 'gold' }}>{stars}</span>{' '}
-      <span style={{ color: '#94a3b8', fontSize: '0.625rem' }} title={`Scouting confidence: ${confidence}/5`}>
-        {confidencePips}
-      </span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600 }}>
+      <div>
+        <span style={{ color: '#94a3b8' }}>Potential:</span>{' '}
+        <span style={{ color: '#22d3ee' }}>{tier}</span>{' '}
+        <span style={{ color: '#fbbf24' }}>{stars}</span>
+      </div>
+      <div>
+        <span style={{ color: '#94a3b8' }}>Confidence:</span>{' '}
+        <span style={{ color: '#a78bfa' }}>{confidencePips}</span>
+      </div>
     </div>
   );
 }
