@@ -20,6 +20,46 @@ PROMISE_OPTIONS = (
     "contender_path",
 )
 
+# Canonical recruiting status values. Order matters in this list, but precedence
+# is enforced explicitly in compute_recruiting_status() below.
+RECRUITING_STATUSES = (
+    "UNSCOUTED",
+    "SCOUTED",
+    "CONTACTED",
+    "VISITED",
+    "INTERESTED",
+    "LOCKED_OUT",
+)
+
+
+def compute_recruiting_status(actions: dict[str, Any] | None) -> str:
+    """Derive the canonical recruiting status for a prospect from its action flags.
+
+    Precedence (highest wins):
+        LOCKED_OUT > INTERESTED > VISITED > CONTACTED > SCOUTED > UNSCOUTED
+
+    `actions` is the per-prospect dict stored in `prospect_recruitment_actions_json`,
+    e.g. ``{"scouted": True, "contacted": True}``.
+
+    Note: INTERESTED and LOCKED_OUT are reserved for future use once the domain
+    has explicit signals for them. They are recognised here so that any
+    explicitly-set flag of the same name is respected, but they are not
+    currently derived implicitly.
+    """
+    if not actions:
+        return "UNSCOUTED"
+    if actions.get("locked_out"):
+        return "LOCKED_OUT"
+    if actions.get("interested"):
+        return "INTERESTED"
+    if actions.get("visited"):
+        return "VISITED"
+    if actions.get("contacted"):
+        return "CONTACTED"
+    if actions.get("scouted"):
+        return "SCOUTED"
+    return "UNSCOUTED"
+
 
 def build_recruiting_state(
     conn: sqlite3.Connection,
@@ -115,6 +155,7 @@ def _prospect_rows(
             "scouted": p_actions.get("scouted", False),
             "contacted": p_actions.get("contacted", False),
             "visited": p_actions.get("visited", False),
+            "recruiting_status": compute_recruiting_status(p_actions),
         })
     return rows
 
@@ -136,4 +177,11 @@ def _class_year_from_season(season_id: str) -> int:
     return int(digits or "1") + 1
 
 
-__all__ = ["PROMISE_OPTIONS", "PROMISE_STATE_KEY", "MAX_ACTIVE_PROMISES", "build_recruiting_state"]
+__all__ = [
+    "PROMISE_OPTIONS",
+    "PROMISE_STATE_KEY",
+    "MAX_ACTIVE_PROMISES",
+    "RECRUITING_STATUSES",
+    "build_recruiting_state",
+    "compute_recruiting_status",
+]

@@ -1,9 +1,27 @@
 import { useState } from 'react';
 import { dynastyApi } from '../../api/client';
-import type { DynastyOfficeResponse } from '../../types';
+import type { DynastyOfficeResponse, RecruitingStatus } from '../../types';
+import { RecruitingBadge } from './RecruitingBadge';
 
 type RecruitingProspect = DynastyOfficeResponse['recruiting']['prospects'][number];
 type RecruitingBudget = DynastyOfficeResponse['recruiting']['budget'];
+
+// Same precedence as backend compute_recruiting_status. Mirrored here for
+// optimistic UI updates -- the server is authoritative on refetch.
+const STATUS_PRECEDENCE: RecruitingStatus[] = [
+  'UNSCOUTED',
+  'SCOUTED',
+  'CONTACTED',
+  'VISITED',
+  'INTERESTED',
+  'LOCKED_OUT',
+];
+
+function promoteStatus(current: RecruitingStatus, next: RecruitingStatus): RecruitingStatus {
+  const ci = STATUS_PRECEDENCE.indexOf(current);
+  const ni = STATUS_PRECEDENCE.indexOf(next);
+  return ni > ci ? next : current;
+}
 
 const archetypeBadge = (label: string) => {
   const normalized = label.toLowerCase();
@@ -32,9 +50,27 @@ export function ProspectCard({
   const [loading, setLoading] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [feedbackTone, setFeedbackTone] = useState<'success' | 'error'>('success');
+  const serverStatus: RecruitingStatus = prospect.recruiting_status ?? 'UNSCOUTED';
+  const [optimisticStatus, setOptimisticStatus] = useState<RecruitingStatus | null>(null);
+  const [pending, setPending] = useState(false);
+  // If the server-provided status caught up or surpassed our optimistic guess,
+  // drop the optimistic override so we always reflect canonical state.
+  const displayStatus: RecruitingStatus =
+    optimisticStatus && STATUS_PRECEDENCE.indexOf(optimisticStatus) > STATUS_PRECEDENCE.indexOf(serverStatus)
+      ? optimisticStatus
+      : serverStatus;
 
-  const runAction = (verb: 'scoutProspect' | 'contactProspect' | 'visitProspect', label: string) => {
+  const runAction = (
+    verb: 'scoutProspect' | 'contactProspect' | 'visitProspect',
+    label: string,
+    nextStatus: RecruitingStatus,
+  ) => {
     setLoading(true);
+    setPending(true);
+    const previousOptimistic = optimisticStatus;
+    setOptimisticStatus((current) =>
+      promoteStatus(current ?? serverStatus, nextStatus),
+    );
     dynastyApi[verb](prospect.player_id)
       .then(() => {
         setFeedbackTone('success');
@@ -43,11 +79,16 @@ export function ProspectCard({
         onAction();
       })
       .catch((error) => {
+        // Revert optimistic update on failure.
+        setOptimisticStatus(previousOptimistic);
         setFeedbackTone('error');
         setFeedbackMessage(error instanceof Error ? error.message : 'Action failed.');
         setTimeout(() => setFeedbackMessage(null), 3200);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setPending(false);
+      });
   };
 
   const canScout = budget.scout[0] < budget.scout[1];
@@ -94,6 +135,8 @@ export function ProspectCard({
             <span>{prospect.hometown}</span>
             <span className="dot">·</span>
             {archetypeBadge(prospect.public_archetype || 'Balanced')}
+            <span className="dot">·</span>
+            <RecruitingBadge status={displayStatus} pending={pending} />
           </div>
         </div>
         <div className="do-recruit-fit">
@@ -123,7 +166,7 @@ export function ProspectCard({
         <button
           className="do-recruit-btn"
           disabled={loading || !canScout}
-          onClick={() => runAction('scoutProspect', 'Scouted.')}
+          onClick={() => runAction('scoutProspect', 'Scouted.', 'SCOUTED')}
           title={canScout ? 'Reveal more prospect detail' : 'No Scout slots remain this week'}
           type="button"
         >
@@ -132,7 +175,7 @@ export function ProspectCard({
         <button
           className="do-recruit-btn"
           disabled={loading || !canContact}
-          onClick={() => runAction('contactProspect', 'Contact logged.')}
+          onClick={() => runAction('contactProspect', 'Contact logged.', 'CONTACTED')}
           title={canContact ? 'Build recruit interest' : 'No Contact slots remain this week'}
           type="button"
         >
@@ -141,7 +184,7 @@ export function ProspectCard({
         <button
           className="do-recruit-btn primary"
           disabled={loading || !canVisit}
-          onClick={() => runAction('visitProspect', 'Visit booked.')}
+          onClick={() => runAction('visitProspect', 'Visit booked.', 'VISITED')}
           title={canVisit ? 'Spend a visit slot' : 'No Visit slots remain this week'}
           type="button"
         >
