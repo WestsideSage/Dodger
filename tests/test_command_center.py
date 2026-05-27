@@ -64,7 +64,7 @@ def test_weekly_plan_and_command_history_round_trip_json_payloads():
     conn.commit()
 
     history = load_command_history(conn, plan["season_id"])
-    assert history[0]["intent"] == "Win Now"
+    assert history[0]["intent"] == "Balanced"
     assert history[0]["plan"]["department_orders"]["training"] == "fundamentals"
     assert history[0]["dashboard"]["lanes"][0]["title"] == "Result"
 
@@ -74,7 +74,7 @@ def test_command_center_default_plan_includes_staff_recommendations_and_warnings
     state = build_command_center_state(conn)
     plan = build_default_weekly_plan(state)
 
-    assert plan["intent"] == "Win Now"
+    assert plan["intent"] == "Balanced"
     assert plan["recommendations"]
     assert "tactics" in plan["department_orders"]
     assert plan["lineup"]["player_ids"]

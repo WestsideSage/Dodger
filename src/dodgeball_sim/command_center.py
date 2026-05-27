@@ -168,9 +168,9 @@ def build_command_center_state(conn: sqlite3.Connection) -> dict[str, Any]:
     }
 
 
-def build_default_weekly_plan(state: Mapping[str, Any], intent: str = "Win Now") -> dict[str, Any]:
+def build_default_weekly_plan(state: Mapping[str, Any], intent: str = "Balanced") -> dict[str, Any]:
     if intent not in INTENTS:
-        intent = "Win Now"
+        intent = "Balanced"
     club = state["player_club"]
     opponent = state.get("opponent")
     heads = list(state["department_heads"])

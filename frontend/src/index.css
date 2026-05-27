@@ -7258,9 +7258,12 @@ textarea:focus-visible {
   font-family: var(--font-mono); font-size: 0.58rem; font-weight: 800; letter-spacing: 0.16em;
   padding: 2px 7px; border-radius: 2px; border: 1px solid; text-transform: uppercase;
 }
-.do-pipe-meta .stage-interview  { color: var(--dm-cyan-bright); border-color: rgba(34,211,238,0.45); background: rgba(34,211,238,0.10); }
+.do-pipe-meta .stage-interview,
+.do-pipe-meta .stage-available  { color: var(--dm-cyan-bright); border-color: rgba(34,211,238,0.45); background: rgba(34,211,238,0.10); }
 .do-pipe-meta .stage-background { color: var(--dm-amber-bright); border-color: rgba(245,158,11,0.45); background: rgba(245,158,11,0.10); }
-.do-pipe-meta .stage-offer-sent { color: var(--dm-emerald-bright); border-color: rgba(16,185,129,0.45); background: rgba(16,185,129,0.10); }
+.do-pipe-meta .stage-offer-sent,
+.do-pipe-meta .stage-scheduled { color: var(--dm-emerald-bright); border-color: rgba(16,185,129,0.45); background: rgba(16,185,129,0.10); }
+.do-pipe-meta .dm-btn { padding: 0.34rem 0.55rem; font-size: 0.62rem; }
 
 /* ============================================================
    DYNASTY OFFICE — BUDGET TAB
