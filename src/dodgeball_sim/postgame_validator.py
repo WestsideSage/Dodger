@@ -81,19 +81,85 @@ def validate_postgame_payload(payload: Mapping[str, Any], result) -> None:
     if home_club_id is not None:
         expected_home = _box_living(result, str(home_club_id))
         actual_home = match_card.get("home_survivors")
-        if expected_home is not None and int(actual_home) != expected_home:
-            raise PostgameTruthError(
-                f"home survivor score mismatch for {home_club_id!r}: "
-                f"payload={actual_home} but box_score living={expected_home}"
-            )
+        if expected_home is not None:
+            try:
+                actual_home_int = int(actual_home)
+            except (TypeError, ValueError) as exc:
+                raise PostgameTruthError(
+                    f"home_survivors is not coercible to int: {actual_home!r}"
+                ) from exc
+            if actual_home_int != expected_home:
+                raise PostgameTruthError(
+                    f"home survivor score mismatch for {home_club_id!r}: "
+                    f"payload={actual_home} but box_score living={expected_home}"
+                )
     if away_club_id is not None:
         expected_away = _box_living(result, str(away_club_id))
         actual_away = match_card.get("away_survivors")
-        if expected_away is not None and int(actual_away) != expected_away:
-            raise PostgameTruthError(
-                f"away survivor score mismatch for {away_club_id!r}: "
-                f"payload={actual_away} but box_score living={expected_away}"
-            )
+        if expected_away is not None:
+            try:
+                actual_away_int = int(actual_away)
+            except (TypeError, ValueError) as exc:
+                raise PostgameTruthError(
+                    f"away_survivors is not coercible to int: {actual_away!r}"
+                ) from exc
+            if actual_away_int != expected_away:
+                raise PostgameTruthError(
+                    f"away survivor score mismatch for {away_club_id!r}: "
+                    f"payload={actual_away} but box_score living={expected_away}"
+                )
+
+    # Optional: validate game_points against official_metadata when present.
+    # Mirrors the home<->team_a / team_b mapping used in
+    # ``game_loop._persist_match_result`` (the adapter sets team_a==home,
+    # but we defensively honor team_a_id when supplied).
+    meta = getattr(result, "official_metadata", None)
+    if isinstance(meta, Mapping):
+        try:
+            team_a_gp = meta.get("team_a_game_points")
+            team_b_gp = meta.get("team_b_game_points")
+        except AttributeError:
+            team_a_gp = team_b_gp = None
+        if team_a_gp is not None and team_b_gp is not None:
+            try:
+                team_a_gp_i = int(team_a_gp)
+                team_b_gp_i = int(team_b_gp)
+            except (TypeError, ValueError):
+                team_a_gp_i = team_b_gp_i = 0
+            # Skip silently for legacy/zero scoring (no signal to validate).
+            if (team_a_gp_i, team_b_gp_i) != (0, 0):
+                team_a_id = meta.get("team_a_id")
+                if team_a_id is not None and str(team_a_id) == str(away_club_id):
+                    expected_home_gp = team_b_gp_i
+                    expected_away_gp = team_a_gp_i
+                else:
+                    # Default mapping: team_a == home (matches adapter contract).
+                    expected_home_gp = team_a_gp_i
+                    expected_away_gp = team_b_gp_i
+                actual_home_gp = match_card.get("home_game_points")
+                actual_away_gp = match_card.get("away_game_points")
+                try:
+                    actual_home_gp_i = int(actual_home_gp)
+                except (TypeError, ValueError) as exc:
+                    raise PostgameTruthError(
+                        f"home_game_points is not coercible to int: {actual_home_gp!r}"
+                    ) from exc
+                try:
+                    actual_away_gp_i = int(actual_away_gp)
+                except (TypeError, ValueError) as exc:
+                    raise PostgameTruthError(
+                        f"away_game_points is not coercible to int: {actual_away_gp!r}"
+                    ) from exc
+                if actual_home_gp_i != expected_home_gp:
+                    raise PostgameTruthError(
+                        f"home game_points score mismatch for {home_club_id!r}: "
+                        f"payload={actual_home_gp_i} but official_metadata={expected_home_gp}"
+                    )
+                if actual_away_gp_i != expected_away_gp:
+                    raise PostgameTruthError(
+                        f"away game_points score mismatch for {away_club_id!r}: "
+                        f"payload={actual_away_gp_i} but official_metadata={expected_away_gp}"
+                    )
 
     # top_performers per-player catches must not exceed their team's total
     # catches. We can only check players whose team appears in the box score.
