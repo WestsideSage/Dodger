@@ -118,14 +118,25 @@ def build_wire_items(
         home = clubs[row["home_club_id"]]
         away = clubs[row["away_club_id"]]
         winner_id = row["winner_club_id"]
+        is_official = "scoring_model" in row.keys() and row["scoring_model"] and row["scoring_model"] != "legacy"
         if winner_id in clubs:
             winner = clubs[winner_id]
             loser = away if winner_id == home.club_id else home
             tag = "RESULT"
-            text = f"Week {row['week']}: {winner.name} beat {loser.name} with {row['home_survivors']}-{row['away_survivors']} survivors."
+            if is_official:
+                winner_pts = row["home_game_points"] if winner_id == home.club_id else row["away_game_points"]
+                loser_pts = row["away_game_points"] if winner_id == home.club_id else row["home_game_points"]
+                text = f"Week {row['week']}: {winner.name} beat {loser.name} {winner_pts}-{loser_pts} on game points."
+            else:
+                winner_surv = row["home_survivors"] if winner_id == home.club_id else row["away_survivors"]
+                loser_surv = row["away_survivors"] if winner_id == home.club_id else row["home_survivors"]
+                text = f"Week {row['week']}: {winner.name} beat {loser.name} with {winner_surv}-{loser_surv} survivors."
         else:
             tag = "RESULT"
-            text = f"Week {row['week']}: {home.name} and {away.name} finished level."
+            if is_official:
+                text = f"Week {row['week']}: {home.name} and {away.name} finished level {row['home_game_points']}-{row['away_game_points']} on game points."
+            else:
+                text = f"Week {row['week']}: {home.name} and {away.name} finished level."
         items.append(WireItem(tag=tag, text=text, match_id=row["match_id"]))
 
     for award in awards:

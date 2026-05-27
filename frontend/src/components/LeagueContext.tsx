@@ -229,8 +229,17 @@ export function Standings() {
   const leader = standings[0];
   const playoffLine = data.playoff_spots;
   const cutoffTeam = standings.find((standing) => standing.rank === playoffLine + 1) ?? standings[standings.length - 1];
-  const raceSummary = buildRaceSummary(us, leader, cutoffTeam, playoffLine);
-  const needCopy = buildNeedCopy(us, leader, cutoffTeam, playoffLine, data.total_weeks, data.current_week);
+  const isOffseason = data.is_offseason === true;
+  const raceSummary = isOffseason
+    ? { left: 'SEASON CONCLUDED', right: 'PREPARING FOR NEXT SEASON' }
+    : buildRaceSummary(us, leader, cutoffTeam, playoffLine);
+  const needCopy = isOffseason
+    ? {
+        action: 'Season Concluded',
+        outcome: 'Preparing for Next Season',
+        helper: `Final standing: #${us.rank} of ${standings.length}. ${us.wins}-${us.losses}-${us.draws} on the season.`,
+      }
+    : buildNeedCopy(us, leader, cutoffTeam, playoffLine, data.total_weeks, data.current_week);
   const wireRows = buildWireRows(data.recent_matches, us.club_name, data.current_week);
   const tiebreakRows = standings.slice(0, Math.min(standings.length, playoffLine + 2));
 
@@ -256,7 +265,11 @@ export function Standings() {
             </div>
             <div className={`trend ${us.rank <= playoffLine ? 'up' : 'down'}`}>
               <span className="arrow">{us.rank <= playoffLine ? '^' : 'v'}</span>
-              {us.rank <= playoffLine ? `ABOVE LINE THROUGH W${String(data.current_week).padStart(2, '0')}` : `CHASE MODE THROUGH W${String(data.current_week).padStart(2, '0')}`}
+              {isOffseason
+                ? `FINAL · SEASON CONCLUDED`
+                : us.rank <= playoffLine
+                  ? `ABOVE LINE THROUGH W${String(data.current_week).padStart(2, '0')}`
+                  : `CHASE MODE THROUGH W${String(data.current_week).padStart(2, '0')}`}
             </div>
           </div>
 
@@ -304,7 +317,7 @@ export function Standings() {
             <div>
               <span className="dm-kicker">League Office</span>
               <h2 className="ls-table-title">
-                Season Standings
+                Season Standings{' '}
                 <span className="ls-subtle">Live season table</span>
               </h2>
             </div>

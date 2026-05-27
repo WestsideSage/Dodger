@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from typing import Mapping, Sequence
 
@@ -125,10 +126,39 @@ def persist_match_record(
     _home_survivors = box[record.home_club_id]["totals"]["living"]
     _away_survivors = box[record.away_club_id]["totals"]["living"]
     _winner_club_id = record.result.winner_team_id
-    if _winner_club_id is None and _home_survivors != _away_survivors:
-        _winner_club_id = (
-            record.home_club_id if _home_survivors > _away_survivors else record.away_club_id
-        )
+    is_official = record.config_version and record.config_version.startswith("official:")
+    if not is_official:
+        if _winner_club_id is None and _home_survivors != _away_survivors:
+            _winner_club_id = (
+                record.home_club_id if _home_survivors > _away_survivors else record.away_club_id
+            )
+    scoring_model = "legacy"
+    home_game_points = 0
+    away_game_points = 0
+    home_games_won = 0
+    away_games_won = 0
+    tied_games = 0
+    no_point_games = 0
+    official_score_json: str | None = None
+    if is_official and record.result.official_metadata:
+        meta = record.result.official_metadata
+        scoring_model = "cloth" if "cloth" in (record.config_version or "") else "foam"
+        # Adapter sets team_a == home_club, team_b == away_club (see
+        # OfficialEngineAdapter._run_raw + franchise.simulate_match).
+        if meta.get("team_a_id") == record.home_club_id:
+            home_game_points = int(meta.get("team_a_game_points", 0))
+            away_game_points = int(meta.get("team_b_game_points", 0))
+            home_games_won = int(meta.get("team_a_games_won", 0))
+            away_games_won = int(meta.get("team_b_games_won", 0))
+        else:
+            home_game_points = int(meta.get("team_b_game_points", 0))
+            away_game_points = int(meta.get("team_a_game_points", 0))
+            home_games_won = int(meta.get("team_b_games_won", 0))
+            away_games_won = int(meta.get("team_a_games_won", 0))
+        tied_games = int(meta.get("tied_games", 0))
+        no_point_games = int(meta.get("no_point_games", 0))
+        official_score_json = json.dumps(meta, default=str)
+
     save_match_result(
         conn,
         match_id=record.match_id,
@@ -148,6 +178,14 @@ def persist_match_record(
         event_log_hash=record.event_log_hash,
         final_state_hash=record.final_state_hash,
         engine_match_id=engine_match_id,
+        scoring_model=scoring_model,
+        home_game_points=home_game_points,
+        away_game_points=away_game_points,
+        home_games_won=home_games_won,
+        away_games_won=away_games_won,
+        tied_games=tied_games,
+        no_point_games=no_point_games,
+        official_score_json=official_score_json,
     )
 
     stats = extract_match_stats(
@@ -166,21 +204,31 @@ def recompute_regular_season_standings(conn: sqlite3.Connection, season: Season)
         "SELECT * FROM match_records WHERE season_id = ?",
         (season.season_id,),
     ).fetchall()
-    results = [
-        SeasonResult(
-            match_id=row["match_id"],
-            season_id=row["season_id"],
-            week=row["week"],
-            home_club_id=row["home_club_id"],
-            away_club_id=row["away_club_id"],
-            home_survivors=row["home_survivors"],
-            away_survivors=row["away_survivors"],
-            winner_club_id=row["winner_club_id"],
-            seed=row["seed"],
+    results = []
+    for row in rows:
+        if row["match_id"].startswith(f"{season.season_id}_p_"):
+            continue
+        keys = list(row.keys())
+        results.append(
+            SeasonResult(
+                match_id=row["match_id"],
+                season_id=row["season_id"],
+                week=row["week"],
+                home_club_id=row["home_club_id"],
+                away_club_id=row["away_club_id"],
+                home_survivors=row["home_survivors"],
+                away_survivors=row["away_survivors"],
+                winner_club_id=row["winner_club_id"],
+                seed=row["seed"],
+                config_version=row["config_version"] if "config_version" in keys else "legacy",
+                home_game_points=row["home_game_points"] if "home_game_points" in keys else 0,
+                away_game_points=row["away_game_points"] if "away_game_points" in keys else 0,
+                home_games_won=row["home_games_won"] if "home_games_won" in keys else 0,
+                away_games_won=row["away_games_won"] if "away_games_won" in keys else 0,
+                tied_games=row["tied_games"] if "tied_games" in keys else 0,
+                no_point_games=row["no_point_games"] if "no_point_games" in keys else 0,
+            )
         )
-        for row in rows
-        if not row["match_id"].startswith(f"{season.season_id}_p_")
-    ]
     save_standings(conn, season.season_id, compute_standings(results))
 
 

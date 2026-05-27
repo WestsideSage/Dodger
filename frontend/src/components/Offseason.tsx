@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApiResource } from '../hooks/useApiResource';
 import type { OffseasonBeat } from '../types';
 import { StatusMessage } from './ui';
@@ -10,9 +10,13 @@ import { RookieClassPreview } from './ceremonies/RookieClassPreview';
 import { RecordsRatified, HallOfFameInduction } from './ceremonies/StructuredOffseasonBeats';
 import { RecruitmentChoice } from './ceremonies/RecruitmentChoice';
 
-export function Offseason() {
+export function Offseason({ onBeatChange }: { onBeatChange?: (title: string | null) => void } = {}) {
   const { data: beat, error, loading, setData: setBeat, setError } = useApiResource<OffseasonBeat>('/api/offseason/beat');
   const [acting, setActing] = useState(false);
+
+  useEffect(() => {
+    onBeatChange?.(beat?.title ?? null);
+  }, [beat?.title, onBeatChange]);
 
   const act = (endpoint: string, method = 'POST', body?: unknown) => {
     setActing(true);

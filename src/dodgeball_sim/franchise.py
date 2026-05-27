@@ -182,17 +182,19 @@ def simulate_match(
     # would contradict the persisted standings. Derive from survivors and
     # patch the MatchResult so every downstream consumer (use_cases, voice,
     # command_center, persistence) agrees with what the player just saw.
-    if home_survivors != away_survivors:
-        derived = (
-            home_club.club_id if home_survivors > away_survivors else away_club.club_id
-        )
-        if derived != winner_club_id:
-            winner_club_id = derived
-            result = dataclasses.replace(result, winner_team_id=derived)
-    elif winner_club_id is not None:
-        # Survivors equal → genuine draw. Engine claimed a winner; correct it.
-        winner_club_id = None
-        result = dataclasses.replace(result, winner_team_id=None)
+    is_official = result.config_version and result.config_version.startswith("official:")
+    if not is_official:
+        if home_survivors != away_survivors:
+            derived = (
+                home_club.club_id if home_survivors > away_survivors else away_club.club_id
+            )
+            if derived != winner_club_id:
+                winner_club_id = derived
+                result = dataclasses.replace(result, winner_team_id=derived)
+        elif winner_club_id is not None:
+            # Survivors equal → genuine draw. Engine claimed a winner; correct it.
+            winner_club_id = None
+            result = dataclasses.replace(result, winner_team_id=None)
 
     # V11: when the official adapter ran, ``result.config_version`` already
     # encodes the ruleset (e.g. ``official:official_foam``); use it so the

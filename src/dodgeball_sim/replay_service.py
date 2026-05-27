@@ -220,22 +220,33 @@ def match_replay_payload(conn: sqlite3.Connection, match_id: str) -> dict[str, A
         player_match_stats=stats,
         command_plan=command_plan_for_match(conn, match_id, row["season_id"]),
     )
-    top = sorted(stats.items(), key=lambda item: (-score_player(item[1]), item[0]))[:6]
+    _winner_id = row["winner_club_id"]
+
+    def _weighted(player_id: str, stat) -> float:
+        base = score_player(stat)
+        club_id = player_club_map.get(player_id, "")
+        if _winner_id and club_id == _winner_id:
+            return base * 1.5
+        if _winner_id and club_id and club_id != _winner_id:
+            return base * 0.75
+        return base
+
+    top = sorted(stats.items(), key=lambda item: (-_weighted(item[0], item[1]), item[0]))[:6]
     top_performers = [
         {
             "player_id": player_id,
             "player_name": name_map.get(player_id, player_id),
             "club_name": (clubs.get(player_club_map.get(player_id, "")) or home).name,
-            "score": round(score_player(stat), 1),
+            "score": round(_weighted(player_id, stat), 1),
             "eliminations_by_throw": stat.eliminations_by_throw,
             "catches_made": stat.catches_made,
             "dodges_successful": stat.dodges_successful,
         }
         for player_id, stat in top
-        if score_player(stat) > 0
+        if _weighted(player_id, stat) > 0
     ]
     mvp_id = compute_match_mvp(stats)
-    winner_id = row["winner_club_id"]
+    winner_id = _winner_id
     winner_name = clubs[winner_id].name if winner_id in clubs else "Draw"
     report = {
         "winner_name": winner_name,
@@ -266,6 +277,13 @@ def match_replay_payload(conn: sqlite3.Connection, match_id: str) -> dict[str, A
         "home_survivors": row["home_survivors"],
         "away_survivors": row["away_survivors"],
         "config_version": row["config_version"] if "config_version" in row.keys() else None,
+        "scoring_model": row["scoring_model"] if "scoring_model" in row.keys() else "legacy",
+        "home_game_points": row["home_game_points"] if "home_game_points" in row.keys() else 0,
+        "away_game_points": row["away_game_points"] if "away_game_points" in row.keys() else 0,
+        "home_games_won": row["home_games_won"] if "home_games_won" in row.keys() else 0,
+        "away_games_won": row["away_games_won"] if "away_games_won" in row.keys() else 0,
+        "tied_games": row["tied_games"] if "tied_games" in row.keys() else 0,
+        "no_point_games": row["no_point_games"] if "no_point_games" in row.keys() else 0,
         "events": events,
         "moment_events": moment_events,
         "proof_events": proof["proof_events"],

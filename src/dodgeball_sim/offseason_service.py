@@ -92,13 +92,17 @@ def advance_offseason_beat_payload(conn: sqlite3.Connection) -> dict[str, Any]:
 
     next_index = beat_index + 1
     next_key = active_beats[next_index]
-    if next_key == "recruitment":
+    if (
+        next_key == "recruitment"
+        and cursor.state == CareerState.SEASON_COMPLETE_OFFSEASON_BEAT
+    ):
         cursor = state_advance(
             cursor,
             CareerState.SEASON_COMPLETE_RECRUITMENT_PENDING,
             offseason_beat_index=next_index,
         )
     else:
+        # State already in the right phase (or already past it). Bump index only.
         cursor = dataclasses.replace(cursor, offseason_beat_index=next_index)
 
     save_career_state_cursor(conn, cursor)
@@ -190,6 +194,26 @@ def recruit_offseason_payload(
 
 def begin_next_season_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     cursor = load_career_state_cursor(conn)
+
+    # Self-heal: if the beat index has reached the final schedule-reveal beat
+    # but the cursor is still in recruitment-pending (because recruitment was
+    # impossible — roster full going in), promote to NEXT_SEASON_READY so the
+    # season can start.
+    if cursor.state == CareerState.SEASON_COMPLETE_RECRUITMENT_PENDING:
+        active_beats = load_active_beats(conn)
+        idx = max(0, min(int(cursor.offseason_beat_index or 0), len(active_beats) - 1))
+        if (
+            "recruitment" in active_beats
+            and idx > active_beats.index("recruitment")
+        ):
+            cursor = state_advance(
+                cursor,
+                CareerState.NEXT_SEASON_READY,
+                offseason_beat_index=idx,
+            )
+            save_career_state_cursor(conn, cursor)
+            conn.commit()
+
     if cursor.state != CareerState.NEXT_SEASON_READY:
         raise OffseasonError(f"Not ready to begin next season (current: {cursor.state.value})", status_code=409)
     new_cursor = begin_next_season(conn, cursor, load_clubs(conn))

@@ -353,7 +353,7 @@ export function NewSeasonEve({ beat, onComplete, acting }: { beat: ScheduleRevea
     return (
         <CeremonyShell
             title={beat.title}
-            eyebrow={seasonLabel ? `Season ${seasonLabel}` : 'New Season'}
+            eyebrow={seasonLabel ? `Season ${seasonLabel} · Schedule Reveal` : 'New Season'}
             description="A new chapter begins."
             stages={2}
             renderStage={(stage) => (

@@ -9,12 +9,12 @@ stats and persistence don't need to know which engine produced the match.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, replace, asdict
 from typing import Any, Dict, Tuple
 
 from .engine import MatchResult
 from .models import MatchSetup
-from .official_engine import run_autonomous_game
+from .official_engine import run_autonomous_match
 from .official_events import OfficialEvent
 from .official_persistence import replay_state_to_dict
 from .official_stats import derive_box_score
@@ -52,6 +52,11 @@ class OfficialEngineAdapter:
         self.profile = selection.to_profile()
 
     def _run_raw(self, setup: MatchSetup, *, seed: int, match_id: str | None) -> OfficialMatchResult:
+        # Persistence (game_loop.persist_match_record) and aftermath builders
+        # assume team_a is the home club; the team_a_id is round-tripped through
+        # official_metadata so downstream code can verify. Keep that invariant
+        # explicit here so any future caller that flips the order trips fast
+        # instead of silently inverting scoreboards.
         team_a = setup.team_a
         team_b = setup.team_b
         starters_a = tuple(p.id for p in team_a.players[: self.profile.roster_rule.starters])
@@ -65,7 +70,7 @@ class OfficialEngineAdapter:
             {p.id: p.name for p in team_a.players}
             | {p.id: p.name for p in team_b.players}
         )
-        game_result = run_autonomous_game(
+        match_result = run_autonomous_match(
             profile=self.profile,
             match_id=match_id or f"{team_a.id}-vs-{team_b.id}",
             team_a_id=team_a.id, team_b_id=team_b.id,
@@ -75,20 +80,20 @@ class OfficialEngineAdapter:
             seed=seed,
         )
         box = derive_box_score(
-            game_result.events,
+            match_result.events,
             team_a_id=team_a.id, team_b_id=team_b.id,
             team_a_name=team_a.name, team_b_name=team_b.name,
             player_team_map=team_map, player_name_map=name_map,
             starters_a=starters_a, starters_b=starters_b,
-            winner_team_id=game_result.winner_team_id,
+            winner_team_id=match_result.winner_team_id,
         )
         return OfficialMatchResult(
-            winner_team_id=game_result.winner_team_id,
-            box_score=box, events=game_result.events,
-            ticks=game_result.ticks,
+            winner_team_id=match_result.winner_team_id,
+            box_score=box, events=match_result.events,
+            ticks=match_result.ticks,
             ruleset_selection=self.selection.value,
-            official_metadata=collect_official_metadata(game_result.events),
-            replay_state=game_result.replay_state,
+            official_metadata=asdict(match_result.official_match_score),
+            replay_state=match_result.replay_state,
         )
 
     def run(self, setup: MatchSetup, *, seed: int, match_id: str | None = None) -> OfficialMatchResult:
@@ -119,4 +124,5 @@ class OfficialEngineAdapter:
             final_tick=raw.ticks,
             seed=seed,
             config_version=f"official:{self.selection.value}",
+            official_metadata=raw.official_metadata,
         )

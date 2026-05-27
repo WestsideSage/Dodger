@@ -316,6 +316,13 @@ export interface MatchReplayResponse {
     home_survivors: number;
     away_survivors: number;
     config_version?: string | null;  // V11: "official:..." when run under official ruleset
+    scoring_model?: string;
+    home_game_points?: number;
+    away_game_points?: number;
+    home_games_won?: number;
+    away_games_won?: number;
+    tied_games?: number;
+    no_point_games?: number;
     events: ReplayEvent[];
     moment_events: MomentEvent[];
     proof_events: ReplayProofEvent[];
@@ -355,6 +362,7 @@ export interface StandingsResponse {
     total_weeks: number;
     current_week: number;
     playoff_spots: number;
+    is_offseason?: boolean;
 }
 
 export interface RecentMatchSummary {
@@ -584,6 +592,9 @@ export interface Aftermath {
         winner_club_id: string | null;
         home_survivors: number;
         away_survivors: number;
+        scoring_model?: string;
+        home_game_points?: number;
+        away_game_points?: number;
     } | null;
     player_growth_deltas: Array<{
         player_id: string;

@@ -43,9 +43,10 @@ class MatchResult:
     final_tick: int
     seed: int
     config_version: str
+    official_metadata: dict[str, Any] | None = None
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        d = {
             "events": [e.to_dict() for e in self.events],
             "winner_team_id": self.winner_team_id,
             "box_score": self.box_score,
@@ -53,6 +54,9 @@ class MatchResult:
             "seed": self.seed,
             "config_version": self.config_version,
         }
+        if self.official_metadata is not None:
+            d["official_metadata"] = self.official_metadata
+        return d
 
 
 class MatchEngine:

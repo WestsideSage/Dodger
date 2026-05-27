@@ -259,22 +259,46 @@ def _build_aftermath(
             for player in players
         }
         stats = stats_for_match(conn, record.match_id)
-        top = sorted(stats.items(), key=lambda item: (-score_player(item[1]), item[0]))[:6]
+
+        # Weight impact by team outcome so the loser of a shutout can't out-rank
+        # the winner. Winners get +50% Impact, losers get -25%, draws unchanged.
+        def _weighted(player_id: str, stat) -> float:
+            base = score_player(stat)
+            club_id = player_club_map.get(player_id, "")
+            if _winner_id and club_id == _winner_id:
+                return base * 1.5
+            if _winner_id and club_id and club_id != _winner_id:
+                return base * 0.75
+            return base
+
+        top = sorted(stats.items(), key=lambda item: (-_weighted(item[0], item[1]), item[0]))[:6]
         top_performers = [
             {
                 "player_id": player_id,
                 "player_name": name_map.get(player_id, player_id),
                 "club_name": _clubs[player_club_map.get(player_id, "")].name if player_club_map.get(player_id, "") in _clubs else "Unknown",
-                "score": round(score_player(stat), 1),
+                "score": round(_weighted(player_id, stat), 1),
                 "eliminations_by_throw": stat.eliminations_by_throw,
                 "catches_made": stat.catches_made,
                 "dodges_successful": stat.dodges_successful,
             }
             for player_id, stat in top
-            if score_player(stat) > 0
+            if _weighted(player_id, stat) > 0
         ]
     except Exception:
         top_performers = []
+
+    scoring_model = "legacy"
+    home_game_pts = 0
+    away_game_pts = 0
+    if record.result.official_metadata:
+        meta = record.result.official_metadata
+        if "cloth" in record.result.config_version:
+            scoring_model = "cloth"
+        else:
+            scoring_model = "foam"
+        home_game_pts = meta.get("team_a_game_points", 0)
+        away_game_pts = meta.get("team_b_game_points", 0)
 
     aftermath: dict[str, Any] = {
         "headline": headline,
@@ -284,6 +308,9 @@ def _build_aftermath(
             "winner_club_id": _winner_id,
             "home_survivors": home_survivors,
             "away_survivors": away_survivors,
+            "scoring_model": scoring_model,
+            "home_game_points": home_game_pts,
+            "away_game_points": away_game_pts,
         },
         "player_growth_deltas": [],
         "standings_shift": standings_shift,
@@ -412,8 +439,10 @@ def simulate_week(
     _validate_match_rosters(week_matches, rosters)
     difficulty = get_state(conn, "difficulty", "pro") or "pro"
 
+    # load_standings already applies the official-vs-legacy sort authoritatively
+    # (via match_records.config_version), so reuse its ordering directly.
     standings_before_raw = load_standings(conn, season_id)
-    standings_before = sorted(standings_before_raw, key=lambda r: (-r.points, -r.elimination_differential, r.club_id))
+    standings_before = list(standings_before_raw)
     prepare_ai_plans_for_matches(
         conn,
         season_id=season_id,
@@ -442,7 +471,7 @@ def simulate_week(
     record = next(item for item in records if item.match_id == scheduled.match_id)
     recompute_regular_season_standings(conn, season)
     standings_after_raw = load_standings(conn, season_id)
-    standings_after = sorted(standings_after_raw, key=lambda r: (-r.points, -r.elimination_differential, r.club_id))
+    standings_after = list(standings_after_raw)
     dashboard = build_post_week_dashboard(conn, plan, record)
     save_command_history_record(
         conn,

@@ -46,6 +46,7 @@ function App() {
   const [seasonYear, setSeasonYear] = useState<number | null>(null);
   const [seasonNumber, setSeasonNumber] = useState<number | null>(null);
   const [currentWeek, setCurrentWeek] = useState<number | null>(null);
+  const [offseasonBeatName, setOffseasonBeatName] = useState<string | null>(null);
 
   useEffect(() => {
     const refreshCareerContext = () => {
@@ -176,7 +177,11 @@ function App() {
             <span className="dm-kicker">{kicker}</span>
             <h1>{headerTitle}</h1>
           </div>
-          <span className="meta">Season {seasonNumber ?? seasonYear ?? '1'} -- Week {String(displayedWeek).padStart(2, '0')}</span>
+          <span className="meta">
+            {screen === 'offseason'
+              ? `Season ${seasonNumber ?? seasonYear ?? '1'} -- Offseason${offseasonBeatName ? ` (${offseasonBeatName})` : ''}`
+              : `Season ${seasonNumber ?? seasonYear ?? '1'} -- Week ${String(displayedWeek).padStart(2, '0')}`}
+          </span>
         </header>
 
         {/* Screen content */}
@@ -194,6 +199,7 @@ function App() {
           {!commandReplay && !commandReplayLoading && effectiveActiveTab === 'command' && (
             <MatchWeek
               onOpenReplay={openCommandReplay}
+              onOffseasonBeatChange={setOffseasonBeatName}
               persistedResult={postSimResult}
               mode={
                 screen === 'offseason' ? 'offseason'

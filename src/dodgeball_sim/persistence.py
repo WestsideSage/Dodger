@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from .career_state import CareerStateCursor
 
 # Increment when new migrations are added.
-CURRENT_SCHEMA_VERSION = 14
+CURRENT_SCHEMA_VERSION = 15
 _MAX_OFFSEASON_BEAT_INDEX = 9
 
 
@@ -1017,6 +1017,37 @@ def _migrate_v14(conn: sqlite3.Connection) -> None:
         pass
 
 
+def _migrate_v15(conn: sqlite3.Connection) -> None:
+    """V15: USA Dodgeball (USAD) Match Scoring."""
+    # 1. Add columns to match_records
+    match_columns = {row["name"] for row in conn.execute("PRAGMA table_info(match_records)")}
+    new_match_cols = {
+        "scoring_model": "TEXT NOT NULL DEFAULT 'legacy'",
+        "home_game_points": "INTEGER NOT NULL DEFAULT 0",
+        "away_game_points": "INTEGER NOT NULL DEFAULT 0",
+        "home_games_won": "INTEGER NOT NULL DEFAULT 0",
+        "away_games_won": "INTEGER NOT NULL DEFAULT 0",
+        "tied_games": "INTEGER NOT NULL DEFAULT 0",
+        "no_point_games": "INTEGER NOT NULL DEFAULT 0",
+        "official_score_json": "TEXT",
+    }
+    for col, definition in new_match_cols.items():
+        if col not in match_columns:
+            conn.execute(f"ALTER TABLE match_records ADD COLUMN {col} {definition}")
+
+    # 2. Add columns to season_standings
+    standings_columns = {row["name"] for row in conn.execute("PRAGMA table_info(season_standings)")}
+    new_standings_cols = {
+        "game_points_for": "INTEGER NOT NULL DEFAULT 0",
+        "game_points_against": "INTEGER NOT NULL DEFAULT 0",
+        "game_point_differential": "INTEGER NOT NULL DEFAULT 0",
+        "total_game_points_scored": "INTEGER NOT NULL DEFAULT 0",
+    }
+    for col, definition in new_standings_cols.items():
+        if col not in standings_columns:
+            conn.execute(f"ALTER TABLE season_standings ADD COLUMN {col} {definition}")
+
+
 _MIGRATIONS: Dict[int, Any] = {
     1: _migrate_v1,
     2: _migrate_v2,
@@ -1032,6 +1063,7 @@ _MIGRATIONS: Dict[int, Any] = {
     12: _migrate_v12,
     13: _migrate_v13,
     14: _migrate_v14,
+    15: _migrate_v15,
 }
 
 
@@ -1570,6 +1602,14 @@ def save_match_result(
     event_log_hash: str,
     final_state_hash: str,
     engine_match_id: Optional[int] = None,
+    scoring_model: str = "legacy",
+    home_game_points: int = 0,
+    away_game_points: int = 0,
+    home_games_won: int = 0,
+    away_games_won: int = 0,
+    tied_games: int = 0,
+    no_point_games: int = 0,
+    official_score_json: Optional[str] = None,
 ) -> None:
     conn.execute(
         """
@@ -1577,14 +1617,20 @@ def save_match_result(
             match_id, season_id, week, home_club_id, away_club_id,
             winner_club_id, home_survivors, away_survivors,
             home_roster_hash, away_roster_hash, config_version, ruleset_version,
-            meta_patch_id, seed, event_log_hash, final_state_hash, engine_match_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            meta_patch_id, seed, event_log_hash, final_state_hash, engine_match_id,
+            scoring_model, home_game_points, away_game_points,
+            home_games_won, away_games_won, tied_games, no_point_games,
+            official_score_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             match_id, season_id, week, home_club_id, away_club_id,
             winner_club_id, home_survivors, away_survivors,
             home_roster_hash, away_roster_hash, config_version, ruleset_version,
             meta_patch_id, seed, event_log_hash, final_state_hash, engine_match_id,
+            scoring_model, home_game_points, away_game_points,
+            home_games_won, away_games_won, tied_games, no_point_games,
+            official_score_json,
         ),
     )
 
@@ -1628,12 +1674,14 @@ def save_standings(
     conn.executemany(
         """
         INSERT OR REPLACE INTO season_standings
-            (season_id, club_id, wins, losses, draws, elimination_differential, points)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+            (season_id, club_id, wins, losses, draws, elimination_differential, points,
+             game_points_for, game_points_against, game_point_differential, total_game_points_scored)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
             (season_id, r.club_id, r.wins, r.losses, r.draws,
-             r.elimination_differential, r.points)
+             r.elimination_differential, r.points,
+             r.game_points_for, r.game_points_against, r.game_point_differential, r.total_game_points_scored)
             for r in standings
         ],
     )
@@ -1644,23 +1692,49 @@ def load_standings(
 ) -> List["StandingsRow"]:
     cursor = conn.execute(
         """
-        SELECT club_id, wins, losses, draws, elimination_differential, points
+        SELECT club_id, wins, losses, draws, elimination_differential, points,
+               game_points_for, game_points_against, game_point_differential, total_game_points_scored
         FROM season_standings WHERE season_id = ?
-        ORDER BY points DESC, elimination_differential DESC, club_id ASC
         """,
         (season_id,),
     )
-    return [
-        StandingsRow(
-            club_id=row["club_id"],
-            wins=row["wins"],
-            losses=row["losses"],
-            draws=row["draws"],
-            elimination_differential=row["elimination_differential"],
-            points=row["points"],
+    rows = []
+    for row in cursor.fetchall():
+        rows.append(
+            StandingsRow(
+                club_id=row["club_id"],
+                wins=row["wins"],
+                losses=row["losses"],
+                draws=row["draws"],
+                elimination_differential=row["elimination_differential"],
+                points=row["points"],
+                game_points_for=row["game_points_for"],
+                game_points_against=row["game_points_against"],
+                game_point_differential=row["game_point_differential"],
+                total_game_points_scored=row["total_game_points_scored"],
+            )
         )
-        for row in cursor.fetchall()
-    ]
+
+    # Detect official seasons authoritatively from match_records.config_version
+    # rather than inferring from standings values — early-season official runs
+    # legitimately have zero game points across all clubs (e.g. foam openers
+    # ending in no-point games), and value-based detection would misclassify
+    # them as legacy.
+    official_row = conn.execute(
+        "SELECT 1 FROM match_records WHERE season_id = ? AND config_version LIKE 'official:%' LIMIT 1",
+        (season_id,),
+    ).fetchone()
+    is_any_official = official_row is not None
+    if is_any_official:
+        rows.sort(key=lambda r: (
+            -r.points,
+            -r.total_game_points_scored,
+            -r.game_point_differential,
+            r.club_id
+        ))
+    else:
+        rows.sort(key=lambda r: (-r.points, -r.elimination_differential, r.club_id))
+    return rows
 
 
 def save_awards(conn: sqlite3.Connection, awards: List["SeasonAward"]) -> None:

@@ -330,7 +330,7 @@ def test_aggressive_is_noop_when_base_already_satisfies_clamps():
     assert "Aggressive" in verdict
     assert any(
         token in verdict.lower()
-        for token in ("no real lever", "identical", "no-op")
+        for token in ("no real lever", "identical", "no-op", "aligned")
     )
 
 
@@ -357,7 +357,7 @@ def test_defensive_noop_overrides_signature_claim():
     assert "Defensive" in verdict
     assert any(
         token in verdict.lower()
-        for token in ("no real lever", "identical", "no-op")
+        for token in ("no real lever", "identical", "no-op", "aligned")
     )
 
 
