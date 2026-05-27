@@ -24,6 +24,7 @@ from .persistence import (
     load_clubs,
     load_command_history,
     load_completed_match_ids,
+    load_latest_weekly_plan_intent,
     load_season,
     load_season_outcome,
     load_standings,
@@ -54,7 +55,11 @@ def command_center_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     state = build_command_center_state(conn)
     club = state["player_club"]
     existing = load_weekly_command_plan(conn, state["season_id"], state["week"], state["player_club_id"])
-    plan = existing or build_default_weekly_plan(state)
+    if not existing:
+        prior_intent = load_latest_weekly_plan_intent(conn, state["season_id"], state["week"], state["player_club_id"])
+        plan = build_default_weekly_plan(state, intent=prior_intent or "Win Now")
+    else:
+        plan = existing
     plan = refresh_weekly_plan_context(plan, state)
     history = sanitized_command_history(conn, state["season_id"])
     latest_dashboard = history[-1]["dashboard"] if history else None

@@ -351,15 +351,39 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                                 active
                               </span>
                             )}
+                            {save.incompatible && (
+                              <span style={{
+                                marginLeft: '0.5rem',
+                                fontSize: '0.6875rem',
+                                color: '#f43f5e',
+                                fontFamily: 'var(--font-display)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.1em',
+                                border: '1px solid rgba(244,63,94,0.4)',
+                                padding: '0.05rem 0.25rem',
+                                borderRadius: '2px',
+                                background: 'rgba(244,63,94,0.1)',
+                              }}>
+                                Incompatible
+                              </span>
+                            )}
                           </div>
                           <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.125rem' }}>
-                            {save.club_name ?? save.club_id ?? 'Unknown club'}
-                            {save.week != null && ` · Week ${save.week}`}
+                            {save.incompatible ? (
+                              <span style={{ color: '#fda4af' }}>
+                                Save file incompatible — start a new career.
+                              </span>
+                            ) : (
+                              <>
+                                {save.club_name ?? save.club_id ?? 'Unknown club'}
+                                {save.week != null && ` · Week ${save.week}`}
+                              </>
+                            )}
                           </div>
                         </div>
                         <button
                           onClick={() => handleLoad(save.path)}
-                          disabled={activePath === save.path}
+                          disabled={activePath === save.path || save.incompatible}
                           data-testid="load-save-btn"
                           style={{
                             borderRadius: '4px',
@@ -372,7 +396,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                             letterSpacing: '0.075em',
                             color: '#cbd5e1',
                             cursor: 'pointer',
-                            opacity: activePath === save.path ? 0.4 : 1,
+                            opacity: (activePath === save.path || save.incompatible) ? 0.4 : 1,
                           }}
                         >
                           {activePath === save.path ? 'Loaded' : 'Load'}
@@ -676,6 +700,26 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                     <option value="official_no_sting">USA Dodgeball 2026.1 — No-Sting</option>
                     <option value="official_cloth">USA Dodgeball 2026.1 — Cloth</option>
                   </select>
+
+                  {/* Dynamic Explanation Card */}
+                  <div style={{
+                    marginTop: '1rem',
+                    background: 'rgba(34, 211, 238, 0.04)',
+                    borderLeft: '3px solid #22d3ee',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '0 4px 4px 0',
+                  }}>
+                    <h4 style={{ margin: '0 0 0.25rem 0', fontSize: '0.875rem', fontWeight: 700, color: '#f8fafc' }}>
+                      {rulesetExplanations[rulesetSelection].title}
+                    </h4>
+                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                      {rulesetExplanations[rulesetSelection].desc}
+                    </p>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#22d3ee', fontWeight: 600 }}>
+                      {rulesetExplanations[rulesetSelection].bullet}
+                    </p>
+                  </div>
+
                   <p style={{ fontSize: '0.6875rem', color: '#64748b', margin: '0.375rem 0 0' }}>
                     Set at career creation only. Cannot be changed later.
                   </p>

@@ -287,12 +287,27 @@ def acknowledge_match_payload(conn: sqlite3.Connection, match_id: str) -> dict[s
         raise ReplayError("No active season")
     season = load_season(conn, season_id)
     clubs = load_clubs(conn)
+    player_club_id = get_state(conn, "player_club_id") or ""
     season, chosen, _stop_reason = _choose_next_user_match_after_automation(
         conn,
         season,
         clubs,
-        get_state(conn, "player_club_id") or "",
+        player_club_id,
     )
+    if not chosen:
+        # Defensive guard: before going to offseason, scan for any unplayed
+        # playoff matches involving the player (catches bracket creation edge cases).
+        from .persistence import load_completed_match_ids
+        from .playoffs import is_playoff_match_id
+        completed = load_completed_match_ids(conn, season.season_id)
+        pending_user_playoff = [
+            m for m in season.scheduled_matches
+            if is_playoff_match_id(season.season_id, m.match_id)
+            and m.match_id not in completed
+            and player_club_id in (m.home_club_id, m.away_club_id)
+        ]
+        if pending_user_playoff:
+            chosen = pending_user_playoff[:1]
     if chosen:
         cursor = advance(cursor, CareerState.SEASON_ACTIVE_PRE_MATCH, week=chosen[0].week, match_id=None)
     else:

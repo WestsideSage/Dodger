@@ -36,6 +36,58 @@ def _utcnow_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+_LEGACY_SURNAME_ALIASES = {
+    "Penn": "Parr",
+    "Dupont": "Duval",
+}
+
+_DISPLAY_SAFE_LAST_NAMES: Tuple[str, ...] = (
+    "Voss", "Helix", "Turner", "Lark", "Orion", "Vega", "Keene", "Hart",
+    "Rowe", "Slate", "Frost", "Drake", "Munn", "Cole", "Beck", "Thorn",
+    "Bishop", "Vale", "Cross", "Mercer", "Rhodes", "Santos", "Ibarra", "Kline",
+    "Novak", "Parr", "Sol", "Tanner", "West", "Yardley", "Zane", "Okafor",
+    "Chavez", "Duval", "Nakamura", "Jensen", "Olsen", "Griffin", "Sterling", "Hawthorne",
+    "Crosby", "Sinclair", "Garrison", "Fitzgerald", "Kerrigan", "O'Neill", "Rousseau", "Mendoza",
+    "Petrov", "Saito", "Takahashi", "Chen", "Kim", "Park", "Patel", "Sharma",
+    "Singh", "Das", "Ali", "Hassan", "Mensah", "Diallo", "Toure", "Kone",
+    "Ivanov", "Smirnov", "Hansen", "Nielsen", "Johansen", "Moreau", "Dubois", "Leroy",
+    "Garcia", "Martinez", "Rodriguez", "Lopez", "Gonzalez", "Perez", "Sanchez", "Ramirez",
+    "Torres", "Flores", "Sato", "Aura", "Zenith", "Apex", "Prism", "Bloom",
+    "Knox", "Mace", "Ash", "Moss", "Fern", "Shore",
+)
+
+
+def _split_display_name(name: str) -> Tuple[str, str]:
+    parts = str(name or "").strip().split()
+    if len(parts) >= 2:
+        return " ".join(parts[:-1]), parts[-1]
+    if parts:
+        return parts[0], parts[0]
+    return "Player", "Player"
+
+
+def _replacement_last_name(entity_id: str, used_last_names: set[str]) -> str:
+    start = sum(ord(ch) for ch in entity_id) % len(_DISPLAY_SAFE_LAST_NAMES)
+    for offset in range(len(_DISPLAY_SAFE_LAST_NAMES)):
+        candidate = _DISPLAY_SAFE_LAST_NAMES[(start + offset) % len(_DISPLAY_SAFE_LAST_NAMES)]
+        if candidate not in used_last_names:
+            return candidate
+    return _DISPLAY_SAFE_LAST_NAMES[start]
+
+
+def _normalized_collection_names(items: Sequence[Tuple[str, str]]) -> Dict[str, str]:
+    used_last_names: set[str] = set()
+    normalized: Dict[str, str] = {}
+    for entity_id, raw_name in items:
+        first, last = _split_display_name(raw_name)
+        canonical_last = _LEGACY_SURNAME_ALIASES.get(last, last)
+        if canonical_last in used_last_names:
+            canonical_last = _replacement_last_name(entity_id, used_last_names)
+        used_last_names.add(canonical_last)
+        normalized[entity_id] = f"{first} {canonical_last}"
+    return normalized
+
+
 def _player_to_dict(player: Player) -> Dict[str, Any]:
     ratings = player.ratings
     return {
@@ -68,6 +120,7 @@ def _player_to_dict(player: Player) -> Dict[str, Any]:
 def _player_from_dict(d: Dict[str, Any]) -> Player:
     r = d.get("ratings", {})
     t = d.get("traits", {})
+
     required_rating_fields = (
         "accuracy",
         "power",
@@ -1302,6 +1355,73 @@ def load_all_rosters(conn: sqlite3.Connection) -> Dict[str, List[Player]]:
     return rosters
 
 
+def repair_legacy_name_pool(conn: sqlite3.Connection) -> bool:
+    """Normalize retired surnames and duplicate last names in persisted saves."""
+    if get_state(conn, "legacy_name_repair_v1") == "done":
+        return False
+
+    changed = False
+
+    roster_rows = conn.execute("SELECT club_id, players_json FROM club_rosters").fetchall()
+    for row in roster_rows:
+        try:
+            payload = json.loads(row["players_json"])
+        except (TypeError, json.JSONDecodeError):
+            continue
+        normalized = _normalized_collection_names(
+            [(player.get("id", f"{row['club_id']}_{index}"), player.get("name", "")) for index, player in enumerate(payload)]
+        )
+        updated = False
+        for player in payload:
+            player_id = player.get("id", "")
+            new_name = normalized.get(player_id, player.get("name", ""))
+            if player.get("name") != new_name:
+                player["name"] = new_name
+                updated = True
+        if updated:
+            conn.execute(
+                "UPDATE club_rosters SET players_json = ? WHERE club_id = ?",
+                (_json_dump(payload), row["club_id"]),
+            )
+            changed = True
+
+    prospect_rows = conn.execute(
+        "SELECT player_id, class_year, name FROM prospect_pool ORDER BY class_year, player_id"
+    ).fetchall()
+    current_class_year: int | None = None
+    current_group: List[Tuple[str, str]] = []
+
+    def flush_group(class_year: int | None, group: List[Tuple[str, str]]) -> bool:
+        if class_year is None or not group:
+            return False
+        group_changed = False
+        normalized = _normalized_collection_names(group)
+        for prospect_id, original_name in group:
+            new_name = normalized.get(prospect_id, original_name)
+            if new_name != original_name:
+                conn.execute(
+                    "UPDATE prospect_pool SET name = ? WHERE class_year = ? AND player_id = ?",
+                    (new_name, class_year, prospect_id),
+                )
+                group_changed = True
+        return group_changed
+
+    for row in prospect_rows:
+        class_year = int(row["class_year"])
+        if current_class_year is None:
+            current_class_year = class_year
+        if class_year != current_class_year:
+            changed = flush_group(current_class_year, current_group) or changed
+            current_group = []
+            current_class_year = class_year
+        current_group.append((row["player_id"], row["name"] or row["player_id"]))
+    changed = flush_group(current_class_year, current_group) or changed
+
+    set_state(conn, "legacy_name_repair_v1", "done")
+    conn.commit()
+    return changed
+
+
 def save_lineup_default(
     conn: sqlite3.Connection,
     club_id: str,
@@ -2299,6 +2419,25 @@ def load_weekly_command_plan(
         (season_id, int(week), club_id),
     ).fetchone()
     return json.loads(row["plan_json"]) if row else None
+
+
+def load_latest_weekly_plan_intent(
+    conn: sqlite3.Connection,
+    season_id: str,
+    before_week: int,
+    club_id: str,
+) -> Optional[str]:
+    """Return the intent from the most recent saved plan before `before_week`, or None."""
+    row = conn.execute(
+        """
+        SELECT intent FROM weekly_command_plans
+        WHERE season_id = ? AND week < ? AND club_id = ?
+        ORDER BY week DESC
+        LIMIT 1
+        """,
+        (season_id, int(before_week), club_id),
+    ).fetchone()
+    return row["intent"] if row else None
 
 
 def save_command_history_record(conn: sqlite3.Connection, record: Dict[str, Any]) -> None:
@@ -3381,6 +3520,7 @@ __all__ = [
     "save_prospect_pool",
     "load_prospect_pool",
     "mark_prospect_signed",
+    "repair_legacy_name_pool",
     "save_scout",
     "load_scouts",
     "seed_default_scouts",

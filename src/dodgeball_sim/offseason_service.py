@@ -21,6 +21,7 @@ from .persistence import (
     load_clubs,
     load_season,
     save_career_state_cursor,
+    set_state,
 )
 from .web_status_service import career_state_payload
 
@@ -73,6 +74,22 @@ def advance_offseason_beat_payload(conn: sqlite3.Connection) -> dict[str, Any]:
             status_code=409,
         )
 
+    # When already in RECRUITMENT_PENDING and advancing past recruitment beat,
+    # transition to NEXT_SEASON_READY so begin-season can proceed.
+    if (
+        cursor.state == CareerState.SEASON_COMPLETE_RECRUITMENT_PENDING
+        and current_key == "recruitment"
+    ):
+        next_index = beat_index + 1
+        cursor = state_advance(
+            cursor,
+            CareerState.NEXT_SEASON_READY,
+            offseason_beat_index=next_index,
+        )
+        save_career_state_cursor(conn, cursor)
+        conn.commit()
+        return build_beat_response(conn, cursor)
+
     next_index = beat_index + 1
     next_key = active_beats[next_index]
     if next_key == "recruitment":
@@ -97,12 +114,37 @@ def recruit_offseason_payload(
         raise OffseasonError(
             f"Not in recruitment state (current: {cursor.state.value})", status_code=409
         )
-    signed_player_id = get_state(conn, "offseason_draft_signed_player_id") or ""
-    if signed_player_id:
-        raise OffseasonError("Already recruited a player this offseason.", status_code=409)
     player_club_id = get_state(conn, "player_club_id")
     if not player_club_id:
         raise OffseasonError("No player club assigned")
+
+    active_beats = load_active_beats(conn)
+    recruitment_index = active_beats.index("recruitment")
+
+    if prospect_id == "skip":
+        cursor = state_advance(
+            cursor,
+            CareerState.NEXT_SEASON_READY,
+            offseason_beat_index=recruitment_index,
+        )
+        save_career_state_cursor(conn, cursor)
+        conn.commit()
+        return {
+            **build_beat_response(conn, cursor),
+            "signed_player": None,
+        }
+
+    signed_count_str = get_state(conn, "offseason_draft_signed_count") or "0"
+    signed_count = int(signed_count_str)
+
+    rosters = load_all_rosters(conn)
+    user_roster = rosters.get(player_club_id, [])
+
+    if len(user_roster) >= 9:
+        raise OffseasonError("Roster is full (maximum 9 players).", status_code=409)
+
+    if signed_count >= 3:
+        raise OffseasonError("Already recruited 3 players this offseason.", status_code=409)
 
     season_number = cursor.season_number or 1
     if prospect_id:
@@ -114,14 +156,22 @@ def recruit_offseason_payload(
     else:
         signed = sign_best_rookie(conn, player_club_id, season_number)
 
-    active_beats = load_active_beats(conn)
-    recruitment_index = active_beats.index("recruitment")
-    cursor = state_advance(
-        cursor,
-        CareerState.NEXT_SEASON_READY,
-        offseason_beat_index=recruitment_index,
-    )
-    save_career_state_cursor(conn, cursor)
+    signed_count += 1
+    set_state(conn, "offseason_draft_signed_count", str(signed_count))
+    if signed:
+        set_state(conn, "offseason_draft_signed_player_id", signed.id)
+
+    rosters = load_all_rosters(conn)
+    user_roster = rosters.get(player_club_id, [])
+
+    if signed_count >= 3 or len(user_roster) >= 9:
+        cursor = state_advance(
+            cursor,
+            CareerState.NEXT_SEASON_READY,
+            offseason_beat_index=recruitment_index,
+        )
+        save_career_state_cursor(conn, cursor)
+
     conn.commit()
     return {
         **build_beat_response(conn, cursor),

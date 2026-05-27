@@ -124,6 +124,8 @@ def _moment_headline(ctx: AftermathContext, moment: Any) -> str:
             b=ctx.player_name(moment.player_b_id),
         )
     if kind == MomentKind.COMEBACK.value:
+        if moment.team_id != ctx.match_result.winner_team_id:
+            return _margin_fallback(ctx)
         return tier1(
             "moment.comeback.headline",
             team=ctx.team_name(moment.team_id),

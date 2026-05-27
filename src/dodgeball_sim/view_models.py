@@ -7,6 +7,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional
 from .copy_quality import title_label
 from .league import Club
 from .models import Player
+from .playoffs import playoff_stage_label
 
 
 @dataclass(frozen=True)
@@ -17,6 +18,7 @@ class ScheduleRow:
     away_club_id: str
     status: str
     is_user_match: bool
+    stage: str = "Regular Season"
 
 
 @dataclass(frozen=True)
@@ -58,6 +60,7 @@ def build_schedule_rows(
                 away_club_id=match.away_club_id,
                 status="played" if match.match_id in completed else "open",
                 is_user_match=user_club_id in (match.home_club_id, match.away_club_id),
+                stage=playoff_stage_label(season.season_id, match.match_id),
             )
         )
     return rows
