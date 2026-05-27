@@ -87,3 +87,91 @@ def test_aftermath_player_perspective_win_renders_win():
     assert "Win" in headline
     assert "Loss" not in headline
     assert "5-0" in headline
+
+
+# ---------------------------------------------------------------------------
+# Guard function: word-boundary + Draw cases
+# ---------------------------------------------------------------------------
+
+from dodgeball_sim.use_cases import _assert_postgame_copy_truthful
+
+
+def test_guard_allows_winning_streak_in_loss_headline():
+    """The guard uses \\bwin\\b, so 'winning streak' (substring 'win' inside
+    'winning') must NOT trip the Loss assertion."""
+    # Should not raise.
+    _assert_postgame_copy_truthful(
+        headline="Loss snaps a winning streak",
+        verdict=None,
+        result="Loss",
+        player_survivors=0,
+        opponent_survivors=5,
+    )
+
+
+def test_guard_allows_lossless_in_win_headline():
+    """'lossless' contains 'loss' as a substring but not as a whole word;
+    the regex guard must accept it on a Win."""
+    _assert_postgame_copy_truthful(
+        headline="A lossless run continues",
+        verdict=None,
+        result="Win",
+        player_survivors=5,
+        opponent_survivors=0,
+    )
+
+
+def test_guard_still_trips_on_literal_win_in_loss_headline():
+    """Sanity: the guard must still fire when 'Win' appears as a whole word
+    on a Loss."""
+    with pytest.raises(AssertionError):
+        _assert_postgame_copy_truthful(
+            headline="What a Win for the team",
+            verdict=None,
+            result="Loss",
+            player_survivors=0,
+            opponent_survivors=5,
+        )
+
+
+def test_guard_still_trips_on_literal_loss_in_win_headline():
+    with pytest.raises(AssertionError):
+        _assert_postgame_copy_truthful(
+            headline="A tough Loss to take",
+            verdict=None,
+            result="Win",
+            player_survivors=5,
+            opponent_survivors=0,
+        )
+
+
+def test_guard_draw_rejects_win_word():
+    with pytest.raises(AssertionError):
+        _assert_postgame_copy_truthful(
+            headline="A Win-flavored Draw",
+            verdict=None,
+            result="Draw",
+            player_survivors=3,
+            opponent_survivors=3,
+        )
+
+
+def test_guard_draw_rejects_loss_word():
+    with pytest.raises(AssertionError):
+        _assert_postgame_copy_truthful(
+            headline="Felt like a Loss out there",
+            verdict=None,
+            result="Draw",
+            player_survivors=3,
+            opponent_survivors=3,
+        )
+
+
+def test_guard_draw_accepts_neutral_headline():
+    _assert_postgame_copy_truthful(
+        headline="Stalemate at the buzzer",
+        verdict=None,
+        result="Draw",
+        player_survivors=3,
+        opponent_survivors=3,
+    )
