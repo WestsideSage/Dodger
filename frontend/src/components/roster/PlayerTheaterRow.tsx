@@ -1,5 +1,6 @@
 import type { Player } from '../../types';
 import { RatingBar } from '../ui';
+import { formatOverall, formatPlayerName, formatRole } from './playerDisplay';
 import { PotentialBadge } from './PotentialBadge';
 import { Sparkline } from './Sparkline';
 
@@ -17,7 +18,7 @@ export function PlayerTheaterRow({ player, starter, onClick }: { player: Player,
           <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#475569' }}>#{parseInt(player.id.split('_').at(-1) ?? '0', 10) + 1}</div>
           <div>
             <div style={{ fontWeight: 700, fontSize: '1rem' }}>
-                {player.name}
+                {formatPlayerName(player)}
                 {player.newcomer && <span style={{ marginLeft: '0.5rem', fontSize: '0.625rem', color: '#a78bfa', border: '1px solid #a78bfa', padding: '0 0.25rem', borderRadius: '2px' }}>NEWCOMER</span>}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{starter ? 'Starter' : 'Bench'} · Age {player.age}</div>
@@ -48,11 +49,11 @@ export function PlayerTheaterRow({ player, starter, onClick }: { player: Player,
         <PotentialBadge tier={player.potential_tier} confidence={player.scouting_confidence} />
       </td>
       <td style={{ padding: '1rem', textAlign: 'right' }}>
-        <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#22d3ee' }}>{player.overall}</div>
+        <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#22d3ee' }}>{formatOverall(player)}</div>
         <Sparkline data={player.weekly_ovr_history} />
       </td>
       <td style={{ padding: '1rem' }}>
-        <span className={`dm-badge ${starter ? 'dm-badge-cyan' : 'dm-badge-slate'}`}>{player.role}</span>
+        <span className={`dm-badge ${starter ? 'dm-badge-cyan' : 'dm-badge-slate'}`}>{formatRole(player)}</span>
       </td>
     </tr>
   );
