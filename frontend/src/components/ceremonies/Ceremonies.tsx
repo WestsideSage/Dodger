@@ -288,7 +288,7 @@ const FILTER_EMPTY: Record<SigningFilter, string> = {
 
 function matchesFilter(card: SigningCard, filter: SigningFilter): boolean {
   if (filter === 'my') return card.outcome_kind === 'my_signing';
-  if (filter === 'rival') return card.outcome_kind === 'rival_signing' || card.outcome_kind === 'surprise';
+  if (filter === 'rival') return card.outcome_kind === 'rival_signing';
   return card.outcome_kind === 'surprise';
 }
 
