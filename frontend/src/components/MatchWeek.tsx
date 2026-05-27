@@ -404,6 +404,8 @@ export function MatchWeek({
         {revealStage >= 3 && (
           <div className="command-reveal">
             <FalloutGrid
+              byeRecovery={aftermath.bye_recovery}
+              developmentFeedback={aftermath.development_feedback}
               playerGrowth={aftermath.player_growth_deltas}
               standingsShift={aftermath.standings_shift}
               recruitReactions={aftermath.recruit_reactions}

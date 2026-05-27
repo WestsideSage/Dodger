@@ -13,10 +13,14 @@ function FalloutCard({ title, children }: { title: string; children: ReactNode }
 }
 
 export function FalloutGrid({
+  byeRecovery,
+  developmentFeedback,
   playerGrowth,
   standingsShift,
   recruitReactions,
 }: {
+  byeRecovery?: Aftermath['bye_recovery'];
+  developmentFeedback?: Aftermath['development_feedback'];
   playerGrowth: Aftermath['player_growth_deltas'];
   standingsShift: Aftermath['standings_shift'];
   recruitReactions: Aftermath['recruit_reactions'];
@@ -30,7 +34,7 @@ export function FalloutGrid({
         </span>
       </div>
       <div className="command-fallout-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-        <FalloutCard title="Who Grew">
+        <FalloutCard title={playerGrowth.length > 0 ? 'Who Grew' : 'Training Impact'}>
           {playerGrowth.length > 0 ? (
             <ul className="command-clean-list">
               {playerGrowth.slice(0, 4).map((item) => (
@@ -42,6 +46,13 @@ export function FalloutGrid({
                 </li>
               ))}
             </ul>
+          ) : developmentFeedback ? (
+            <div className="command-training-impact">
+              <strong>{developmentFeedback.focus_label}</strong>
+              <p>{developmentFeedback.summary}</p>
+              <span>{developmentFeedback.progress}</span>
+              {byeRecovery && <small>{byeRecovery.summary}</small>}
+            </div>
           ) : (
             <p className="command-fallout-empty">No growth logged this week.</p>
           )}

@@ -602,6 +602,17 @@ export interface Aftermath {
         attribute: string;
         delta: number;
     }>;
+    development_feedback?: {
+        focus: string;
+        focus_label: string;
+        summary: string;
+        progress: string;
+        players: string[];
+    };
+    bye_recovery?: {
+        summary: string;
+        players: string[];
+    };
     standings_shift: Array<{
         club_id: string;
         club_name: string;

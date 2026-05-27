@@ -26,6 +26,7 @@ def test_aftermath_payload_structure():
         assert 'headline' in data['aftermath']
         assert data['aftermath'].get('verdict')
         assert 'player_growth_deltas' in data['aftermath']
+        assert data['aftermath']['development_feedback']['progress'].startswith('+1 training unit')
         assert 'recruit_reactions' in data['aftermath']
         dashboard_copy = [
             text

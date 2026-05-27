@@ -77,6 +77,8 @@ def test_simulate_week_advances_bye_without_skipping_league_matches(tmp_path):
     assert result["status"] == "success"
     assert result["dashboard"]["result"] == "Bye Week"
     assert result["aftermath"]["match_card"] is None
+    assert result["aftermath"]["development_feedback"]["summary"]
+    assert "fatigue exposure" in result["aftermath"]["bye_recovery"]["summary"]
     assert (week_one_ids - player_week_one_ids) <= load_completed_match_ids(conn, season_id)
     assert not (player_week_one_ids & load_completed_match_ids(conn, season_id))
     assert current_week(conn, load_season(conn, season_id)) == 2
