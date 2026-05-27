@@ -47,11 +47,21 @@ function streak(recentResults: string[]): { kind: 'Win' | 'Loss' | null; length:
   return { kind: last, length };
 }
 
+// Where in the season are we? Used so banner copy doesn't claim "thick of
+// the race" in week 2 or "finish line in sight" mid-season.
+function seasonPhase(week: number | null, gamesRemaining: number): 'opener' | 'early' | 'mid' | 'late' {
+  if (week === null || week <= 1) return 'opener';
+  if (week <= 2) return 'early';
+  if (gamesRemaining <= 2) return 'late';
+  return 'mid';
+}
+
 // One sentence on what this match means for the season.
 export function stakesLine(
   rank: number | null,
   gamesRemaining: number,
   recentResults: string[],
+  week: number | null = null,
 ): string {
   const run = streak(recentResults);
   if (run.kind === 'Loss' && run.length >= 3) {
@@ -60,19 +70,25 @@ export function stakesLine(
   if (run.kind === 'Win' && run.length >= 3) {
     return `Riding a ${run.length}-win streak — keep the pressure on and the table will follow.`;
   }
-  if (rank === null) {
+  const phase = seasonPhase(week, gamesRemaining);
+  if (rank === null || phase === 'opener') {
     return 'A chance to set the tone before the table takes shape.';
   }
   if (rank === 1) {
-    return gamesRemaining <= 3
-      ? 'Top of the table with the finish line in sight — protect the lead.'
-      : 'Top of the table. Every week is now about holding the standard.';
+    if (phase === 'late') return 'Top of the table with the finish line in sight — protect the lead.';
+    if (phase === 'early') return 'Early lead at the top — too soon to relax, plenty to prove.';
+    return 'Top of the table. Every week is now about holding the standard.';
   }
   if (rank <= 3) {
-    return 'In the thick of the race — a win here is a statement to the contenders.';
+    if (phase === 'early') return 'Top-three out of the gate — banking points early shapes the seeding race.';
+    if (phase === 'late') return 'In the thick of the race — a win here is a statement to the contenders.';
+    return 'Hovering near the top — these are the matches that decide seeding.';
   }
-  if (gamesRemaining <= 4) {
+  if (phase === 'late') {
     return `Outside the top three with ${gamesRemaining} to play — the margin for error is gone.`;
+  }
+  if (phase === 'early') {
+    return 'Slow start — time to find an early identity before the table firms up.';
   }
   return 'Mid-table for now — a win is how the climb starts.';
 }

@@ -9,6 +9,18 @@ function toneAccent(tone: string): string {
   return '#94a3b8';
 }
 
+function formatProofSource(source: string): string {
+  let cleaned = source;
+  if (cleaned.startsWith('record:')) {
+    cleaned = cleaned.substring('record:'.length);
+  }
+  if (cleaned.startsWith('career:')) {
+    cleaned = cleaned.substring('career:'.length);
+  }
+  cleaned = cleaned.replaceAll('_', ' ').replaceAll('-', ' ');
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+}
+
 function ProofRow({ label, source }: { label: string; source: string }) {
   return (
     <div
@@ -22,7 +34,7 @@ function ProofRow({ label, source }: { label: string; source: string }) {
       }}
     >
       <span style={{ color: '#cbd5e1' }}>{label}</span>
-      <code style={{ color: '#64748b', fontSize: '0.7rem' }}>{source}</code>
+      <code style={{ color: '#64748b', fontSize: '0.7rem' }}>{formatProofSource(source)}</code>
     </div>
   );
 }
@@ -109,7 +121,7 @@ export function BroadcastFrameBlock({
             data-testid="broadcast-proof-toggle"
             style={{ cursor: 'pointer', color: '#94a3b8', fontSize: '0.76rem' }}
           >
-            Show proof
+            View evidence ⌄
           </summary>
           <div style={{ marginTop: '0.45rem' }}>
             {proofRows.map(row => (

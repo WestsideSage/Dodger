@@ -88,7 +88,7 @@ export function PageHeader({
 const variantStyles: Record<string, React.CSSProperties> = {
   primary: {
     background: '#f97316',
-    color: '#fff',
+    color: '#020617',
     border: '1px solid #ea6c0a',
     fontFamily: 'var(--font-display)',
     textTransform: 'uppercase',

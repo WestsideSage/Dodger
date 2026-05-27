@@ -1,262 +1,434 @@
-import type { PlayoffBracketResponse, StandingsResponse } from '../types';
+import React, { useMemo } from 'react';
+import type { PlayoffBracketResponse, RecentMatchSummary, StandingRow, StandingsResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
 import { StatusMessage } from './ui';
-import { RecentMatchesSidebar } from './standings/RecentMatchesSidebar';
 import { PlayoffBracket } from './standings/PlayoffBracket';
 
-function pct(wins: number, losses: number, draws: number): string {
-  const played = wins + losses + draws;
-  if (played === 0) return '.000';
-  const val = (wins + draws * 0.5) / played;
-  return val === 1 ? '1.000' : val.toFixed(3).replace(/^0/, '');
-}
+type RankedStanding = StandingRow & {
+  rank: number;
+};
 
-function gb(leaderWins: number, leaderLosses: number, wins: number, losses: number): string {
-  const diff = (leaderWins - wins - (leaderLosses - losses)) / 2;
-  if (diff <= 0) return '-';
-  return diff % 1 === 0 ? String(diff) : diff.toFixed(1);
-}
+type ParsedMatchSummary = {
+  awayClubName: string;
+  awayScore: string;
+  homeClubName: string;
+  homeScore: string;
+};
 
-function formatApproach(value: string | null | undefined): string {
-  if (!value) return 'Not set';
-  const clean = value.trim();
-  if (clean === 'Win Now') return 'Aggressive';
-  if (clean === 'Prepare For Playoffs') return 'Control';
-  if (clean === 'Preserve Health') return 'Defensive';
-  return clean.replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
-}
+const DEFAULT_APPROACH = 'Balanced';
+
+const parseMatchSummary = (summary: string): ParsedMatchSummary | null => {
+  const match = summary.match(/^(.+?)\s+(\d+)-(\d+)\s+(.+)$/);
+  if (!match) return null;
+  const [, homeClubName, homeScore, awayScore, awayClubName] = match;
+  return { homeClubName, homeScore, awayClubName, awayScore };
+};
+
+const formatDiff = (value: number) => (value > 0 ? `+${value}` : String(value));
+
+const normalizeApproach = (value: string | null | undefined) => {
+  const next = value?.trim();
+  return next && next.length > 0 ? next : DEFAULT_APPROACH;
+};
+
+const approachToneClass = (value: string | null | undefined) => {
+  const normalized = normalizeApproach(value).toLowerCase();
+  if (normalized.includes('aggressive') || normalized.includes('win now')) return 'dm-badge-amber';
+  if (normalized.includes('defensive') || normalized.includes('prepare')) return 'dm-badge-violet';
+  if (normalized.includes('balanced') || normalized.includes('mixed')) return 'dm-badge-cyan';
+  return 'dm-badge-slate';
+};
+
+const NeedState = ({
+  action,
+  helper,
+  outcome,
+}: {
+  action: string;
+  helper: string;
+  outcome: string;
+}) => (
+  <>
+    <div className="need-row">
+      <span className="need-action">{action}</span>
+      <span className="need-arrow">-&gt;</span>
+      <span className="need-outcome">{outcome}</span>
+    </div>
+    <p className="need-helper">{helper}</p>
+  </>
+);
+
+const FormStub = ({ label }: { label: string | null | undefined }) => (
+  <div className="ls-form-with-label">
+    <span className="lbl-mini">Plan</span>
+    <span className={`dm-badge ${approachToneClass(label)}`}>{normalizeApproach(label)}</span>
+  </div>
+);
+
+const DiffBar = ({ diff, max }: { diff: number; max: number }) => {
+  const pct = max === 0 ? 0 : Math.min(100, (Math.abs(diff) / max) * 100);
+  const isPositive = diff >= 0;
+
+  return (
+    <div className="ls-diff-cell">
+      <div className="ls-diff-bar">
+        <span className="axis" />
+        <span
+          className={`fill ${isPositive ? 'pos' : 'neg'}`}
+          style={{
+            left: isPositive ? '50%' : `calc(50% - ${pct / 2}%)`,
+            width: `${pct / 2}%`,
+          }}
+        />
+      </div>
+      <span className={`ls-diff-val ${isPositive ? 'pos' : 'neg'}`}>{formatDiff(diff)}</span>
+    </div>
+  );
+};
+
+const buildNeedCopy = (
+  us: RankedStanding,
+  leader: RankedStanding,
+  cutoffTeam: RankedStanding,
+  playoffLine: number,
+  totalWeeks: number,
+  currentWeek: number,
+) => {
+  const weeksRemaining = Math.max(0, totalWeeks - currentWeek);
+  const cushion = Math.max(0, us.points - cutoffTeam.points);
+  const pointsBack = Math.max(0, cutoffTeam.points - us.points);
+  const leaderGap = Math.max(0, leader.points - us.points);
+
+  if (us.rank === 1) {
+    return {
+      action: 'Hold Lead',
+      outcome: 'Stay #1',
+      helper:
+        weeksRemaining > 0
+          ? `You are pacing the table with ${weeksRemaining} week${weeksRemaining === 1 ? '' : 's'} left. Keep the edge on survivor differential.`
+          : 'The table lead is yours. Survivor differential is the live tiebreaker.',
+    };
+  }
+
+  if (us.rank <= playoffLine) {
+    return {
+      action: 'Win Next',
+      outcome: `Hold Top ${playoffLine}`,
+      helper:
+        leaderGap > 0
+          ? `You sit ${leaderGap} point${leaderGap === 1 ? '' : 's'} behind #1 and ${cushion} clear of the cut line.`
+          : `You are on the line with ${cushion} point${cushion === 1 ? '' : 's'} of breathing room over the bubble.`,
+    };
+  }
+
+  return {
+    action: 'Win Next',
+    outcome: `Break Top ${playoffLine}`,
+    helper:
+      weeksRemaining > 0
+        ? `You are ${pointsBack} point${pointsBack === 1 ? '' : 's'} outside the playoff line with ${weeksRemaining} week${weeksRemaining === 1 ? '' : 's'} left to close it.`
+        : `You finish ${pointsBack} point${pointsBack === 1 ? '' : 's'} outside the playoff line unless the tiebreak flips.`,
+  };
+};
+
+const buildRaceSummary = (us: RankedStanding, leader: RankedStanding, cutoffTeam: RankedStanding, playoffLine: number) => {
+  if (us.rank === 1) {
+    const lead = Math.max(0, us.points - cutoffTeam.points);
+    return {
+      left: `LEADS BY ${lead}`,
+      right: `TOP ${playoffLine} LOCK`,
+    };
+  }
+
+  if (us.rank <= playoffLine) {
+    return {
+      left: `${Math.max(0, us.points - cutoffTeam.points)} PTS CUSHION`,
+      right: `${Math.max(0, leader.points - us.points)} BACK OF #1`,
+    };
+  }
+
+  return {
+    left: `${Math.max(0, cutoffTeam.points - us.points)} BACK OF CUT`,
+    right: `${Math.max(0, leader.points - us.points)} BACK OF #1`,
+  };
+};
+
+const buildWireRows = (
+  recentMatches: RecentMatchSummary[] | undefined,
+  userClubName: string,
+  currentWeek: number,
+) => {
+  if (!recentMatches || recentMatches.length === 0) {
+    return [
+      <div key="empty" className="ls-wire-row">
+        <span className="ls-wire-week">W{String(currentWeek).padStart(2, '0')}</span>
+        <div className="ls-wire-fixture">
+          <span className="ls-wire-team home">Season</span>
+          <span className="ls-wire-score"><b>OPEN</b></span>
+          <span className="ls-wire-team away">Awaiting first result</span>
+        </div>
+        <span className="ls-wire-tag tag-draw">LIVE</span>
+      </div>,
+    ];
+  }
+
+  return recentMatches.map((match) => {
+    const parsed = parseMatchSummary(match.summary);
+    if (!parsed) {
+      return (
+        <div key={match.match_id} className="ls-wire-row">
+          <span className="ls-wire-week">W{String(match.week).padStart(2, '0')}</span>
+          <div className="ls-wire-fixture">
+            <span className="ls-wire-team home">League</span>
+            <span className="ls-wire-score"><b>UPDATE</b></span>
+            <span className="ls-wire-team away">{match.summary}</span>
+          </div>
+          <span className="ls-wire-tag tag-draw">NOTE</span>
+        </div>
+      );
+    }
+
+    const involvesUser = parsed.homeClubName === userClubName || parsed.awayClubName === userClubName;
+    const tagClass = match.winner_name === 'Draw' ? 'tag-draw' : 'tag-win';
+
+    return (
+      <div key={match.match_id} className={`ls-wire-row ${involvesUser ? 'is-us' : ''}`}>
+        <span className="ls-wire-week">W{String(match.week).padStart(2, '0')}</span>
+        <div className="ls-wire-fixture">
+          <span className="ls-wire-team home">{parsed.homeClubName}</span>
+          <span className="ls-wire-score">
+            <b>{parsed.homeScore}</b>-<b>{parsed.awayScore}</b>
+          </span>
+          <span className="ls-wire-team away">{parsed.awayClubName}</span>
+        </div>
+        <span className={`ls-wire-tag ${tagClass}`}>{match.winner_name === 'Draw' ? 'DRAW' : 'WIN'}</span>
+      </div>
+    );
+  });
+};
 
 export function Standings() {
   const { data, error, loading } = useApiResource<StandingsResponse>('/api/standings');
   const { data: bracket } = useApiResource<PlayoffBracketResponse>('/api/playoffs/bracket');
 
+  const standings = useMemo<RankedStanding[]>(
+    () => (data?.standings ?? []).map((standing, index) => ({ ...standing, rank: index + 1 })),
+    [data?.standings],
+  );
+
+  const maxDiff = useMemo(
+    () => Math.max(0, ...standings.map((standing) => Math.abs(standing.elimination_differential))),
+    [standings],
+  );
+
   if (error) return <StatusMessage title="Standings unavailable" tone="danger">{error}</StatusMessage>;
   if (loading) return <StatusMessage title="Loading standings">Updating the table.</StatusMessage>;
-  if (!data) return <StatusMessage title="No standings">No standings data returned.</StatusMessage>;
+  if (!data || standings.length === 0) return <StatusMessage title="No standings">No standings data returned.</StatusMessage>;
 
-  const rows = data.standings;
-  const leader = rows[0];
-  const displayWeek = Math.min(data.current_week, data.total_weeks);
-  const gamesRemaining = Math.max(0, data.total_weeks - data.current_week + 1);
-  const playoffSpots = data.playoff_spots;
-  const showCutoff = rows.length > playoffSpots;
+  const us = standings.find((standing) => standing.is_user_club) ?? standings[0];
+  const leader = standings[0];
+  const playoffLine = data.playoff_spots;
+  const cutoffTeam = standings.find((standing) => standing.rank === playoffLine + 1) ?? standings[standings.length - 1];
+  const raceSummary = buildRaceSummary(us, leader, cutoffTeam, playoffLine);
+  const needCopy = buildNeedCopy(us, leader, cutoffTeam, playoffLine, data.total_weeks, data.current_week);
+  const wireRows = buildWireRows(data.recent_matches, us.club_name, data.current_week);
+  const tiebreakRows = standings.slice(0, Math.min(standings.length, playoffLine + 2));
 
-  const handleRowClick = (teamId: string) => {
-    window.location.assign(`#?tab=dynasty&subtab=history&team_id=${teamId}`);
+  const handleClubOpen = (clubId: string) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('tab', 'dynasty');
+    params.set('subtab', 'history');
+    params.set('team_id', clubId);
+    window.location.assign(`${window.location.pathname}?${params.toString()}`);
   };
 
   return (
     <>
-    {bracket?.active && <PlayoffBracket data={bracket} />}
-    <div className="standings-layout">
-      <div className="dm-panel standings-table-panel">
-        <div className="dm-panel-header">
-          <p className="dm-kicker">League Office</p>
-          <h2 className="dm-panel-title">Standings</h2>
+      {bracket?.active && <PlayoffBracket data={bracket} />}
+
+      <div className="max-content ls-shell" data-screen-label="04 Standings">
+        <div className="ls-glance">
+          <div className="ls-glance-cell ls-glance-rank">
+            <span className="lbl">Our Rank</span>
+            <div className="rank-row">
+              <span className="num">{us.rank}</span>
+              <span className="suffix">OF {standings.length}</span>
+            </div>
+            <div className={`trend ${us.rank <= playoffLine ? 'up' : 'down'}`}>
+              <span className="arrow">{us.rank <= playoffLine ? '^' : 'v'}</span>
+              {us.rank <= playoffLine ? `ABOVE LINE THROUGH W${String(data.current_week).padStart(2, '0')}` : `CHASE MODE THROUGH W${String(data.current_week).padStart(2, '0')}`}
+            </div>
+          </div>
+
+          <div className="ls-glance-cell ls-glance-record">
+            <span className="lbl">Record - Diff</span>
+            <div className="record-row">
+              <span className="rec">{us.wins}-{us.losses}-{us.draws}</span>
+              <span
+                className="diff"
+                style={us.elimination_differential < 0 ? { color: 'var(--dm-rose)' } : undefined}
+              >
+                {formatDiff(us.elimination_differential)}
+              </span>
+            </div>
+            <FormStub label={us.latest_approach} />
+          </div>
+
+          <div className="ls-glance-cell ls-glance-race">
+            <span className="lbl">Playoff Line - Top {playoffLine}</span>
+            <div className="race">
+              {standings.slice(0, Math.min(standings.length, playoffLine + 1)).map((standing) => (
+                <span
+                  key={standing.rank}
+                  className={`race-pip ${standing.rank <= playoffLine ? 'in' : 'out'} ${standing.is_user_club ? 'us' : ''}`}
+                >
+                  <span className="rk">{standing.rank}</span>
+                </span>
+              ))}
+            </div>
+            <div className="cushion">
+              <span className="cushion-pos">{raceSummary.left}</span>
+              <span className="cushion-sep">-</span>
+              <span className="cushion-back">{raceSummary.right}</span>
+            </div>
+          </div>
+
+          <div className="ls-glance-cell ls-glance-next">
+            <span className="lbl">Next Result Needs</span>
+            <NeedState action={needCopy.action} outcome={needCopy.outcome} helper={needCopy.helper} />
+          </div>
         </div>
 
-        {data.total_weeks > 0 && (
-          <div
-            data-testid="standings-context-callout"
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '0.4rem 1rem',
-              padding: '0.5rem 0.85rem',
-              margin: '0 0 0.75rem',
-              background: '#0a1220',
-              border: '1px solid #1e293b',
-              borderRadius: '4px',
-              fontFamily: 'JetBrains Mono, monospace',
-              fontSize: '0.72rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-              color: '#94a3b8',
-            }}
-          >
-            <span>Week {displayWeek} of {data.total_weeks}</span>
-            <span style={{ color: '#f97316', fontWeight: 700 }}>Playoff cutoff · Top {playoffSpots}</span>
-            <span>
-              {gamesRemaining === 1
-                ? 'Regular-Season Finale · Season Ends Next'
-                : `${gamesRemaining} games remaining`}
-            </span>
+        <div className="ls-table-card">
+          <div className="ls-table-head">
+            <div>
+              <span className="dm-kicker">League Office</span>
+              <h2 className="ls-table-title">
+                Season Standings
+                <span className="ls-subtle">Live season table</span>
+              </h2>
+            </div>
+            <div className="ls-table-meta">
+              <span className="dm-badge dm-badge-cyan">WEEK {String(data.current_week).padStart(2, '0')}</span>
+              <span className="dm-badge dm-badge-emerald">TOP {playoffLine}</span>
+              <span className="dm-badge dm-badge-slate">{standings.length} CLUBS</span>
+            </div>
           </div>
-        )}
 
-        <div className="standings-desktop-view standings-table-scroll">
-          <table className="dm-table" style={{ width: '100%' }}>
-            <thead>
-              <tr>
-                <th style={{ width: '2rem', textAlign: 'center' }}>#</th>
-                <th>Club</th>
-                <th style={{ textAlign: 'right' }}>
-                  <span className="dm-desktop-only">Wins</span>
-                  <span className="dm-mobile-only">W</span>
-                </th>
-                <th style={{ textAlign: 'right' }}>
-                  <span className="dm-desktop-only">Losses</span>
-                  <span className="dm-mobile-only">L</span>
-                </th>
-                <th style={{ textAlign: 'right' }}>
-                  <span className="dm-desktop-only">Ties</span>
-                  <span className="dm-mobile-only">T</span>
-                </th>
-                <th style={{ textAlign: 'right' }}>
-                  <span className="dm-desktop-only">Points</span>
-                  <span className="dm-mobile-only">Pts</span>
-                </th>
-                <th style={{ textAlign: 'right' }}>Win Rate</th>
-                <th style={{ textAlign: 'right' }}>Games Back</th>
-                <th
-                  style={{ textAlign: 'right' }}
-                  title="Total opponents eliminated minus times your players were eliminated across all matches. Used as a tiebreaker."
-                >
-                  <span className="dm-desktop-only">Elim Differential</span>
-                  <span className="dm-mobile-only">Diff</span>
-                </th>
-                <th>
-                  <span className="dm-desktop-only">Approach</span>
-                  <span className="dm-mobile-only">Plan</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, i) => {
-                const winPct = pct(row.wins, row.losses, row.draws);
-                const gamesBack = leader
-                  ? gb(leader.wins, leader.losses, row.wins, row.losses)
-                  : '-';
-                const diffSign = row.elimination_differential > 0 ? '+' : '';
-                const diffColor =
-                  row.elimination_differential > 0
-                    ? '#10b981'
-                    : row.elimination_differential < 0
-                    ? '#f43f5e'
-                    : '#64748b';
-
-                return (
-                  <tr
-                    key={row.club_id}
-                    onClick={() => handleRowClick(row.club_id)}
-                    title={showCutoff && i < playoffSpots ? 'In playoff position' : undefined}
-                    style={{
-                      cursor: 'pointer',
-                      background: row.is_user_club ? 'rgba(34,211,238,0.1)' : undefined,
-                      borderLeft: row.is_user_club ? '2px solid #22d3ee' : undefined,
-                      borderBottom: showCutoff && i === playoffSpots - 1 ? '2px solid #f97316' : undefined,
-                    }}
-                  >
-                    <td className="dm-data" style={{ textAlign: 'center', color: '#64748b', width: '2rem' }}>
-                      {i + 1}
-                    </td>
-                    <td style={{ fontWeight: 600, color: '#fff', fontFamily: 'var(--font-body)', padding: '0.65rem 0.5rem' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                          {row.club_name}
-                          {i === 0 && <span className="dm-badge dm-badge-cyan">1st</span>}
-                          {row.is_user_club && <span className="dm-badge dm-badge-slate">You</span>}
-                        </div>
-                        {row.program_archetype && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.7rem', fontWeight: 500 }}>
-                            <span
-                              style={{
-                                padding: '1px 6px',
-                                borderRadius: '4px',
-                                background: '#1e293b',
-                                border: '1px solid #334155',
-                                color: '#38bdf8',
-                                display: 'inline-block',
-                              }}
-                            >
-                              {row.program_archetype}
-                            </span>
-                            <span style={{ color: '#64748b' }}>•</span>
-                            <span style={{ color: '#94a3b8' }}>{row.program_trajectory_label}</span>
+          <div className="ls-table-scroll">
+            <table className="ls-table">
+              <thead>
+                <tr>
+                  <th className="num">#</th>
+                  <th>Club</th>
+                  <th className="num">W</th>
+                  <th className="num">L</th>
+                  <th className="num">D</th>
+                  <th className="num">PTS</th>
+                  <th>Plan</th>
+                  <th>Survivor Diff</th>
+                </tr>
+              </thead>
+              <tbody>
+                {standings.map((standing, index) => {
+                  const isCutLine = index === playoffLine;
+                  return (
+                    <React.Fragment key={standing.club_id}>
+                      {isCutLine && (
+                        <tr className="ls-playoff-line">
+                          <td colSpan={8}>
+                            <div className="cut-row">
+                              <span className="line-bar" />
+                              <span className="line-label">Playoff Cut</span>
+                              <span className="line-bar" />
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      <tr
+                        className={standing.is_user_club ? 'ls-user' : undefined}
+                        onClick={() => handleClubOpen(standing.club_id)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <td className="num">
+                          <span className={`ls-rank ${standing.rank <= playoffLine ? 'in' : 'out'}`}>{standing.rank}</span>
+                        </td>
+                        <td>
+                          <div className="ls-club">
+                            <span className="club-name">{standing.club_name}</span>
+                            <div className="ls-subtle" style={{ display: 'block', marginLeft: 0 }}>
+                              {standing.program_trajectory_label ?? standing.program_archetype ?? 'Program track live'}
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="dm-data" style={{ textAlign: 'right', color: '#10b981' }}>{row.wins}</td>
-                    <td className="dm-data" style={{ textAlign: 'right', color: '#f43f5e' }}>{row.losses}</td>
-                    <td className="dm-data" style={{ textAlign: 'right', color: '#94a3b8' }}>{row.draws}</td>
-                    <td className="dm-data" style={{ textAlign: 'right', color: '#fff', fontWeight: 700, fontSize: '0.875rem' }}>{row.points}</td>
-                    <td className="dm-data" style={{ textAlign: 'right', color: '#cbd5e1' }}>{winPct}</td>
-                    <td className="dm-data" style={{ textAlign: 'right', color: '#64748b' }}>{gamesBack}</td>
-                    <td className="dm-data" style={{ textAlign: 'right', color: diffColor, fontWeight: 600 }}>{diffSign}{row.elimination_differential}</td>
-                    <td style={{ color: '#94a3b8', fontSize: '0.78rem' }}>{formatApproach(row.latest_approach)}</td>
-                  </tr>
+                        </td>
+                        <td className="num"><span className="ls-cell-num">{standing.wins}</span></td>
+                        <td className="num"><span className="ls-cell-num muted">{standing.losses}</span></td>
+                        <td className="num"><span className="ls-cell-num muted">{standing.draws}</span></td>
+                        <td className="num"><span className="ls-cell-num pts">{standing.points}</span></td>
+                        <td>
+                          <span className={`dm-badge ${approachToneClass(standing.latest_approach)}`}>
+                            {normalizeApproach(standing.latest_approach)}
+                          </span>
+                        </td>
+                        <td><DiffBar diff={standing.elimination_differential} max={maxDiff} /></td>
+                      </tr>
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="ls-table-foot">
+            <span className="ls-legend-item"><span className="dm-badge dm-badge-cyan">YOU</span> User club row</span>
+            <span className="ls-legend-sep">-</span>
+            <span className="ls-legend-item"><span className="dm-badge dm-badge-amber">CUT</span> Playoff line</span>
+            <span className="ls-legend-sep">-</span>
+            <span className="ls-legend-note">Click a club to open its history lane.</span>
+          </div>
+        </div>
+
+        <div className="ls-side">
+          <div className="ls-panel">
+            <div className="ls-panel-head">
+              <span className="dm-kicker">League Wire</span>
+              <h3>Recent Results</h3>
+            </div>
+            <div className="ls-wire-list">{wireRows}</div>
+          </div>
+
+          <div className="ls-panel">
+            <div className="ls-panel-head">
+              <span className="dm-kicker">Tiebreaker Read</span>
+              <h3>Top {playoffLine} Race</h3>
+            </div>
+            <div className="ls-tb-list">
+              {tiebreakRows.map((standing) => {
+                const isSafe = standing.rank <= playoffLine;
+                return (
+                  <div
+                    key={`tb-${standing.club_id}`}
+                    className="ls-tb-row"
+                    onClick={() => handleClubOpen(standing.club_id)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <span className="ls-tb-from">#{standing.rank}</span>
+                    <div className="ls-tb-body">
+                      <span className="ls-tb-who">{standing.club_name}</span>
+                      <span className="ls-tb-note">
+                        {standing.points} pts - {formatDiff(standing.elimination_differential)} diff - {normalizeApproach(standing.latest_approach)}
+                      </span>
+                    </div>
+                    <span className={`ls-tb-risk ${isSafe ? 'risk-low' : 'risk-high'}`}>
+                      {isSafe ? 'IN' : 'BUBBLE'}
+                    </span>
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="standings-compact-view">
-          <div className="standings-card-list">
-            {rows.map((row, i) => {
-              const winPct = pct(row.wins, row.losses, row.draws);
-              const gamesBack = leader
-                ? gb(leader.wins, leader.losses, row.wins, row.losses)
-                : '-';
-              const diffSign = row.elimination_differential > 0 ? '+' : '';
-              const diffColor =
-                row.elimination_differential > 0
-                  ? '#10b981'
-                  : row.elimination_differential < 0
-                  ? '#f43f5e'
-                  : '#94a3b8';
-
-              return (
-                <button
-                  key={row.club_id}
-                  type="button"
-                  className={`standings-card ${row.is_user_club ? 'is-user-club' : ''}`}
-                  onClick={() => handleRowClick(row.club_id)}
-                  aria-label={`Open ${row.club_name} history`}
-                  style={showCutoff && i === playoffSpots - 1 ? { borderBottom: '2px solid #f97316' } : undefined}
-                >
-                  <div className="standings-card-header">
-                    <div>
-                      <p className="dm-kicker" style={{ margin: 0 }}>Rank #{i + 1}</p>
-                      <h3 style={{ margin: '0.1rem 0' }}>{row.club_name}</h3>
-                      {row.program_archetype && (
-                        <p style={{ margin: 0, fontSize: '0.7rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                          <span style={{ color: '#38bdf8', fontWeight: 600 }}>{row.program_archetype}</span>
-                          <span>•</span>
-                          <span>{row.program_trajectory_label}</span>
-                        </p>
-                      )}
-                    </div>
-                    <div className="standings-card-points">
-                      <span>Points</span>
-                      <strong>{row.points}</strong>
-                    </div>
-                  </div>
-                  <div className="standings-card-meta">
-                    <span>{row.wins}-{row.losses}-{row.draws}</span>
-                    <span>Win rate {winPct}</span>
-                    <span>Games back {gamesBack}</span>
-                  </div>
-                  <div className="standings-card-stats">
-                    <div title="Total opponents eliminated minus times your players were eliminated across all matches. Used as a tiebreaker.">
-                      <span>Diff</span>
-                      <strong style={{ color: diffColor }}>{diffSign}{row.elimination_differential}</strong>
-                    </div>
-                    <div>
-                      <span>Plan</span>
-                      <strong>{formatApproach(row.latest_approach)}</strong>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+            </div>
           </div>
         </div>
       </div>
-
-      <RecentMatchesSidebar matches={data.recent_matches || []} />
-    </div>
     </>
   );
 }

@@ -129,6 +129,16 @@ def update_tactics_payload(conn: sqlite3.Connection, policy_values: dict[str, An
     return {"status": "success"}
 
 
+_CLUB_IDENTITY_LABELS = {
+    "aurora": "Scouting Tradition",
+    "lunar": "Defensive System",
+    "northwood": "Power Throwers",
+    "harbor": "Catch Wall",
+    "granite": "Swarm Pressure",
+    "solstice": "Sniper Control",
+}
+
+
 def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     from .persistence import load_program_trajectories
     season_id = get_state(conn, "active_season_id")
@@ -145,7 +155,11 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         latest_plan = latest_visible_plan(conn, season_id, current_week, club_id)
         trajectories = load_program_trajectories(conn, club_id)
         year_num = len(trajectories) + 1
-        traj_label = f"Year {year_num} — {club.program_archetype}"
+        # Prefer the curated identity label per club so the standings table
+        # reads with distinctive flavor instead of every team converging on
+        # the same roster-derived archetype after a season or two.
+        identity = _CLUB_IDENTITY_LABELS.get(club_id, club.program_archetype)
+        traj_label = f"Year {year_num} — {identity}"
         rows.append(
             {
                 "club_id": club_id,

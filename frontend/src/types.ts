@@ -710,6 +710,11 @@ export interface RecruitmentBeatPayload {
     player_signing: OffseasonSigning | null;
     other_signings: OffseasonSigning[];
     available_prospects: RecruitmentProspectChoice[];
+    signed_count: number;
+    signing_limit: number;
+    remaining_signings: number;
+    roster_size: number;
+    roster_limit: number;
 }
 
 export interface RatifiedRecordEntry {
@@ -822,6 +827,9 @@ export interface DynastyOfficeResponse {
             promise_options: string[];
             active_promise: { promise_type: string; status: string } | null;
             interest_evidence: string[];
+            scouted?: boolean;
+            contacted?: boolean;
+            visited?: boolean;
         }>;
         rules: {
             max_active_promises: number;
@@ -878,6 +886,12 @@ export interface SaveInfo {
     club_name: string | null;
     season_id: string | null;
     week: number | null;
+    incompatible?: boolean;
+    last_modified?: number;
+    season_number?: number;
+    wins?: number;
+    losses?: number;
+    draws?: number;
 }
 
 export interface SaveListResponse {

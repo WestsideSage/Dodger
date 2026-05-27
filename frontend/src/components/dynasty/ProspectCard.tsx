@@ -1,9 +1,22 @@
 import { useState } from 'react';
+import { dynastyApi } from '../../api/client';
 import type { DynastyOfficeResponse } from '../../types';
-import { ActionButton } from '../ui';
 
 type RecruitingProspect = DynastyOfficeResponse['recruiting']['prospects'][number];
 type RecruitingBudget = DynastyOfficeResponse['recruiting']['budget'];
+
+const archetypeBadge = (label: string) => {
+  const normalized = label.toLowerCase();
+  const tone =
+    normalized.includes('sharpshooter') || normalized.includes('skirmisher')
+      ? 'dm-badge-orange'
+      : normalized.includes('net specialist')
+        || normalized.includes('possession specialist')
+        || normalized.includes('hit-and-run')
+      ? 'dm-badge-violet'
+      : 'dm-badge-cyan';
+  return <span className={`dm-badge ${tone}`}>{label.toUpperCase()}</span>;
+};
 
 export function ProspectCard({
   prospect,
@@ -18,25 +31,22 @@ export function ProspectCard({
 }) {
   const [loading, setLoading] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [feedbackTone, setFeedbackTone] = useState<'success' | 'error'>('success');
 
-  const doAction = (verb: string) => {
+  const runAction = (verb: 'scoutProspect' | 'contactProspect' | 'visitProspect', label: string) => {
     setLoading(true);
-    fetch(`/api/recruiting/${verb}/${prospect.player_id}`, { method: 'POST' })
-      .then(res => {
-        if (!res.ok) return res.json().then(d => { throw new Error(d.detail); });
-        return res.json();
-      })
+    dynastyApi[verb](prospect.player_id)
       .then(() => {
-        const labelMap: Record<string, string> = {
-          scout: 'Scouted!',
-          contact: 'Contacted!',
-          visit: 'Visited!',
-        };
-        setFeedbackMessage(labelMap[verb] ?? 'Completed!');
-        setTimeout(() => setFeedbackMessage(null), 3000);
+        setFeedbackTone('success');
+        setFeedbackMessage(label);
+        setTimeout(() => setFeedbackMessage(null), 2500);
         onAction();
       })
-      .catch(err => alert(err.message))
+      .catch((error) => {
+        setFeedbackTone('error');
+        setFeedbackMessage(error instanceof Error ? error.message : 'Action failed.');
+        setTimeout(() => setFeedbackMessage(null), 3200);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -45,91 +55,99 @@ export function ProspectCard({
   const canVisit = budget.visit[0] < budget.visit[1];
   const low = prospect.public_ovr_band?.[0] ?? '?';
   const high = prospect.public_ovr_band?.[1] ?? '?';
-  const fitTone = prospect.fit_score >= 80 ? '#10b981' : prospect.fit_score >= 65 ? '#22d3ee' : '#f59e0b';
-  const fitLabel = prospect.fit_score >= 80 ? 'Top priority' : prospect.fit_score >= 65 ? 'Strong fit' : 'Worth tracking';
+  const fitTier = prospect.fit_score >= 80 ? 'strong' : prospect.fit_score >= 65 ? 'neutral' : 'risk';
+  const fitLabel = prospect.fit_score >= 80 ? 'Strong Fit' : prospect.fit_score >= 65 ? 'Neutral' : 'At Risk';
   const evidence = prospect.interest_evidence.filter(Boolean).slice(0, 2);
 
   return (
-    <article
-      className="dm-panel"
-      style={{
-        marginBottom: '0.8rem',
-        padding: 0,
-        overflow: 'hidden',
-        borderLeft: '3px solid #22d3ee',
-        background: 'linear-gradient(90deg, rgba(34,211,238,0.08), transparent 26rem), #0f172a',
-        position: 'relative',
-      }}
-    >
+    <div className={`do-recruit fit-${fitTier}`} style={{ position: 'relative' }}>
       {feedbackMessage && (
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(16, 185, 129, 0.9)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#fff',
-          fontWeight: 800,
-          fontSize: '1.25rem',
-          zIndex: 10,
-          borderRadius: '6px',
-        }}>
-          ✓ {feedbackMessage}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: feedbackTone === 'success' ? 'rgba(16, 185, 129, 0.92)' : 'rgba(244, 63, 94, 0.92)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontWeight: 800,
+            fontSize: '1rem',
+            zIndex: 10,
+            borderRadius: '6px',
+            textAlign: 'center',
+            padding: '1rem',
+          }}
+        >
+          {feedbackTone === 'success' ? '✓ ' : ''}{feedbackMessage}
         </div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '1rem', padding: '1rem 1.1rem 0.85rem' }}>
-        <div style={{ minWidth: 0 }}>
-          <p className="dm-kicker" style={{ marginBottom: '0.35rem' }}>Priority #{priority}</p>
-          <h3 style={{ margin: 0, color: '#fff', fontSize: '1.05rem', lineHeight: 1.2 }}>{prospect.name}</h3>
-          <p style={{ margin: '0.3rem 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
-            {prospect.hometown} | {prospect.public_archetype}
-          </p>
-          {evidence.length > 0 && (
-            <div style={{ marginTop: '0.55rem', display: 'grid', gap: '0.3rem' }}>
-              {evidence.map(line => (
-                <div key={`${prospect.player_id}-${line}`} style={{ color: '#cbd5e1', fontSize: '0.74rem', lineHeight: 1.35 }}>
-                  {line}
-                </div>
-              ))}
-            </div>
-          )}
+      <div className="do-recruit-head">
+        <div className="do-recruit-id">
+          <span className="do-recruit-name" title={prospect.name}>
+            {prospect.name}
+          </span>
+          <div className="do-recruit-sub">
+            <span>#{String(priority).padStart(2, '0')}</span>
+            <span className="dot">·</span>
+            <span>{prospect.hometown}</span>
+            <span className="dot">·</span>
+            {archetypeBadge(prospect.public_archetype || 'Balanced')}
+          </div>
         </div>
-
-        <div style={{ textAlign: 'right' }}>
-          <div className="dm-data" style={{ fontSize: '1.45rem', fontWeight: 900, color: '#22d3ee', lineHeight: 1 }}>
-            {low}-{high}
-          </div>
-          <div style={{ marginTop: '0.3rem', fontSize: '0.72rem', fontWeight: 800, color: fitTone, textTransform: 'uppercase' }}>
-            {fitLabel}
-          </div>
-          <div style={{ marginTop: '0.2rem', fontSize: '0.7rem', color: '#94a3b8' }}>
-            Fit {prospect.fit_score}
-          </div>
+        <div className="do-recruit-fit">
+          <span className="lbl">FIT</span>
+          <span className="val mono">{prospect.fit_score}</span>
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', borderTop: '1px solid #1e293b', padding: '0.85rem 1.1rem 1rem' }}>
-        <ActionButton
-          title={canScout ? 'Scout: Reveals hidden rating data and narrows the OVR band for this prospect.' : 'No Scout slots remain this week'}
+      <div className="do-recruit-meter">
+        <div className="do-recruit-meter-bg">
+          <div className="do-recruit-meter-fill" style={{ width: `${prospect.fit_score}%` }} />
+        </div>
+        <div className="do-recruit-meter-labels">
+          <span>{fitLabel.toUpperCase()}</span>
+          <span className="ovr mono">OVR {low}-{high}</span>
+        </div>
+      </div>
+
+      {evidence.length > 0 && (
+        <div className="do-recruit-evidence">
+          <span className="bar" />
+          <span className="copy">{evidence.join(' · ')}</span>
+        </div>
+      )}
+
+      <div className="do-recruit-actions">
+        <button
+          className="do-recruit-btn"
           disabled={loading || !canScout}
-          onClick={() => doAction('scout')}
-        >Scout</ActionButton>
-        <ActionButton
-          title={canContact ? 'Contact: Reaches out directly to build interest. Increases their engagement with your program.' : 'No Contact slots remain this week'}
+          onClick={() => runAction('scoutProspect', 'Scouted.')}
+          title={canScout ? 'Reveal more prospect detail' : 'No Scout slots remain this week'}
+          type="button"
+        >
+          Scout
+        </button>
+        <button
+          className="do-recruit-btn"
           disabled={loading || !canContact}
-          onClick={() => doAction('contact')}
-        >Contact</ActionButton>
-        <ActionButton
-          title={canVisit ? 'Visit: Invites the prospect to your facility. Strongest commitment signal — use it on top targets.' : 'No Visit slots remain this week'}
+          onClick={() => runAction('contactProspect', 'Contact logged.')}
+          title={canContact ? 'Build recruit interest' : 'No Contact slots remain this week'}
+          type="button"
+        >
+          Contact
+        </button>
+        <button
+          className="do-recruit-btn primary"
           disabled={loading || !canVisit}
-          onClick={() => doAction('visit')}
-        >Visit</ActionButton>
+          onClick={() => runAction('visitProspect', 'Visit booked.')}
+          title={canVisit ? 'Spend a visit slot' : 'No Visit slots remain this week'}
+          type="button"
+        >
+          Visit
+        </button>
       </div>
-    </article>
+    </div>
   );
 }

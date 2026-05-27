@@ -319,25 +319,63 @@ export function MatchWeek({
               </p>
             )}
             {aftermath.body.length > 0 && (
-              <div style={{ display: 'grid', gap: '0.55rem', marginTop: '0.85rem' }}>
-                {aftermath.body.map((paragraph, index) => (
-                  <p
-                    key={`${index}-${paragraph.slice(0, 12)}`}
-                    data-testid="aftermath-body-paragraph"
-                    style={{
-                      margin: 0,
-                      padding: '0.7rem 0.85rem',
-                      background: '#08101f',
-                      border: '1px solid #1e293b',
-                      borderRadius: '4px',
-                      color: '#cbd5e1',
-                      lineHeight: 1.5,
-                      fontSize: '0.82rem',
-                    }}
-                  >
-                    {paragraph}
-                  </p>
-                ))}
+              <div style={{ display: 'grid', gap: '0.65rem', marginBottom: '1.5rem' }}>
+                {aftermath.body.map((paragraph, index) => {
+                  const youPrefixes = ["Aggressive - ", "Patient - ", "Mixed - ", "Their stars - ", "Ball-holders - ", "Spread - ", "All in - ", "Balanced - ", "Hold back - ", "Nearest - ", "Strongest side - ", "Center - "];
+                  const themPrefixes = ["Go for catches - ", "Play safe - ", "Opportunistic - "];
+
+                  let label = 'RESULT';
+                  let tone = 'success';
+                  if (youPrefixes.some(prefix => paragraph.startsWith(prefix))) {
+                    label = 'YOU';
+                    tone = 'accent';
+                  } else if (themPrefixes.some(prefix => paragraph.startsWith(prefix))) {
+                    label = 'THEM';
+                    tone = 'warning';
+                  }
+
+                  const badgeColor = tone === 'accent' ? '#22d3ee' : tone === 'warning' ? '#f59e0b' : '#10b981';
+                  const badgeBg = tone === 'accent' ? 'rgba(34,211,238,0.1)' : tone === 'warning' ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)';
+                  const badgeBorder = tone === 'accent' ? 'rgba(34,211,238,0.3)' : tone === 'warning' ? 'rgba(245,158,11,0.3)' : 'rgba(16,185,129,0.3)';
+
+                  return (
+                    <p
+                      key={`${index}-${paragraph.slice(0, 12)}`}
+                      data-testid="aftermath-body-paragraph"
+                      style={{
+                        margin: 0,
+                        padding: '0.7rem 0.85rem',
+                        background: '#08101f',
+                        border: '1px solid #1e293b',
+                        borderRadius: '4px',
+                        color: '#cbd5e1',
+                        lineHeight: 1.5,
+                        fontSize: '0.82rem',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '0.75rem',
+                      }}
+                    >
+                      <span style={{
+                        fontSize: '0.625rem',
+                        fontFamily: 'var(--font-mono-data)',
+                        fontWeight: 900,
+                        letterSpacing: '0.05em',
+                        color: badgeColor,
+                        background: badgeBg,
+                        border: `1px solid ${badgeBorder}`,
+                        padding: '0.1rem 0.35rem',
+                        borderRadius: '3px',
+                        flexShrink: 0,
+                        marginTop: '0.1rem',
+                        userSelect: 'none',
+                      }}>
+                        {label}
+                      </span>
+                      <span style={{ flex: 1 }}>{paragraph}</span>
+                    </p>
+                  );
+                })}
               </div>
             )}
           </div>

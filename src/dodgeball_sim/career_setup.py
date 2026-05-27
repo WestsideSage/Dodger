@@ -102,6 +102,31 @@ def _clamp(value: float, low: float, high: float) -> float:
     return max(low, min(high, value))
 
 
+def _unique_roster_names(rng: DeterministicRNG, count: int) -> List[str]:
+    combos = [(first, last) for first in _FIRST_NAMES for last in _LAST_NAMES]
+    shuffled = rng.shuffle(combos)
+    names: List[str] = []
+    used_last_names: set[str] = set()
+
+    for first, last in shuffled:
+        if last in used_last_names:
+            continue
+        names.append(f"{first} {last}")
+        used_last_names.add(last)
+        if len(names) == count:
+            return names
+
+    for first, last in shuffled:
+        name = f"{first} {last}"
+        if name in names:
+            continue
+        names.append(name)
+        if len(names) == count:
+            return names
+
+    return names
+
+
 def build_curated_roster(club_id: str, club_name: str, seed: int, count: int = 6) -> List[Player]:
     rng = DeterministicRNG(seed)
     roles = [
@@ -113,17 +138,22 @@ def build_curated_roster(club_id: str, club_name: str, seed: int, count: int = 6
         ("Utility", (66, 65, 65, 65)),
     ]
     roster: List[Player] = []
+    names = _unique_roster_names(rng, count)
     for index, (label, base) in enumerate(roles[:count], 1):
         accuracy, power, dodge, catch = (
             _clamp(value + rng.gauss(0, 4), 35, 95) for value in base
         )
-        name = f"{rng.choice(_FIRST_NAMES)} {rng.choice(_LAST_NAMES)}"
+        name = names[index - 1]
         ratings = PlayerRatings(
             accuracy=accuracy,
             power=power,
             dodge=dodge,
             catch=catch,
             stamina=_clamp(rng.gauss(66, 7), 40, 95),
+            tactical_iq=_clamp(rng.gauss(62, 10), 30, 95),
+            catch_courage=_clamp(rng.gauss(62, 10), 30, 95),
+            throw_selection_iq=_clamp(rng.gauss(62, 10), 30, 95),
+            conditioning_curve=_clamp(rng.gauss(62, 10), 30, 95),
         ).apply_bounds()
         from .archetype_derivation import derive_archetype
         roster.append(
@@ -273,6 +303,10 @@ def _club_roster(club: Club, seed: int, count: int = 6) -> List[Player]:
             dodge=dodge,
             catch=catch,
             stamina=_clamp(rng.gauss(66, 7), 40, 95),
+            tactical_iq=_clamp(rng.gauss(62, 10), 30, 95),
+            catch_courage=_clamp(rng.gauss(62, 10), 30, 95),
+            throw_selection_iq=_clamp(rng.gauss(62, 10), 30, 95),
+            conditioning_curve=_clamp(rng.gauss(62, 10), 30, 95),
         ).apply_bounds()
         roster.append(
             Player(
@@ -337,6 +371,10 @@ def generate_expansion_roster(club_id: str, root_seed: int, count: int = 6) -> L
             dodge=dodge,
             catch=catch,
             stamina=stamina,
+            tactical_iq=_clamp(rng.gauss(50, 10), 30, 95),
+            catch_courage=_clamp(rng.gauss(50, 10), 30, 95),
+            throw_selection_iq=_clamp(rng.gauss(50, 10), 30, 95),
+            conditioning_curve=_clamp(rng.gauss(50, 10), 30, 95),
         ).apply_bounds()
         roster.append(
             Player(

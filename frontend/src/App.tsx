@@ -26,7 +26,7 @@ const tabs: Array<{ id: Tab; label: string; short: string; icon?: string }> = [
 
 const tabKickers: Record<string, string> = {
   command: 'WAR ROOM',
-  dynasty: 'WAR ROOM',
+  dynasty: 'FRONT OFFICE',
   roster: 'ROSTER LAB',
   standings: 'LEAGUE OFFICE',
 };
@@ -44,16 +44,24 @@ function App() {
   const [commandReplay, setCommandReplay] = useState<MatchReplayResponse | null>(null);
   const [commandReplayLoading, setCommandReplayLoading] = useState(false);
   const [seasonYear, setSeasonYear] = useState<number | null>(null);
+  const [seasonNumber, setSeasonNumber] = useState<number | null>(null);
+  const [currentWeek, setCurrentWeek] = useState<number | null>(null);
 
   useEffect(() => {
+    const refreshCareerContext = () => {
+      return careerApi.status().then((status) => {
+        const state = status?.state?.state ?? '';
+        setSeasonYear(status?.context?.season_year ?? null);
+        setSeasonNumber(status?.state?.season_number ?? null);
+        setCurrentWeek(status?.state?.week ?? null);
+        setScreen(OFFSEASON_STATES.has(state) ? 'offseason' : 'game');
+      });
+    };
+
     careerApi.saveState()
       .then((data) => {
         if (!data.loaded) { setScreen('menu'); return; }
-        return careerApi.status().then(status => {
-          const state = status?.state?.state ?? '';
-          setSeasonYear(status?.context?.season_year ?? null);
-          setScreen(OFFSEASON_STATES.has(state) ? 'offseason' : 'game');
-        });
+        return refreshCareerContext();
       })
       .catch(() => setScreen('menu'));
   }, []);
@@ -74,7 +82,7 @@ function App() {
 
   if (screen === 'loading') {
     return (
-      <div className="dm-app-shell" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="app-shell" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <p className="dm-kicker" style={{ fontSize: '0.875rem', letterSpacing: '0.2em' }}>Loading...</p>
       </div>
     );
@@ -86,59 +94,48 @@ function App() {
 
   const menuButton = (
     <button
+      className="nav-item"
       aria-label="Back to save menu"
       onClick={() => {
         careerApi.unloadSave()
           .finally(() => window.location.reload());
       }}
       title="Back to Save Menu"
-      style={{
-        width: '100%',
-        padding: '0.5rem 0.75rem',
-        background: 'transparent',
-        border: '1px solid #1e293b',
-        borderRadius: '4px',
-        color: '#64748b',
-        fontFamily: 'var(--font-display)',
-        fontSize: '0.6875rem',
-        textTransform: 'uppercase' as const,
-        letterSpacing: '0.1em',
-        cursor: 'pointer',
-        textAlign: 'left' as const,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.5rem',
-      }}
-      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#cbd5e1'; (e.currentTarget as HTMLButtonElement).style.borderColor = '#334155'; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#64748b'; (e.currentTarget as HTMLButtonElement).style.borderColor = '#1e293b'; }}
     >
-      <span className="dm-nav-dot" />
+      <span className="dot" />
       Menu
     </button>
   );
 
-  const effectiveActiveTab: Tab = screen === 'offseason' ? 'command' : activeTab;
+  // During offseason the active tab follows the user's selection so they
+  // can peek Roster/Standings/Dynasty before starting the next season.
+  const effectiveActiveTab: Tab = activeTab;
 
   const activeTabDef = tabs.find(t => t.id === effectiveActiveTab) ?? tabs[0];
   const kicker = commandReplay ? 'MATCH DAY' : commandReplayLoading ? 'MATCH DAY' : tabKickers[effectiveActiveTab];
   const headerTitle = commandReplay ? 'Match Replay' : commandReplayLoading ? 'Loading Replay...' : activeTabDef.label;
+  const displayedWeek = postSimResult?.dashboard?.week ?? currentWeek ?? 1;
 
   return (
-    <div className="dm-app-shell flex" style={{ minHeight: '100vh' }}>
+    <div className="app-shell flex" style={{ minHeight: '100vh' }}>
       {/* Left Navigation Rail */}
-      <aside className="dm-left-nav">
-        <div className="dm-left-nav-logo">
-          <p className="dm-kicker">Dodgeball Manager</p>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', margin: 0 }}>{seasonYear ?? ''}</p>
+      <aside className="left-nav">
+        <div className="left-nav-logo">
+          <p className="dm-kicker" style={{ fontSize: '0.62rem' }}>Dodgeball Manager</p>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', margin: '2px 0 0' }}>{seasonYear ?? ''}</p>
         </div>
-        <nav style={{ padding: '0.5rem 0', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }} aria-label="Primary">
+        <nav className="left-nav-items" aria-label="Primary">
           {tabs.map(tab => {
-            const isAvailable = screen !== 'offseason' || tab.id === 'command';
+            // During offseason ceremonies let the player peek at read-only
+            // tabs (Roster, Standings, Dynasty Office) before committing to
+            // start the next season. Command Center is the ceremony surface
+            // itself and stays selected.
+            const isAvailable = true;
             const isActive = effectiveActiveTab === tab.id && !commandReplay && !commandReplayLoading;
             return (
               <button
                 key={tab.id}
-                className={`dm-nav-item ${isActive ? 'dm-nav-item-active' : ''}`}
+                className={`nav-item ${isActive ? 'active' : ''}`}
                 aria-label={tab.label}
                 aria-disabled={!isAvailable}
                 title={isAvailable ? tab.label : `${tab.label} — locked during offseason`}
@@ -150,22 +147,21 @@ function App() {
                 }}
                 style={{ opacity: isAvailable ? 1 : 0.35, cursor: isAvailable ? 'pointer' : 'not-allowed', pointerEvents: 'auto' }}
               >
-                <span className="dm-nav-dot" />
-                <span className="dm-nav-label-full" aria-hidden="true">{tab.label}</span>
-                <span className="dm-nav-label-short" aria-hidden="true">{tab.short}</span>
+                <span className="dot" />
+                {tab.label}
               </button>
             );
           })}
         </nav>
-        <div style={{ padding: '0.75rem', borderTop: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div className="left-nav-footer">
           <button
-            className="dm-nav-item"
+            className="nav-item"
             disabled
             title="Settings are coming soon"
             style={{ opacity: 0.35, cursor: 'not-allowed' }}
             onClick={() => {}}
           >
-            <span className="dm-nav-dot" />
+            <span className="dot" />
             Settings
           </button>
           {menuButton}
@@ -173,21 +169,18 @@ function App() {
       </aside>
 
       {/* Main workspace */}
-      <div className="dm-workspace">
+      <div className="workspace">
         {/* Broadcast header */}
-        <header className="dm-broadcast-header">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-            <div>
-              <p className="dm-kicker">{kicker}</p>
-              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', margin: 0 }}>
-                {headerTitle}
-              </h1>
-            </div>
+        <header className="broadcast-header">
+          <div>
+            <span className="dm-kicker">{kicker}</span>
+            <h1>{headerTitle}</h1>
           </div>
+          <span className="meta">Season {seasonNumber ?? seasonYear ?? '1'} -- Week {String(displayedWeek).padStart(2, '0')}</span>
         </header>
 
         {/* Screen content */}
-        <div className="dm-content">
+        <div className="content-area">
           {commandReplay && (
             <MatchReplay
               key={commandReplay.match_id}
@@ -210,17 +203,20 @@ function App() {
               onSimComplete={(payload) => {
                 setPostSimResult(payload);
                 setPostSimThisSession(true);
+                setCurrentWeek(payload.dashboard.week);
               }}
               onAdvanceWeek={() => {
                 const nextState = postSimResult?.next_state ?? '';
                 setPostSimResult(null);
                 setPostSimThisSession(false);
-                if (OFFSEASON_STATES.has(nextState)) {
-                  careerApi.status().then(status => {
-                    setSeasonYear(status?.context?.season_year ?? null);
+                careerApi.status().then(status => {
+                  setSeasonYear(status?.context?.season_year ?? null);
+                  setSeasonNumber(status?.state?.season_number ?? null);
+                  setCurrentWeek(status?.state?.week ?? null);
+                  if (OFFSEASON_STATES.has(nextState)) {
                     setScreen('offseason');
-                  }).catch(() => {});
-                }
+                  }
+                }).catch(() => {});
               }}
             />
           )}

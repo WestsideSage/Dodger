@@ -88,10 +88,13 @@ def compute_season_awards(
     mvp_id = max(scored, key=lambda pid: (scored[pid], pid))
     awards.append(_award("mvp", mvp_id, scored[mvp_id]))
 
-    # Best Thrower — most eliminations_by_throw
+    # Best Thrower — most eliminations_by_throw (excluding MVP if possible)
+    thrower_candidates = {pid: stats for pid, stats in player_season_stats.items() if pid != mvp_id}
+    if not thrower_candidates:
+        thrower_candidates = player_season_stats
     best_thrower_id = max(
-        player_season_stats,
-        key=lambda pid: (player_season_stats[pid].eliminations_by_throw, pid),
+        thrower_candidates,
+        key=lambda pid: (thrower_candidates[pid].eliminations_by_throw, pid),
     )
     awards.append(
         _award(
@@ -101,10 +104,13 @@ def compute_season_awards(
         )
     )
 
-    # Best Catcher — most catches_made
+    # Best Catcher — most catches_made (excluding MVP if possible)
+    catcher_candidates = {pid: stats for pid, stats in player_season_stats.items() if pid != mvp_id}
+    if not catcher_candidates:
+        catcher_candidates = player_season_stats
     best_catcher_id = max(
-        player_season_stats,
-        key=lambda pid: (player_season_stats[pid].catches_made, pid),
+        catcher_candidates,
+        key=lambda pid: (catcher_candidates[pid].catches_made, pid),
     )
     awards.append(
         _award(

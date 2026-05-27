@@ -6,48 +6,33 @@ interface BannerEntry {
   label: string;
 }
 
-export function BannerShelf({ banners, showNextPlaceholder }: { banners: BannerEntry[]; showNextPlaceholder?: boolean }) {
+export function BannerShelf({
+  banners,
+  showNextPlaceholder,
+}: {
+  banners: BannerEntry[];
+  showNextPlaceholder?: boolean;
+}) {
   if (banners.length === 0 && !showNextPlaceholder) {
-    return <p style={{ color: '#475569', fontSize: '0.8rem' }}>No banners yet.</p>;
+    return <p className="do-hist-card-note">No banners are hanging in this archive yet.</p>;
   }
 
   return (
-    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-      {banners.map((b, i) => (
-        <div key={i} style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: b.type === 'championship' ? '2.5rem' : '1.75rem' }}>
-            {b.type === 'championship' ? '🏆' : '🏅'}
-          </div>
-          <div
-            style={{
-              fontSize: '0.6rem',
-              color: b.type === 'championship' ? '#f97316' : '#eab308',
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-              marginTop: '0.2rem',
-            }}
-          >
-            {b.label}
-          </div>
-          <div style={{ fontSize: '0.55rem', color: '#475569' }}>{formatSeasonLabel(b.season)}</div>
+    <div className="do-hist-banners">
+      {banners.map((banner, index) => (
+        <div key={`${banner.type}-${banner.season}-${index}`} className={`do-hist-banner ${banner.type === 'championship' ? 'is-title' : 'is-award'}`}>
+          <span className="do-hist-banner-type">{banner.type === 'championship' ? 'Title' : 'Award'}</span>
+          <strong className="do-hist-banner-label">{banner.label}</strong>
+          <span className="do-hist-banner-season">{formatSeasonLabel(banner.season)}</span>
         </div>
       ))}
-
-      {showNextPlaceholder && (
-        <div
-          style={{
-            width: '48px',
-            height: '56px',
-            border: '1px dashed #1e293b',
-            borderRadius: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <span style={{ color: '#334155', fontSize: '1rem' }}>+</span>
+      {showNextPlaceholder ? (
+        <div className="do-hist-banner do-hist-banner-empty">
+          <span className="do-hist-banner-type">Open Slot</span>
+          <strong className="do-hist-banner-label">Next banner</strong>
+          <span className="do-hist-banner-season">Still to be won</span>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -21,7 +21,7 @@ def test_compute_season_awards_matches_raw_player_stats_leaders():
 
     assert by_type["mvp"].player_id == "bravo"
     assert by_type["best_thrower"].player_id == "alpha"
-    assert by_type["best_catcher"].player_id == "bravo"
+    assert by_type["best_catcher"].player_id == "alpha"
     assert by_type["best_newcomer"].player_id == "bravo"
 
 

@@ -12,6 +12,7 @@ Offseason, development, and recruitment are Phase 3 additions.
 
 import hashlib
 import json
+import dataclasses
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
@@ -175,13 +176,23 @@ def simulate_match(
     home_survivors = box[home_club.club_id]["totals"]["living"]
     away_survivors = box[away_club.club_id]["totals"]["living"]
     winner_club_id = result.winner_team_id  # team_id == club_id by convention
-    # Engine returns None on a time-cap tie; if survivors differ the engine was
-    # wrong — derive winner from box score so the DB never stores NULL for a
-    # non-draw match (which would propagate to playoff bracket creation).
-    if winner_club_id is None and home_survivors != away_survivors:
-        winner_club_id = (
+    # The survivors-on-court tally is the source of truth for who won.
+    # The engine sometimes returns None (time-cap tie) or a stale winner that
+    # disagrees with the box score; in either case the displayed scoreboard
+    # would contradict the persisted standings. Derive from survivors and
+    # patch the MatchResult so every downstream consumer (use_cases, voice,
+    # command_center, persistence) agrees with what the player just saw.
+    if home_survivors != away_survivors:
+        derived = (
             home_club.club_id if home_survivors > away_survivors else away_club.club_id
         )
+        if derived != winner_club_id:
+            winner_club_id = derived
+            result = dataclasses.replace(result, winner_team_id=derived)
+    elif winner_club_id is not None:
+        # Survivors equal → genuine draw. Engine claimed a winner; correct it.
+        winner_club_id = None
+        result = dataclasses.replace(result, winner_team_id=None)
 
     # V11: when the official adapter ran, ``result.config_version`` already
     # encodes the ruleset (e.g. ``official:official_foam``); use it so the

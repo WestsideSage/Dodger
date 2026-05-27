@@ -2,17 +2,35 @@ import { useState } from 'react';
 import { MyProgramView } from './history/MyProgramView';
 import { LeagueView } from './history/LeagueView';
 
-export function HistorySubTab({ clubId }: { clubId: string }) {
+export function HistorySubTab({ clubId, isSelf = true }: { clubId: string; isSelf?: boolean }) {
   const [view, setView] = useState<'program' | 'league'>('program');
+  const programLabel = isSelf ? 'My Program' : 'Program';
 
   return (
-    <div>
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-        <button onClick={() => setView('program')} style={{ background: view === 'program' ? '#1e293b' : 'transparent', border: '1px solid #334155', padding: '0.5rem 1rem', borderRadius: '4px', color: '#e2e8f0', cursor: 'pointer' }}>My Program</button>
-        <button onClick={() => setView('league')} style={{ background: view === 'league' ? '#1e293b' : 'transparent', border: '1px solid #334155', padding: '0.5rem 1rem', borderRadius: '4px', color: '#e2e8f0', cursor: 'pointer' }}>League</button>
+    <div className="do-tab-content">
+      <div className="do-hist-filters">
+        <div className="filters">
+          <button
+            className={`do-board-filter ${view === 'program' ? 'is-active' : ''}`}
+            onClick={() => setView('program')}
+            type="button"
+          >
+            {programLabel}
+          </button>
+          <button
+            className={`do-board-filter ${view === 'league' ? 'is-active' : ''}`}
+            onClick={() => setView('league')}
+            type="button"
+          >
+            League
+          </button>
+        </div>
+        <span className="do-board-meta">
+          {view === 'program' ? 'Program archive view' : 'League archive view'}
+        </span>
       </div>
 
-      {view === 'program' && <MyProgramView clubId={clubId} />}
+      {view === 'program' && <MyProgramView clubId={clubId} isSelf={isSelf} />}
       {view === 'league' && <LeagueView />}
     </div>
   );
