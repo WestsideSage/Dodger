@@ -50,6 +50,60 @@ from dodgeball_sim.view_models import normalize_root_seed
 __all__ = ["SimulateWeekError", "simulate_week"]
 
 
+_DEV_FOCUS_LABELS = {
+    "BALANCED": "Balanced development",
+    "YOUTH_ACCELERATION": "Youth acceleration",
+    "TACTICAL_DRILLS": "Tactical drills",
+    "STRENGTH_AND_CONDITIONING": "Strength and conditioning",
+}
+
+
+def _development_feedback(
+    plan: Mapping[str, Any] | None,
+    rosters: Mapping[str, list[Any]] | None,
+    player_club_id: str | None,
+    *,
+    is_bye: bool = False,
+) -> dict[str, Any]:
+    orders = dict((plan or {}).get("department_orders") or {})
+    focus = str(orders.get("dev_focus") or "BALANCED")
+    focus_label = _DEV_FOCUS_LABELS.get(focus, focus.replace("_", " ").title())
+    roster = list((rosters or {}).get(player_club_id or "", []))
+
+    if focus == "YOUTH_ACCELERATION":
+        candidates = sorted(roster, key=lambda player: (player.age, -player.traits.potential, player.name))[:3]
+        target = "high-upside younger players"
+    elif focus == "TACTICAL_DRILLS":
+        candidates = sorted(roster, key=lambda player: (player.ratings.tactical_iq, player.name))[:3]
+        target = "the lowest tactical-IQ rotation players"
+    elif focus == "STRENGTH_AND_CONDITIONING":
+        candidates = sorted(roster, key=lambda player: (player.ratings.stamina, player.name))[:3]
+        target = "the stamina floor of the roster"
+    else:
+        candidates = sorted(roster, key=lambda player: (-player.overall_skill(), player.name))[:3]
+        target = "the active rotation"
+
+    player_names = [player.name for player in candidates]
+    if player_names:
+        names = ", ".join(player_names)
+        progress = f"+1 training unit toward {focus_label.lower()} for {names}."
+    else:
+        progress = f"+1 training unit toward {focus_label.lower()}."
+
+    if is_bye:
+        summary = f"{focus_label} banked a clean practice week for {target}; rating changes resolve in offseason."
+    else:
+        summary = f"{focus_label} logged weekly reps for {target}; rating changes resolve in offseason."
+
+    return {
+        "focus": focus,
+        "focus_label": focus_label,
+        "summary": summary,
+        "progress": progress,
+        "players": player_names,
+    }
+
+
 def _simulate_bye_week(
     conn: sqlite3.Connection,
     *,
@@ -71,8 +125,8 @@ def _simulate_bye_week(
     ]
 
     records = []
+    rosters = load_all_rosters(conn)
     if week_matches:
-        rosters = load_all_rosters(conn)
         root_seed = normalize_root_seed(get_state(conn, "root_seed", "1"), default_on_invalid=True)
         if ensure_ai_rosters_playable(conn, clubs, rosters, root_seed, season_id, player_club_id):
             rosters = load_all_rosters(conn)
@@ -149,6 +203,11 @@ def _simulate_bye_week(
             "headline": "Bye Week Complete",
             "match_card": None,
             "player_growth_deltas": [],
+            "development_feedback": _development_feedback(plan, rosters, player_club_id, is_bye=True),
+            "bye_recovery": {
+                "summary": "No match scheduled; your starters avoided fatigue exposure this week.",
+                "players": [player.name for player in rosters.get(player_club_id, [])[:3]],
+            },
             "standings_shift": [],
             "recruit_reactions": [],
         },
@@ -313,6 +372,7 @@ def _build_aftermath(
             "away_game_points": away_game_pts,
         },
         "player_growth_deltas": [],
+        "development_feedback": _development_feedback(plan, load_all_rosters(conn), player_club_id),
         "standings_shift": standings_shift,
         "recruit_reactions": [],
         "body": list(body),
