@@ -340,6 +340,26 @@ def build_beat_response(conn: sqlite3.Connection, cursor) -> dict[str, Any]:
     is_last = beat_key == "schedule_reveal"
     is_recruitment = beat_key == "recruitment"
 
+    # Self-heal: if the beat index has moved past recruitment but the career
+    # state machine still says recruitment is pending, promote it now.
+    # This can happen when recruitment was impossible (roster already full
+    # going in) and the user advanced past the signing-day card.
+    if (
+        cursor.state == CareerState.SEASON_COMPLETE_RECRUITMENT_PENDING
+        and "recruitment" in active_beats
+        and beat_index > active_beats.index("recruitment")
+    ):
+        from .career_state import advance as _state_advance
+        from .persistence import save_career_state_cursor as _save_cursor
+
+        cursor = _state_advance(
+            cursor,
+            CareerState.NEXT_SEASON_READY,
+            offseason_beat_index=beat_index,
+        )
+        _save_cursor(conn, cursor)
+        conn.commit()
+
     season_id = get_state(conn, "active_season_id")
     season = load_season(conn, season_id) if season_id else None
     clubs = load_all_clubs(conn)

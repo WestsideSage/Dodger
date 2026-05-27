@@ -254,17 +254,26 @@ def _control_signature(player_box: Mapping, opponent_box: Mapping) -> tuple[bool
 
 
 def _aggressive_verdict(present: bool, p: int, o: int, result: str) -> str:
+    tied = p == o
     if result == "Win":
         if present:
             return f"Your Aggressive plan delivered — {p} catches to {o}, and you won."
+        if tied:
+            if o == 0:
+                return "Your Aggressive plan held the line, securing a shutout win with 0 catches surrendered."
+            return f"You won under the Aggressive plan — matched their {o} catches."
         return f"You won despite Aggressive — only {p} catches to their {o}."
     if result == "Loss":
         if present:
             return f"Aggressive delivered the catches it promised ({p} to {o}), but you lost anyway."
+        if tied:
+            return f"Aggressive never broke through — matched their {o} catches, and you lost."
         return f"Aggressive never materialized — {p} catches to their {o}, and you lost."
     # Draw
     if present:
         return f"Aggressive showed up ({p} catches to {o}); the match ended in a draw."
+    if tied:
+        return f"Aggressive never took hold (matched their {o} catches); the match ended in a draw."
     return f"Aggressive never took hold ({p} catches to their {o}); the match ended in a draw."
 
 
@@ -317,11 +326,11 @@ def _noop_verdict(approach: str, result: str) -> str:
         "Draw": "The match ended in a draw.",
     }.get(result, "")
     win_tail = {
-        "Win": "Default plan held the line — banking it.",
-        "Loss": "Default plan didn't move the needle this week.",
-        "Draw": "Default plan held, neither side broke through.",
+        "Win": "The strategy held the line — banking the win.",
+        "Loss": "The strategy didn't move the needle this week.",
+        "Draw": "The strategy held, neither side broke through.",
     }.get(result, tail)
-    return f"Your {approach} plan was identical to Base Tactics this week. {win_tail}".strip()
+    return f"Your {approach} plan aligned perfectly with your base tactics this week. {win_tail}".strip()
 
 
 def _neutral_fallback(result: str) -> str:

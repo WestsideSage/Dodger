@@ -28,12 +28,14 @@ function TeamScore({
   displayedSurvivors,
   isWinner,
   side,
+  isOfficial,
 }: {
   name: string;
   survivors: number;
   displayedSurvivors: number;
   isWinner: boolean;
   side: 'home' | 'away';
+  isOfficial?: boolean;
 }) {
   const accent = side === 'home' ? '#f97316' : '#22d3ee';
 
@@ -59,7 +61,9 @@ function TeamScore({
       >
         {displayedSurvivors}
       </span>
-      <span className="command-score-detail">{survivors} survivors</span>
+      <span className="command-score-detail">
+        {isOfficial ? `${survivors} survivors (Final)` : `${survivors} survivors`}
+      </span>
       {isWinner && (
         <span
           className="dm-badge dm-badge-amber command-score-winner-badge"
@@ -85,6 +89,9 @@ export function MatchScoreHero({
   awaySurvivors,
   winnerClubId,
   homeClubId,
+  scoringModel,
+  homeGamePoints,
+  awayGamePoints,
 }: {
   homeTeam: string;
   awayTeam: string;
@@ -92,23 +99,28 @@ export function MatchScoreHero({
   awaySurvivors: number;
   winnerClubId: string | null;
   homeClubId: string;
+  scoringModel?: string;
+  homeGamePoints?: number;
+  awayGamePoints?: number;
 }) {
-  const displayedHome = useCountUp(homeSurvivors);
-  const displayedAway = useCountUp(awaySurvivors);
+  const isOfficial = Boolean(scoringModel && scoringModel !== 'legacy');
+  const displayedHome = useCountUp(isOfficial ? (homeGamePoints ?? 0) : homeSurvivors);
+  const displayedAway = useCountUp(isOfficial ? (awayGamePoints ?? 0) : awaySurvivors);
   const homeWon = winnerClubId === homeClubId;
   const awayWon = Boolean(winnerClubId) && !homeWon;
 
   return (
-    <section className="dm-panel command-score-hero" data-testid="match-score-hero" aria-label="Final survivor score">
+    <section className="dm-panel command-score-hero" data-testid="match-score-hero" aria-label={isOfficial ? "Final game score" : "Final survivor score"}>
       <TeamScore
         name={homeTeam}
         survivors={homeSurvivors}
         displayedSurvivors={displayedHome}
         isWinner={homeWon}
         side="home"
+        isOfficial={isOfficial}
       />
       <div className="command-score-center">
-        <span className="dm-kicker">Final</span>
+        <span className="dm-kicker">{isOfficial ? `Final (USAD ${scoringModel?.toUpperCase()})` : 'Final'}</span>
         <span className="command-score-vs">VS</span>
       </div>
       <TeamScore
@@ -117,6 +129,7 @@ export function MatchScoreHero({
         displayedSurvivors={displayedAway}
         isWinner={awayWon}
         side="away"
+        isOfficial={isOfficial}
       />
     </section>
   );

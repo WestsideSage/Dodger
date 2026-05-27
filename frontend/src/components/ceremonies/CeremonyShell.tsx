@@ -58,8 +58,12 @@ export function CeremonyShell({
           <p>{animating ? 'Press Space or click anywhere to skip animation.' : actionDescription}</p>
         </div>
         <div className="command-action-buttons">
-          <ActionButton variant="primary" onClick={onComplete} disabled={isActing || animating}>
-            {isActing ? 'Continuing...' : animating ? 'Skip / Continue' : actionLabel}
+          <ActionButton
+            variant="primary"
+            onClick={animating ? () => setStage(stages) : onComplete}
+            disabled={isActing}
+          >
+            {isActing ? 'Continuing...' : animating ? 'Skip Reveal' : actionLabel}
           </ActionButton>
         </div>
       </div>

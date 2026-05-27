@@ -1537,26 +1537,34 @@ def _recompute_and_save_standings(
     """Re-derive standings from match_records for this season and persist."""
     cursor = conn.execute(
         """
-        SELECT match_id, season_id, week, home_club_id, away_club_id,
-               winner_club_id, home_survivors, away_survivors, seed
+        SELECT *
         FROM match_records WHERE season_id = ?
         """,
         (season_id,),
     )
-    results = [
-        SeasonResult(
-            match_id=row["match_id"],
-            season_id=row["season_id"],
-            week=row["week"],
-            home_club_id=row["home_club_id"],
-            away_club_id=row["away_club_id"],
-            home_survivors=row["home_survivors"],
-            away_survivors=row["away_survivors"],
-            winner_club_id=row["winner_club_id"],
-            seed=row["seed"],
+    results = []
+    for row in cursor.fetchall():
+        keys = list(row.keys())
+        results.append(
+            SeasonResult(
+                match_id=row["match_id"],
+                season_id=row["season_id"],
+                week=row["week"],
+                home_club_id=row["home_club_id"],
+                away_club_id=row["away_club_id"],
+                home_survivors=row["home_survivors"],
+                away_survivors=row["away_survivors"],
+                winner_club_id=row["winner_club_id"],
+                seed=row["seed"],
+                config_version=row["config_version"] if "config_version" in keys else "legacy",
+                home_game_points=row["home_game_points"] if "home_game_points" in keys else 0,
+                away_game_points=row["away_game_points"] if "away_game_points" in keys else 0,
+                home_games_won=row["home_games_won"] if "home_games_won" in keys else 0,
+                away_games_won=row["away_games_won"] if "away_games_won" in keys else 0,
+                tied_games=row["tied_games"] if "tied_games" in keys else 0,
+                no_point_games=row["no_point_games"] if "no_point_games" in keys else 0,
+            )
         )
-        for row in cursor.fetchall()
-    ]
     standings = compute_standings(results)
     save_standings(conn, season_id, standings)
     conn.commit()

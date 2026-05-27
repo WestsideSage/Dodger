@@ -18,6 +18,13 @@ class SeasonResult:
     away_survivors: int
     winner_club_id: str | None  # None on draw (time limit)
     seed: int
+    config_version: str = "legacy"
+    home_game_points: int = 0
+    away_game_points: int = 0
+    home_games_won: int = 0
+    away_games_won: int = 0
+    tied_games: int = 0
+    no_point_games: int = 0
 
 
 @dataclass(frozen=True)
@@ -28,6 +35,10 @@ class StandingsRow:
     draws: int
     elimination_differential: int  # survivors accumulated - survivors conceded
     points: int                    # 3 per win, 1 per draw, 0 per loss
+    game_points_for: int = 0
+    game_points_against: int = 0
+    game_point_differential: int = 0
+    total_game_points_scored: int = 0
 
 
 @dataclass(frozen=True)
@@ -71,7 +82,11 @@ def compute_standings(results: List[SeasonResult]) -> List[StandingsRow]:
 
     def _ensure(club_id: str) -> None:
         if club_id not in tally:
-            tally[club_id] = {"wins": 0, "losses": 0, "draws": 0, "diff": 0}
+            tally[club_id] = {
+                "wins": 0, "losses": 0, "draws": 0, "diff": 0,
+                "game_points_for": 0, "game_points_against": 0,
+                "game_point_differential": 0, "total_game_points_scored": 0,
+            }
 
     for result in results:
         _ensure(result.home_club_id)
@@ -81,6 +96,18 @@ def compute_standings(results: List[SeasonResult]) -> List[StandingsRow]:
 
         home["diff"] += result.home_survivors - result.away_survivors
         away["diff"] += result.away_survivors - result.home_survivors
+
+        is_official = result.config_version and result.config_version.startswith("official:")
+        if is_official:
+            home["game_points_for"] += result.home_game_points
+            home["game_points_against"] += result.away_game_points
+            home["game_point_differential"] += result.home_game_points - result.away_game_points
+            home["total_game_points_scored"] += result.home_game_points
+
+            away["game_points_for"] += result.away_game_points
+            away["game_points_against"] += result.home_game_points
+            away["game_point_differential"] += result.away_game_points - result.home_game_points
+            away["total_game_points_scored"] += result.away_game_points
 
         if result.winner_club_id == result.home_club_id:
             home["wins"] += 1
@@ -103,11 +130,28 @@ def compute_standings(results: List[SeasonResult]) -> List[StandingsRow]:
                 draws=t["draws"],
                 elimination_differential=t["diff"],
                 points=points,
+                game_points_for=t["game_points_for"],
+                game_points_against=t["game_points_against"],
+                game_point_differential=t["game_point_differential"],
+                total_game_points_scored=t["total_game_points_scored"],
             )
         )
 
-    # Sort: points desc, then diff desc, then club_id asc (stable tiebreaker)
-    rows.sort(key=lambda r: (-r.points, -r.elimination_differential, r.club_id))
+    is_any_official = any(
+        result.config_version and result.config_version.startswith("official:")
+        for result in results
+    )
+    if is_any_official:
+        # Sort: points desc, total_game_points desc, game_differential desc, club_id asc
+        rows.sort(key=lambda r: (
+            -r.points,
+            -r.total_game_points_scored,
+            -r.game_point_differential,
+            r.club_id
+        ))
+    else:
+        # Sort: points desc, then diff desc, then club_id asc (stable tiebreaker)
+        rows.sort(key=lambda r: (-r.points, -r.elimination_differential, r.club_id))
     return rows
 
 

@@ -29,8 +29,9 @@ const potentialColor = (tier: string) => {
 const potentialGlyph = (tier: string) => {
   if (tier === 'Elite') return '\u2605';
   if (tier === 'High') return '\u25C6';
-  if (tier === 'Solid') return '\u00BB';
-  return '\u2B21';
+  if (tier === 'Mid') return '\u00BB';
+  if (tier === 'Low') return '\u2B21';
+  return '\u26AC';
 };
 
 function roleBucket(label: string): 'Power' | 'Balanced' | 'Tactical' {
@@ -73,7 +74,11 @@ const LineupSummary = ({ roster }: { roster: RosterEntry[] }) => {
         <span className="rl-line-pill rotation"><span>{rotation}</span> ROTATION</span>
         <span className="rl-line-pill bench"><span>{bench}</span> BENCH</span>
       </div>
-      <p className="rl-line-helper">Starting core is set. Balance the rotation and manage fatigue.</p>
+      <p className="rl-line-helper">
+        {bench + rotation === 0
+          ? 'Roster is bare — recruit or sign reserves before fatigue catches you.'
+          : 'Starting core is set. Balance the rotation and manage fatigue.'}
+      </p>
     </div>
   );
 };
@@ -119,7 +124,7 @@ const ArchetypeMix = ({ roster }: { roster: RosterEntry[] }) => {
 };
 
 const PotentialBlock = ({ roster }: { roster: RosterEntry[] }) => {
-  const tiers = ['Elite', 'High', 'Solid', 'Limited'];
+  const tiers = ['Elite', 'High', 'Mid', 'Low', 'Raw'];
   return (
     <div className="rl-glance-cell">
       <span className="dm-kicker">Potential Tiers</span>

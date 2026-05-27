@@ -205,23 +205,23 @@ const DarkCourt = memo(function DarkCourt({
 
 // ── Components ──────────────────────────────────────────────────────────────
 
-const PossessionBar = ({ events, activeIdx, onJump }: { events: ReplayProofEvent[], activeIdx: number, onJump: (i: number) => void }) => {
+const PossessionBar = ({ events, activeIdx, onJump, homeClubId }: { events: ReplayProofEvent[], activeIdx: number, onJump: (i: number) => void, homeClubId: string }) => {
   return (
-    <div className="mr-poss-bar-wrap">
-      <div className="mr-poss-header">
-        <span className="dm-kicker">POSSESSION TIMELINE</span>
-        <span className="mr-poss-tally">
-           <span className="dim">Play by Play</span>
+    <div className="mr-possession">
+      <div className="mr-possession-head">
+        <span className="mr-possession-kicker">POSSESSION TIMELINE</span>
+        <span className="mr-possession-tally">
+          <span className="dim">Play by Play</span>
         </span>
       </div>
-      <div className="mr-poss-cells">
+      <div className="mr-possession-strip">
         {events.map((ev, i) => {
           const isSwing = ev.is_key_play;
-          const owner = ev.offense_club_id === ev.target_id ? 'cyan' : 'rose';
+          const owner = isSwing ? 'swing' : (ev.offense_club_id === homeClubId ? 'home' : 'away');
           const active = i === activeIdx;
           return (
-            <button key={i} className={`mr-poss-cell ${active ? 'active' : ''} owner-${owner}`} onClick={() => onJump(i)}>
-              <span className="mr-poss-idx">{(i + 1).toString().padStart(2, '0')}</span>
+            <button key={i} className={`mr-poss-cell owner-${owner} ${active ? 'is-active' : ''}`} onClick={() => onJump(i)}>
+              <span className="num">{(i + 1).toString().padStart(2, '0')}</span>
               {isSwing && <div className="swing-pip" />}
             </button>
           );
@@ -238,6 +238,13 @@ const ReplayScoreboard = ({ data }: { data: MatchReplayResponse }) => {
   const awaySurv = data.away_survivors ?? 0;
   const diff = Math.abs(homeSurv - awaySurv);
 
+  const isOfficial = data.scoring_model && data.scoring_model !== 'legacy';
+  const scoreHome = isOfficial ? (data.home_game_points ?? 0) : homeSurv;
+  const scoreAway = isOfficial ? (data.away_game_points ?? 0) : awaySurv;
+  const scoreDiff = Math.abs(scoreHome - scoreAway);
+  const marginLabel = isOfficial ? `+${scoreDiff} GAME PTS` : `+${diff} SURVIVORS`;
+  const formatTag = isOfficial ? `USAD ${data.scoring_model?.toUpperCase()} · W${String(data.week).padStart(2, '0')}` : `FINAL · W${String(data.week).padStart(2, '0')}`;
+
   return (
     <div className="mr-scoreboard">
       <div className="mr-team home">
@@ -246,13 +253,13 @@ const ReplayScoreboard = ({ data }: { data: MatchReplayResponse }) => {
         <div className="mr-team-tag">PROGRAM</div>
       </div>
       <div className="mr-score">
-        <span className="mr-score-num home">{homeSurv}</span>
+        <span className="mr-score-num home">{scoreHome}</span>
         <div className="mr-score-divider">
-          <span className="mr-final-tag">FINAL · W{String(data.week).padStart(2, '0')}</span>
+          <span className="mr-final-tag">{formatTag}</span>
           <span className="mr-vs">VS</span>
-          <span className="mr-margin">+{diff} SURVIVORS</span>
+          <span className="mr-margin">{marginLabel}</span>
         </div>
-        <span className="mr-score-num away">{awaySurv}</span>
+        <span className="mr-score-num away">{scoreAway}</span>
       </div>
       <div className="mr-team away">
         <div className="mr-team-rec">AWAY</div>
@@ -264,35 +271,45 @@ const ReplayScoreboard = ({ data }: { data: MatchReplayResponse }) => {
 };
 
 const TurningPoint = ({ text, onShowCatch }: { text: string, onShowCatch: () => void }) => (
-  <div className="mr-turning-point">
-    <div className="mr-tp-content">
-      <span className="dm-kicker">TURNING POINT</span>
-      <p>{text}</p>
+  <div className="mr-turning">
+    <div>
+      <span className="mr-turning-kicker">TURNING POINT</span>
+      <p className="mr-turning-text">{text}</p>
     </div>
-    <button className="mr-tp-btn" onClick={onShowCatch}>
+    <button className="mr-turning-jump" onClick={onShowCatch}>
       Jump to Key Play <span className="arrow">▸</span>
     </button>
   </div>
 );
 
+const chipClass = (resolution: string) => {
+  const r = resolution.toLowerCase();
+  if (r === 'caught' || r === 'catch') return 'chip-catch';
+  if (r === 'eliminated' || r === 'hit' || r === 'failed_catch') return 'chip-elim';
+  if (r === 'dodged') return 'chip-throw';
+  return 'chip-throw';
+};
+
 const EventLog = ({ events, activeIdx, onSelect }: { events: ReplayProofEvent[], activeIdx: number, onSelect: (i: number) => void }) => {
   return (
-    <div className="mr-log-scroll">
+    <div className="mr-log">
       {events.map((ev, idx) => {
         return (
-          <button key={idx} className={`mr-log-item ${idx === activeIdx ? 'active' : ''}`} onClick={() => onSelect(idx)}>
-            <div className="mr-log-tick">
-              <span>{(idx + 1).toString().padStart(2, '0')}</span>
-              <span className="time">{ev.tick}</span>
+          <button key={idx} className={`mr-log-event ${idx === activeIdx ? 'is-active' : ''}`} onClick={() => onSelect(idx)}>
+            <div className="mr-log-rail">
+              <span className="mr-log-tick">{(idx + 1).toString().padStart(2, '0')}</span>
+              <span className="mr-log-time">T{ev.tick}</span>
             </div>
             <div className="mr-log-body">
-              <div className="mr-log-header">
-                <span className={`mr-chip mr-chip-${ev.resolution}`}>{ev.resolution.toUpperCase()}</span>
-                <span className="mr-title">{ev.summary}</span>
+              <div className="mr-log-row">
+                <span className={`mr-log-chip ${chipClass(ev.resolution)}`}>{ev.resolution.toUpperCase()}</span>
+                <span className="mr-log-title">{ev.summary}</span>
               </div>
-              <div className="mr-evidence">
-                <div>{ev.detail}</div>
-              </div>
+              {ev.detail && (
+                <ul className="mr-log-evidence">
+                  <li>{ev.detail}</li>
+                </ul>
+              )}
             </div>
           </button>
         );
@@ -339,12 +356,14 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
       }
     };
 
-    data.events.forEach((ev) => {
-      if (ev.event_type === 'match_start') {
-        const hs = ev.state_diff.home_living as { id: string; name: string }[] | undefined;
-        const as = ev.state_diff.away_living as { id: string; name: string }[] | undefined;
-        hs?.forEach((p) => regPlayer(p.id, p.name, data.home_club_id, hIds));
-        as?.forEach((p) => regPlayer(p.id, p.name, data.away_club_id, aIds));
+    data.proof_events.forEach((pe) => {
+      if (pe.thrower_id) {
+        const isHome = pe.offense_club_id === data.home_club_id;
+        regPlayer(pe.thrower_id, pe.thrower_name || pe.thrower_id, isHome ? data.home_club_id : data.away_club_id, isHome ? hIds : aIds);
+      }
+      if (pe.target_id) {
+        const targetIsHome = pe.defense_club_id === data.home_club_id;
+        regPlayer(pe.target_id, pe.target_name || pe.target_id, targetIsHome ? data.home_club_id : data.away_club_id, targetIsHome ? hIds : aIds);
       }
     });
 
@@ -458,16 +477,16 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
         onShowCatch={() => { setEventIndex(firstKeyPlayIdx); setIsPlaying(false); }} 
       />
 
-      <div className="mr-grid">
-        <div className="mr-stage">
-          <div className="mr-now-showing">
-            <span className="dm-kicker">NOW SHOWING</span>
-            <span className="sep">·</span>
-            <span className="phase">TICK {currentEvent?.tick || 0}</span>
-            <span className="sep">·</span>
-            <span className="title">{currentEvent?.summary || 'Match Start'}</span>
-          </div>
-          <DarkCourt 
+      <div className="mr-stage">
+        <div className="mr-active-readout">
+          <span className="lbl">NOW SHOWING</span>
+          <span className="sep" />
+          <span className="val">TICK {currentEvent?.tick ?? 0}</span>
+          <span className="sep" />
+          <span className="title">{currentEvent?.summary || 'Match Start'}</span>
+        </div>
+        <div className="mr-court-wrap">
+          <DarkCourt
             homeName={data.home_club_name}
             awayName={data.away_club_name}
             homeIds={homeIds}
@@ -481,40 +500,33 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
             flashTargetId={flashTargetId}
             ballAnimKey={ballAnimKey}
           />
-          <PossessionBar events={data.proof_events} activeIdx={eventIndex} onJump={setEventIndex} />
-          
-          <div className="mr-transport">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'center' }}>
-              <div className="mr-controls">
-                <button onClick={() => { setEventIndex(0); setIsPlaying(false); }}>⏮</button>
-                <button onClick={() => { setEventIndex(Math.max(0, eventIndex - 1)); setIsPlaying(false); }}>◂</button>
-                <button className={`play-btn ${isPlaying ? 'playing' : ''}`} onClick={() => setIsPlaying(!isPlaying)}>
-                  {isPlaying ? '❚❚' : '▶'}
-                </button>
-                <button onClick={() => { setEventIndex(Math.min(totalEvents - 1, eventIndex + 1)); setIsPlaying(false); }}>▸</button>
-                <button onClick={() => { setEventIndex(totalEvents - 1); setIsPlaying(false); }}>⏭</button>
-              </div>
-              <span style={{ fontSize: '0.625rem', color: '#64748b', letterSpacing: '0.05em', textTransform: 'uppercase', fontFamily: 'var(--font-mono-data)' }}>
-                Space play · ◂ ▸ step
-              </span>
-            </div>
-            <div className="mr-meta">
-              <span>EVENT <b>{(eventIndex + 1).toString().padStart(2, '0')}/{totalEvents.toString().padStart(2, '0')}</b></span>
-              <span className="sep">·</span>
-              <button onClick={onContinue} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontFamily: 'Oswald, sans-serif', fontSize: 13, letterSpacing: 1, textDecoration: 'underline' }}>
-                CLOSE REPLAY
-              </button>
-            </div>
-          </div>
         </div>
+        <PossessionBar events={data.proof_events} activeIdx={eventIndex} onJump={setEventIndex} homeClubId={data.home_club_id} />
 
-        <div className="mr-sidebar">
-          <div className="mr-sidebar-header">
-            <span className="dm-kicker">EVENT LOG</span>
-            <h3>Match Flow</h3>
-          </div>
-          <EventLog events={data.proof_events} activeIdx={eventIndex} onSelect={setEventIndex} />
+        <div className="mr-transport">
+          <button className="mr-tbtn" aria-label="First" onClick={() => { setEventIndex(0); setIsPlaying(false); }}>⏮</button>
+          <button className="mr-tbtn" aria-label="Previous" onClick={() => { setEventIndex(Math.max(0, eventIndex - 1)); setIsPlaying(false); }}>◂</button>
+          <button className={`mr-tbtn mr-play ${isPlaying ? 'is-playing' : ''}`} aria-label={isPlaying ? 'Pause' : 'Play'} onClick={() => setIsPlaying(!isPlaying)}>
+            {isPlaying ? '❚❚' : '▶'}
+          </button>
+          <button className="mr-tbtn" aria-label="Next" onClick={() => { setEventIndex(Math.min(totalEvents - 1, eventIndex + 1)); setIsPlaying(false); }}>▸</button>
+          <button className="mr-tbtn" aria-label="Last" onClick={() => { setEventIndex(totalEvents - 1); setIsPlaying(false); }}>⏭</button>
+          <span className="mr-transport-spd">Space · ◂ ▸</span>
+          <span className="mr-transport-pos">
+            EVENT <b>{(eventIndex + 1).toString().padStart(2, '0')}/{totalEvents.toString().padStart(2, '0')}</b>
+          </span>
+          <button className="mr-tbtn" aria-label="Close replay" onClick={onContinue} style={{ width: 'auto', padding: '0 12px', fontFamily: 'var(--font-display)', fontSize: '0.7rem', letterSpacing: '0.12em' }}>
+            CLOSE
+          </button>
         </div>
+      </div>
+
+      <div className="mr-sidebar-wrap">
+        <div className="mr-sidebar-head">
+          <span className="mr-sidebar-meta"><b>EVENT LOG</b></span>
+          <div className="mr-sidebar-title">Match Flow</div>
+        </div>
+        <EventLog events={data.proof_events} activeIdx={eventIndex} onSelect={setEventIndex} />
       </div>
     </div>
   );

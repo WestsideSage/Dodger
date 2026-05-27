@@ -41,7 +41,7 @@ TIER1_REGISTER: dict[str, str] = {
     "moment.late_game_escape.body": "{survivor} was left alone and still kept the point alive against {attacker_count}.",
     "moment.late_game_escape.beat": "{survivor} is down to a solo stand against {attacker_count}.",
     "moment.one_v_one_finale.headline": "{a} vs {b} - last two standing.",
-    "moment.one_v_one_finale.body": "{a} and {b} were the last two left, and every fake carried the match.",
+    "moment.one_v_one_finale.body": "{a} and {b} were locked in a 1v1 duel as the final player standing for each side.",
     "moment.one_v_one_finale.beat": "{a} vs {b} - last two standing.",
     "moment.gassed_collapse.headline": "{player} is gassed and the legs are gone.",
     "moment.gassed_collapse.body": "{player} hit the red and the body finally gave out.",

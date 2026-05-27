@@ -410,11 +410,11 @@ export function PreSimDashboard({
 
           <div className="cc-hero-frame">
             {isBye ? (
-              <div className="line"><b>This Week</b>No match — rest, recover, and plan ahead.</div>
+              <div className="line"><b>This Week</b>{' '}No match — rest, recover, and plan ahead.</div>
             ) : (
               <>
-                <div className="line"><b>This Week</b>{stakes}</div>
-                {watchLine && <div className="line watch"><b>Watch</b>{watchLine}</div>}
+                <div className="line"><b>This Week</b>{' '}{stakes}</div>
+                {watchLine && <div className="line watch"><b>Watch</b>{' '}{watchLine}</div>}
               </>
             )}
           </div>
@@ -721,7 +721,15 @@ export function PreSimDashboard({
           <span className="wkbadge">Top: {topStanding.club_name ?? topStanding.club_id}</span>
         )}
         {lastRecord && (
-          <button type="button" className="show" onClick={() => undefined}>
+          <button
+            type="button"
+            className="show"
+            onClick={() => {
+              const params = new URLSearchParams(window.location.search);
+              params.set('tab', 'standings');
+              window.location.assign(`${window.location.pathname}?${params.toString()}`);
+            }}
+          >
             League Table ▸
           </button>
         )}

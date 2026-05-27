@@ -65,12 +65,14 @@ export function MatchWeek({
   persistedResult,
   onSimComplete,
   onAdvanceWeek,
+  onOffseasonBeatChange,
 }: {
   onOpenReplay?: (matchId: string) => void;
   mode: MatchWeekMode;
   persistedResult?: CommandCenterSimResponse | null;
   onSimComplete?: (result: CommandCenterSimResponse) => void;
   onAdvanceWeek?: () => void;
+  onOffseasonBeatChange?: (title: string | null) => void;
 }) {
   const { data, setData, error, setError, loading, setLoading } = useApiResource<CommandCenterResponse>('/api/command-center');
   const [localIntent, setLocalIntent] = useState<string | undefined>(undefined);
@@ -292,6 +294,9 @@ export function MatchWeek({
               awaySurvivors={aftermath.match_card.away_survivors}
               winnerClubId={aftermath.match_card.winner_club_id}
               homeClubId={aftermath.match_card.home_club_id}
+              scoringModel={aftermath.match_card.scoring_model}
+              homeGamePoints={aftermath.match_card.home_game_points}
+              awayGamePoints={aftermath.match_card.away_game_points}
             />
             {aftermath.verdict && (
               <p
@@ -424,7 +429,7 @@ export function MatchWeek({
 
   if (mode === 'offseason') return (
     <div data-testid="match-week-offseason" className={isAdvancingWeek ? 'fade-out' : ''}>
-      <Offseason />
+      <Offseason onBeatChange={onOffseasonBeatChange} />
     </div>
   );
 

@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Tuple
 
+from .rng import derive_seed
 from .ball_state import (
     BallState,
     OfficialBall,
@@ -70,6 +71,13 @@ from .sequence import (
     sequence_event,
 )
 from .discipline import DisciplineState
+from .official_scoring import (
+    OfficialGameScore,
+    OfficialMatchScore,
+    foam_game_points,
+    cloth_game_points,
+    match_winner_from_points,
+)
 
 
 class ScriptedActionKind(str, Enum):
@@ -433,6 +441,9 @@ def run_autonomous_game(
     seed: int,
     max_ticks: int = 200,
     discipline_state: DisciplineState | None = None,
+    game_number: int = 1,
+    elapsed_match_seconds: int = 0,
+    match_clock_limit: int = 0,
 ) -> AutonomousGameResult:
     """Run a full official game with autonomous tactics.
 
@@ -487,9 +498,9 @@ def run_autonomous_game(
     }
     ledger = SequenceLedger()
     game_clock = OfficialGameClock(limit_seconds=profile.game_clock_seconds)
-    match_clock = OfficialMatchClock(limit_seconds=profile.match_clock_seconds)
+    match_clock = OfficialMatchClock(limit_seconds=match_clock_limit or profile.match_clock_seconds, elapsed_seconds=elapsed_match_seconds)
     game_state = OfficialGameState(
-        game_number=1,
+        game_number=game_number,
         profile=profile,
         clock=game_clock,
         active_count_a=len(starters_a),
@@ -745,5 +756,233 @@ def run_autonomous_game(
         final_active_a=active_a,
         final_active_b=active_b,
         ticks=ticks,
+        replay_state=replay_state,
+    )
+
+
+@dataclass
+class AutonomousMatchResult:
+    winner_team_id: str | None
+    official_match_score: OfficialMatchScore
+    events: Tuple[OfficialEvent, ...]
+    ticks: int
+    replay_state: OfficialReplayState
+
+
+def run_autonomous_match(
+    *,
+    profile: RulesetProfile,
+    match_id: str,
+    team_a_id: str,
+    team_b_id: str,
+    starters_a: Tuple[str, ...],
+    starters_b: Tuple[str, ...],
+    player_lookup: dict,
+    policy_a: CoachPolicy,
+    policy_b: CoachPolicy,
+    seed: int,
+) -> AutonomousMatchResult:
+    """Simulate a full official match containing a series of timed games.
+
+    Preserves run_autonomous_game as a single-game primitive by calling it repeatedly.
+    """
+    # Order matters: "final" is a substring of "semifinal", so check the
+    # narrower label first.
+    if "semifinal" in match_id or "_p_r1_" in match_id:
+        match_clock_limit = 30 * 60
+    elif "final" in match_id:
+        match_clock_limit = 40 * 60
+    else:
+        match_clock_limit = 24 * 60
+
+    elapsed_match_seconds = 0
+    game_number = 1
+    games_list: List[OfficialGameScore] = []
+    all_events: List[OfficialEvent] = []
+    total_ticks = 0
+
+    team_a_game_points = 0
+    team_b_game_points = 0
+    team_a_games_won = 0
+    team_b_games_won = 0
+    tied_games = 0
+    no_point_games = 0
+
+    last_game_res = None
+
+    while elapsed_match_seconds < match_clock_limit:
+        remaining = match_clock_limit - elapsed_match_seconds
+
+        # Don't start a game that can't make meaningful progress.
+        if remaining < 30:
+            break
+
+        # Cap the game clock so a single game can never overshoot the
+        # remaining match window.
+        game_clock_limit = min(profile.game_clock_seconds, remaining)
+
+        adjusted_profile = profile
+        if game_clock_limit != profile.game_clock_seconds:
+            adjusted_profile = RulesetProfile(
+                name=profile.name,
+                material=profile.material,
+                division=profile.division,
+                ball_count=profile.ball_count,
+                burden_majority_threshold=profile.burden_majority_threshold,
+                roster_rule=profile.roster_rule,
+                court=profile.court,
+                game_clock_seconds=game_clock_limit,
+                match_clock_seconds=profile.match_clock_seconds,
+                throw_clock_seconds=profile.throw_clock_seconds,
+                no_blocking_trigger_seconds=profile.no_blocking_trigger_seconds,
+            )
+
+        game_seed = derive_seed(seed, "game", str(game_number))
+
+        game_res = run_autonomous_game(
+            profile=adjusted_profile,
+            match_id=match_id,
+            team_a_id=team_a_id,
+            team_b_id=team_b_id,
+            starters_a=starters_a,
+            starters_b=starters_b,
+            player_lookup=player_lookup,
+            policy_a=policy_a,
+            policy_b=policy_b,
+            seed=game_seed,
+            game_number=game_number,
+            elapsed_match_seconds=elapsed_match_seconds,
+            match_clock_limit=match_clock_limit,
+        )
+
+        last_game_res = game_res
+        game_elapsed = game_res.replay_state.game_clock.elapsed_seconds
+        elapsed_match_seconds += game_elapsed
+        total_ticks += game_res.ticks
+
+        g_winner = game_res.winner_team_id
+
+        if profile.material == BallMaterial.CLOTH:
+            is_tie = (g_winner is None)
+            pts_a, pts_b = cloth_game_points(g_winner, is_tie, team_a_id, team_b_id)
+            res_type = "tie" if is_tie else "cloth_active_count" if game_res.final_active_a > 0 and game_res.final_active_b > 0 else "elimination"
+        else:
+            pts_a, pts_b = foam_game_points(g_winner, team_a_id, team_b_id)
+            res_type = "elimination" if g_winner is not None else "no_point"
+
+        team_a_game_points += pts_a
+        team_b_game_points += pts_b
+
+        if g_winner == team_a_id:
+            team_a_games_won += 1
+        elif g_winner == team_b_id:
+            team_b_games_won += 1
+        elif res_type == "tie":
+            tied_games += 1
+        elif res_type == "no_point":
+            no_point_games += 1
+
+        games_list.append(OfficialGameScore(
+            game_number=game_number,
+            winner_team_id=g_winner,
+            team_a_points=pts_a,
+            team_b_points=pts_b,
+            result_type=res_type,
+            final_active_a=game_res.final_active_a,
+            final_active_b=game_res.final_active_b,
+            mode=game_res.replay_state.mode,
+            elapsed_seconds=game_elapsed,
+        ))
+
+        game_events = []
+        for ev in game_res.events:
+            adjusted_ev = OfficialEvent(
+                event_id=f"g{game_number}_{ev.event_id}",
+                kind=ev.kind,
+                match_id=ev.match_id,
+                rule_refs=ev.rule_refs,
+                replay_summary=ev.replay_summary,
+                payload=ev.payload,
+                game_id=f"g{game_number}",
+                sequence_id=ev.sequence_id,
+                ball_ids=ev.ball_ids,
+                player_ids=ev.player_ids,
+                team_ids=ev.team_ids,
+                official_payload_version=ev.official_payload_version,
+                ruleset_version=ev.ruleset_version,
+                rulebook_version=ev.rulebook_version,
+            )
+            game_events.append(adjusted_ev)
+
+        all_events.extend(game_events)
+        game_number += 1
+
+    match_winner = match_winner_from_points(
+        team_a_game_points,
+        team_b_game_points,
+        team_a_id,
+        team_b_id,
+    )
+
+    match_score = OfficialMatchScore(
+        team_a_id=team_a_id,
+        team_b_id=team_b_id,
+        team_a_game_points=team_a_game_points,
+        team_b_game_points=team_b_game_points,
+        team_a_games_won=team_a_games_won,
+        team_b_games_won=team_b_games_won,
+        tied_games=tied_games,
+        no_point_games=no_point_games,
+        games=tuple(games_list),
+        winner_team_id=match_winner,
+    )
+
+    if last_game_res:
+        final_replay = last_game_res.replay_state
+        game_score_view = OfficialGameScoreView(
+            team_a_id=team_a_id,
+            team_b_id=team_b_id,
+            team_a_games=team_a_game_points,
+            team_b_games=team_b_game_points,
+            team_a_ties=tied_games,
+            team_b_ties=tied_games,
+            no_point_games=no_point_games,
+        )
+        match_clock_view = OfficialClockView(
+            limit_seconds=match_clock_limit,
+            elapsed_seconds=elapsed_match_seconds,
+        )
+        rule_calls = []
+        for event in all_events:
+            for label in event.rule_labels():
+                rule_calls.append(
+                    OfficialRuleCallView(rule_label=label, summary=event.replay_summary)
+                )
+
+        replay_state = OfficialReplayState(
+            ruleset=final_replay.ruleset,
+            rulebook_version=final_replay.rulebook_version,
+            official_payload_version=final_replay.official_payload_version,
+            match_clock=match_clock_view,
+            game_clock=final_replay.game_clock,
+            game_score=game_score_view,
+            mode=final_replay.mode,
+            burden=final_replay.burden,
+            balls=final_replay.balls,
+            teams=final_replay.teams,
+            player_statuses=final_replay.player_statuses,
+            rule_calls=tuple(rule_calls),
+            events=tuple(all_events),
+        )
+    else:
+        # Fallback if no games were simulated
+        from .replay_contracts import empty_replay_state
+        replay_state = empty_replay_state(profile.name)
+
+    return AutonomousMatchResult(
+        winner_team_id=match_winner,
+        official_match_score=match_score,
+        events=tuple(all_events),
+        ticks=total_ticks,
         replay_state=replay_state,
     )

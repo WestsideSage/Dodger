@@ -19,7 +19,17 @@ export function CredibilityStrip({
   week: number;
 }) {
   const score = credibility.score;
-  const progress = Math.min(100, Math.max(0, ((score - 40) / (75 - 40)) * 100));
+  const tier = (() => {
+    if (score >= 85) return { label: 'Tier A · Max', prev: 85, target: 100 };
+    if (score >= 70) return { label: 'Toward Tier A', prev: 70, target: 85 };
+    if (score >= 55) return { label: 'Toward Tier B', prev: 55, target: 70 };
+    if (score >= 40) return { label: 'Toward Tier C', prev: 40, target: 55 };
+    return { label: 'Toward Tier D', prev: 0, target: 40 };
+  })();
+  const progress = Math.min(
+    100,
+    Math.max(0, ((score - tier.prev) / Math.max(1, tier.target - tier.prev)) * 100),
+  );
   const scoutRemaining = remaining(budget.scout);
   const contactRemaining = remaining(budget.contact);
   const visitRemaining = remaining(budget.visit);
@@ -38,8 +48,8 @@ export function CredibilityStrip({
 
         <div className="do-cred-progress">
           <div className="do-cred-progress-head">
-            <span className="lbl">Toward Tier B</span>
-            <span className="val mono"><b>{score}</b> <span className="dim">/ 75</span></span>
+            <span className="lbl">{tier.label}</span>
+            <span className="val mono"><b>{score}</b> <span className="dim">/ {tier.target}</span></span>
           </div>
           <div className="do-cred-track">
             <div className="do-cred-fill" style={{ width: `${progress}%` }}>
@@ -55,7 +65,7 @@ export function CredibilityStrip({
         <div className="do-cred-evidence">
           {credibility.evidence.map((item, index) => (
             <div key={`${index}-${item}`} className="item">
-              <span className="ix">{String(index + 1).padStart(2, '0')}</span>
+              <span className="ix">{String(index + 1).padStart(2, '0')}.{' '}</span>
               <span className="copy">{item}</span>
             </div>
           ))}

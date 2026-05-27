@@ -271,10 +271,10 @@ export function MyProgramView({ clubId, isSelf = true }: { clubId: string; isSel
           <span className="trend">{identityTrend}</span>
         </div>
         <div className="cell">
-          <span className="lbl">Banner Count</span>
+          <span className="lbl">Championship Banners</span>
           <span className="val">
-            {data.banners.length}
-            <span>{championshipCount} titles</span>
+            {championshipCount}
+            <span>{Math.max(0, data.banners.length - championshipCount)} awards logged</span>
           </span>
           <span className={`trend ${championshipCount > 0 ? 'ok' : ''}`}>
             {championshipCount > 0 ? 'Championship standard established' : 'First banner still ahead'}

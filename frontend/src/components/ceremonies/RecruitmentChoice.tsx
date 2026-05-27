@@ -116,6 +116,7 @@ export function RecruitmentChoice({
                   <div style={{ minWidth: 0 }}>
                     <p style={{ margin: 0, color: '#f1f5f9', fontWeight: 700 }}>
                       {prospect.name}
+                      {prospect.kind === 'free_agent' && ' '}
                       {prospect.kind === 'free_agent' && (
                         <span
                           style={{

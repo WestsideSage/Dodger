@@ -146,6 +146,13 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     if not season_id:
         raise ValueError("No active season")
 
+    cursor = load_career_state_cursor(conn)
+    is_offseason = cursor.state.value in (
+        "season_complete_offseason_beat",
+        "season_complete_recruitment_pending",
+        "next_season_ready",
+    )
+
     clubs = load_clubs(conn)
     saved = {row.club_id: row for row in load_standings(conn, season_id)}
     current_week = current_week_number(conn, season_id)
@@ -159,7 +166,9 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         # reads with distinctive flavor instead of every team converging on
         # the same roster-derived archetype after a season or two.
         identity = _CLUB_IDENTITY_LABELS.get(club_id, club.program_archetype)
-        traj_label = f"Year {year_num} — {identity}"
+        # Note: "Yr N" here is the franchise's tenure year, not the league
+        # season number — abbreviated to reduce collision with the season label.
+        traj_label = f"Yr {year_num} · {identity}"
         rows.append(
             {
                 "club_id": club_id,
@@ -196,6 +205,7 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         "total_weeks": season.total_weeks(),
         "current_week": current_week or season.total_weeks(),
         "playoff_spots": PLAYOFF_FIELD_SIZE,
+        "is_offseason": is_offseason,
     }
 
 

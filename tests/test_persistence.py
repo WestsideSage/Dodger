@@ -131,8 +131,8 @@ def test_load_club_roster_raises_corrupt_save_error_for_bad_json():
         raise AssertionError("Expected CorruptSaveError")
 
 
-def test_current_schema_version_is_fourteen():
-    assert CURRENT_SCHEMA_VERSION == 14
+def test_current_schema_version_is_fifteen():
+    assert CURRENT_SCHEMA_VERSION == 15
 
 
 def test_v1_database_migrates_to_current_schema():
