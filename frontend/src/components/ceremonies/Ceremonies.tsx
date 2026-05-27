@@ -6,6 +6,7 @@ import type {
   OffseasonFixture,
   OffseasonRetiree,
   OffseasonSigning,
+  SigningCard,
 } from '../../types';
 
 type AwardsBeat = Extract<OffseasonBeat, { key: 'awards' }>;
@@ -271,12 +272,123 @@ export function Graduation({ beat, onComplete, acting }: { beat: RetirementsBeat
 }
 
 
+type SigningFilter = 'my' | 'rival' | 'surprise';
+
+const FILTER_LABELS: Record<SigningFilter, string> = {
+  my: 'My signings',
+  rival: 'Rival signings',
+  surprise: 'Surprises',
+};
+
+const FILTER_EMPTY: Record<SigningFilter, string> = {
+  my: 'No signings for your club yet.',
+  rival: 'No rival signings on the board.',
+  surprise: 'No surprises this signing day.',
+};
+
+function matchesFilter(card: SigningCard, filter: SigningFilter): boolean {
+  if (filter === 'my') return card.outcome_kind === 'my_signing';
+  if (filter === 'rival') return card.outcome_kind === 'rival_signing' || card.outcome_kind === 'surprise';
+  return card.outcome_kind === 'surprise';
+}
+
+function InteractionFooter({ interaction }: { interaction: SigningCard['user_interaction'] }) {
+  const chips: { label: string; on: boolean }[] = [
+    { label: 'Scouted', on: interaction.scouted },
+    { label: 'Contacted', on: interaction.contacted },
+    { label: 'Visited', on: interaction.visited },
+  ];
+  return (
+    <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.6rem', flexWrap: 'wrap' }}>
+      {chips.map((c) => (
+        <span
+          key={c.label}
+          style={{
+            fontSize: '0.6rem',
+            letterSpacing: '0.06em',
+            padding: '0.15rem 0.5rem',
+            borderRadius: '999px',
+            border: `1px solid ${c.on ? '#22d3ee' : '#334155'}`,
+            color: c.on ? '#22d3ee' : '#475569',
+            background: c.on ? 'rgba(34,211,238,0.08)' : 'transparent',
+            fontWeight: 600,
+            textTransform: 'uppercase',
+          }}
+        >
+          {c.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function SigningCardView({ card }: { card: SigningCard }) {
+  const isMine = card.outcome_kind === 'my_signing';
+  const isSurprise = card.outcome_kind === 'surprise';
+  const accent = isMine ? '#22d3ee' : isSurprise ? '#f59e0b' : '#334155';
+  const bg = isMine ? '#083344' : isSurprise ? '#1f1305' : '#0f172a';
+  return (
+    <div
+      className="fade-in"
+      style={{
+        border: `2px solid ${accent}`,
+        borderRadius: '8px',
+        padding: '1rem 1.1rem',
+        background: bg,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#e2e8f0' }}>{card.name}</div>
+          <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.15rem' }}>
+            <span style={{ color: '#cbd5e1', fontWeight: 600 }}>{card.club_name}</span>
+            {card.role ? <span> &middot; {card.role}</span> : null}
+          </div>
+        </div>
+        <div
+          style={{
+            fontSize: '0.7rem',
+            fontWeight: 800,
+            color: accent,
+            border: `1px solid ${accent}`,
+            borderRadius: '6px',
+            padding: '0.2rem 0.5rem',
+            letterSpacing: '0.05em',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          OVR {card.ovr}
+        </div>
+      </div>
+      <div style={{ fontSize: '0.8rem', color: '#cbd5e1', marginTop: '0.6rem', lineHeight: 1.4 }}>
+        {card.reason}
+      </div>
+      <InteractionFooter interaction={card.user_interaction} />
+    </div>
+  );
+}
+
 export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat; onComplete: () => void; acting?: boolean }) {
   const playerSigning = beat.payload.player_signing;
   const otherSignings = beat.payload.other_signings ?? [];
   const signedCount = beat.payload.signed_count ?? 0;
   const signingLimit = beat.payload.signing_limit ?? 3;
-  const totalStages = 0;
+  const signings: SigningCard[] = beat.payload.signings ?? [];
+
+  const [filter, setFilter] = useState<SigningFilter>('my');
+
+  const hasCards = signings.length > 0;
+  const counts: Record<SigningFilter, number> = {
+    my: signings.filter((c) => matchesFilter(c, 'my')).length,
+    rival: signings.filter((c) => matchesFilter(c, 'rival')).length,
+    surprise: signings.filter((c) => matchesFilter(c, 'surprise')).length,
+  };
+  const visible = signings
+    .filter((c) => matchesFilter(c, filter))
+    .sort((a, b) => b.ovr - a.ovr);
+
+  // Legacy fallback (no card-grid data on payload): keep the old summary card
+  // so older saves don't render as an empty screen.
   const summaryLabel = playerSigning ? 'YOUR CLASS' : 'SIGNING DAY UPDATE';
   const summaryTitle = playerSigning ? playerSigning.name : 'Class report';
   const summaryDetail = playerSigning
@@ -288,52 +400,105 @@ export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat
       title={beat.title}
       eyebrow="Signing Day"
       description="The nation's top prospects have made their commitments."
-      stages={totalStages}
-      renderStage={() => (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '480px', margin: '0 auto' }}>
-          <div
-            className="fade-in"
-            style={{
-              border: `2px solid ${playerSigning ? '#22d3ee' : '#334155'}`,
-              borderRadius: '8px',
-              padding: '1.25rem',
-              background: playerSigning ? '#083344' : '#0f172a',
-            }}
-          >
-            <div style={{ fontSize: '0.65rem', color: playerSigning ? '#22d3ee' : '#94a3b8', fontWeight: 700, letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
-              {summaryLabel}
-            </div>
-            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#e2e8f0', marginBottom: '0.25rem' }}>
-              {summaryTitle}
-            </div>
-            <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-              {summaryDetail}
-            </div>
-          </div>
-
-          {otherSignings.map((s: OffseasonSigning, i: number) => (
+      stages={0}
+      renderStage={() =>
+        hasCards ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '520px', margin: '0 auto' }}>
             <div
-              key={i}
+              role="tablist"
+              aria-label="Filter signings"
+              style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'center' }}
+            >
+              {(['my', 'rival', 'surprise'] as SigningFilter[]).map((f) => {
+                const active = filter === f;
+                return (
+                  <button
+                    key={f}
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setFilter(f)}
+                    style={{
+                      background: active ? '#22d3ee' : 'transparent',
+                      color: active ? '#0f172a' : '#94a3b8',
+                      border: `1px solid ${active ? '#22d3ee' : '#334155'}`,
+                      borderRadius: '999px',
+                      padding: '0.3rem 0.75rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.04em',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {FILTER_LABELS[f]} <span style={{ opacity: 0.7 }}>({counts[f]})</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ fontSize: '0.7rem', color: '#64748b', textAlign: 'center' }}>
+              {signedCount}/{signingLimit} of your slots used &middot; sorted by OVR
+            </div>
+
+            {visible.length === 0 ? (
+              <div
+                style={{
+                  border: '1px dashed #334155',
+                  borderRadius: '8px',
+                  padding: '1.5rem',
+                  color: '#64748b',
+                  textAlign: 'center',
+                  fontSize: '0.85rem',
+                }}
+              >
+                {FILTER_EMPTY[filter]}
+              </div>
+            ) : (
+              visible.map((card) => <SigningCardView key={card.player_id} card={card} />)
+            )}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '480px', margin: '0 auto' }}>
+            <div
               className="fade-in"
               style={{
-                border: '1px solid #334155',
-                borderRadius: '6px',
-                padding: '0.75rem 1rem',
-                background: '#0f172a',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
+                border: `2px solid ${playerSigning ? '#22d3ee' : '#334155'}`,
+                borderRadius: '8px',
+                padding: '1.25rem',
+                background: playerSigning ? '#083344' : '#0f172a',
               }}
             >
-              <div>
-                <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{s.name}</span>
-                <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '0.5rem' }}>to {s.club_name}</span>
+              <div style={{ fontSize: '0.65rem', color: playerSigning ? '#22d3ee' : '#94a3b8', fontWeight: 700, letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
+                {summaryLabel}
               </div>
-              <span style={{ color: '#64748b', fontSize: '0.75rem' }}>OVR {s.ovr}</span>
+              <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#e2e8f0', marginBottom: '0.25rem' }}>
+                {summaryTitle}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{summaryDetail}</div>
             </div>
-          ))}
-        </div>
-      )}
+            {otherSignings.map((s: OffseasonSigning, i: number) => (
+              <div
+                key={i}
+                className="fade-in"
+                style={{
+                  border: '1px solid #334155',
+                  borderRadius: '6px',
+                  padding: '0.75rem 1rem',
+                  background: '#0f172a',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <div>
+                  <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{s.name}</span>
+                  <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '0.5rem' }}>to {s.club_name}</span>
+                </div>
+                <span style={{ color: '#64748b', fontSize: '0.75rem' }}>OVR {s.ovr}</span>
+              </div>
+            ))}
+          </div>
+        )
+      }
       onComplete={onComplete}
       actionDescription="Review the commitments, then continue the offseason sequence."
       isActing={acting}
