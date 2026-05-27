@@ -140,15 +140,15 @@ function App() {
                 key={tab.id}
                 className={`dm-nav-item ${isActive ? 'dm-nav-item-active' : ''}`}
                 aria-label={tab.label}
-                disabled={!isAvailable}
-                title={isAvailable ? tab.label : `${tab.label} returns after offseason`}
+                aria-disabled={!isAvailable}
+                title={isAvailable ? tab.label : `${tab.label} — locked during offseason`}
                 onClick={() => {
                   if (isAvailable) {
                     setCommandReplay(null);
                     setActiveTab(tab.id);
                   }
                 }}
-                style={{ opacity: isAvailable ? 1 : 0.35, cursor: isAvailable ? 'pointer' : 'not-allowed' }}
+                style={{ opacity: isAvailable ? 1 : 0.35, cursor: isAvailable ? 'pointer' : 'not-allowed', pointerEvents: 'auto' }}
               >
                 <span className="dm-nav-dot" />
                 <span className="dm-nav-label-full" aria-hidden="true">{tab.label}</span>

@@ -1,7 +1,8 @@
 function advanceLabel(result?: string): string {
   if (result === 'Win') return 'BANK THE RESULT →';
   if (result === 'Loss') return 'MOVE ON →';
-  return 'SHAKE IT OFF →';
+  if (result === 'Draw') return 'SHAKE IT OFF →';
+  return 'MOVE ON →';
 }
 
 export function AftermathActionBar({

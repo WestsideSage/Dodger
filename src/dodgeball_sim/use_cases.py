@@ -37,6 +37,7 @@ from dodgeball_sim.persistence import (
     load_career_state_cursor,
     load_clubs,
     load_completed_match_ids,
+    load_latest_weekly_plan_intent,
     load_season,
     load_standings,
     load_weekly_command_plan,
@@ -335,7 +336,11 @@ def simulate_week(
     existing = load_weekly_command_plan(conn, state["season_id"], state["week"], state["player_club_id"])
 
     intent_override = update.get("intent") if update else None
-    plan = existing or build_default_weekly_plan(state, intent=intent_override or "Win Now")
+    if existing:
+        plan = existing
+    else:
+        prior_intent = load_latest_weekly_plan_intent(conn, state["season_id"], state["week"], state["player_club_id"])
+        plan = build_default_weekly_plan(state, intent=intent_override or prior_intent or "Win Now")
     plan = refresh_weekly_plan_context(plan, state)
 
     if update is not None:
@@ -458,6 +463,19 @@ def simulate_week(
     season, next_chosen, _stop_reason = _choose_next_user_match_after_automation(
         conn, season, clubs, player_club_id
     )
+    if not next_chosen:
+        # Defensive guard: before going to offseason, scan for any unplayed
+        # playoff matches involving the player (catches bracket creation edge cases).
+        from dodgeball_sim.playoffs import is_playoff_match_id
+        completed_ids = load_completed_match_ids(conn, season_id)
+        pending_user_playoff = [
+            m for m in season.scheduled_matches
+            if is_playoff_match_id(season.season_id, m.match_id)
+            and m.match_id not in completed_ids
+            and player_club_id in (m.home_club_id, m.away_club_id)
+        ]
+        if pending_user_playoff:
+            next_chosen = pending_user_playoff[:1]
     if next_chosen:
         cursor = dataclasses.replace(
             cursor,

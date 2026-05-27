@@ -61,6 +61,7 @@ export function BroadcastFrameBlock({
   const tags = [frame.stakes_tag, frame.rivalry_tag, frame.archetype_tag].filter(
     (tag): tag is BroadcastTag => Boolean(tag),
   );
+  if (tags.length === 0 && !frame.historical_hook) return null;
   const proofRows = [
     ...tags.map(tag => ({ label: tag.label, source: tag.proof_source })),
     ...(frame.historical_hook
