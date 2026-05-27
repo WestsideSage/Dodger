@@ -200,4 +200,116 @@ def describe_sample_matchup() -> str:
     return describe_matchup(sample_match_setup())
 
 
-__all__ = ["curated_clubs", "sample_match_setup", "describe_sample_matchup"]
+def scripted_blowout_loss(
+    *,
+    player_survivors: int,
+    opponent_survivors: int,
+    player_first_in_box: bool = True,
+    player_club_id: str = "aurora",
+    opponent_club_id: str = "lunar",
+) -> tuple["MatchResult", str, str]:
+    """Build a fully-resolved ``MatchResult`` for testing postgame copy.
+
+    The match has no real events beyond ``match_start`` / ``match_end``; the
+    box score is hand-built to carry the desired final survivor counts. The
+    winner is decided purely by survivor counts (ties yield ``None``).
+
+    Parameters
+    ----------
+    player_survivors / opponent_survivors:
+        Final survivor counts that should appear in the box score totals.
+    player_first_in_box:
+        Whether the player team's id is the first key in
+        ``box_score["teams"]``. Use ``False`` to exercise the regression
+        where the player team was not the first key and the headline
+        fallback flipped the perspective.
+
+    Returns
+    -------
+    (result, player_club_id, opponent_club_id)
+    """
+
+    from .engine import MatchResult
+    from .events import MatchEvent
+
+    if player_survivors == opponent_survivors:
+        winner_id: str | None = None
+    elif player_survivors > opponent_survivors:
+        winner_id = player_club_id
+    else:
+        winner_id = opponent_club_id
+
+    def _team_box(name: str, living: int) -> dict:
+        return {
+            "name": name,
+            "totals": {"living": living, "catches": 0, "outs_recorded": 0},
+            "players": {},
+        }
+
+    player_box = _team_box("Aurora Sentinels", player_survivors)
+    opponent_box = _team_box("Lunar Syndicate", opponent_survivors)
+
+    teams: dict[str, dict] = {}
+    if player_first_in_box:
+        teams[player_club_id] = player_box
+        teams[opponent_club_id] = opponent_box
+    else:
+        teams[opponent_club_id] = opponent_box
+        teams[player_club_id] = player_box
+
+    box_score = {"teams": teams, "winner": winner_id}
+
+    events = (
+        MatchEvent(
+            event_id=0,
+            tick=0,
+            seed=7,
+            event_type="match_start",
+            phase="init",
+            actors={"team_a": player_club_id, "team_b": opponent_club_id},
+            context={
+                "config_version": "phase1.v1",
+                "difficulty": "pro",
+                "meta_patch": None,
+                "team_policies": {
+                    player_club_id: CoachPolicy().as_dict(),
+                    opponent_club_id: CoachPolicy().as_dict(),
+                },
+            },
+            probabilities={},
+            rolls={},
+            outcome={"message": "start"},
+            state_diff={},
+        ),
+        MatchEvent(
+            event_id=1,
+            tick=1,
+            seed=7,
+            event_type="match_end",
+            phase="complete",
+            actors={"winner": winner_id},
+            context={"reason": "elimination", "moment_events": []},
+            probabilities={},
+            rolls={},
+            outcome={"winner": winner_id},
+            state_diff={},
+        ),
+    )
+
+    result = MatchResult(
+        events=events,
+        winner_team_id=winner_id,
+        box_score=box_score,
+        final_tick=1,
+        seed=7,
+        config_version="phase1.v1",
+    )
+    return result, player_club_id, opponent_club_id
+
+
+__all__ = [
+    "curated_clubs",
+    "sample_match_setup",
+    "describe_sample_matchup",
+    "scripted_blowout_loss",
+]
