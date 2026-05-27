@@ -256,11 +256,25 @@ function RecruitBoard({
   );
 }
 
-function StaffTab({ data }: { data: DynastyOfficeResponse }) {
+function StaffTab({
+  data,
+  onStaffUpdate,
+}: {
+  data: DynastyOfficeResponse;
+  onStaffUpdate: (next: DynastyOfficeResponse) => void;
+}) {
   const staff = data.staff_market.current_staff;
   const candidates = data.staff_market.candidates;
   const avgRating = averageRating(staff);
   const vacancies = buildVacancies(data);
+  const [hiringCandidateId, setHiringCandidateId] = useState<string | null>(null);
+
+  const handleInterview = (candidateId: string) => {
+    setHiringCandidateId(candidateId);
+    dynastyApi.hireStaff(candidateId)
+      .then(onStaffUpdate)
+      .finally(() => setHiringCandidateId(null));
+  };
 
   return (
     <div className="do-tab-content">
@@ -352,7 +366,8 @@ function StaffTab({ data }: { data: DynastyOfficeResponse }) {
           </div>
           <div className="do-pipe-list">
             {candidates.length > 0 ? candidates.map((candidate) => {
-              const normalizedStage = candidate.effect_lanes.length > 1 ? 'interview' : candidate.effect_lanes.length === 1 ? 'background' : 'offer-sent';
+              const isHiring = hiringCandidateId === candidate.candidate_id;
+              const normalizedStage = isHiring ? 'scheduled' : 'available';
               return (
                 <div key={candidate.candidate_id} className="do-pipe-row">
                   <div className="do-pipe-id">
@@ -363,12 +378,20 @@ function StaffTab({ data }: { data: DynastyOfficeResponse }) {
                   <div className="do-pipe-meta">
                     <span className="rating">{candidate.rating_primary}<small> OVR</small></span>
                     <span className={`stage stage-${normalizedStage}`}>{normalizedStage.replace('-', ' ')}</span>
+                    <button
+                      className="dm-btn"
+                      type="button"
+                      disabled={hiringCandidateId !== null}
+                      onClick={() => handleInterview(candidate.candidate_id)}
+                    >
+                      {isHiring ? 'Scheduling...' : 'Interview'}
+                    </button>
                   </div>
                 </div>
               );
             }) : (
               <div style={{ padding: '1rem 1.2rem', color: '#94a3b8', fontSize: '0.84rem' }}>
-                No live staff candidates are on the board this week.
+                No live staff candidates are on the board this week. Completed interviews appear in recent staff moves.
               </div>
             )}
           </div>
@@ -454,7 +477,7 @@ export function DynastyOffice() {
           </div>
         )}
 
-        {activeSubTab === 'staff' && <StaffTab data={data} />}
+        {activeSubTab === 'staff' && <StaffTab data={data} onStaffUpdate={setData} />}
       </div>
 
       {showSettings && planContext && (

@@ -83,7 +83,7 @@ export function MatchWeek({
   const [planConfirmed, setPlanConfirmed] = useState(false);
   const [replayData, setReplayData] = useState<MatchReplayResponse | null>(null);
 
-  const selectedIntent = localIntent ?? data?.plan.intent ?? 'Win Now';
+  const selectedIntent = localIntent ?? data?.plan.intent ?? 'Balanced';
 
   const load = (showLoading = false) => {
     if (showLoading) setLoading(true);

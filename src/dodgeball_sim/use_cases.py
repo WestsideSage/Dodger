@@ -427,7 +427,7 @@ def simulate_week(
         plan = existing
     else:
         prior_intent = load_latest_weekly_plan_intent(conn, state["season_id"], state["week"], state["player_club_id"])
-        plan = build_default_weekly_plan(state, intent=intent_override or prior_intent or "Win Now")
+        plan = build_default_weekly_plan(state, intent=intent_override or prior_intent or "Balanced")
     plan = refresh_weekly_plan_context(plan, state)
 
     if update is not None:

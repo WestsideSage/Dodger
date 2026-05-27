@@ -57,7 +57,7 @@ def command_center_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     existing = load_weekly_command_plan(conn, state["season_id"], state["week"], state["player_club_id"])
     if not existing:
         prior_intent = load_latest_weekly_plan_intent(conn, state["season_id"], state["week"], state["player_club_id"])
-        plan = build_default_weekly_plan(state, intent=prior_intent or "Win Now")
+        plan = build_default_weekly_plan(state, intent=prior_intent or "Balanced")
     else:
         plan = existing
     plan = refresh_weekly_plan_context(plan, state)
@@ -77,7 +77,7 @@ def command_center_payload(conn: sqlite3.Connection) -> dict[str, Any]:
 
 def save_command_center_plan_payload(conn: sqlite3.Connection, update: dict[str, Any]) -> dict[str, Any]:
     state = build_command_center_state(conn)
-    plan = build_default_weekly_plan(state, intent=update.get("intent") or "Win Now")
+    plan = build_default_weekly_plan(state, intent=update.get("intent") or "Balanced")
 
     department_orders = update.get("department_orders")
     if department_orders:
