@@ -725,9 +725,28 @@ export interface RecruitmentProspectChoice {
     kind: 'prospect' | 'free_agent';
 }
 
+export interface SigningCard {
+    player_id: string;
+    name: string;
+    ovr: number;
+    role: string;
+    club_id: string;
+    club_name: string;
+    user_interaction: {
+        scouted: boolean;
+        contacted: boolean;
+        visited: boolean;
+        locked_out: boolean;
+    };
+    outcome_kind: 'my_signing' | 'rival_signing' | 'surprise';
+    reason: string;
+    round_number: number;
+}
+
 export interface RecruitmentBeatPayload {
     player_signing: OffseasonSigning | null;
     other_signings: OffseasonSigning[];
+    signings?: SigningCard[];
     available_prospects: RecruitmentProspectChoice[];
     signed_count: number;
     signing_limit: number;
