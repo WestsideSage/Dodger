@@ -21,12 +21,16 @@ from .persistence import (
     load_awards,
     load_club_trophies,
     load_free_agents,
+    load_json_state,
     load_player_career_stats,
+    load_prospect_pool,
+    load_recruitment_signings,
     load_retired_players,
     load_season,
     load_season_outcome,
     load_standings,
 )
+from .signing_day_payload import build_signing_cards
 from .stats import PlayerMatchStats
 
 
@@ -254,9 +258,39 @@ def build_beat_payload(
                     "ovr": int(round(player.overall_skill())),
                     "age": player.age,
                 }
+
+        # Card-grid payload: enrich each persisted signing with the user's
+        # interaction history for that prospect (scouted/contacted/visited),
+        # the prospect's role, and a one-line reason tying the outcome to
+        # those interactions.
+        signing_cards: list = []
+        if season is not None:
+            try:
+                signings = load_recruitment_signings(conn, season.season_id)
+            except Exception:
+                signings = ()
+            class_year = (season_number or 1) + 1
+            try:
+                pool = load_prospect_pool(conn, class_year)
+            except Exception:
+                pool = ()
+            prospects_by_id = {p.player_id: p for p in pool}
+            actions_by_player = load_json_state(
+                conn, "prospect_recruitment_actions_json", {}
+            ) or {}
+            signing_cards = build_signing_cards(
+                signings=signings,
+                rosters=rosters,
+                prospects_by_id=prospects_by_id,
+                clubs=clubs,
+                player_club_id=player_club_id,
+                actions_by_player=actions_by_player,
+            )
+
         return {
             "player_signing": player_signing,
             "other_signings": [],
+            "signings": signing_cards,
             "available_prospects": available_recruitment_choices(conn, season_number),
             "signed_count": signed_count,
             "signing_limit": signing_limit,
