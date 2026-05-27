@@ -6,6 +6,7 @@ they can be tested and called without FastAPI.
 from __future__ import annotations
 
 import dataclasses
+import re
 import sqlite3
 from typing import Any, Mapping
 
@@ -176,8 +177,8 @@ def _assert_postgame_copy_truthful(
         # The literal word "Win" never appears in Loss templates. (Note
         # that some Win templates say "you won" — fine on a Win; never
         # on a Loss.) Match "win" as a whole word so we don't trip on
-        # "swinging", etc.
-        assert " win" not in f" {headline_lower}" and not headline_lower.startswith("win"), (
+        # "winning", "winless", "rewind", "swinging", etc.
+        assert re.search(r"\bwin\b", headline_lower) is None, (
             f"Loss headline contains 'Win': {headline!r}"
         )
         # "So close" / "narrow" is reserved for one-survivor-margin losses.
@@ -187,8 +188,15 @@ def _assert_postgame_copy_truthful(
                 f"(margin={player_survivors - opponent_survivors})"
             )
     elif result == "Win":
-        assert " loss" not in f" {headline_lower}" and not headline_lower.startswith("loss"), (
+        assert re.search(r"\bloss\b", headline_lower) is None, (
             f"Win headline contains 'Loss': {headline!r}"
+        )
+    elif result == "Draw":
+        assert re.search(r"\bwin\b", headline_lower) is None, (
+            f"Draw headline contains 'Win': {headline!r}"
+        )
+        assert re.search(r"\bloss\b", headline_lower) is None, (
+            f"Draw headline contains 'Loss': {headline!r}"
         )
     if verdict is not None and result == "Loss":
         assert "you won" not in verdict.lower(), (
