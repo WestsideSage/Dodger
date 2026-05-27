@@ -24,6 +24,12 @@ class AftermathContext:
     policy_team: CoachPolicy
     policy_opponent: CoachPolicy
     tier: int
+    # The player team's club id. When supplied, postgame copy is rendered
+    # from the player's perspective (their survivors first, win/loss
+    # branched against this id). When None, the legacy behaviour is used:
+    # the first key in box_score["teams"] is treated as "mine" — fine for
+    # writer-side tests that don't care about player perspective.
+    player_club_id: str | None = None
 
     def player_name(self, player_id: str | None) -> str:
         if not player_id:
