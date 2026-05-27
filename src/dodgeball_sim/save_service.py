@@ -193,23 +193,50 @@ def create_new_save(
 
 
 def starting_prospects_payload() -> dict[str, Any]:
+    """Founding-draft prospect list.
+
+    The founding draft is the moment a coach signs their own first roster,
+    not an arms-length scouting report. There is no fog-of-war story here,
+    so we expose the *true* archetype label and the *true* integer OVR — the
+    same values the roster screen will render the instant the user commits.
+    The OVR is still expressed as a band for layout compatibility, but the
+    low and high bound the same true value so the displayed and persisted
+    numbers cannot drift. See test_founding_roster_continuity.py.
+    """
+    from .archetype_derivation import derive_archetype
     from .config import DEFAULT_SCOUTING_CONFIG
-    from .recruitment import generate_prospect_pool
+    from .models import PlayerRatings
+    from .recruitment import _display_name_for_archetype, generate_prospect_pool
     from .rng import DeterministicRNG
 
     pool = generate_prospect_pool(2026, DeterministicRNG(12345), DEFAULT_SCOUTING_CONFIG)
-    return {
-        "prospects": [
+    prospects_out = []
+    for prospect in pool:
+        ratings = PlayerRatings(
+            accuracy=prospect.hidden_ratings["accuracy"],
+            power=prospect.hidden_ratings["power"],
+            dodge=prospect.hidden_ratings["dodge"],
+            catch=prospect.hidden_ratings["catch"],
+            stamina=prospect.hidden_ratings["stamina"],
+            tactical_iq=prospect.hidden_ratings.get("tactical_iq", 50.0),
+            catch_courage=prospect.hidden_ratings.get("catch_courage", 50.0),
+            throw_selection_iq=prospect.hidden_ratings.get("throw_selection_iq", 50.0),
+            conditioning_curve=prospect.hidden_ratings.get("conditioning_curve", 50.0),
+        ).apply_bounds()
+        true_archetype_label = _display_name_for_archetype(
+            derive_archetype(ratings), ratings
+        )
+        true_overall = int(round(ratings.overall_skill()))
+        prospects_out.append(
             {
                 "player_id": prospect.player_id,
                 "name": prospect.name,
                 "hometown": prospect.hometown,
-                "public_archetype": prospect.public_archetype_guess,
-                "public_ovr_band": prospect.public_ratings_band["ovr"],
+                "public_archetype": true_archetype_label,
+                "public_ovr_band": (true_overall, true_overall),
             }
-            for prospect in pool
-        ]
-    }
+        )
+    return {"prospects": prospects_out}
 
 
 def build_from_scratch_save(saves_dir: Path, request: dict[str, Any]) -> dict[str, str]:
