@@ -15,7 +15,9 @@ test('Plan C tier-1 recognition: PolicyEditor → sim → aftermath surfaces mom
   await page.goto(`${baseUrl}/?tab=command`);
   await expect(page.getByTestId('weekly-command-center')).toBeVisible();
 
-  // PolicyEditor renders inside the pre-sim dashboard.
+  await page.getByTestId('open-policy-editor').click();
+
+  // PolicyEditor renders inside the pre-sim dashboard overlay.
   const editor = page.getByTestId('policy-editor');
   await expect(editor).toBeVisible();
 
@@ -38,6 +40,7 @@ test('Plan C tier-1 recognition: PolicyEditor → sim → aftermath surfaces mom
   // Restore aggressive catch posture.
   await goForCatches.click();
   await expect(goForCatches).toHaveAttribute('aria-checked', 'true');
+  await page.getByRole('button', { name: /close policy editor/i }).click();
 
   // Lock + simulate.
   await page.getByTestId('lock-weekly-plan').click();

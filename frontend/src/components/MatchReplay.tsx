@@ -1,6 +1,7 @@
 import { memo, useMemo, useEffect, useRef, useState } from 'react';
 
 import type { MatchReplayResponse, ReplayProofEvent } from '../types';
+import { BroadcastFrameBlock } from './BroadcastFrameBlock';
 
 interface PlayerInfo {
   id: string;
@@ -270,6 +271,89 @@ const ReplayScoreboard = ({ data }: { data: MatchReplayResponse }) => {
   );
 };
 
+function formatClock(clock?: { limit_seconds: number; elapsed_seconds: number } | null): string {
+  if (!clock) return 'Not tracked';
+  const remaining = Math.max(0, clock.limit_seconds - clock.elapsed_seconds);
+  const minutes = Math.floor(remaining / 60).toString().padStart(2, '0');
+  const seconds = (remaining % 60).toString().padStart(2, '0');
+  return `${minutes}:${seconds} left`;
+}
+
+const OfficialRulesPanel = ({ data }: { data: MatchReplayResponse }) => {
+  const official = data.official_state;
+  if (!official) return null;
+  const burden = official.burden
+    ? `${official.burden.team_id ?? 'No team'} · ${official.burden.clock_status} · ${official.burden.seconds_remaining}s`
+    : 'No active burden';
+  const ballStates = official.balls.length
+    ? official.balls.map(ball => `${ball.ball_id}:${ball.state}`).join(' · ')
+    : 'No ball state';
+  const ruleCalls = official.rule_calls.length
+    ? official.rule_calls.slice(0, 2).map(call => call.rule_label).join(' · ')
+    : 'No rule calls';
+
+  return (
+    <section className="mr-official-panel" data-testid="official-ruleset-banner" aria-label="Official rules replay state">
+      <div>
+        <span>RULESET</span>
+        <strong>{official.ruleset.toUpperCase()}</strong>
+      </div>
+      <div>
+        <span>MODE</span>
+        <strong>{official.mode.toUpperCase()}</strong>
+      </div>
+      <div>
+        <span>GAME CLOCK</span>
+        <strong>{formatClock(official.game_clock)}</strong>
+      </div>
+      <div>
+        <span>MATCH CLOCK</span>
+        <strong>{formatClock(official.match_clock)}</strong>
+      </div>
+      <div>
+        <span>BURDEN</span>
+        <strong>{burden}</strong>
+      </div>
+      <div>
+        <span>BALL STATES</span>
+        <div className="mr-official-ball-list">
+          {official.balls.length
+            ? official.balls.map(ball => <span key={ball.ball_id}>{ball.ball_id}:{ball.state}</span>)
+            : <span>{ballStates}</span>}
+        </div>
+      </div>
+      <div>
+        <span>RULE CALLS</span>
+        <strong>{ruleCalls}</strong>
+      </div>
+    </section>
+  );
+};
+
+const ReplayProofFrames = ({ data }: { data: MatchReplayResponse }) => {
+  const hasBroadcast = Boolean(data.broadcast_frame);
+  const hasPlayoff = Boolean(data.playoff_frame);
+  if (!hasBroadcast && !hasPlayoff) return null;
+  return (
+    <div className="mr-proof-frames">
+      {data.broadcast_frame && (
+        <BroadcastFrameBlock frame={data.broadcast_frame} title="Broadcast Frame" compact />
+      )}
+      {data.playoff_frame && (
+        <section
+          className="mr-playoff-frame"
+          data-testid="playoff-frame"
+          data-broadcast-proof-source={data.playoff_frame.proof_source}
+        >
+          <span>Playoff Frame</span>
+          <strong>{data.playoff_frame.title}</strong>
+          <p>{data.playoff_frame.label}</p>
+        </section>
+      )}
+    </div>
+  );
+};
+
 const TurningPoint = ({ text, onShowCatch }: { text: string, onShowCatch: () => void }) => (
   <div className="mr-turning">
     <div>
@@ -528,6 +612,8 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
   return (
     <div className="max-content mr-shell" data-screen-label="03 Dynasty">
       <ReplayScoreboard data={data} />
+      <OfficialRulesPanel data={data} />
+      <ReplayProofFrames data={data} />
       <TurningPoint 
         text={data.report?.turning_point || "Crucial swing in momentum."} 
         onShowCatch={() => { setEventIndex(firstKeyPlayIdx); setIsPlaying(false); }} 
@@ -571,7 +657,7 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
           <span className="mr-transport-pos">
             EVENT <b>{(eventIndex + 1).toString().padStart(2, '0')}/{totalEvents.toString().padStart(2, '0')}</b>
           </span>
-          <button className="mr-tbtn" aria-label="Close replay" onClick={onContinue} style={{ width: 'auto', padding: '0 12px', fontFamily: 'var(--font-display)', fontSize: '0.7rem', letterSpacing: '0.12em' }}>
+          <button className="mr-tbtn" aria-label="Back to results / close replay" onClick={onContinue} style={{ width: 'auto', padding: '0 12px', fontFamily: 'var(--font-display)', fontSize: '0.7rem', letterSpacing: '0.12em' }}>
             CLOSE
           </button>
         </div>
