@@ -1,3 +1,11 @@
+export type RecruitingStatus =
+    | 'UNSCOUTED'
+    | 'SCOUTED'
+    | 'CONTACTED'
+    | 'VISITED'
+    | 'INTERESTED'
+    | 'LOCKED_OUT';
+
 export interface PlayerRatings {
     accuracy: number;
     power: number;
@@ -852,6 +860,7 @@ export interface DynastyOfficeResponse {
             scouted?: boolean;
             contacted?: boolean;
             visited?: boolean;
+            recruiting_status?: RecruitingStatus;
         }>;
         rules: {
             max_active_promises: number;
