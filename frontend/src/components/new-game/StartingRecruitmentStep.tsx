@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ActionButton } from '../ui';
+import { formatOverall, formatPlayerName, formatRole } from '../roster/playerDisplay';
 
 interface ProspectOption {
   player_id: string;
@@ -108,7 +109,7 @@ export function StartingRecruitmentStep({
           Select at least 6 players (max 10). {rosterIds.size > 0 && `${rosterIds.size} selected.`}
         </p>
         <p style={{ fontSize: '0.75rem', opacity: 0.7, color: '#94a3b8', marginTop: '0.375rem', marginBottom: '0.5rem' }}>
-          Each prospect shows <strong>NOW / PEAK</strong> - current rating today and the ceiling they could reach.
+          Each prospect shows their current <strong>OVR</strong> and archetype — the same values their roster row will show after you commit.
         </p>
       </div>
 
@@ -213,8 +214,9 @@ export function StartingRecruitmentStep({
         {prospects.map(p => {
           const selected = rosterIds.has(p.player_id);
           const canSelect = selected || rosterIds.size < 10;
-          const ovrLow = p.public_ovr_band?.[0] ?? '?';
-          const ovrHigh = p.public_ovr_band?.[1] ?? '?';
+          const displayName = formatPlayerName(p);
+          const displayRole = formatRole(p);
+          const displayOverall = formatOverall(p);
           const roleInfo = ARCHETYPE_ROLES[p.public_archetype];
           return (
             <button
@@ -222,7 +224,7 @@ export function StartingRecruitmentStep({
               type="button"
               role="checkbox"
               aria-checked={selected}
-              aria-label={`${p.name}, ${p.hometown}, ${p.public_archetype}, overall ${ovrLow} now, ${ovrHigh} peak`}
+              aria-label={`${displayName}, ${p.hometown}, ${displayRole}, overall ${displayOverall}`}
               onClick={() => {
                 if (canSelect) toggleProspect(p.player_id);
               }}
@@ -243,14 +245,13 @@ export function StartingRecruitmentStep({
             >
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: selected ? '#67e8f9' : '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {p.name}
+                  {displayName}
                 </div>
                 <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.125rem' }}>
-                  {p.hometown}
-                  {p.public_archetype && (
+                  {displayRole && (
                     <span style={{ color: '#475569' }}>
                       {' | '}
-                      {p.public_archetype}
+                      {displayRole}
                       {roleInfo && <span style={{ color: '#64748b' }}> ({roleInfo.label})</span>}
                     </span>
                   )}
@@ -258,12 +259,10 @@ export function StartingRecruitmentStep({
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, marginLeft: '1rem' }}>
                 <div style={{ textAlign: 'right' }}>
-                  <div className="dm-data" style={{ fontWeight: 800, color: selected ? '#22d3ee' : '#94a3b8', fontSize: '0.875rem' }} title="Current rating today / Potential ceiling">
-                    <strong>{ovrLow}</strong>
-                    <span style={{ opacity: 0.5 }}> / </span>
-                    <strong>{ovrHigh}</strong>
+                  <div className="dm-data" style={{ fontWeight: 800, color: selected ? '#22d3ee' : '#94a3b8', fontSize: '0.875rem' }} title="Current overall rating">
+                    <strong>{displayOverall}</strong>
                     <span style={{ fontSize: '0.5625rem', opacity: 0.6, marginLeft: '0.25rem' }}>
-                      NOW/PEAK
+                      OVR
                     </span>
                   </div>
                 </div>
