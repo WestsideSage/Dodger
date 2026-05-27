@@ -139,6 +139,10 @@ def _generate_club_roster(club_id: str, seed: int, count: int = 5) -> List[Playe
             dodge=_clamp(rng.gauss(65, 12), 30, 95),
             catch=_clamp(rng.gauss(65, 12), 30, 95),
             stamina=_clamp(rng.gauss(60, 10), 35, 95),
+            tactical_iq=_clamp(rng.gauss(62, 10), 30, 95),
+            catch_courage=_clamp(rng.gauss(62, 10), 30, 95),
+            throw_selection_iq=_clamp(rng.gauss(62, 10), 30, 95),
+            conditioning_curve=_clamp(rng.gauss(62, 10), 30, 95),
         ).apply_bounds()
         players.append(
             Player(

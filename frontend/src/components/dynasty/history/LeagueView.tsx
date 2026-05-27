@@ -1,157 +1,224 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useApiResource } from '../../../hooks/useApiResource';
+import { StatusMessage } from '../../ui';
 import { ProgramModal } from './ProgramModal';
 import { formatRecordLabel, formatSeasonLabel, humanizeHistoryToken } from './formatters';
 
 interface LeagueData {
-  directory: { club_id: string; name: string }[];
-  dynasty_rankings: { club_id: string; club_name: string; championships: number; longest_win_streak: number }[];
-  records: { record_type: string; holder_id: string; record_value: number; set_in_season: string }[];
-  hof: { player_id: string; player_name: string; induction_season: string; career_elims: number; championships: number; seasons_played: number }[];
-  rivalries: { club_a: string; club_b: string; a_wins: number; b_wins: number; draws: number; meetings: number }[];
+  directory: Array<{ club_id: string; name: string }>;
+  dynasty_rankings: Array<{
+    club_id: string;
+    club_name: string;
+    championships: number;
+    longest_win_streak: number;
+  }>;
+  records: Array<{
+    record_type: string;
+    holder_id: string;
+    record_value: number;
+    set_in_season: string;
+  }>;
+  hof: Array<{
+    player_id: string;
+    player_name: string;
+    induction_season: string;
+    career_elims: number;
+    championships: number;
+    seasons_played: number;
+  }>;
+  rivalries: Array<{
+    club_a: string;
+    club_b: string;
+    a_wins: number;
+    b_wins: number;
+    draws: number;
+    meetings: number;
+  }>;
 }
 
 export function LeagueView() {
-  const [data, setData] = useState<LeagueData | null>(null);
+  const { data, error, loading } = useApiResource<LeagueData>('/api/history/league');
   const [modal, setModal] = useState<{ clubId: string; clubName: string } | null>(null);
 
-  useEffect(() => {
-    fetch('/api/history/league')
-      .then((res) => res.json())
-      .then(setData);
-  }, []);
+  if (error) {
+    return (
+      <StatusMessage title="League archive unavailable" tone="danger">
+        {error}
+      </StatusMessage>
+    );
+  }
+  if (loading) {
+    return <StatusMessage title="Loading league archive">Building the league-wide history board.</StatusMessage>;
+  }
+  if (!data) return null;
 
-  if (!data) return <div style={{ color: '#475569', padding: '1rem' }}>Loading league history...</div>;
+  const topDynasty = data.dynasty_rankings[0] ?? null;
+  const topRivalry = data.rivalries[0] ?? null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div className="dm-panel">
-        <p className="dm-kicker">Program Directory</p>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {data.directory.map((c) => (
+    <div className="do-tab-content">
+      <div className="do-hist-glance">
+        <div className="cell">
+          <span className="lbl">Programs Tracked</span>
+          <span className="val">{data.directory.length}</span>
+          <span className="trend">Open any club archive from the directory below</span>
+        </div>
+        <div className="cell">
+          <span className="lbl">Dynasty Leader</span>
+          <span className="val">{topDynasty ? topDynasty.club_name : 'None Yet'}</span>
+          <span className={`trend ${topDynasty && topDynasty.championships > 0 ? 'ok' : ''}`}>
+            {topDynasty ? `${topDynasty.championships} titles - streak ${topDynasty.longest_win_streak}` : 'No championship archive yet'}
+          </span>
+        </div>
+        <div className="cell">
+          <span className="lbl">Records Logged</span>
+          <span className="val">{data.records.length}</span>
+          <span className="trend">{data.records.length > 0 ? 'League marks are being tracked' : 'First records still pending'}</span>
+        </div>
+        <div className="cell">
+          <span className="lbl">Hall of Fame</span>
+          <span className="val">{data.hof.length}</span>
+          <span className="trend">{data.hof.length > 0 ? 'Legacy lane is active' : 'No inductees yet'}</span>
+        </div>
+        <div className="cell">
+          <span className="lbl">Top Rivalry</span>
+          <span className="val">{topRivalry ? `${topRivalry.meetings}` : '0'}</span>
+          <span className="trend">
+            {topRivalry ? `${topRivalry.club_a} vs ${topRivalry.club_b}` : 'No rivalry board yet'}
+          </span>
+        </div>
+      </div>
+
+      <section className="dm-panel do-hist-card">
+        <div className="do-hist-card-head">
+          <span className="dm-kicker">Program Directory</span>
+          <h3>Open any club archive</h3>
+        </div>
+        <div className="do-hist-directory">
+          {data.directory.map((club) => (
             <button
-              key={c.club_id}
-              onClick={() => setModal({ clubId: c.club_id, clubName: c.name })}
-              style={{
-                padding: '0.4rem 0.75rem',
-                border: '1px solid #334155',
-                borderRadius: '4px',
-                background: '#0f172a',
-                color: '#cbd5e1',
-                cursor: 'pointer',
-                fontSize: '0.8rem',
-              }}
+              key={club.club_id}
+              className="do-hist-directory-btn"
+              onClick={() => setModal({ clubId: club.club_id, clubName: club.name })}
+              type="button"
             >
-              {c.name}
+              {club.name}
             </button>
           ))}
         </div>
-      </div>
+      </section>
 
-      <div className="dm-panel">
-        <p className="dm-kicker">Dynasty Rankings</p>
-        {data.dynasty_rankings.length === 0 ? (
-          <p style={{ color: '#475569', fontSize: '0.8rem' }}>No dynasty data yet.</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-            {data.dynasty_rankings.map((r, i) => (
-              <div
-                key={r.club_id}
-                style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', fontSize: '0.8rem' }}
-              >
-                <span style={{ color: '#475569', width: '1.5rem', textAlign: 'right' }}>{i + 1}.</span>
-                <span style={{ flex: 1, color: '#e2e8f0' }}>{r.club_name}</span>
-                <span style={{ color: '#f97316' }}>{r.championships} title{r.championships === 1 ? '' : 's'}</span>
-                <span style={{ color: '#64748b', fontSize: '0.7rem' }}>win streak {r.longest_win_streak}</span>
-              </div>
-            ))}
+      <div className="do-hist-grid">
+        <section className="dm-panel do-hist-card">
+          <div className="do-hist-card-head">
+            <span className="dm-kicker">Dynasty Rankings</span>
+            <h3>Program standard-setters</h3>
           </div>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-        <div className="dm-panel" style={{ flex: 1, minWidth: '240px' }}>
-          <p className="dm-kicker">All-Time Records</p>
-          {data.records.length === 0 ? (
-            <p style={{ color: '#475569', fontSize: '0.8rem' }}>No records set.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              {data.records.map((r, i) => (
-                <div key={i} style={{ fontSize: '0.75rem', paddingBottom: '0.55rem', borderBottom: '1px solid rgba(30,41,59,0.7)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'baseline' }}>
-                    <span style={{ color: '#94a3b8' }}>{formatRecordLabel(r.record_type)}</span>
-                    <span style={{ color: '#22d3ee', fontFamily: 'var(--font-mono-data)' }}>{r.record_value}</span>
+          {data.dynasty_rankings.length > 0 ? (
+            <div className="do-hist-list">
+              {data.dynasty_rankings.map((entry, index) => (
+                <div key={entry.club_id} className="do-hist-list-row">
+                  <div className="main">
+                    <strong>#{index + 1} {entry.club_name}</strong>
+                    <span className="meta">{entry.championships} title{entry.championships === 1 ? '' : 's'}</span>
                   </div>
-                  <div style={{ color: '#e2e8f0', marginTop: '0.15rem' }}>
-                    {humanizeHistoryToken(r.holder_id)}
-                  </div>
-                  <div style={{ color: '#475569', marginTop: '0.1rem' }}>
-                    Set in {formatSeasonLabel(r.set_in_season)}
+                  <div className="side">
+                    <span className="dm-badge dm-badge-amber">Win streak {entry.longest_win_streak}</span>
+                    <span className="note">Championship count is the first dynasty tiebreak.</span>
                   </div>
                 </div>
               ))}
             </div>
-          )}
-        </div>
-
-        <div className="dm-panel" style={{ flex: 1, minWidth: '240px' }}>
-          <p className="dm-kicker">Hall of Fame</p>
-          {data.hof.length === 0 ? (
-            <p style={{ color: '#475569', fontSize: '0.8rem' }}>No inductees yet.</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {data.hof.map((h) => (
-                <div key={h.player_id} style={{ fontSize: '0.75rem' }}>
-                  <div style={{ color: '#fbbf24', fontWeight: 700 }}>{h.player_name}</div>
-                  <div style={{ color: '#64748b' }}>
-                    Inducted in {formatSeasonLabel(h.induction_season)} | {h.career_elims} eliminations | {h.championships} titles | {h.seasons_played} seasons
+            <p className="do-hist-card-note">No dynasty ranking data has been logged yet.</p>
+          )}
+        </section>
+
+        <section className="dm-panel do-hist-card">
+          <div className="do-hist-card-head">
+            <span className="dm-kicker">All-Time Records</span>
+            <h3>League records board</h3>
+          </div>
+          {data.records.length > 0 ? (
+            <div className="do-hist-list">
+              {data.records.map((record, index) => (
+                <div key={`${record.record_type}-${record.holder_id}-${index}`} className="do-hist-list-row">
+                  <div className="main">
+                    <strong>{formatRecordLabel(record.record_type)}</strong>
+                    <span className="meta">{humanizeHistoryToken(record.holder_id)} - {formatSeasonLabel(record.set_in_season)}</span>
+                  </div>
+                  <div className="side">
+                    <span className="dm-badge dm-badge-cyan">{record.record_value}</span>
+                    <span className="note">Current league record holder.</span>
                   </div>
                 </div>
               ))}
             </div>
+          ) : (
+            <p className="do-hist-card-note">No league records have been set yet.</p>
           )}
-        </div>
-      </div>
+        </section>
 
-      <div className="dm-panel">
-        <p className="dm-kicker">Rivalries</p>
-        {data.rivalries.length === 0 ? (
-          <p style={{ color: '#475569', fontSize: '0.8rem' }}>No rivalry data yet - rivalries form after multiple meetings.</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {data.rivalries.slice(0, 5).map((r, i) => (
-              <div
-                key={i}
-                style={{
-                  display: 'flex',
-                  gap: '0.5rem',
-                  alignItems: 'center',
-                  padding: '0.5rem 0.75rem',
-                  border: i === 0 ? '1px solid #334155' : 'none',
-                  borderRadius: i === 0 ? '6px' : 0,
-                  background: i === 0 ? '#0a1628' : 'transparent',
-                  fontSize: '0.8rem',
-                }}
-              >
-                {i === 0 && <span style={{ color: '#f97316', marginRight: '0.25rem' }}>Top</span>}
-                <span style={{ flex: 1, color: '#e2e8f0' }}>
-                  {r.club_a} vs {r.club_b}
-                </span>
-                <span style={{ color: '#94a3b8', fontSize: '0.7rem' }}>
-                  {r.a_wins}-{r.b_wins}-{r.draws} ({r.meetings} meetings)
-                </span>
-              </div>
-            ))}
+        <section className="dm-panel do-hist-card">
+          <div className="do-hist-card-head">
+            <span className="dm-kicker">Hall of Fame</span>
+            <h3>Career immortals</h3>
           </div>
-        )}
+          {data.hof.length > 0 ? (
+            <div className="do-hist-list">
+              {data.hof.map((entry) => (
+                <div key={entry.player_id} className="do-hist-list-row">
+                  <div className="main">
+                    <strong>{entry.player_name}</strong>
+                    <span className="meta">
+                      Inducted {formatSeasonLabel(entry.induction_season)} - {entry.seasons_played} season{entry.seasons_played === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  <div className="side">
+                    <span className="dm-badge dm-badge-amber">{entry.championships} titles</span>
+                    <span className="note">{entry.career_elims} career eliminations</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="do-hist-card-note">The Hall of Fame is still empty.</p>
+          )}
+        </section>
+
+        <section className="dm-panel do-hist-card">
+          <div className="do-hist-card-head">
+            <span className="dm-kicker">Rivalries</span>
+            <h3>Heat map of repeat opponents</h3>
+          </div>
+          {data.rivalries.length > 0 ? (
+            <div className="do-hist-list">
+              {data.rivalries.slice(0, 6).map((rivalry, index) => (
+                <div key={`${rivalry.club_a}-${rivalry.club_b}-${index}`} className="do-hist-list-row">
+                  <div className="main">
+                    <strong>{rivalry.club_a} vs {rivalry.club_b}</strong>
+                    <span className="meta">
+                      {rivalry.a_wins}-{rivalry.b_wins}-{rivalry.draws} across {rivalry.meetings} meetings
+                    </span>
+                  </div>
+                  <div className="side">
+                    <span className={`dm-badge ${index === 0 ? 'dm-badge-rose' : 'dm-badge-slate'}`}>
+                      {index === 0 ? 'Top heat' : 'Tracked'}
+                    </span>
+                    <span className="note">Most played club pairings rise to the top.</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="do-hist-card-note">Rivalries will appear after repeated meetings.</p>
+          )}
+        </section>
       </div>
 
-      {modal && (
-        <ProgramModal
-          clubId={modal.clubId}
-          clubName={modal.clubName}
-          onClose={() => setModal(null)}
-        />
-      )}
+      {modal ? (
+        <ProgramModal clubId={modal.clubId} clubName={modal.clubName} onClose={() => setModal(null)} />
+      ) : null}
     </div>
   );
 }

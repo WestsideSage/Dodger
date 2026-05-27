@@ -179,7 +179,7 @@ def test_compute_season_awards_player_can_win_two_types():
 
     winners = {a.award_type: a.player_id for a in awards}
     assert winners["mvp"] == "p1"
-    assert winners["best_thrower"] == "p1"
+    assert winners["best_thrower"] == "p2"  # p1 is MVP and is excluded, leaving runner-up p2
     # p2 dominates catches
     assert winners["best_catcher"] == "p2"
     # No newcomers → no best_newcomer award

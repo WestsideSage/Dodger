@@ -17,18 +17,31 @@ function formatValue(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
+function formatProofSource(source: string): string {
+  let cleaned = source;
+  if (cleaned.startsWith('record:')) {
+    cleaned = cleaned.substring('record:'.length);
+  }
+  if (cleaned.startsWith('career:')) {
+    cleaned = cleaned.substring('career:'.length);
+  }
+  cleaned = cleaned.replaceAll('_', ' ').replaceAll('-', ' ');
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+}
+
 function ProofDetails({ source }: { source: string }) {
   return (
     <details style={{ marginTop: '0.35rem' }}>
       <summary data-testid="broadcast-proof-toggle" style={{ cursor: 'pointer', color: '#64748b', fontSize: '0.72rem' }}>
-        Show proof
+        View evidence ⌄
       </summary>
       <code style={{ display: 'block', marginTop: '0.25rem', color: '#475569', fontSize: '0.72rem' }}>
-        {source}
+        {formatProofSource(source)}
       </code>
     </details>
   );
 }
+
 
 function BeatShell({
   beat,

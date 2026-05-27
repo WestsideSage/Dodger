@@ -525,6 +525,7 @@ def initialize_manager_offseason(
     set_state(conn, "offseason_development_json", json.dumps(development_rows))
     set_state(conn, "offseason_retirements_json", json.dumps(retirement_rows))
     set_state(conn, "offseason_draft_signed_player_id", "")
+    set_state(conn, "offseason_draft_signed_count", "0")
     ratify_records(conn, season.season_id)
     induct_hall_of_fame(conn, season.season_id)
     next_class_year = (
@@ -949,13 +950,17 @@ def build_offseason_ceremony_beat(
             for club_id, size in roster_sizes:
                 lines.append(f"  {club_name(club_id)}: {size} players")
             return OffseasonCeremonyBeat(key, "Recruitment Day", "\n".join(lines))
-        lines = ["v1 Draft is active: sign one rookie into your roster before beginning next season."]
+        # Recruitment Day is the v2 flow; v1 draft is a read-only preview
+        # so the copy should not ask the manager to "sign one rookie" when
+        # there is no signing UI rendered for this beat.
         if signed is not None:
-            lines.append(f"Signed rookie: {signed.name} ({signed.overall_skill():.1f} OVR)")
+            lines = [f"Rookie signed: {signed.name} ({signed.overall_skill():.1f} OVR)."]
         else:
-            lines.append(f"Available rookies: {len(rookies)}")
+            lines = [
+                f"Top of this year's class — {len(rookies)} prospect{'s' if len(rookies) != 1 else ''} available.",
+            ]
             for player in sorted(rookies, key=lambda item: (-item.overall_skill(), item.id))[:5]:
-                lines.append(f"  {player.name}: OVR {player.overall_skill():.1f} age {player.age}")
+                lines.append(f"  {player.name}: OVR {player.overall_skill():.1f}, age {player.age}")
         lines.append("")
         lines.append("Current roster sizes:")
         for club_id, size in roster_sizes:

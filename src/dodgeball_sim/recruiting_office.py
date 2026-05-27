@@ -89,24 +89,32 @@ def _prospect_rows(
         rng = DeterministicRNG(derive_seed(root_seed, "prospect_gen", str(class_year)))
         prospects = generate_prospect_pool(class_year, rng, DEFAULT_SCOUTING_CONFIG)
     promised = {promise["player_id"]: promise for promise in promises}
+
+    actions = load_json_state(conn, "prospect_recruitment_actions_json", {})
+
     rows = []
     for prospect in prospects[:8]:
         low, high = prospect.public_ratings_band["ovr"]
         fit_score = round(((low + high) / 2.0) + credibility["score"] * 0.12, 1)
+        pid = prospect.player_id
+        p_actions = actions.get(pid, {})
         rows.append({
-            "player_id": prospect.player_id,
+            "player_id": pid,
             "name": prospect.name,
             "hometown": prospect.hometown,
             "public_archetype": prospect.public_archetype_guess,
             "public_ovr_band": [low, high],
             "fit_score": fit_score,
             "promise_options": list(PROMISE_OPTIONS),
-            "active_promise": promised.get(prospect.player_id),
+            "active_promise": promised.get(pid),
             "interest_evidence": [
                 f"Public range {low}-{high}.",
                 f"Credibility grade {credibility['grade']} contributes to interest.",
                 "No hidden promise effect is applied until a promise is saved.",
             ],
+            "scouted": p_actions.get("scouted", False),
+            "contacted": p_actions.get("contacted", False),
+            "visited": p_actions.get("visited", False),
         })
     return rows
 

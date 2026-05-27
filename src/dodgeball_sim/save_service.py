@@ -62,12 +62,27 @@ def looks_like_dodgeball_save(path: Path) -> bool:
 
 
 def read_save_meta(path: Path) -> dict[str, Any]:
+    import os
+    import json
+    last_modified = 0.0
+    try:
+        last_modified = os.path.getmtime(path)
+    except Exception:
+        pass
+
     try:
         conn = connect(path)
         try:
-            from .persistence import create_schema
+            from .persistence import create_schema, load_all_rosters
 
             create_schema(conn)
+            # Try loading rosters to verify database compatibility
+            try:
+                load_all_rosters(conn)
+                is_incompatible = False
+            except Exception:
+                is_incompatible = True
+
             club_id = conn.execute("SELECT value FROM dynasty_state WHERE key='player_club_id'").fetchone()
             season_id = conn.execute("SELECT value FROM dynasty_state WHERE key='active_season_id'").fetchone()
             week_row = conn.execute("SELECT value FROM dynasty_state WHERE key='career_week'").fetchone()
@@ -75,6 +90,30 @@ def read_save_meta(path: Path) -> dict[str, Any]:
             if club_id:
                 row = conn.execute("SELECT name FROM clubs WHERE club_id=?", (club_id[0],)).fetchone()
                 club_name = row[0] if row else club_id[0]
+
+            wins = 0
+            losses = 0
+            draws = 0
+            if club_id and season_id:
+                try:
+                    standings_row = conn.execute(
+                        "SELECT wins, losses, draws FROM season_standings WHERE season_id = ? AND club_id = ?",
+                        (season_id[0], club_id[0])
+                    ).fetchone()
+                    if standings_row:
+                        wins, losses, draws = standings_row
+                except Exception:
+                    pass
+
+            season_number = 1
+            try:
+                cursor_row = conn.execute("SELECT value FROM dynasty_state WHERE key='career_state_cursor'").fetchone()
+                if cursor_row:
+                    cursor_data = json.loads(cursor_row[0])
+                    season_number = cursor_data.get("season_number", 1)
+            except Exception:
+                pass
+
             return {
                 "name": path.stem,
                 "path": str(path),
@@ -82,6 +121,12 @@ def read_save_meta(path: Path) -> dict[str, Any]:
                 "club_name": club_name,
                 "season_id": season_id[0] if season_id else None,
                 "week": int(week_row[0]) if week_row else None,
+                "incompatible": is_incompatible,
+                "last_modified": last_modified,
+                "season_number": season_number,
+                "wins": wins,
+                "losses": losses,
+                "draws": draws,
             }
         finally:
             conn.close()
@@ -93,6 +138,12 @@ def read_save_meta(path: Path) -> dict[str, Any]:
             "club_name": None,
             "season_id": None,
             "week": None,
+            "incompatible": True,
+            "last_modified": last_modified,
+            "season_number": 1,
+            "wins": 0,
+            "losses": 0,
+            "draws": 0,
         }
 
 
@@ -113,7 +164,9 @@ def list_saves_payload(saves_dir: Path, default_db_path: Path, active_save_path:
     ]
     if default_db_path.exists():
         saves.append(read_save_meta(default_db_path))
+    saves.sort(key=lambda s: s.get("last_modified", 0.0), reverse=True)
     return {"saves": saves, "active_path": str(active_save_path) if active_save_path else None}
+
 
 
 def create_new_save(
@@ -195,6 +248,10 @@ def build_from_scratch_save(saves_dir: Path, request: dict[str, Any]) -> dict[st
                 dodge=prospect.hidden_ratings["dodge"],
                 catch=prospect.hidden_ratings["catch"],
                 stamina=prospect.hidden_ratings["stamina"],
+                tactical_iq=prospect.hidden_ratings.get("tactical_iq", 50.0),
+                catch_courage=prospect.hidden_ratings.get("catch_courage", 50.0),
+                throw_selection_iq=prospect.hidden_ratings.get("throw_selection_iq", 50.0),
+                conditioning_curve=prospect.hidden_ratings.get("conditioning_curve", 50.0),
             ).apply_bounds()
             custom_roster.append(
                 Player(

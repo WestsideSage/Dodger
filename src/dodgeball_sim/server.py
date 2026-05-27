@@ -19,10 +19,12 @@ from dodgeball_sim.persistence import (
     load_clubs, save_club, load_season, load_completed_match_ids,
     save_career_state_cursor, load_all_rosters, load_standings, load_awards,
     load_lineup_default,
+    load_json_state,
     save_match_lineup_override,
     fetch_roster_snapshot,
     fetch_match,
     CorruptSaveError,
+    repair_legacy_name_pool,
     save_weekly_command_plan,
     load_weekly_command_plan,
     save_command_history_record,
@@ -200,6 +202,7 @@ def get_db():
         raise HTTPException(status_code=503, detail="No save loaded. Use the save menu to load or create a game.")
     conn = connect(_active_save_path)
     try:
+        repair_legacy_name_pool(conn)
         yield conn
     finally:
         conn.close()
@@ -338,6 +341,12 @@ class SaveInfo(BaseModel):
     club_name: str | None
     season_id: str | None
     week: int | None
+    incompatible: bool = False
+    last_modified: float = 0.0
+    season_number: int = 1
+    wins: int = 0
+    losses: int = 0
+    draws: int = 0
 
 
 class SaveListResponse(BaseModel):
@@ -586,7 +595,12 @@ def recruiting_scout(prospect_id: str, conn = Depends(get_db)):
     week = load_career_state_cursor(conn).week
     try:
         deduct_recruiting_slot(conn, season_id, week, "scout")
-        # In a real impl, this would update scouting_state for the prospect
+        actions = load_json_state(conn, "prospect_recruitment_actions_json", {})
+        if prospect_id not in actions:
+            actions[prospect_id] = {}
+        actions[prospect_id]["scouted"] = True
+        set_state(conn, "prospect_recruitment_actions_json", json.dumps(actions))
+        conn.commit()
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return {"status": "success"}
@@ -599,6 +613,12 @@ def recruiting_contact(prospect_id: str, conn = Depends(get_db)):
     week = load_career_state_cursor(conn).week
     try:
         deduct_recruiting_slot(conn, season_id, week, "contact")
+        actions = load_json_state(conn, "prospect_recruitment_actions_json", {})
+        if prospect_id not in actions:
+            actions[prospect_id] = {}
+        actions[prospect_id]["contacted"] = True
+        set_state(conn, "prospect_recruitment_actions_json", json.dumps(actions))
+        conn.commit()
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return {"status": "success"}
@@ -611,6 +631,12 @@ def recruiting_visit(prospect_id: str, conn = Depends(get_db)):
     week = load_career_state_cursor(conn).week
     try:
         deduct_recruiting_slot(conn, season_id, week, "visit")
+        actions = load_json_state(conn, "prospect_recruitment_actions_json", {})
+        if prospect_id not in actions:
+            actions[prospect_id] = {}
+        actions[prospect_id]["visited"] = True
+        set_state(conn, "prospect_recruitment_actions_json", json.dumps(actions))
+        conn.commit()
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return {"status": "success"}
@@ -760,6 +786,10 @@ def api_build_from_scratch(req: BuildFromScratchRequest):
                 dodge=prospect.hidden_ratings["dodge"],
                 catch=prospect.hidden_ratings["catch"],
                 stamina=prospect.hidden_ratings["stamina"],
+                tactical_iq=prospect.hidden_ratings.get("tactical_iq", 50.0),
+                catch_courage=prospect.hidden_ratings.get("catch_courage", 50.0),
+                throw_selection_iq=prospect.hidden_ratings.get("throw_selection_iq", 50.0),
+                conditioning_curve=prospect.hidden_ratings.get("conditioning_curve", 50.0),
             ).apply_bounds()
             custom_roster.append(Player(
                 id=prospect.player_id,
@@ -810,6 +840,12 @@ def api_load_save(req: LoadSaveRequest):
         raise HTTPException(
             status_code=400,
             detail="File is not a recognizable Dodgeball Manager save.",
+        )
+    meta = read_save_meta(resolved)
+    if meta.get("incompatible"):
+        raise HTTPException(
+            status_code=422,
+            detail="Save predates Plan B player ratings. Please start a new game.",
         )
     _active_save_path = resolved
     return {"status": "ok", "path": str(resolved)}

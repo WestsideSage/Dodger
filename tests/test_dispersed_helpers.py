@@ -1040,8 +1040,8 @@ def test_build_offseason_ceremony_uses_expected_beats_and_real_rows():
     assert "+1.2" in development.body
     assert "Retirements processed: 1" in retirements.body
     assert "Old Star" in retirements.body
-    assert "v1 Draft is active" in draft.body
-    assert "Available rookies: 2" in draft.body
+    assert "Top of this year's class" in draft.body
+    assert "2 prospects available" in draft.body
 
 
 def test_offseason_champion_beat_prefers_playoff_outcome():

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import json
 import sqlite3
 
 from dodgeball_sim.config import DEFAULT_SCOUTING_CONFIG
-from dodgeball_sim.career_setup import initialize_manager_career
-from dodgeball_sim.persistence import create_schema, load_all_rosters, load_prospect_pool
+from dodgeball_sim.career_setup import build_curated_roster, initialize_manager_career
+from dodgeball_sim.persistence import create_schema, load_all_rosters, load_prospect_pool, repair_legacy_name_pool
 from dodgeball_sim import randomizer
 from dodgeball_sim.recruitment import (
     build_transaction_event,
@@ -105,11 +106,73 @@ def test_generate_prospect_pool_display_names_unique_within_class():
     assert len(set(names)) == len(names), "Prospect display names must be unique within a class"
 
 
+def test_generate_prospect_pool_last_names_unique_within_class():
+    rng = DeterministicRNG(derive_seed(20260426, "prospect_gen_unique_last_names", "1"))
+    big_config = replace(DEFAULT_SCOUTING_CONFIG, prospect_class_size=24)
+    pool = generate_prospect_pool(class_year=1, rng=rng, config=big_config)
+    last_names = [p.name.split()[-1] for p in pool]
+    assert len(set(last_names)) == len(last_names), "Prospect last names should stay unique within a class while the pool allows it"
+
+
 def test_generate_rookie_class_display_names_unique_within_class():
     seed = derive_seed(2026, "draft", "season_2026_unique")
     rookies = generate_rookie_class("season_2026", DeterministicRNG(seed), size=24)
     names = [p.name for p in rookies]
     assert len(set(names)) == len(names), "Rookie display names must be unique within a class"
+
+
+def test_generate_rookie_class_last_names_unique_within_class():
+    seed = derive_seed(2026, "draft", "season_2026_unique_last_names")
+    rookies = generate_rookie_class("season_2026", DeterministicRNG(seed), size=24)
+    last_names = [player.name.split()[-1] for player in rookies]
+    assert len(set(last_names)) == len(last_names), "Rookie last names should stay unique within a class while the pool allows it"
+
+
+def test_build_curated_roster_avoids_duplicate_last_names_within_team():
+    roster = build_curated_roster("aurora", "Aurora Sentinels", derive_seed(20260426, "roster", "aurora"))
+    last_names = [player.name.split()[-1] for player in roster]
+    assert len(set(last_names)) == len(last_names), "Curated roster surnames should be unique within a team"
+
+
+def test_repair_legacy_name_pool_normalizes_retired_and_duplicate_surnames():
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_manager_career(conn, "aurora", root_seed=20260426)
+
+    roster_payload = json.loads(
+        conn.execute("SELECT players_json FROM club_rosters WHERE club_id = 'aurora'").fetchone()["players_json"]
+    )
+    roster_payload[0]["name"] = "Fenn Dupont"
+    roster_payload[1]["name"] = "Sage Dupont"
+    conn.execute(
+        "UPDATE club_rosters SET players_json = ? WHERE club_id = 'aurora'",
+        (json.dumps(roster_payload),),
+    )
+
+    prospects = load_prospect_pool(conn, class_year=1)
+    conn.execute(
+        "UPDATE prospect_pool SET name = ? WHERE player_id = ?",
+        ("Tobin Penn", prospects[0].player_id),
+    )
+    conn.execute(
+        "UPDATE prospect_pool SET name = ? WHERE player_id = ?",
+        ("River Penn", prospects[1].player_id),
+    )
+    conn.commit()
+
+    changed = repair_legacy_name_pool(conn)
+
+    assert changed is True
+    repaired_roster = load_all_rosters(conn)["aurora"]
+    roster_last_names = [player.name.split()[-1] for player in repaired_roster]
+    assert "Dupont" not in roster_last_names
+    assert len(set(roster_last_names)) == len(roster_last_names)
+
+    repaired_pool = load_prospect_pool(conn, class_year=1)[:2]
+    pool_last_names = [prospect.name.split()[-1] for prospect in repaired_pool]
+    assert "Penn" not in pool_last_names
+    assert len(set(pool_last_names)) == len(pool_last_names)
 
 
 def test_randomizer_name_and_team_pools_have_v4_depth():

@@ -241,6 +241,10 @@ def build_beat_payload(
         return {"inductees": _parse_hof_entries(hof_json)}
 
     if beat_key == "recruitment":
+        signed_count = int(get_state(conn, "offseason_draft_signed_count") or "0")
+        signing_limit = 3
+        roster_limit = 9
+        player_roster = rosters.get(player_club_id, [])
         player_signing = None
         if signed_player_id:
             player = find_player(signed_player_id)
@@ -254,6 +258,11 @@ def build_beat_payload(
             "player_signing": player_signing,
             "other_signings": [],
             "available_prospects": available_recruitment_choices(conn, season_number),
+            "signed_count": signed_count,
+            "signing_limit": signing_limit,
+            "remaining_signings": max(0, signing_limit - signed_count),
+            "roster_size": len(player_roster),
+            "roster_limit": roster_limit,
         }
 
     if beat_key == "schedule_reveal":
@@ -414,7 +423,8 @@ def build_beat_response(conn: sqlite3.Connection, cursor) -> dict[str, Any]:
         ),
         "can_recruit": (
             cursor.state == CareerState.SEASON_COMPLETE_RECRUITMENT_PENDING
-            and not signed_player_id
+            and int(get_state(conn, "offseason_draft_signed_count") or "0") < 3
+            and len(rosters.get(player_club_id, [])) < 9
         ),
         "can_begin_season": cursor.state == CareerState.NEXT_SEASON_READY,
         "signed_player_id": signed_player_id,

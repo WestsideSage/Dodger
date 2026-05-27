@@ -450,6 +450,102 @@ def test_dynasty_office_endpoint_exposes_remaining_milestone_loops_and_actions()
     assert hired.json()["staff_market"]["recent_actions"][0]["candidate_id"] == candidate_id
 
 
+def test_save_list_endpoint_surfaces_incompatible_save_flag(tmp_path, monkeypatch):
+    saves_dir = tmp_path / "saves"
+    saves_dir.mkdir()
+    managed_path = saves_dir / "legacy.db"
+    managed_path.touch()
+    legacy_path = tmp_path / "dodgeball_sim.db"
+
+    monkeypatch.setattr(server, "SAVES_DIR", saves_dir)
+    monkeypatch.setattr(server, "DEFAULT_DB_PATH", legacy_path)
+    monkeypatch.setattr(
+        server,
+        "list_saves_payload",
+        lambda *_args, **_kwargs: {
+            "saves": [
+                {
+                    "name": "legacy",
+                    "path": str(managed_path),
+                    "club_id": "aurora",
+                    "club_name": "Aurora Sentinels",
+                    "season_id": "season_1",
+                    "week": 1,
+                    "incompatible": True,
+                }
+            ],
+            "active_path": None,
+        },
+    )
+
+    response = TestClient(server.app).get("/api/saves")
+
+    assert response.status_code == 200
+    assert response.json()["saves"][0]["incompatible"] is True
+
+
+def test_save_state_endpoint_surfaces_incompatible_meta(tmp_path, monkeypatch):
+    managed_path = tmp_path / "legacy.db"
+    managed_path.touch()
+
+    monkeypatch.setattr(
+        server,
+        "_read_save_meta",
+        lambda _path: {
+            "name": "legacy",
+            "path": str(managed_path),
+            "club_id": "aurora",
+            "club_name": "Aurora Sentinels",
+            "season_id": "season_1",
+            "week": 1,
+            "incompatible": True,
+        },
+    )
+    original_save_path = server._active_save_path
+    server._active_save_path = managed_path
+    try:
+        response = TestClient(server.app).get("/api/save-state")
+    finally:
+        server._active_save_path = original_save_path
+
+    assert response.status_code == 200
+    assert response.json()["meta"]["incompatible"] is True
+
+
+def test_recruiting_scout_endpoint_marks_prospect_as_scouted_in_office_payload():
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_curated_manager_career(conn, "aurora", root_seed=20260426)
+    conn.commit()
+
+    def override_db():
+        yield conn
+
+    server.app.dependency_overrides[server.get_db] = override_db
+    try:
+        client = TestClient(server.app)
+        before = client.get("/api/dynasty-office")
+        prospect_id = before.json()["recruiting"]["prospects"][0]["player_id"]
+        used_before = before.json()["recruiting"]["budget"]["scout"][0]
+
+        recruited = client.post(f"/api/recruiting/scout/{prospect_id}")
+        after = client.get("/api/dynasty-office")
+    finally:
+        server.app.dependency_overrides.clear()
+
+    assert before.status_code == 200
+    assert recruited.status_code == 200
+    assert after.status_code == 200
+    assert after.json()["recruiting"]["budget"]["scout"][0] == used_before + 1
+    updated = next(
+        prospect
+        for prospect in after.json()["recruiting"]["prospects"]
+        if prospect["player_id"] == prospect_id
+    )
+    assert updated["scouted"] is True
+
+
 def test_sim_command_rejects_non_active_lifecycle_states():
     conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.row_factory = sqlite3.Row

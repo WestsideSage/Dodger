@@ -11,6 +11,22 @@ function isDebugSaveName(name: string) {
   return DEBUG_PREFIXES.some(prefix => name.startsWith(prefix));
 }
 
+function formatTimeAgo(timestamp?: number): string {
+  if (!timestamp) return '';
+  const seconds = Math.floor((Date.now() - timestamp * 1000) / 1000);
+  if (seconds < 0) return 'just now';
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+
+  const date = new Date(timestamp * 1000);
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 const rulesetExplanations: Record<string, { title: string; desc: string; bullet: string }> = {
   generic: {
     title: "Classic Dodgeball Rules",
@@ -45,14 +61,26 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
   const [saves, setSaves] = useState<SaveInfo[]>([]);
   const isDebugQueryPresent = useMemo(() => window.location.search.includes('debug=true'), []);
   const [showDebugSaves, setShowDebugSaves] = useState(false);
-  const visibleSaves = useMemo(
+  const [showIncompatibleSaves, setShowIncompatibleSaves] = useState(false);
+  const baseVisible = useMemo(
     () => (showDebugSaves && isDebugQueryPresent) ? saves : saves.filter(save => !isDebugSaveName(save.name)),
     [saves, showDebugSaves, isDebugQueryPresent],
+  );
+  const visibleSaves = useMemo(
+    () => showIncompatibleSaves ? baseVisible : baseVisible.filter(save => !save.incompatible),
+    [baseVisible, showIncompatibleSaves],
+  );
+  const hiddenIncompatibleCount = useMemo(
+    () => baseVisible.filter(save => save.incompatible).length,
+    [baseVisible],
   );
   const hiddenDebugCount = useMemo(
     () => isDebugQueryPresent ? saves.filter(save => isDebugSaveName(save.name)).length : 0,
     [saves, isDebugQueryPresent],
   );
+  const continueSave = useMemo(() => {
+    return saves.find(save => !save.incompatible && !isDebugSaveName(save.name));
+  }, [saves]);
   const [activePath, setActivePath] = useState<string | null>(null);
   const [clubs, setClubs] = useState<ClubOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -314,7 +342,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                         fontFamily: 'var(--font-display)',
                         textTransform: 'uppercase',
                         letterSpacing: '0.075em',
-                        color: '#fff',
+                        color: '#020617',
                         cursor: 'pointer',
                       }}
                     >
@@ -322,7 +350,78 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                     </button>
                   </div>
                 ) : (
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  <div>
+                    {continueSave && (
+                      <div
+                        data-testid="continue-career-hero"
+                        style={{
+                          marginBottom: '1.5rem',
+                          borderRadius: '6px',
+                          border: '1px solid rgba(249, 115, 22, 0.3)',
+                          background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, rgba(15, 23, 42, 0.6) 100%)',
+                          padding: '1.25rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '1rem',
+                          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{
+                            fontFamily: 'var(--font-mono-data)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.15em',
+                            fontSize: '0.625rem',
+                            color: '#f97316',
+                            margin: '0 0 0.35rem',
+                          }}>
+                            Continue Active Career
+                          </p>
+                          <h3 style={{
+                            fontFamily: 'var(--font-display)',
+                            fontSize: '1.25rem',
+                            fontWeight: 700,
+                            color: '#ffffff',
+                            margin: '0 0 0.25rem',
+                            letterSpacing: '0.03em',
+                          }}>
+                            {continueSave.name}
+                          </h3>
+                          <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: 0 }}>
+                            {continueSave.club_name ?? 'Unknown Club'} · Season {continueSave.season_number ?? 1} · Week {continueSave.week ?? 1}
+                          </p>
+                          {continueSave.wins !== undefined && (
+                            <p style={{ fontSize: '0.6875rem', color: '#64748b', margin: '0.25rem 0 0' }}>
+                              Record: {continueSave.wins}-{continueSave.losses}-{continueSave.draws} · saved {formatTimeAgo(continueSave.last_modified)}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleLoad(continueSave.path)}
+                          style={{
+                            borderRadius: '4px',
+                            background: '#f97316',
+                            border: '1px solid #ea6c0a',
+                            padding: '0.625rem 1.5rem',
+                            fontSize: '0.75rem',
+                            fontFamily: 'var(--font-display)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.075em',
+                            color: '#020617',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 10px rgba(249, 115, 22, 0.2)',
+                            transition: 'transform 0.1s',
+                          }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.03)'; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.0)'; }}
+                        >
+                          Continue
+                        </button>
+                      </div>
+                    )}
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {visibleSaves.map((save) => (
                       <li
                         key={save.path}
@@ -374,10 +473,31 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                                 Save file incompatible — start a new career.
                               </span>
                             ) : (
-                              <>
-                                {save.club_name ?? save.club_id ?? 'Unknown club'}
-                                {save.week != null && ` · Week ${save.week}`}
-                              </>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.5rem', alignItems: 'center' }}>
+                                <span style={{ color: '#94a3b8', fontWeight: 500 }}>
+                                  {save.club_name ?? save.club_id ?? 'Unknown club'}
+                                </span>
+                                <span style={{ color: '#475569' }}>·</span>
+                                <span>Season {save.season_number ?? 1}</span>
+                                <span style={{ color: '#475569' }}>·</span>
+                                <span>Week {save.week ?? 1}</span>
+                                {save.wins !== undefined && (
+                                  <>
+                                    <span style={{ color: '#475569' }}>·</span>
+                                    <span style={{ fontFamily: 'var(--font-mono-data)', color: '#64748b' }}>
+                                      {save.wins}-{save.losses}-{save.draws}
+                                    </span>
+                                  </>
+                                )}
+                                {save.last_modified !== undefined && (
+                                  <>
+                                    <span style={{ color: '#475569' }}>·</span>
+                                    <span style={{ color: '#475569' }}>
+                                      saved {formatTimeAgo(save.last_modified)}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
                             )}
                           </div>
                         </div>
@@ -426,6 +546,30 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                       </li>
                     ))}
                   </ul>
+                  {hiddenIncompatibleCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowIncompatibleSaves(v => !v)}
+                      data-testid="toggle-incompatible"
+                      style={{
+                        marginTop: '0.75rem',
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#64748b',
+                        fontSize: '0.6875rem',
+                        fontFamily: 'var(--font-display)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.1em',
+                        cursor: 'pointer',
+                        padding: '0.25rem 0',
+                      }}
+                    >
+                      {showIncompatibleSaves
+                        ? `Hide archive (${hiddenIncompatibleCount} incompatible)`
+                        : `Show archive (${hiddenIncompatibleCount} incompatible)`}
+                    </button>
+                  )}
+                  </div>
                 )}
               </div>
             )}

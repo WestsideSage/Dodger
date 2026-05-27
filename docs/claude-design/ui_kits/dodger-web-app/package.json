@@ -1,0 +1,19 @@
+{
+  "name": "dodger-web-app",
+  "version": "1.0.0",
+  "description": "A pixel-faithful recreation of the shipped Dodger frontend (React + Vite + Tailwind v4), rebuilt as a self-contained React + Babel prototype.",
+  "main": "data.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@babel/cli": "^7.29.7",
+    "@babel/core": "^7.29.7",
+    "@babel/preset-react": "^7.29.7",
+    "puppeteer": "^25.1.0"
+  }
+}

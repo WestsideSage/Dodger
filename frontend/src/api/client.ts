@@ -101,6 +101,12 @@ export const commandApi = {
 
 export const dynastyApi = {
   office: () => apiGet<DynastyOfficeResponse>('/api/dynasty-office'),
+  scoutProspect: (prospectId: string) =>
+    apiPost<{ status: string }>(`/api/recruiting/scout/${encodeURIComponent(prospectId)}`),
+  contactProspect: (prospectId: string) =>
+    apiPost<{ status: string }>(`/api/recruiting/contact/${encodeURIComponent(prospectId)}`),
+  visitProspect: (prospectId: string) =>
+    apiPost<{ status: string }>(`/api/recruiting/visit/${encodeURIComponent(prospectId)}`),
   hireStaff: (candidateId: string) =>
     apiPost<DynastyOfficeResponse>('/api/dynasty-office/staff/hire', { candidate_id: candidateId }),
 };

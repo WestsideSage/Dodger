@@ -9,55 +9,28 @@ interface ProgramModalProps {
 
 export function ProgramModal({ clubId, clubName, onClose }: ProgramModalProps) {
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.75)',
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'center',
-        zIndex: 200,
-        padding: '2rem 1rem',
-        overflowY: 'auto',
-      }}
-      onClick={onClose}
-    >
+    <div className="command-policy-overlay" onClick={onClose}>
       <div
-        style={{
-          background: '#0f172a',
-          border: '1px solid #1e293b',
-          borderRadius: '10px',
-          width: '100%',
-          maxWidth: '640px',
-          padding: '1.5rem',
-        }}
-        onClick={(e) => e.stopPropagation()}
+        className="command-policy-overlay-body do-hist-modal-body"
+        onClick={(event) => event.stopPropagation()}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#e2e8f0' }}>{clubName}</h2>
-          <button
-            aria-label="Close program history"
-            onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#64748b',
-              fontSize: '1.25rem',
-              cursor: 'pointer',
-              lineHeight: 1,
-            }}
-          >
-            X
-          </button>
+        <button className="command-policy-overlay-close" onClick={onClose} type="button">
+          Close
+        </button>
+        <div className="do-hist-modal-header">
+          <span className="dm-kicker">League Archive</span>
+          <h2 className="do-hist-modal-title">{clubName}</h2>
+          <p className="do-hist-card-note">Cross-program archive view from the league history board.</p>
         </div>
         <MyProgramView clubId={clubId} isSelf={false} />
       </div>

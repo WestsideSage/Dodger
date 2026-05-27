@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
-import { MilestoneTree } from './MilestoneTree';
+import { useState } from 'react';
+import { useApiResource } from '../../../hooks/useApiResource';
+import { StatusMessage } from '../../ui';
 import { AlumniLineage } from './AlumniLineage';
 import { BannerShelf } from './BannerShelf';
-import { formatSeasonLabel } from './formatters';
+import { formatSeasonLabel, formatTimelineLabel, humanizeHistoryToken } from './formatters';
 
 interface HeroSeason {
   season_label: string;
@@ -47,12 +48,14 @@ interface ProgramTrajectory {
   record_d: number;
   top_dev_archetype: string;
   recruiting_class_strength: string;
-  notes?: Record<string, unknown>;
 }
 
 interface ProgramData {
   club_id: string;
-  hero: { season_1?: HeroSeason; current?: HeroSeason };
+  hero: {
+    season_1?: HeroSeason;
+    current?: HeroSeason;
+  };
   timeline: TimelineEvent[];
   alumni: AlumnusEntry[];
   banners: BannerEntry[];
@@ -60,149 +63,360 @@ interface ProgramData {
   program_trajectories?: ProgramTrajectory[];
 }
 
-function HeroCard({ data, label, highlight }: { data: HeroSeason; label: string; highlight: boolean }) {
+type ProgramFilter = 'all' | 'titles' | 'awards' | 'records' | 'legacy';
+
+type DisplayEntry = {
+  bucket: Exclude<ProgramFilter, 'all'>;
+  copy: string;
+  id: string;
+  kicker: string;
+  tag: string;
+  tick: string;
+  title: string;
+  tone: 'amber' | 'cyan' | 'emerald' | 'rose' | 'violet';
+  typeLabel: string;
+};
+
+const FILTERS: Array<{ id: ProgramFilter; label: string }> = [
+  { id: 'all', label: 'All' },
+  { id: 'titles', label: 'Titles' },
+  { id: 'awards', label: 'Awards' },
+  { id: 'records', label: 'Records' },
+  { id: 'legacy', label: 'Legacy' },
+];
+
+function badgeToneClass(tone: DisplayEntry['tone']) {
+  switch (tone) {
+    case 'amber':
+      return 'dm-badge-amber';
+    case 'emerald':
+      return 'dm-badge-emerald';
+    case 'rose':
+      return 'dm-badge-rose';
+    case 'violet':
+      return 'dm-badge-violet';
+    default:
+      return 'dm-badge-cyan';
+  }
+}
+
+function seasonTick(season: string, week: number | null) {
+  if (week !== null) {
+    return `W${String(week).padStart(2, '0')}`;
+  }
+  const match = season.match(/season_(\d+)/i);
+  if (match) {
+    return `S${match[1].padStart(2, '0')}`;
+  }
+  return 'ARC';
+}
+
+function trajectoryGradeTone(value: string) {
+  if (value === 'A') return 'dm-badge-emerald';
+  if (value === 'B') return 'dm-badge-cyan';
+  if (value === 'C') return 'dm-badge-amber';
+  return 'dm-badge-slate';
+}
+
+function buildEntry(event: TimelineEvent): DisplayEntry {
+  const seasonLabel = formatSeasonLabel(event.season);
+  const title = formatTimelineLabel(event.label);
+
+  switch (event.event_type) {
+    case 'championship':
+      return {
+        bucket: 'titles',
+        copy: `${seasonLabel} ended with a title run for this program.`,
+        id: `${event.season}-${event.event_type}-${event.label}`,
+        kicker: seasonLabel,
+        tag: 'Champions',
+        tick: seasonTick(event.season, event.week),
+        title,
+        tone: 'amber',
+        typeLabel: 'Title',
+      };
+    case 'award':
+      return {
+        bucket: 'awards',
+        copy: `${title} was claimed by a player from this program in ${seasonLabel}.`,
+        id: `${event.season}-${event.event_type}-${event.label}`,
+        kicker: seasonLabel,
+        tag: 'Award season',
+        tick: seasonTick(event.season, event.week),
+        title,
+        tone: 'emerald',
+        typeLabel: 'Award',
+      };
+    case 'record':
+      return {
+        bucket: 'records',
+        copy: `${title} became a league mark for this program in ${seasonLabel}.`,
+        id: `${event.season}-${event.event_type}-${event.label}`,
+        kicker: seasonLabel,
+        tag: 'League record',
+        tick: seasonTick(event.season, event.week),
+        title,
+        tone: 'cyan',
+        typeLabel: 'Record',
+      };
+    case 'hof':
+      return {
+        bucket: 'legacy',
+        copy: `${title} entered the Hall of Fame in ${seasonLabel}.`,
+        id: `${event.season}-${event.event_type}-${event.label}`,
+        kicker: seasonLabel,
+        tag: 'Hall of Fame',
+        tick: seasonTick(event.season, event.week),
+        title,
+        tone: 'violet',
+        typeLabel: 'Legacy',
+      };
+    default:
+      return {
+        bucket: 'legacy',
+        copy:
+          event.week !== null
+            ? `Logged in ${seasonLabel}, Week ${String(event.week).padStart(2, '0')}.`
+            : `Logged in ${seasonLabel}.`,
+        id: `${event.season}-${event.event_type}-${event.label}`,
+        kicker: seasonLabel,
+        tag: event.week !== null ? `Week ${String(event.week).padStart(2, '0')}` : 'Program milestone',
+        tick: seasonTick(event.season, event.week),
+        title,
+        tone: 'rose',
+        typeLabel: 'Milestone',
+      };
+  }
+}
+
+function fallbackEntry(programArchetype: string | undefined): DisplayEntry {
+  return {
+    bucket: 'legacy',
+    copy: 'This archive will log titles, records, Hall of Fame moments, alumni, and banners as the career unfolds.',
+    id: 'history-baseline',
+    kicker: 'Archive online',
+    tag: humanizeHistoryToken(programArchetype ?? 'Balanced Rebuild'),
+    tick: 'NOW',
+    title: 'Program history is ready',
+    tone: 'cyan',
+    typeLabel: 'Archive',
+  };
+}
+
+function HeroCard({ data, highlight, label }: { data: HeroSeason; highlight?: boolean; label: string }) {
   return (
-    <div
-      style={{
-        flex: 1,
-        border: `1px solid ${highlight ? '#10b981' : '#1e293b'}`,
-        borderRadius: '8px',
-        padding: '1rem',
-        background: '#0a1628',
-        boxShadow: highlight ? '0 0 12px #10b98133' : 'none',
-      }}
-    >
-      <div style={{ fontSize: '0.6rem', color: highlight ? '#10b981' : '#475569', fontWeight: 700, marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-        {label}
+    <div className={`do-hist-hero-card ${highlight ? 'is-current' : ''}`}>
+      <span className="do-hist-hero-label">{label}</span>
+      <span className="do-hist-hero-season">{formatSeasonLabel(data.season_label)}</span>
+      <span className="do-hist-hero-record">
+        {data.wins}-{data.losses}-{data.draws}
+      </span>
+      <div className="do-hist-hero-meta">
+        <span>{data.avg_ovr !== undefined ? `Avg OVR ${data.avg_ovr}` : 'Season archive'}</span>
+        {data.championships ? <span>{data.championships} title{data.championships === 1 ? '' : 's'}</span> : null}
       </div>
-      <div style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: '0.25rem' }}>{formatSeasonLabel(data.season_label)}</div>
-      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '0.25rem' }}>
-        {data.wins}–{data.losses}–{data.draws}
-      </div>
-      {data.avg_ovr !== undefined && (
-        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Avg OVR {data.avg_ovr}</div>
-      )}
-      {data.championships !== undefined && data.championships > 0 && (
-        <div style={{ fontSize: '0.75rem', color: '#f97316', marginTop: '0.25rem' }}>
-          ðŸ† {data.championships} title{data.championships !== 1 ? 's' : ''}
-        </div>
-      )}
     </div>
   );
 }
 
 export function MyProgramView({ clubId, isSelf = true }: { clubId: string; isSelf?: boolean }) {
-  const [data, setData] = useState<ProgramData | null>(null);
+  const { data, error, loading } = useApiResource<ProgramData>(`/api/history/my-program?club_id=${encodeURIComponent(clubId)}`);
+  const [filter, setFilter] = useState<ProgramFilter>('all');
 
-  useEffect(() => {
-    fetch(`/api/history/my-program?club_id=${clubId}`)
-      .then((res) => res.json())
-      .then(setData);
-  }, [clubId]);
+  if (error) {
+    return (
+      <StatusMessage title="History unavailable" tone="danger">
+        {error}
+      </StatusMessage>
+    );
+  }
+  if (loading) {
+    return <StatusMessage title="Loading history">Building the program archive.</StatusMessage>;
+  }
+  if (!data) return null;
 
-  if (!data) return <div style={{ color: '#475569', padding: '1rem' }}>Loading program history…</div>;
-
-  const { hero, timeline, alumni, banners } = data;
+  const currentHero = data.hero.current ?? data.hero.season_1 ?? null;
+  const firstHero = data.hero.season_1 ?? null;
+  const latestTrajectory = data.program_trajectories && data.program_trajectories.length > 0
+    ? data.program_trajectories[data.program_trajectories.length - 1]
+    : null;
+  const championshipCount = data.banners.filter((banner) => banner.type === 'championship').length;
+  const entries = data.timeline.length > 0 ? data.timeline.map(buildEntry) : [fallbackEntry(data.program_archetype)];
+  const visibleEntries = filter === 'all' ? entries : entries.filter((entry) => entry.bucket === filter);
+  const identityLabel = humanizeHistoryToken(latestTrajectory?.archetype ?? data.program_archetype ?? 'Balanced Rebuild');
+  const identityTrend = latestTrajectory
+    ? `Intent ${humanizeHistoryToken(latestTrajectory.dominant_intent)}`
+    : 'Program identity is still forming';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Hero Strip */}
-      {(hero.season_1 || hero.current) && (
-        <div className="dm-panel">
-          <p className="dm-kicker">Program Arc</p>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            {hero.season_1 && <HeroCard data={hero.season_1} label="How it started" highlight={false} />}
-            {hero.current && <HeroCard data={hero.current} label="Today" highlight={true} />}
-          </div>
+    <div className="do-tab-content">
+      <div className="do-hist-glance">
+        <div className="cell">
+          <span className="lbl">Archive Through</span>
+          <span className="val">{currentHero ? formatSeasonLabel(currentHero.season_label) : 'Season 1'}</span>
+          <span className="trend">{entries.length} tracked archive moments</span>
         </div>
-      )}
-
-      {/* Program Trajectory History */}
-      {data.program_trajectories && data.program_trajectories.length > 0 && (
-        <div className="dm-panel">
-          <p className="dm-kicker">Multi-Season Trajectory Log</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {data.program_trajectories.map((traj) => (
-              <div
-                key={traj.season_id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  background: '#0a1628',
-                  border: '1px solid #1e293b',
-                  borderRadius: '6px',
-                  padding: '0.75rem 1rem',
-                  gap: '1rem',
-                  flexWrap: 'wrap',
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>
-                    {formatSeasonLabel(traj.season_id)}
-                  </div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff', marginTop: '0.15rem' }}>
-                    {traj.record_w}–{traj.record_l}–{traj.record_d}
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-                  <div>
-                    <div style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase' }}>Archetype</div>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#38bdf8', marginTop: '0.1rem' }}>
-                      {traj.archetype}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase' }}>Dominant Intent</div>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#e2e8f0', marginTop: '0.1rem' }}>
-                      {traj.dominant_intent}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase' }}>Top Roster Focus</div>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#a78bfa', marginTop: '0.1rem', textTransform: 'capitalize' }}>
-                      {traj.top_dev_archetype}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase' }}>Recruiting Class</div>
-                    <div
-                      style={{
-                        fontSize: '0.95rem',
-                        fontWeight: 800,
-                        color: traj.recruiting_class_strength === 'A' ? '#10b981' : traj.recruiting_class_strength === 'B' ? '#34d399' : '#94a3b8',
-                        marginTop: '0.05rem'
-                      }}
-                    >
-                      {traj.recruiting_class_strength}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="cell">
+          <span className="lbl">Current Record</span>
+          <span className="val">
+            {currentHero ? `${currentHero.wins}-${currentHero.losses}-${currentHero.draws}` : 'No Log'}
+          </span>
+          <span className={`trend ${currentHero && currentHero.avg_ovr !== undefined ? 'ok' : ''}`}>
+            {currentHero && currentHero.avg_ovr !== undefined ? `Avg OVR ${currentHero.avg_ovr}` : 'First completed season will appear here'}
+          </span>
         </div>
-      )}
-
-      {/* Milestone Tree */}
-      <div className="dm-panel">
-        <p className="dm-kicker">Program History</p>
-        <div style={{ overflowX: 'auto' }}>
-          <MilestoneTree timeline={timeline} />
+        <div className="cell">
+          <span className="lbl">Program Identity</span>
+          <span className="val">{identityLabel}</span>
+          <span className="trend">{identityTrend}</span>
+        </div>
+        <div className="cell">
+          <span className="lbl">Banner Count</span>
+          <span className="val">
+            {data.banners.length}
+            <span>{championshipCount} titles</span>
+          </span>
+          <span className={`trend ${championshipCount > 0 ? 'ok' : ''}`}>
+            {championshipCount > 0 ? 'Championship standard established' : 'First banner still ahead'}
+          </span>
+        </div>
+        <div className="cell">
+          <span className="lbl">Alumni Lineage</span>
+          <span className="val">
+            {data.alumni.length}
+            <span>{data.program_trajectories?.length ?? 0} arcs logged</span>
+          </span>
+          <span className="trend">
+            {isSelf ? 'Your program archive' : 'Scouted program archive'}
+          </span>
         </div>
       </div>
 
-      {/* Alumni + Banners */}
-      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-        <div className="dm-panel" style={{ flex: 1, minWidth: '260px' }}>
-          <p className="dm-kicker">Alumni Lineage</p>
-          <AlumniLineage alumni={alumni} />
+      <div className="do-hist-filters">
+        <div className="filters">
+          {FILTERS.map((item) => {
+            const count = item.id === 'all'
+              ? entries.length
+              : entries.filter((entry) => entry.bucket === item.id).length;
+            return (
+              <button
+                key={item.id}
+                className={`do-board-filter ${filter === item.id ? 'is-active' : ''}`}
+                onClick={() => setFilter(item.id)}
+                type="button"
+              >
+                {item.label}
+                <span className="n">{count}</span>
+              </button>
+            );
+          })}
         </div>
-        <div className="dm-panel" style={{ flex: 1, minWidth: '260px' }}>
-          <p className="dm-kicker">Banner Shelf</p>
-          <BannerShelf banners={banners} showNextPlaceholder={isSelf} />
-        </div>
+        <span className="do-board-meta">
+          {isSelf ? 'Program archive view' : `Program archive - ${clubId.toUpperCase()}`}
+        </span>
+      </div>
+
+      <div className="do-hist-timeline">
+        <div className="rail" />
+        {visibleEntries.length > 0 ? (
+          visibleEntries.map((entry) => (
+            <article key={entry.id} className={`do-hist-entry tone-${entry.tone}`}>
+              <div className="do-hist-wk">
+                <span className="wk-num">{entry.tick}</span>
+                <span className="dot" />
+              </div>
+              <div className="do-hist-body">
+                <header>
+                  <span className={`dm-badge ${badgeToneClass(entry.tone)}`}>{entry.typeLabel}</span>
+                  <span className="kicker">{entry.kicker}</span>
+                  <span className="tag">{entry.tag}</span>
+                </header>
+                <h4 className="title">{entry.title}</h4>
+                <p className="copy">{entry.copy}</p>
+              </div>
+            </article>
+          ))
+        ) : (
+          <article className="do-hist-entry tone-cyan">
+            <div className="do-hist-wk">
+              <span className="wk-num">NONE</span>
+              <span className="dot" />
+            </div>
+            <div className="do-hist-body">
+              <header>
+                <span className="dm-badge dm-badge-cyan">Filter</span>
+                <span className="kicker">No matching entries</span>
+                <span className="tag">Clear filter</span>
+              </header>
+              <h4 className="title">No archive items match this lane</h4>
+              <p className="copy">Switch back to All to see the full program archive.</p>
+            </div>
+          </article>
+        )}
+      </div>
+
+      <div className="do-hist-grid">
+        <section className="dm-panel do-hist-card">
+          <div className="do-hist-card-head">
+            <span className="dm-kicker">Program Arc</span>
+            <h3>How it started vs today</h3>
+          </div>
+          {firstHero || currentHero ? (
+            <div className="do-hist-hero-grid">
+              {firstHero ? <HeroCard data={firstHero} label="Opening season" /> : null}
+              {currentHero ? <HeroCard data={currentHero} label="Current snapshot" highlight /> : null}
+            </div>
+          ) : (
+            <p className="do-hist-card-note">No completed season is archived yet.</p>
+          )}
+        </section>
+
+        <section className="dm-panel do-hist-card">
+          <div className="do-hist-card-head">
+            <span className="dm-kicker">Trajectory Log</span>
+            <h3>Multi-season identity shifts</h3>
+          </div>
+          {data.program_trajectories && data.program_trajectories.length > 0 ? (
+            <div className="do-hist-list">
+              {data.program_trajectories.map((trajectory) => (
+                <div key={trajectory.season_id} className="do-hist-list-row">
+                  <div className="main">
+                    <strong>{formatSeasonLabel(trajectory.season_id)}</strong>
+                    <span className="meta">
+                      {trajectory.record_w}-{trajectory.record_l}-{trajectory.record_d} - {humanizeHistoryToken(trajectory.archetype)}
+                    </span>
+                  </div>
+                  <div className="side">
+                    <span className={`dm-badge ${trajectoryGradeTone(trajectory.recruiting_class_strength)}`}>
+                      Class {trajectory.recruiting_class_strength}
+                    </span>
+                    <span className="note">
+                      {humanizeHistoryToken(trajectory.dominant_intent)} - Top focus {humanizeHistoryToken(trajectory.top_dev_archetype)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="do-hist-card-note">Trajectory shifts will appear once multiple seasons are logged.</p>
+          )}
+        </section>
+
+        <section className="dm-panel do-hist-card">
+          <div className="do-hist-card-head">
+            <span className="dm-kicker">Alumni Lineage</span>
+            <h3>Who this program produced</h3>
+          </div>
+          <AlumniLineage alumni={data.alumni} />
+        </section>
+
+        <section className="dm-panel do-hist-card">
+          <div className="do-hist-card-head">
+            <span className="dm-kicker">Banner Shelf</span>
+            <h3>Trophies and signatures</h3>
+          </div>
+          <BannerShelf banners={data.banners} showNextPlaceholder={isSelf} />
+        </section>
       </div>
     </div>
   );

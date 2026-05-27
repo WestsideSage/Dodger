@@ -78,8 +78,8 @@ _LAST_NAMES = (
     "Voss", "Helix", "Turner", "Lark", "Orion", "Vega", "Keene", "Hart",
     "Rowe", "Slate", "Frost", "Drake", "Munn", "Cole", "Beck", "Thorn",
     "Bishop", "Vale", "Cross", "Mercer", "Rhodes", "Santos", "Ibarra", "Kline",
-    "Novak", "Penn", "Sol", "Tanner", "West", "Yardley", "Zane", "Okafor",
-    "Chavez", "Dupont", "Nakamura", "Jensen", "Olsen", "Griffin", "Sterling", "Hawthorne",
+    "Novak", "Parr", "Sol", "Tanner", "West", "Yardley", "Zane", "Okafor",
+    "Chavez", "Duval", "Nakamura", "Jensen", "Olsen", "Griffin", "Sterling", "Hawthorne",
     "Crosby", "Sinclair", "Garrison", "Fitzgerald", "Kerrigan", "O'Neill", "Rousseau", "Mendoza",
     "Petrov", "Saito", "Takahashi", "Chen", "Kim", "Park", "Patel", "Sharma",
     "Singh", "Das", "Ali", "Hassan", "Mensah", "Diallo", "Toure", "Kone",
@@ -114,19 +114,35 @@ def _unique_name(
     *,
     rng: DeterministicRNG,
     used_names: set[str],
+    used_last_names: set[str] | None = None,
     fallback_tag: str,
 ) -> str:
     # Build all possible combos, shuffle once with rng, pick first unused.
     # This consumes a fixed amount of RNG state regardless of collisions.
-    combos = [f"{f} {l}" for f in _FIRST_NAMES for l in _LAST_NAMES]
+    combos = [(first, last) for first in _FIRST_NAMES for last in _LAST_NAMES]
     combos = rng.shuffle(combos)  # one shuffle, fixed RNG consumption
-    for name in combos:
+    for first, last in combos:
+        name = f"{first} {last}"
+        if name in used_names:
+            continue
+        if used_last_names is not None and last in used_last_names:
+            continue
+        used_names.add(name)
+        if used_last_names is not None:
+            used_last_names.add(last)
+        return name
+    for first, last in combos:
+        name = f"{first} {last}"
         if name not in used_names:
             used_names.add(name)
+            if used_last_names is not None:
+                used_last_names.add(last)
             return name
     # Fallback: pool exhausted (only possible with classes > 1024)
     base = f"{rng.choice(_FIRST_NAMES)} {rng.choice(_LAST_NAMES)} {fallback_tag}"
     used_names.add(base)
+    if used_last_names is not None:
+        used_last_names.add(base.split()[-1])
     return base
 
 
@@ -138,8 +154,14 @@ def generate_rookie_class(
     """Generate a deterministic rookie class for one season."""
     rookies: list[Player] = []
     used_names: set[str] = set()
+    used_last_names: set[str] = set()
     for index in range(size):
-        full_name = _unique_name(rng=rng, used_names=used_names, fallback_tag=f"#{index + 1}")
+        full_name = _unique_name(
+            rng=rng,
+            used_names=used_names,
+            used_last_names=used_last_names,
+            fallback_tag=f"#{index + 1}",
+        )
         growth_curve = rng.choice(_GROWTH_CURVES)
         ratings = PlayerRatings(
             accuracy=_rating_roll(rng),
@@ -147,6 +169,10 @@ def generate_rookie_class(
             dodge=_rating_roll(rng),
             catch=_rating_roll(rng),
             stamina=_stamina_roll(rng),
+            tactical_iq=_rating_roll(rng),
+            catch_courage=_rating_roll(rng),
+            throw_selection_iq=_rating_roll(rng),
+            conditioning_curve=_rating_roll(rng),
         ).apply_bounds()
         rookies.append(
             Player(
@@ -176,11 +202,17 @@ def generate_prospect_pool(
     """Generate hidden prospect truths and a wide public baseline."""
     prospects: list[Prospect] = []
     used_names: set[str] = set()
+    used_last_names: set[str] = set()
     archetype_pool = tuple(_RECRUITMENT_DISPLAY_NAMES.values())
     trait_pool = ("IRONWALL", "CLUTCH", "QUICK_RELEASE", "GLOVES", "READ_AND_REACT")
 
     for index in range(config.prospect_class_size):
-        full_name = _unique_name(rng=rng, used_names=used_names, fallback_tag=f"#{index + 1}")
+        full_name = _unique_name(
+            rng=rng,
+            used_names=used_names,
+            used_last_names=used_last_names,
+            fallback_tag=f"#{index + 1}",
+        )
         potential_ceiling = rng.roll(55.0, 96.0)
         ratings = {
             "accuracy": round(rng.roll(35.0, potential_ceiling - 4.0), 2),
@@ -188,6 +220,10 @@ def generate_prospect_pool(
             "dodge": round(rng.roll(35.0, potential_ceiling - 4.0), 2),
             "catch": round(rng.roll(35.0, potential_ceiling - 4.0), 2),
             "stamina": round(rng.roll(40.0, min(88.0, potential_ceiling - 2.0)), 2),
+            "tactical_iq": round(rng.roll(35.0, potential_ceiling - 4.0), 2),
+            "catch_courage": round(rng.roll(35.0, potential_ceiling - 4.0), 2),
+            "throw_selection_iq": round(rng.roll(35.0, potential_ceiling - 4.0), 2),
+            "conditioning_curve": round(rng.roll(35.0, potential_ceiling - 4.0), 2),
         }
         trajectory = _draw_trajectory(rng, config)
 
@@ -212,6 +248,10 @@ def generate_prospect_pool(
             dodge=ratings["dodge"],
             catch=ratings["catch"],
             stamina=ratings["stamina"],
+            tactical_iq=ratings["tactical_iq"],
+            catch_courage=ratings["catch_courage"],
+            throw_selection_iq=ratings["throw_selection_iq"],
+            conditioning_curve=ratings["conditioning_curve"],
         ).apply_bounds()
         true_archetype = _display_name_for_archetype(derive_archetype(rating_obj), rating_obj)
         if rng.unit() < config.public_archetype_mislabel_rate:
@@ -288,6 +328,10 @@ def sign_prospect_to_club(
         dodge=prospect.hidden_ratings["dodge"],
         catch=prospect.hidden_ratings["catch"],
         stamina=prospect.hidden_ratings["stamina"],
+        tactical_iq=prospect.hidden_ratings.get("tactical_iq", 50.0),
+        catch_courage=prospect.hidden_ratings.get("catch_courage", 50.0),
+        throw_selection_iq=prospect.hidden_ratings.get("throw_selection_iq", 50.0),
+        conditioning_curve=prospect.hidden_ratings.get("conditioning_curve", 50.0),
     ).apply_bounds()
     player = Player(
         id=prospect.player_id,

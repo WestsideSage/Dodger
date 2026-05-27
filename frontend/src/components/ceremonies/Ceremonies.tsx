@@ -274,11 +274,13 @@ export function Graduation({ beat, onComplete, acting }: { beat: RetirementsBeat
 export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat; onComplete: () => void; acting?: boolean }) {
   const playerSigning = beat.payload.player_signing;
   const otherSignings = beat.payload.other_signings ?? [];
+  const signedCount = beat.payload.signed_count ?? 0;
+  const signingLimit = beat.payload.signing_limit ?? 3;
   const totalStages = 0;
-  const summaryLabel = playerSigning ? 'YOUR PICK' : 'SIGNING DAY UPDATE';
-  const summaryTitle = playerSigning ? playerSigning.name : 'No new player signing this round';
+  const summaryLabel = playerSigning ? 'YOUR CLASS' : 'SIGNING DAY UPDATE';
+  const summaryTitle = playerSigning ? playerSigning.name : 'Class report';
   const summaryDetail = playerSigning
-    ? `OVR ${playerSigning.ovr}${playerSigning.age ? ` | Age ${playerSigning.age}` : ''}${playerSigning.role ? ` | ${playerSigning.role}` : ''}`
+    ? `OVR ${playerSigning.ovr}${playerSigning.age ? ` | Age ${playerSigning.age}` : ''}${playerSigning.role ? ` | ${playerSigning.role}` : ''} | ${signedCount}/${signingLimit} signed`
     : (typeof beat.body === 'string' && beat.body.trim()) || 'The board is complete. Continue when you are ready for the next offseason update.';
 
   return (
