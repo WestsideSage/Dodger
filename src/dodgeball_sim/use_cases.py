@@ -35,6 +35,10 @@ from dodgeball_sim.match_orchestration import (
 )
 from dodgeball_sim.models import CoachPolicy
 from dodgeball_sim.offseason_ceremony import ensure_ai_rosters_playable
+from dodgeball_sim.postgame_validator import (
+    PostgameTruthError,
+    validate_postgame_payload,
+)
 from dodgeball_sim.persistence import (
     get_state,
     load_all_rosters,
@@ -284,6 +288,32 @@ def _degraded_postgame_payload(
     away_team = teams.get(away_club_id) or {}
     home_living = int(((home_team.get("totals") or {}).get("living") or 0))
     away_living = int(((away_team.get("totals") or {}).get("living") or 0))
+    # Preserve real game_points when official_metadata is present so the
+    # fallback never silently zeros a cloth/foam score. Mirror the
+    # home<->team_a mapping used in game_loop._persist_match_result.
+    scoring_model = "legacy"
+    home_game_pts = 0
+    away_game_pts = 0
+    meta = getattr(result, "official_metadata", None)
+    if isinstance(meta, Mapping):
+        scoring_model = (
+            "cloth" if "cloth" in (getattr(result, "config_version", "") or "") else "foam"
+        )
+        team_a_gp = meta.get("team_a_game_points")
+        team_b_gp = meta.get("team_b_game_points")
+        if team_a_gp is not None or team_b_gp is not None:
+            try:
+                team_a_gp_i = int(team_a_gp or 0)
+                team_b_gp_i = int(team_b_gp or 0)
+            except (TypeError, ValueError):
+                team_a_gp_i = team_b_gp_i = 0
+            team_a_id = meta.get("team_a_id")
+            if team_a_id is not None and str(team_a_id) == str(away_club_id):
+                home_game_pts = team_b_gp_i
+                away_game_pts = team_a_gp_i
+            else:
+                home_game_pts = team_a_gp_i
+                away_game_pts = team_b_gp_i
     return {
         "headline": "Match complete.",
         "match_card": {
@@ -292,9 +322,9 @@ def _degraded_postgame_payload(
             "winner_club_id": result.winner_team_id,
             "home_survivors": home_living,
             "away_survivors": away_living,
-            "scoring_model": "legacy",
-            "home_game_points": 0,
-            "away_game_points": 0,
+            "scoring_model": scoring_model,
+            "home_game_points": home_game_pts,
+            "away_game_points": away_game_pts,
         },
         "player_growth_deltas": [],
         "standings_shift": [],
@@ -486,11 +516,6 @@ def _build_aftermath(
     # contradict the resolved MatchResult (winner, survivor counts,
     # top-performer catch totals). If it does, log and fall back to a
     # minimal truthful payload rather than ship the contradiction.
-    from dodgeball_sim.postgame_validator import (
-        PostgameTruthError,
-        validate_postgame_payload,
-    )
-
     try:
         validate_postgame_payload(aftermath, record.result)
     except PostgameTruthError as exc:
