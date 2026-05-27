@@ -6,9 +6,12 @@ they can be tested and called without FastAPI.
 from __future__ import annotations
 
 import dataclasses
+import logging
 import re
 import sqlite3
 from typing import Any, Mapping
+
+logger = logging.getLogger(__name__)
 
 from dodgeball_sim.career_state import CareerState, advance
 from dodgeball_sim.command_center import (
@@ -263,6 +266,44 @@ def _assert_postgame_copy_truthful(
         )
 
 
+def _degraded_postgame_payload(
+    result,
+    *,
+    home_club_id: str,
+    away_club_id: str,
+) -> dict[str, Any]:
+    """Build a minimal truthful aftermath payload.
+
+    Used as a fallback when the assembled payload fails structural
+    validation. Contains only raw facts derived from the resolved
+    ``MatchResult`` — no headline copy, no verdict, no body, no top
+    performers. Must itself satisfy ``validate_postgame_payload``.
+    """
+    teams = (result.box_score or {}).get("teams") or {}
+    home_team = teams.get(home_club_id) or {}
+    away_team = teams.get(away_club_id) or {}
+    home_living = int(((home_team.get("totals") or {}).get("living") or 0))
+    away_living = int(((away_team.get("totals") or {}).get("living") or 0))
+    return {
+        "headline": "Match complete.",
+        "match_card": {
+            "home_club_id": home_club_id,
+            "away_club_id": away_club_id,
+            "winner_club_id": result.winner_team_id,
+            "home_survivors": home_living,
+            "away_survivors": away_living,
+            "scoring_model": "legacy",
+            "home_game_points": 0,
+            "away_game_points": 0,
+        },
+        "player_growth_deltas": [],
+        "standings_shift": [],
+        "recruit_reactions": [],
+        "body": [],
+        "top_performers": [],
+    }
+
+
 def _build_aftermath(
     conn,
     dashboard: dict[str, Any],
@@ -440,6 +481,30 @@ def _build_aftermath(
     }
     if verdict is not None:
         aftermath["verdict"] = verdict
+
+    # Structural validation: confirm the assembled payload doesn't
+    # contradict the resolved MatchResult (winner, survivor counts,
+    # top-performer catch totals). If it does, log and fall back to a
+    # minimal truthful payload rather than ship the contradiction.
+    from dodgeball_sim.postgame_validator import (
+        PostgameTruthError,
+        validate_postgame_payload,
+    )
+
+    try:
+        validate_postgame_payload(aftermath, record.result)
+    except PostgameTruthError as exc:
+        logger.error(
+            "Postgame payload failed structural validation; "
+            "falling back to degraded payload. match_id=%s reason=%s",
+            getattr(record, "match_id", "<unknown>"),
+            exc,
+        )
+        aftermath = _degraded_postgame_payload(
+            record.result,
+            home_club_id=record.home_club_id,
+            away_club_id=record.away_club_id,
+        )
     return aftermath
 
 
