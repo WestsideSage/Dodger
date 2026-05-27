@@ -214,6 +214,47 @@ def _simulate_bye_week(
     }
 
 
+def _assert_postgame_copy_truthful(
+    *,
+    headline: str,
+    verdict: str | None,
+    result: str,
+    player_survivors: int,
+    opponent_survivors: int,
+) -> None:
+    """Cheap invariant guard against postgame copy drifting from the result.
+
+    Future copy generators must not produce a "Win" headline on a Loss
+    (or vice versa) and must not produce a "So close" / "narrow" tag on
+    a shutout. This assertion is intentionally narrow: it doesn't try
+    to validate every template, just the contradictions that have
+    surfaced in playtest reports.
+    """
+    headline_lower = headline.lower()
+    if result == "Loss":
+        # The literal word "Win" never appears in Loss templates. (Note
+        # that some Win templates say "you won" — fine on a Win; never
+        # on a Loss.) Match "win" as a whole word so we don't trip on
+        # "swinging", etc.
+        assert " win" not in f" {headline_lower}" and not headline_lower.startswith("win"), (
+            f"Loss headline contains 'Win': {headline!r}"
+        )
+        # "So close" / "narrow" is reserved for one-survivor-margin losses.
+        if abs(player_survivors - opponent_survivors) >= 2:
+            assert "so close" not in headline_lower, (
+                f"Non-narrow Loss headline uses 'So close': {headline!r} "
+                f"(margin={player_survivors - opponent_survivors})"
+            )
+    elif result == "Win":
+        assert " loss" not in f" {headline_lower}" and not headline_lower.startswith("loss"), (
+            f"Win headline contains 'Loss': {headline!r}"
+        )
+    if verdict is not None and result == "Loss":
+        assert "you won" not in verdict.lower(), (
+            f"Loss verdict contains 'you won': {verdict!r}"
+        )
+
+
 def _build_aftermath(
     conn,
     dashboard: dict[str, Any],
@@ -285,6 +326,7 @@ def _build_aftermath(
                 policy_team=player_policy,
                 policy_opponent=opponent_policy,
                 tier=1,
+                player_club_id=player_club_id,
             )
             headline = render_headline(voice_ctx)
             body = render_body(voice_ctx)
@@ -295,6 +337,16 @@ def _build_aftermath(
                 result=result,
                 player_team_box=box[player_club_id],
                 opponent_team_box=box[opponent_club_id],
+            )
+            # Contract: postgame copy must never contradict the resolved
+            # MatchResult. If it does, fail loudly rather than ship a
+            # "Win" headline on a Loss.
+            _assert_postgame_copy_truthful(
+                headline=headline,
+                verdict=verdict,
+                result=result,
+                player_survivors=int(box[player_club_id]["totals"]["living"]),
+                opponent_survivors=int(box[opponent_club_id]["totals"]["living"]),
             )
         else:
             headline = dashboard["result"]

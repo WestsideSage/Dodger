@@ -177,31 +177,48 @@ def _margin_tier(result: str, mine: int, theirs: int) -> str:
 
 
 def _margin_fallback(ctx: AftermathContext) -> str:
-    winner_id = ctx.match_result.winner_team_id
-    teams = ctx.match_result.box_score.get("teams", {})
+    """Render a margin-aware headline derived solely from MatchResult.
+
+    The "mine"/"theirs" split is taken from ``ctx.player_club_id`` when
+    available; otherwise it falls back to dict-iteration order of
+    ``box_score["teams"]`` (the legacy behaviour, used by writer-side
+    tests that don't have a player perspective). Either way, the result
+    string (Win/Loss/Draw) is derived from ``MatchResult.winner_team_id``
+    — never from in-progress state.
+    """
+    result_obj = ctx.match_result
+    winner_id = result_obj.winner_team_id
+    teams = result_obj.box_score.get("teams", {})
     if len(teams) >= 2:
         team_ids = list(teams.keys())
-        first_id, second_id = team_ids[0], team_ids[1]
-        first_living = ctx.survivors_for(first_id)
-        second_living = ctx.survivors_for(second_id)
-        if first_living is not None and second_living is not None:
+        if ctx.player_club_id and ctx.player_club_id in teams:
+            mine_id = ctx.player_club_id
+            theirs_id = next(tid for tid in team_ids if tid != mine_id)
+        else:
+            mine_id, theirs_id = team_ids[0], team_ids[1]
+        mine_living = ctx.survivors_for(mine_id)
+        theirs_living = ctx.survivors_for(theirs_id)
+        if mine_living is not None and theirs_living is not None:
             if winner_id is None:
                 result = "Draw"
-                mine, theirs = first_living, second_living
-            elif winner_id == first_id:
+            elif winner_id == mine_id:
                 result = "Win"
-                mine, theirs = first_living, second_living
             else:
                 result = "Loss"
-                mine, theirs = second_living, first_living
-            templates = _MARGIN_TEMPLATES.get((result, _margin_tier(result, mine, theirs)))
+            templates = _MARGIN_TEMPLATES.get((result, _margin_tier(result, mine_living, theirs_living)))
             if templates:
-                return DeterministicRNG(ctx.match_result.seed).choice(templates).format(score=f"{mine}-{theirs}")
+                return (
+                    DeterministicRNG(result_obj.seed)
+                    .choice(templates)
+                    .format(score=f"{mine_living}-{theirs_living}")
+                )
+    # Score-less fallback: still honour the resolved winner relative to
+    # the player perspective.
     if winner_id is None:
-        return DeterministicRNG(ctx.match_result.seed).choice(_DRAW_TEMPLATES)
-    if winner_id:
-        return DeterministicRNG(ctx.match_result.seed).choice(_WIN_TEMPLATES)
-    return DeterministicRNG(ctx.match_result.seed).choice(_LOSS_TEMPLATES)
+        return DeterministicRNG(result_obj.seed).choice(_DRAW_TEMPLATES)
+    if ctx.player_club_id is None or winner_id == ctx.player_club_id:
+        return DeterministicRNG(result_obj.seed).choice(_WIN_TEMPLATES)
+    return DeterministicRNG(result_obj.seed).choice(_LOSS_TEMPLATES)
 
 
 def _result_clause(result: str) -> str:
