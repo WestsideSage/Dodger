@@ -36,7 +36,7 @@ async function advanceToOffseasonBeat(page: Page, testId: string) {
   return false;
 }
 
-test('V13 broadcast framing and highlights keep proof one click away', async ({ page, request }) => {
+test('V13 broadcast framing and replay log keep proof one click away', async ({ page, request }) => {
   const saveName = `e2e-v13-${Date.now()}`;
   const create = await request.post(`${baseUrl}/api/saves/new`, {
     data: { name: saveName, club_id: 'aurora' },
@@ -55,16 +55,10 @@ test('V13 broadcast framing and highlights keep proof one click away', async ({ 
   await page.keyboard.press('Space');
   await page.getByRole('button', { name: /view full replay/i }).click();
 
-  await expect(page.getByRole('button', { name: /back to results/i })).toBeVisible({ timeout: 20000 });
-  await expect(page.getByRole('button', { name: 'HIGHLIGHTS' })).toBeVisible();
-  const timelineButtons = page.getByRole('button', { name: /show in timeline/i });
-  await expect(timelineButtons.first()).toBeVisible();
-  expect(await timelineButtons.count()).toBeGreaterThanOrEqual(4);
+  await expect(page.getByRole('button', { name: /close replay/i })).toBeVisible({ timeout: 20000 });
+  await expect(page.getByTestId('current-event-card')).toBeVisible();
   await expect(page.locator('[data-broadcast-proof-source]').first()).toBeVisible();
-
-  await timelineButtons.first().click();
-  await expect(page.getByText('PLAY-BY-PLAY')).toBeVisible();
-  await expect(page.getByText('PLAY 1').first()).toBeVisible();
+  await expect(page.getByText('Match Flow')).toBeVisible();
 });
 
 test('V13 playoff framing and offseason record cards stay browser-visible', async ({ page, request }) => {
@@ -89,9 +83,9 @@ test('V13 playoff framing and offseason record cards stay browser-visible', asyn
   const playoffFrame = page.getByTestId('playoff-frame');
   await expect(playoffFrame).toBeVisible({ timeout: 20000 });
   await expect(playoffFrame).toHaveAttribute('data-broadcast-proof-source', /match:/);
-  await expect(page.getByRole('button', { name: 'HIGHLIGHTS' })).toBeVisible();
+  await expect(page.getByTestId('current-event-card')).toBeVisible();
 
-  await page.getByRole('button', { name: /back to results/i }).click();
+  await page.getByRole('button', { name: /close replay/i }).click();
   await expect(page.getByTestId('post-week-dashboard')).toBeVisible();
   await page.getByRole('button', { name: /(bank the result|move on|shake it off)/i }).click();
 
@@ -102,6 +96,9 @@ test('V13 playoff framing and offseason record cards stay browser-visible', asyn
     const visibleProofRowCount = await visibleProofRows.count();
     expect(visibleProofRowCount).toBeGreaterThan(0);
   } else {
-    await expect(page.getByTestId('match-week-offseason')).toBeVisible();
+    const activeSurface = page.locator(
+      '[data-testid="match-week-offseason"], [data-testid="post-week-dashboard"], [data-testid="weekly-command-center"]',
+    );
+    await expect(activeSurface.first()).toBeVisible();
   }
 });

@@ -18,7 +18,7 @@ test('AI Program Managers E2E Standings rendering', async ({ page, request }) =>
   await page.goto(`${baseUrl}/?tab=standings`);
 
   // Wait for the standings table to load
-  await page.waitForSelector('table.dm-table');
+  await expect(page.locator('table.ls-table')).toBeVisible();
 
   // Verify standings headers and context callout are visible
   await expect(page.getByRole('heading', { name: 'Standings', level: 1 })).toBeVisible();
@@ -27,6 +27,7 @@ test('AI Program Managers E2E Standings rendering', async ({ page, request }) =>
   const userRow = page.locator('tr').filter({ hasText: 'Aurora' });
   await expect(userRow).toBeVisible();
   
-  // Assert presence of the archetype tags anywhere on the page/row
-  await expect(page.locator('text=Balanced Rebuild').first()).toBeVisible();
+  // Assert presence of the current program trajectory/plan info on the row
+  await expect(userRow.locator('text=Yr 1')).toBeVisible();
+  await expect(userRow.locator('text=Balanced')).toBeVisible();
 });

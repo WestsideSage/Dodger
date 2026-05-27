@@ -155,7 +155,7 @@ test.describe('Maximized browser playthrough and V11 QA Pass', () => {
     // 7. Dynasty Office Tab exploration
     await test.step('Verify Dynasty Office Tab', async () => {
       await page.getByRole('button', { name: /Dynasty Office/i }).click();
-      await expect(page.getByText('WAR ROOM', { exact: true })).toBeVisible();
+      await expect(page.getByText(/Front Office/i)).toBeVisible();
       await page.screenshot({ path: screenshotPath('dynasty_office_desktop.png') });
 
       // Verify that sub-tabs like Recruitment can be interacted with
@@ -199,7 +199,7 @@ test.describe('Maximized browser playthrough and V11 QA Pass', () => {
       const advanceBtn = page.getByTestId('after-action-bar').locator('button.command-action-bar-primary');
       await advanceBtn.click();
 
-      await expect(page.getByText('WEEK 2', { exact: false })).toBeVisible();
+      await expect(page.getByTestId('weekly-command-center').getByText(/week\s*0?2/i)).toBeVisible();
 
       // Lock weekly plan
       await page.getByTestId('lock-weekly-plan').click();

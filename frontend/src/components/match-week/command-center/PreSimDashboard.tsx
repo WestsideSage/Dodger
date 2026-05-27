@@ -9,6 +9,7 @@ import type {
   StandingRow,
   StandingsResponse,
 } from '../../../types';
+import { BroadcastFrameBlock } from '../../BroadcastFrameBlock';
 import { PolicyEditor } from './PolicyEditor';
 import { seasonTitle, stakesLine, playerToWatch } from './presimNarrative';
 
@@ -573,6 +574,10 @@ export function PreSimDashboard({
                     <span className="val mono">{scoutRead}</span>
                   </div>
                 </div>
+
+                {details.broadcast_frame && (
+                  <BroadcastFrameBlock frame={details.broadcast_frame} title="Broadcast Frame" compact />
+                )}
 
                 <div
                   className={`cc-align-callout${hasPlanConflict ? ' is-warning' : ''}`}

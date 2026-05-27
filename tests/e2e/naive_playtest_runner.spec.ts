@@ -131,7 +131,7 @@ test.describe('Dodger Naive Playtester Playthrough', () => {
         await page.waitForTimeout(800);
 
         // Find the continue button or signing button
-        const continueBtn = page.locator('.command-action-buttons button, .command-action-bar button');
+        const continueBtn = page.locator('.command-action-buttons button, .command-action-bar button').first();
         
         if (await continueBtn.isVisible()) {
           const btnText = await continueBtn.innerText();
