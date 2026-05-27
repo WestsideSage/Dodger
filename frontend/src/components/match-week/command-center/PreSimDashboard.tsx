@@ -219,6 +219,9 @@ export function PreSimDashboard({
     .filter((result): result is string => Boolean(result));
   const recentWins = recentResults.filter(result => result === 'Win').length;
   const recentRecord = recentResults.length ? `${recentWins}-${recentResults.length - recentWins}` : '—';
+  const regularSeasonRecord = userStanding
+    ? `${userStanding.wins}-${userStanding.losses}${userStanding.draws ? `-${userStanding.draws}` : ''}`
+    : '—';
   const latestDashboard = data.latest_dashboard;
   const lastRecord = data.history.length > 0 ? data.history[data.history.length - 1] : null;
   const seasonName = seasonTitle(data.season_id);
@@ -288,6 +291,8 @@ export function PreSimDashboard({
     currentMatch && currentMatch.stage && currentMatch.stage !== 'Regular Season'
       ? currentMatch.stage
       : null;
+  const identityRecordLabel = playoffStage ? 'Record' : 'Form';
+  const identityRecordValue = playoffStage ? regularSeasonRecord : recentRecord;
   const yourStarterTotal = activePlayers.reduce((sum, player) => sum + player.overall, 0);
   const oppStarterTotal = opponentPlayers.reduce((sum, player) => sum + player.overall, 0);
   const netStarterEdge = Math.round((yourStarterTotal - oppStarterTotal) * 10) / 10;
@@ -368,8 +373,8 @@ export function PreSimDashboard({
           <span className="val num">W{wk}{playoffStage ? ` · ${playoffStage}` : ''}</span>
         </div>
         <div>
-          <span className="lbl">Form</span>
-          <span className="val num">{recentRecord}</span>
+          <span className="lbl">{identityRecordLabel}</span>
+          <span className="val num">{identityRecordValue}</span>
         </div>
         <div>
           <span className="lbl">Intent</span>
