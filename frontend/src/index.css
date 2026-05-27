@@ -6462,12 +6462,14 @@ textarea:focus-visible {
 .ls-table thead th.num { text-align: center; }
 .ls-table tbody tr { border-bottom: 1px solid rgba(30,41,59,0.55); transition: background 140ms ease; }
 .ls-table tbody tr:hover { background: rgba(30,41,59,0.35); }
+.ls-table tbody tr[role="button"]:focus-visible { outline: 2px solid var(--dm-cyan); outline-offset: -2px; }
 .ls-table td { padding: 0.7rem 1rem; vertical-align: middle; }
 .ls-table td.num { text-align: center; }
 
 .ls-table tr.ls-user { background: rgba(34,211,238,0.06); border-left: 2px solid var(--dm-cyan); }
 .ls-table tr.ls-user:hover { background: rgba(34,211,238,0.10); }
 .ls-table tr.ls-user .club-name { color: var(--dm-cyan-bright); font-weight: 800; }
+.ls-table tr.ls-row-expanded { background: rgba(34,211,238,0.08); }
 
 .ls-rank { font-family: var(--font-mono); font-size: 0.9rem; font-weight: 800; display: inline-grid; place-items: center; min-width: 22px; }
 .ls-rank.in  { color: var(--dm-emerald-bright); }
@@ -6503,6 +6505,76 @@ textarea:focus-visible {
 .ls-legend-item { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.14em; color: var(--dm-text-muted); text-transform: uppercase; }
 .ls-legend-sep { color: var(--dm-border-strong); }
 .ls-legend-note { font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.12em; color: var(--dm-text-dead); text-transform: uppercase; }
+
+/* Navigation chevron */
+.ls-nav-th { width: 28px; padding: 0; }
+.ls-nav-cell { width: 28px; padding: 0.7rem 0.5rem 0.7rem 0; text-align: center; }
+.ls-nav-chevron { font-size: 1.1rem; font-weight: 700; color: var(--dm-text-dead); transition: color 140ms ease, transform 140ms ease; display: inline-block; }
+.ls-table tbody tr:hover .ls-nav-chevron { color: var(--dm-cyan-bright); transform: translateX(2px); }
+.ls-nav-chevron-inline { font-size: 0.85rem; font-weight: 700; color: var(--dm-cyan); vertical-align: middle; }
+
+/* Inline club history lane */
+.ls-history-row td { padding: 0; background: rgba(2,6,23,0.62); }
+.ls-history-lane {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(260px, 1.2fr);
+  gap: 1rem;
+  padding: 1rem 1.25rem 1.1rem;
+  border-top: 1px solid rgba(34,211,238,0.18);
+  border-bottom: 1px solid rgba(34,211,238,0.12);
+}
+.ls-history-summary { display: grid; gap: 0.32rem; align-content: start; }
+.ls-history-summary strong {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+}
+.ls-history-summary span:not(.dm-kicker),
+.ls-history-label,
+.ls-history-empty {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dm-text-muted);
+}
+.ls-history-results { display: grid; gap: 0.4rem; align-content: start; }
+.ls-history-match {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid rgba(30,41,59,0.85);
+  border-radius: 4px;
+  background: rgba(15,23,42,0.72);
+}
+.ls-history-match span {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dm-text-dead);
+  white-space: nowrap;
+}
+.ls-history-match strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #e2e8f0;
+}
+.ls-history-empty {
+  padding: 0.7rem;
+  border: 1px dashed rgba(100,116,139,0.42);
+  border-radius: 4px;
+}
 
 /* --- Side panels --- */
 .ls-panel {
@@ -6570,6 +6642,9 @@ textarea:focus-visible {
   .ls-glance { grid-template-columns: 1fr; }
   .ls-glance-cell { border-left: 0; border-top: 1px solid var(--dm-border); }
   .ls-glance-cell:first-child { border-top: 0; }
+  .ls-history-lane { grid-template-columns: 1fr; }
+  .ls-history-match { grid-template-columns: 38px minmax(150px, 1fr); }
+  .ls-history-match span:last-child { grid-column: 2; }
 }
 
 /* ============================================================
