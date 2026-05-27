@@ -30,7 +30,9 @@ test('replay header keeps the final survivor score visible from the first frame'
   );
 
   await page.getByRole('button', { name: /view full replay/i }).click();
-  await expect(
-    page.getByText(new RegExp(`^${homeSurvivors}\\s*[—-]\\s*${awaySurvivors}$`)),
-  ).toBeVisible();
+  const replayScoreboard = page.locator('.mr-scoreboard');
+  await expect(replayScoreboard).toBeVisible();
+  await expect(replayScoreboard.getByText(`+${Math.abs(homeSurvivors - awaySurvivors)} SURVIVORS`)).toBeVisible();
+  await expect(page.getByTestId('current-event-card')).toBeVisible();
+  await expect(page.getByText('Current Event')).toBeVisible();
 });

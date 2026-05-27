@@ -6854,6 +6854,53 @@ textarea:focus-visible {
 .mr-sidebar-meta b { color: #f1f5f9; font-weight: 700; }
 .mr-sidebar-meta .dot { color: var(--dm-border-strong); }
 
+.mr-current-card {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid rgba(34,211,238,0.22);
+  background: linear-gradient(180deg, rgba(34,211,238,0.12), rgba(2,6,23,0.35));
+}
+.mr-current-kicker {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--dm-cyan-bright);
+}
+.mr-current-kicker b { color: #f8fafc; font-weight: 800; }
+.mr-current-card > strong {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+}
+.mr-current-meta { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.mr-current-meta span {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dm-text-secondary);
+  border: 1px solid rgba(148,163,184,0.25);
+  border-radius: 3px;
+  padding: 0.12rem 0.35rem;
+  background: rgba(15,23,42,0.62);
+}
+.mr-current-card p,
+.mr-current-card small {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--dm-text-muted);
+}
+.mr-current-card small { color: var(--dm-text-dead); }
+
 .mr-log { overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: var(--dm-border-strong) transparent; }
 .mr-log::-webkit-scrollbar { width: 6px; }
 .mr-log::-webkit-scrollbar-thumb { background: var(--dm-border-strong); border-radius: 999px; }
@@ -6872,10 +6919,14 @@ textarea:focus-visible {
 }
 .mr-log-event:first-child { border-top: 0; }
 .mr-log-event:hover { background: rgba(34,211,238,0.04); }
-.mr-log-event.is-active { background: rgba(34,211,238,0.08); box-shadow: inset 2px 0 0 var(--dm-cyan); }
+.mr-log-event.is-active {
+  background: rgba(34,211,238,0.16);
+  box-shadow: inset 4px 0 0 var(--dm-cyan), 0 0 0 1px rgba(34,211,238,0.22);
+}
 .mr-log-rail { display: grid; gap: 4px; text-align: center; }
 .mr-log-tick { font-family: var(--font-mono); font-size: 0.74rem; font-weight: 800; color: var(--dm-text-muted); letter-spacing: 0.04em; }
 .mr-log-event.is-active .mr-log-tick { color: var(--dm-cyan-bright); }
+.mr-log-event.is-active .mr-log-title { color: #fff; }
 .mr-log-time { font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.1em; color: var(--dm-text-dead); }
 .mr-log-body { min-width: 0; }
 .mr-log-row { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }

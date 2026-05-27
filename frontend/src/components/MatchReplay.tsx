@@ -1,4 +1,4 @@
-import { memo, useMemo, useEffect, useState } from 'react';
+import { memo, useMemo, useEffect, useRef, useState } from 'react';
 
 import type { MatchReplayResponse, ReplayProofEvent } from '../types';
 
@@ -290,12 +290,67 @@ const chipClass = (resolution: string) => {
   return 'chip-throw';
 };
 
+const scoreDeltaLabel = (current?: ReplayProofEvent, previous?: ReplayProofEvent) => {
+  if (!current?.score_state) return 'No score state';
+  const prevHome = previous?.score_state?.home_living ?? current.score_state.home_living;
+  const prevAway = previous?.score_state?.away_living ?? current.score_state.away_living;
+  const homeDelta = current.score_state.home_living - prevHome;
+  const awayDelta = current.score_state.away_living - prevAway;
+  if (homeDelta === 0 && awayDelta === 0) return 'No survivor change';
+  const parts = [];
+  if (homeDelta !== 0) parts.push(`Home ${homeDelta > 0 ? '+' : ''}${homeDelta}`);
+  if (awayDelta !== 0) parts.push(`Away ${awayDelta > 0 ? '+' : ''}${awayDelta}`);
+  return parts.join(' / ');
+};
+
+const CurrentEventCard = ({
+  event,
+  eventIndex,
+  previousEvent,
+  totalEvents,
+}: {
+  event: ReplayProofEvent | undefined;
+  eventIndex: number;
+  previousEvent: ReplayProofEvent | undefined;
+  totalEvents: number;
+}) => {
+  if (!event) return null;
+  const actors = [event.thrower_name, event.target_name].filter(Boolean).join(' -> ') || 'Match event';
+  return (
+    <aside className="mr-current-card" data-testid="current-event-card" aria-label="Current replay event">
+      <div className="mr-current-kicker">
+        <span>Current Event</span>
+        <b>{eventIndex + 1}/{totalEvents}</b>
+      </div>
+      <strong>{actors}</strong>
+      <div className="mr-current-meta">
+        <span>T{event.tick}</span>
+        <span>{event.resolution}</span>
+        <span>{scoreDeltaLabel(event, previousEvent)}</span>
+      </div>
+      <p>{event.summary}</p>
+      {event.detail && <small>{event.detail}</small>}
+    </aside>
+  );
+};
+
 const EventLog = ({ events, activeIdx, onSelect }: { events: ReplayProofEvent[], activeIdx: number, onSelect: (i: number) => void }) => {
+  const rowRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+
+  useEffect(() => {
+    rowRefs.current[activeIdx]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [activeIdx]);
+
   return (
     <div className="mr-log">
       {events.map((ev, idx) => {
         return (
-          <button key={idx} className={`mr-log-event ${idx === activeIdx ? 'is-active' : ''}`} onClick={() => onSelect(idx)}>
+          <button
+            key={idx}
+            ref={(node) => { rowRefs.current[idx] = node; }}
+            className={`mr-log-event ${idx === activeIdx ? 'is-active' : ''}`}
+            onClick={() => onSelect(idx)}
+          >
             <div className="mr-log-rail">
               <span className="mr-log-tick">{(idx + 1).toString().padStart(2, '0')}</span>
               <span className="mr-log-time">T{ev.tick}</span>
@@ -467,6 +522,7 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
   }, [isPlaying, eventIndex, totalEvents]);
 
   const currentEvent = data.proof_events[eventIndex];
+  const previousEvent = eventIndex > 0 ? data.proof_events[eventIndex - 1] : undefined;
   const firstKeyPlayIdx = data.key_play_indices?.length > 0 ? data.key_play_indices[0] : 0;
 
   return (
@@ -522,6 +578,12 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
       </div>
 
       <div className="mr-sidebar-wrap">
+        <CurrentEventCard
+          event={currentEvent}
+          eventIndex={eventIndex}
+          previousEvent={previousEvent}
+          totalEvents={totalEvents}
+        />
         <div className="mr-sidebar-head">
           <span className="mr-sidebar-meta"><b>EVENT LOG</b></span>
           <div className="mr-sidebar-title">Match Flow</div>
