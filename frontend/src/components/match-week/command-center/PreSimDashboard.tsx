@@ -213,12 +213,20 @@ export function PreSimDashboard({
   const leagueRank = (userStanding && anyGamesPlayed)
     ? standings.findIndex(row => row.club_id === data.player_club_id) + 1
     : null;
+  // Form: record over the last up-to-5 played games (any stage incl. playoffs).
+  // Format is W-L or W-L-D when at least one draw is in the window. Empty -> em-dash.
   const recentResults = data.history
     .slice(-5)
     .map(record => record.dashboard?.result)
     .filter((result): result is string => Boolean(result));
   const recentWins = recentResults.filter(result => result === 'Win').length;
-  const recentRecord = recentResults.length ? `${recentWins}-${recentResults.length - recentWins}` : '—';
+  const recentLosses = recentResults.filter(result => result === 'Loss').length;
+  const recentDraws = recentResults.filter(result => result === 'Draw').length;
+  const recentRecord = recentResults.length
+    ? recentDraws > 0
+      ? `${recentWins}-${recentLosses}-${recentDraws}`
+      : `${recentWins}-${recentLosses}`
+    : '—';
   const latestDashboard = data.latest_dashboard;
   const lastRecord = data.history.length > 0 ? data.history[data.history.length - 1] : null;
   const seasonName = seasonTitle(data.season_id);
@@ -368,8 +376,8 @@ export function PreSimDashboard({
           <span className="val num">W{wk}{playoffStage ? ` · ${playoffStage}` : ''}</span>
         </div>
         <div>
-          <span className="lbl">Form</span>
-          <span className="val num">{recentRecord}</span>
+          <span className="lbl" title="Record over the last 5 played games">Form L5</span>
+          <span className="val num" title="Wins-Losses (with Draws appended when present) across the last 5 played games">{recentRecord}</span>
         </div>
         <div>
           <span className="lbl">Intent</span>
