@@ -226,6 +226,7 @@ def test_build_aftermath_falls_back_on_validator_error(monkeypatch, caplog):
     """Integration: when validate_postgame_payload raises, _build_aftermath
     returns the degraded payload AND logs ERROR."""
     import logging
+    import sqlite3
 
     from dodgeball_sim import use_cases
     from dodgeball_sim.postgame_validator import PostgameTruthError
@@ -253,8 +254,12 @@ def test_build_aftermath_falls_back_on_validator_error(monkeypatch, caplog):
     dashboard = {"result": "Match complete."}
 
     caplog.set_level(logging.ERROR, logger="dodgeball_sim.use_cases")
+    # Need a real conn because _build_aftermath now also computes development feedback.
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("CREATE TABLE club_rosters (club_id TEXT PRIMARY KEY, players_json TEXT)")
     aftermath = use_cases._build_aftermath(
-        conn=None,
+        conn=conn,
         dashboard=dashboard,
         record=record,
         season_id="s-1",
