@@ -74,7 +74,7 @@ export function LineupEditor({ roster, defaultLineup, onClose, onSaved }: Props)
       .sort((a, b) => b.overall - a.overall);
   }, [roster, starters]);
 
-  function commit(nextStarters: string[]) {
+  function commit(nextStarters: string[], offendingSlot: number | null = null) {
     setSaving(true);
     setError(null);
     setErrorSlot(null);
@@ -89,6 +89,17 @@ export function LineupEditor({ roster, defaultLineup, onClose, onSaved }: Props)
       .catch((err: unknown) => {
         if (err instanceof ApiError) {
           setError(reasonToMessage(err.message));
+          // Flash a red border on the slot the user just touched so the
+          // violation is keyed visually to the offending row, then clear.
+          if (
+            offendingSlot !== null &&
+            (err.message === 'not_on_roster' ||
+              err.message === 'duplicate' ||
+              err.message === 'position_count')
+          ) {
+            setErrorSlot(offendingSlot);
+            setTimeout(() => setErrorSlot(null), 2000);
+          }
         } else {
           setError('Failed to save lineup.');
         }
@@ -110,9 +121,10 @@ export function LineupEditor({ roster, defaultLineup, onClose, onSaved }: Props)
       return;
     }
     const next = [...starters];
-    next[selectedSlot] = benchPlayerId;
+    const slotIdx = selectedSlot;
+    next[slotIdx] = benchPlayerId;
     setSelectedSlot(null);
-    commit(next);
+    commit(next, slotIdx);
   }
 
   function handleReset() {
@@ -123,11 +135,11 @@ export function LineupEditor({ roster, defaultLineup, onClose, onSaved }: Props)
     setStatusNote(null);
     commandApi
       .clearLineup()
-      .then(() => {
+      .then((result) => {
         setStatusNote('Reset to auto-pick.');
-        // Don't try to predict the resolved order; bounce the user out so
-        // the parent screen re-fetches the freshly-resolved roster.
-        onSaved([]);
+        // Server returns the freshly-resolved auto-fill ordering so the
+        // parent can update its cached roster view immediately.
+        onSaved(result.ordered_player_ids ?? []);
         onClose();
       })
       .catch(() => setError('Failed to clear lineup override.'))

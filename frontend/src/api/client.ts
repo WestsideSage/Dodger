@@ -95,7 +95,10 @@ export const commandApi = {
       { starter_ids: starterIds },
     ),
   clearLineup: () =>
-    apiPost<{ status: string; warnings: string[] }>('/api/lineup', { starter_ids: null }),
+    apiPost<{ status: string; ordered_player_ids: string[]; warnings: string[] }>(
+      '/api/lineup',
+      { starter_ids: null },
+    ),
   simulate: (body: { intent?: string }) =>
     apiPost<CommandCenterSimResponse>('/api/command-center/simulate', body),
   replay: (matchId: string) =>
