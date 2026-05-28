@@ -105,7 +105,7 @@ def save_command_center_plan_payload(conn: sqlite3.Connection, update: dict[str,
                     {
                         "id": players_by_id[player_id].id,
                         "name": players_by_id[player_id].name,
-                        "overall": round(players_by_id[player_id].overall_skill(), 1),
+                        "overall": players_by_id[player_id].overall_skill(),
                     }
                     for player_id in selected
                 ],

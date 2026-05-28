@@ -88,7 +88,7 @@ def build_matchup_details(
         focal_player = max(opponent_roster, key=lambda p: (p.overall_skill(), p.id))
         key_matchup = (
             f"{focal_player.name}, {focal_player.archetype.display_name}, "
-            f"{round(focal_player.overall_skill())} OVR"
+            f"{focal_player.overall_skill()} OVR"
         )
     else:
         key_matchup = "Opponent roster unavailable."

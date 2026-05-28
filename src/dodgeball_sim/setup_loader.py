@@ -50,22 +50,22 @@ def _player_from_dict(payload: Dict[str, Any]) -> Player:
         ) from exc
 
     ratings = PlayerRatings(
-        accuracy=ratings_payload["accuracy"],
-        power=ratings_payload["power"],
-        dodge=ratings_payload["dodge"],
-        catch=ratings_payload["catch"],
-        stamina=ratings_payload["stamina"],
-        tactical_iq=ratings_payload["tactical_iq"],
-        catch_courage=ratings_payload["catch_courage"],
-        throw_selection_iq=ratings_payload["throw_selection_iq"],
-        conditioning_curve=ratings_payload["conditioning_curve"],
+        accuracy=int(round(float(ratings_payload["accuracy"]))),
+        power=int(round(float(ratings_payload["power"]))),
+        dodge=int(round(float(ratings_payload["dodge"]))),
+        catch=int(round(float(ratings_payload["catch"]))),
+        stamina=int(round(float(ratings_payload["stamina"]))),
+        tactical_iq=int(round(float(ratings_payload["tactical_iq"]))),
+        catch_courage=int(round(float(ratings_payload["catch_courage"]))),
+        throw_selection_iq=int(round(float(ratings_payload["throw_selection_iq"]))),
+        conditioning_curve=int(round(float(ratings_payload["conditioning_curve"]))),
     ).apply_bounds()
 
     traits = PlayerTraits(
-        potential=traits_payload.get("potential", 50.0),
-        growth_curve=traits_payload.get("growth_curve", 50.0),
-        consistency=traits_payload.get("consistency", 50.0),
-        pressure=traits_payload.get("pressure", 50.0),
+        potential=int(round(float(traits_payload.get("potential", 50.0)))),
+        growth_curve=15 if str(traits_payload.get("growth_curve")).lower().strip() == "early" else (85 if str(traits_payload.get("growth_curve")).lower().strip() == "late" else (50 if str(traits_payload.get("growth_curve")).lower().strip() == "steady" else int(round(float(traits_payload.get("growth_curve", 50.0)))))),
+        consistency=int(round(float(traits_payload.get("consistency", 50.0)) * 100)) if float(traits_payload.get("consistency", 50.0)) <= 1.0 else int(round(float(traits_payload.get("consistency", 50.0)))),
+        pressure=int(round(float(traits_payload.get("pressure", 50.0)) * 100)) if float(traits_payload.get("pressure", 50.0)) <= 1.0 else int(round(float(traits_payload.get("pressure", 50.0)))),
     )
 
     return Player(

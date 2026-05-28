@@ -272,9 +272,9 @@ def _print_roster(conn: sqlite3.Connection, club: Club, roster: List[Player]) ->
     _print_divider()
     for player in sorted(roster, key=lambda item: (-item.overall_skill(), item.id)):
         print(
-            f"  {player.id:<22} age={player.age:<2} ovr={player.overall_skill():>5.1f} "
-            f"ACC={player.ratings.accuracy:>5.1f} POW={player.ratings.power:>5.1f} "
-            f"DOD={player.ratings.dodge:>5.1f} CAT={player.ratings.catch:>5.1f} "
+            f"  {player.id:<22} age={player.age:<2} ovr={player.overall_skill():>3d} "
+            f"ACC={player.ratings.accuracy:>3d} POW={player.ratings.power:>3d} "
+            f"DOD={player.ratings.dodge:>3d} CAT={player.ratings.catch:>3d} "
             f"{'rookie' if player.newcomer else ''}"
         )
         print(f"    {_identity_summary(conn, player)}")
@@ -289,7 +289,7 @@ def _print_free_agents(players: List[Player]) -> None:
         print("  No free agents available.")
     for player in sorted(players, key=lambda item: (-item.overall_skill(), item.id)):
         print(
-            f"  {player.id:<22} age={player.age:<2} ovr={player.overall_skill():>5.1f} "
+            f"  {player.id:<22} age={player.age:<2} ovr={player.overall_skill():>3d} "
             f"newcomer={'yes' if player.newcomer else 'no ':<3} name={player.name}"
         )
     _print_divider("=")
@@ -350,12 +350,12 @@ def _print_player_page(
     print(f"  Player Page: {player.name}")
     _print_divider()
     print(f"  Club: {club_name}")
-    print(f"  Age: {player.age}  Overall: {player.overall_skill():.1f}")
+    print(f"  Age: {player.age}  Overall: {player.overall_skill()}")
     if identity:
         print(f"  Nickname: {identity['nickname']}  |  Archetype: {identity['archetype']}")
     print(
-        f"  Ratings: ACC={player.ratings.accuracy:.1f} POW={player.ratings.power:.1f} "
-        f"DOD={player.ratings.dodge:.1f} CAT={player.ratings.catch:.1f} STA={player.ratings.stamina:.1f}"
+        f"  Ratings: ACC={player.ratings.accuracy} POW={player.ratings.power} "
+        f"DOD={player.ratings.dodge} CAT={player.ratings.catch} STA={player.ratings.stamina}"
     )
     if career_summary:
         print(
@@ -1203,9 +1203,9 @@ def _ensure_offseason_initialized(
             development_rows.append(
                 {
                     "player_id": aged.id,
-                    "before": round(player.overall_skill(), 2),
-                    "after": round(aged.overall_skill(), 2),
-                    "delta": round(aged.overall_skill() - player.overall_skill(), 2),
+                    "before": player.overall_skill(),
+                    "after": aged.overall_skill(),
+                    "delta": aged.overall_skill() - player.overall_skill(),
                 }
             )
             next_roster.append(aged)
@@ -1735,8 +1735,8 @@ def _update_story_and_history(
     for row in cursor.fetchall():
         home_roster = rosters[row["home_club_id"]]
         away_roster = rosters[row["away_club_id"]]
-        home_ovr = sum(player.overall_skill() for player in home_roster) / max(1, len(home_roster))
-        away_ovr = sum(player.overall_skill() for player in away_roster) / max(1, len(away_roster))
+        home_ovr = round(sum(player.overall_skill() for player in home_roster) / max(1, len(home_roster)))
+        away_ovr = round(sum(player.overall_skill() for player in away_roster) / max(1, len(away_roster)))
         winner_id = row["winner_club_id"] or row["home_club_id"]
         loser_id = row["away_club_id"] if winner_id == row["home_club_id"] else row["home_club_id"]
         winner_score = row["home_survivors"] if winner_id == row["home_club_id"] else row["away_survivors"]

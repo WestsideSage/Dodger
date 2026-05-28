@@ -712,6 +712,7 @@ export interface DevelopmentPlayer {
     ovr_before: number;
     ovr_after: number;
     delta: number;
+    notes?: string[];
 }
 
 export interface DevelopmentBeatPayload {
@@ -734,6 +735,8 @@ export interface RecruitmentProspectChoice {
     hometown: string;
     archetype: string;
     kind: 'prospect' | 'free_agent';
+    pipeline_tier?: number;
+    fit_score?: number;
 }
 
 export interface SigningCard {
@@ -873,6 +876,7 @@ export interface DynastyOfficeResponse {
             public_archetype: string;
             public_ovr_band: number[];
             fit_score: number;
+            pipeline_tier: number;
             promise_options: string[];
             active_promise: { promise_type: string; status: string } | null;
             interest_evidence: string[];

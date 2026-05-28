@@ -215,15 +215,15 @@ def generate_prospect_pool(
         )
         potential_ceiling = rng.roll(55.0, 96.0)
         ratings = {
-            "accuracy": round(rng.roll(35.0, potential_ceiling - 4.0), 2),
-            "power": round(rng.roll(35.0, potential_ceiling - 4.0), 2),
-            "dodge": round(rng.roll(35.0, potential_ceiling - 4.0), 2),
-            "catch": round(rng.roll(35.0, potential_ceiling - 4.0), 2),
-            "stamina": round(rng.roll(40.0, min(88.0, potential_ceiling - 2.0)), 2),
-            "tactical_iq": round(rng.roll(35.0, potential_ceiling - 4.0), 2),
-            "catch_courage": round(rng.roll(35.0, potential_ceiling - 4.0), 2),
-            "throw_selection_iq": round(rng.roll(35.0, potential_ceiling - 4.0), 2),
-            "conditioning_curve": round(rng.roll(35.0, potential_ceiling - 4.0), 2),
+            "accuracy": int(round(rng.roll(35.0, potential_ceiling - 4.0))),
+            "power": int(round(rng.roll(35.0, potential_ceiling - 4.0))),
+            "dodge": int(round(rng.roll(35.0, potential_ceiling - 4.0))),
+            "catch": int(round(rng.roll(35.0, potential_ceiling - 4.0))),
+            "stamina": int(round(rng.roll(40.0, min(88.0, potential_ceiling - 2.0)))),
+            "tactical_iq": int(round(rng.roll(35.0, potential_ceiling - 4.0))),
+            "catch_courage": int(round(rng.roll(35.0, potential_ceiling - 4.0))),
+            "throw_selection_iq": int(round(rng.roll(35.0, potential_ceiling - 4.0))),
+            "conditioning_curve": int(round(rng.roll(35.0, potential_ceiling - 4.0))),
         }
         trajectory = _draw_trajectory(rng, config)
 
@@ -271,6 +271,7 @@ def generate_prospect_pool(
                 hidden_traits=traits,
                 public_archetype_guess=public_archetype,
                 public_ratings_band={"ovr": (public_low, public_high)},
+                pipeline_tier=int(rng.roll(1, 5.999)),
             )
         )
     return prospects

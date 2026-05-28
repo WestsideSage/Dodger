@@ -19,8 +19,8 @@ class MatchdayResult:
     loser_club_name: str
     winner_score: int
     loser_score: int
-    winner_pre_match_overall: float
-    loser_pre_match_overall: float
+    winner_pre_match_overall: int
+    loser_pre_match_overall: int
     milestone_player_id: str | None = None
     milestone_player_name: str = ""
     milestone_label: str = ""
@@ -126,7 +126,7 @@ def generate_matchday_news(
 
     for result in results:
         upset_gap = result.loser_pre_match_overall - result.winner_pre_match_overall
-        if upset_gap >= 8.0:
+        if upset_gap >= 8:
             candidates.append(
                 Headline(
                     category="big_upset",

@@ -135,7 +135,7 @@ def _prospect_rows(
     rows = []
     for prospect in prospects[:8]:
         low, high = prospect.public_ratings_band["ovr"]
-        fit_score = round(((low + high) / 2.0) + credibility["score"] * 0.12, 1)
+        fit_score = round(((low + high) / 2.0) + credibility["score"] * 0.12)
         pid = prospect.player_id
         p_actions = actions.get(pid, {})
         rows.append({
@@ -149,9 +149,11 @@ def _prospect_rows(
             "active_promise": promised.get(pid),
             "interest_evidence": [
                 f"Public range {low}-{high}.",
+                f"Pipeline Tier {prospect.pipeline_tier} base interest.",
                 f"Credibility grade {credibility['grade']} contributes to interest.",
                 "No hidden promise effect is applied until a promise is saved.",
             ],
+            "pipeline_tier": prospect.pipeline_tier,
             "scouted": p_actions.get("scouted", False),
             "contacted": p_actions.get("contacted", False),
             "visited": p_actions.get("visited", False),

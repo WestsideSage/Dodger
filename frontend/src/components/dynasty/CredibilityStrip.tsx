@@ -41,7 +41,7 @@ export function CredibilityStrip({
         <div className="halo" />
       </div>
 
-      <div className="do-cred-main">
+      <div className="do-cred-main" title="Program credibility dictates the tier of prospects that are interested in your program. Win matches, increase your credibility, and sign better recruits.">
         <span className="dm-kicker">Program Credibility</span>
         <h2 className="do-cred-title">Tier {credibility.grade} · Regional</h2>
         <p className="do-cred-blurb">Recruit quality rises with the program. This board reflects your live week, current score, and open recruiting pressure.</p>

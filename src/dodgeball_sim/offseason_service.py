@@ -183,7 +183,7 @@ def recruit_offseason_payload(
             {
                 "id": signed.id,
                 "name": signed.name,
-                "overall": round(signed.overall_skill(), 1),
+                "overall": signed.overall_skill(),
                 "age": signed.age,
             }
             if signed

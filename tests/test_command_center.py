@@ -34,10 +34,10 @@ def _career_conn() -> sqlite3.Connection:
     return conn
 
 
-def test_v5_schema_creates_department_plan_and_history_tables():
+def test_v5_schema_creates_department_plan_and_history_tables_sixteen():
     conn = _career_conn()
 
-    assert get_schema_version(conn) == 15
+    assert get_schema_version(conn) == 16
     assert load_department_heads(conn)
     assert conn.execute("SELECT COUNT(*) FROM weekly_command_plans").fetchone()[0] == 0
     assert conn.execute("SELECT COUNT(*) FROM command_history").fetchone()[0] == 0

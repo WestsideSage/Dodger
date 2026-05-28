@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
 from .career_setup import initialize_curated_manager_career
-from .persistence import connect, set_state
+from .persistence import connect, load_prospect_pool, set_state
 from .sample_data import curated_clubs
 
 
@@ -63,7 +64,6 @@ def looks_like_dodgeball_save(path: Path) -> bool:
 
 def read_save_meta(path: Path) -> dict[str, Any]:
     import os
-    import json
     last_modified = 0.0
     try:
         last_modified = os.path.getmtime(path)
@@ -226,7 +226,7 @@ def starting_prospects_payload() -> dict[str, Any]:
         true_archetype_label = _display_name_for_archetype(
             derive_archetype(ratings), ratings
         )
-        true_overall = int(round(ratings.overall_skill()))
+        true_overall = ratings.overall_skill()
         prospects_out.append(
             {
                 "player_id": prospect.player_id,
@@ -312,6 +312,17 @@ def build_from_scratch_save(saves_dir: Path, request: dict[str, Any]) -> dict[st
             ruleset_selection=request.get("ruleset_selection"),
         )
         set_state(conn, "coach_backstory", request["coach_backstory"])
+
+        # Seed 3 warm prospects from the active career pool.
+        remaining_prospects = load_prospect_pool(conn, class_year=1)
+        remaining_prospects.sort(key=lambda p: (-p.pipeline_tier, p.player_id))
+        warm = remaining_prospects[:3]
+        warm_actions = {
+            p.player_id: {"scouted": True, "contacted": True}
+            for p in warm
+        }
+        set_state(conn, "prospect_recruitment_actions_json", json.dumps(warm_actions))
+
         conn.commit()
     finally:
         conn.close()

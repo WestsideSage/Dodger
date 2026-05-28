@@ -5,8 +5,8 @@ from enum import Enum
 from typing import Iterable, List, Tuple
 
 
-_RATING_MIN = 0.0
-_RATING_MAX = 100.0
+_RATING_MIN = 0
+_RATING_MAX = 100
 
 
 class PlayerArchetype(str, Enum):
@@ -54,21 +54,21 @@ class OpeningRushTarget(str, Enum):
     CENTER = "center"
 
 
-def _clamp_rating(value: float) -> float:
-    return max(_RATING_MIN, min(_RATING_MAX, float(value)))
+def _clamp_rating(value: int | float) -> int:
+    return max(_RATING_MIN, min(_RATING_MAX, int(round(float(value)))))
 
 
 @dataclass(frozen=True)
 class PlayerRatings:
-    accuracy: float
-    power: float
-    dodge: float
-    catch: float
-    stamina: float = 50.0
-    tactical_iq: float = 50.0
-    catch_courage: float = 50.0
-    throw_selection_iq: float = 50.0
-    conditioning_curve: float = 50.0
+    accuracy: int
+    power: int
+    dodge: int
+    catch: int
+    stamina: int = 50
+    tactical_iq: int = 50
+    catch_courage: int = 50
+    throw_selection_iq: int = 50
+    conditioning_curve: int = 50
 
     def normalized_accuracy(self) -> float:
         return self.accuracy / _RATING_MAX
@@ -94,10 +94,10 @@ class PlayerRatings:
     def normalized_conditioning_curve(self) -> float:
         return self.conditioning_curve / _RATING_MAX
 
-    def fatigue_ceiling(self) -> float:
-        return max(10.0, self.stamina)
+    def fatigue_ceiling(self) -> int:
+        return max(10, self.stamina)
 
-    def overall_skill(self) -> float:
+    def overall_skill(self) -> int:
         stats = [
             self.accuracy,
             self.power,
@@ -105,7 +105,7 @@ class PlayerRatings:
             self.catch,
             self.stamina,
         ]
-        return sum(stats) / len(stats)
+        return int(round(sum(stats) / len(stats)))
 
     def identity_profile(self) -> "IdentityProfile":
         return IdentityProfile(
@@ -133,18 +133,18 @@ class PlayerRatings:
 class IdentityProfile:
     """Behavioral identity traits surfaced as text, never averaged into skill OVR."""
 
-    catch_courage: float
-    throw_selection_iq: float
-    conditioning_curve: float
-    tactical_iq: float
+    catch_courage: int
+    throw_selection_iq: int
+    conditioning_curve: int
+    tactical_iq: int
 
 
 @dataclass(frozen=True)
 class PlayerTraits:
-    potential: float = 50.0
-    growth_curve: float = 50.0
-    consistency: float = 50.0
-    pressure: float = 50.0
+    potential: int = 50
+    growth_curve: int = 50
+    consistency: int = 50
+    pressure: int = 50
 
 
 @dataclass(frozen=True)
@@ -167,7 +167,7 @@ class Player:
             except ValueError as e:
                 raise ValueError(f"Invalid archetype: {self.archetype}") from e
 
-    def overall_skill(self) -> float:
+    def overall_skill(self) -> int:
         return self.ratings.overall_skill()
 
     def identity_profile(self) -> IdentityProfile:

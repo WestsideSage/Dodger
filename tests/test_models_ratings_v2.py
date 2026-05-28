@@ -31,6 +31,30 @@ def test_v2_fields_clamp_at_bounds():
     assert ratings.conditioning_curve == 100.0
 
 
+def test_apply_bounds_rounds_player_ratings_to_integers():
+    ratings = PlayerRatings(
+        accuracy=60.4,
+        power=60.5,
+        dodge=60.6,
+        catch=60.49,
+        stamina=60.51,
+        tactical_iq=49.5,
+        catch_courage=72.4,
+        throw_selection_iq=33.6,
+        conditioning_curve=88.5,
+    ).apply_bounds()
+
+    assert ratings.accuracy == 60
+    assert ratings.power == 60
+    assert ratings.dodge == 61
+    assert ratings.catch == 60
+    assert ratings.stamina == 61
+    assert ratings.tactical_iq == 50
+    assert ratings.catch_courage == 72
+    assert ratings.throw_selection_iq == 34
+    assert ratings.conditioning_curve == 88
+
+
 def test_v2_fields_explicit_values_preserved():
     ratings = PlayerRatings(
         accuracy=60,

@@ -123,7 +123,7 @@ def build_signing_card(
     if player is not None:
         name = player.name
         try:
-            ovr = int(round(player.overall_skill()))
+            ovr = player.overall_skill()
         except Exception:
             ovr = None
         role = getattr(player, "archetype", "") or ""

@@ -284,7 +284,7 @@ export function StartingRecruitmentStep({
             disabled={rosterIds.size < 6 || creating}
             aria-describedby="starting-roster-help"
           >
-            {creating ? 'Creating...' : `Commit Roster (${rosterIds.size}/10)`}
+            {creating ? 'Creating...' : `Next: Commit Roster (${rosterIds.size}/10)`}
           </ActionButton>
         </div>
         <p

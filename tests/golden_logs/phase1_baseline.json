@@ -76,24 +76,24 @@
           "scores": [
             {
               "player_id": "lunar_anchor",
-              "score": 0.6276,
-              "normalized_overall": 0.634,
+              "score": 0.6241,
+              "normalized_overall": 0.63,
               "vulnerability": 0.38,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.0
             },
             {
               "player_id": "lunar_captain",
-              "score": 0.6254,
-              "normalized_overall": 0.624,
+              "score": 0.6219,
+              "normalized_overall": 0.62,
               "vulnerability": 0.43,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.0
             },
             {
               "player_id": "lunar_spotter",
-              "score": 0.5695,
-              "normalized_overall": 0.562,
+              "score": 0.5677,
+              "normalized_overall": 0.56,
               "vulnerability": 0.42,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.0
@@ -216,16 +216,16 @@
           "scores": [
             {
               "player_id": "aurora_rookie",
-              "score": 0.5529,
-              "normalized_overall": 0.574,
+              "score": 0.553,
+              "normalized_overall": 0.57,
               "vulnerability": 0.48,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.0
             },
             {
               "player_id": "aurora_scout",
-              "score": 0.4459,
-              "normalized_overall": 0.604,
+              "score": 0.4461,
+              "normalized_overall": 0.6,
               "vulnerability": 0.36,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.0
@@ -343,16 +343,16 @@
           "scores": [
             {
               "player_id": "lunar_anchor",
-              "score": 0.7133,
-              "normalized_overall": 0.634,
+              "score": 0.7097,
+              "normalized_overall": 0.63,
               "vulnerability": 0.38,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.575
             },
             {
               "player_id": "lunar_spotter",
-              "score": 0.6547,
-              "normalized_overall": 0.562,
+              "score": 0.6529,
+              "normalized_overall": 0.56,
               "vulnerability": 0.42,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.0
@@ -455,16 +455,16 @@
           "scores": [
             {
               "player_id": "aurora_rookie",
-              "score": 0.4707,
-              "normalized_overall": 0.574,
+              "score": 0.4709,
+              "normalized_overall": 0.57,
               "vulnerability": 0.48,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.5
             },
             {
               "player_id": "aurora_scout",
-              "score": 0.3638,
-              "normalized_overall": 0.604,
+              "score": 0.364,
+              "normalized_overall": 0.6,
               "vulnerability": 0.36,
               "ball_holder_pressure": 1.0,
               "fatigue": 1.0
@@ -584,8 +584,8 @@
           "scores": [
             {
               "player_id": "lunar_spotter",
-              "score": 0.6272,
-              "normalized_overall": 0.562,
+              "score": 0.6254,
+              "normalized_overall": 0.56,
               "vulnerability": 0.42,
               "ball_holder_pressure": 0.0,
               "fatigue": 0.0
@@ -700,8 +700,8 @@
           "scores": [
             {
               "player_id": "aurora_rookie",
-              "score": 0.5401,
-              "normalized_overall": 0.574,
+              "score": 0.5402,
+              "normalized_overall": 0.57,
               "vulnerability": 0.48,
               "ball_holder_pressure": 0.0,
               "fatigue": 1.0
@@ -799,8 +799,8 @@
           "scores": [
             {
               "player_id": "lunar_spotter",
-              "score": 0.6112,
-              "normalized_overall": 0.562,
+              "score": 0.6095,
+              "normalized_overall": 0.56,
               "vulnerability": 0.42,
               "ball_holder_pressure": 1.0,
               "fatigue": 1.5

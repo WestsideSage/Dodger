@@ -71,14 +71,15 @@ class Prospect:
     name: str
     age: int
     hometown: str
-    hidden_ratings: Dict[str, float]
+    hidden_ratings: Dict[str, int]
     hidden_trajectory: str
     hidden_traits: List[str]
     public_archetype_guess: str
     public_ratings_band: Dict[str, Tuple[int, int]]
+    pipeline_tier: int = 1
 
-    def true_overall(self) -> float:
-        return sum(self.hidden_ratings.values()) / len(self.hidden_ratings)
+    def true_overall(self) -> int:
+        return round(sum(self.hidden_ratings.values()) / len(self.hidden_ratings))
 
     def true_archetype(self) -> str:
         ratings = PlayerRatings(
@@ -801,7 +802,7 @@ def _estimate_ratings_band_from_state(
     state: ScoutingState,
     prospect: Prospect,
 ) -> Dict[str, Tuple[int, int]]:
-    true_ovr = int(round(prospect.true_overall()))
+    true_ovr = prospect.true_overall()
     if state.ratings_tier == ScoutingTier.VERIFIED.value:
         return {"ovr": (true_ovr, true_ovr)}
     if state.ratings_tier == ScoutingTier.KNOWN.value:

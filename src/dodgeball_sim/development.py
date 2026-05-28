@@ -110,7 +110,12 @@ def apply_season_development(
     base_growth = (reps / 1000.0) * 15.0
 
     # 2. Potential Modifier
-    potential_modifier = 1.0 + ((potential - 50.0) / 100.0)
+    # Scale aggressively so Elite players grow much faster
+    potential_diff = potential - 50.0
+    if potential_diff > 0:
+        potential_modifier = 1.0 + (potential_diff / 40.0) ** 1.5
+    else:
+        potential_modifier = max(0.2, 1.0 + (potential_diff / 50.0))
 
     # 3. Focus Multipliers
     multipliers = {
@@ -145,7 +150,8 @@ def apply_season_development(
     # 4. Final Allocation weighting
     pool = base_growth * potential_modifier * growth_multiplier
     effective_staff_modifier = max(0.0, staff_development_modifier)
-    pool = pool * (1.0 + effective_staff_modifier)
+    flat_bonus = effective_staff_modifier * 20.0
+    pool = pool * (1.0 + effective_staff_modifier) + flat_bonus
     
     primary_stats = _primary_stats_for_archetype(player.archetype, player.ratings)
     total_primary_weight = sum(weight for _, weight in primary_stats)
@@ -164,9 +170,15 @@ def apply_season_development(
         if player.age > peak_end:
             decline_years = player.age - peak_end
             performance = _performance_signal(season_stats)
-            delta = -0.18 * decline_years + performance * 0.08 + f_bonus * 0.25 + noise * 0.4
+            # Decline mitigated by performance, facility, and staff
+            delta_f = -0.5 * decline_years + performance * 0.5 + f_bonus * 0.5 + noise * 0.5 + (effective_staff_modifier * 2.0)
+            delta = int(round(delta_f))
+            # Don't let it be positive from mitigation alone unless performance was great
+            if delta > 0 and performance < 0.5:
+                delta = 0
         else:
-            delta = slice_amount + f_bonus + noise
+            delta_f = slice_amount + f_bonus + noise
+            delta = int(round(delta_f))
             
         deltas[stat] = delta
 
@@ -179,10 +191,21 @@ def apply_season_development(
         tactical_iq=_apply_delta(ratings.tactical_iq, deltas["tactical_iq"], potential),
         catch_courage=_apply_delta(ratings.catch_courage, deltas["catch_courage"], potential),
         throw_selection_iq=_apply_delta(ratings.throw_selection_iq, deltas["throw_selection_iq"], potential),
-        conditioning_curve=_apply_delta(ratings.conditioning_curve, deltas["conditioning_curve"], potential),
+        conditioning_curve=_apply_delta(ratings.conditioning_curve, deltas["conditioning_curve"], int(potential)),
     ).apply_bounds()
     
-    return replace(player, ratings=next_ratings, newcomer=False)
+    # Dev trait upgrades
+    new_potential = int(potential)
+    if player.age <= peak_end:
+        # Check if they had a great season and good coaching
+        performance = _performance_signal(season_stats)
+        upgrade_chance = (performance * 0.5) + (effective_staff_modifier * 0.5)
+        if upgrade_chance > 0.6 and rng.unit() < upgrade_chance:
+            new_potential = min(100, new_potential + rng.randint(2, 6))
+            
+    next_traits = replace(player.traits, potential=new_potential)
+    
+    return replace(player, ratings=next_ratings, traits=next_traits, newcomer=False)
 
 
 def should_retire(player: Player, career_stats: Mapping[str, float] | None) -> bool:
@@ -196,11 +219,11 @@ def should_retire(player: Player, career_stats: Mapping[str, float] | None) -> b
         return True
     if player.age < 34:
         return False
-    if player.age >= 38 and overall < 58.0:
+    if player.age >= 38 and overall < 58:
         return True
     if player.age >= 36 and seasons_played >= 8 and recent_eliminations < 4.0:
         return True
-    if player.age >= 34 and seasons_played >= 10 and overall < 52.0:
+    if player.age >= 34 and seasons_played >= 10 and overall < 52:
         return True
     return False
 
@@ -224,11 +247,11 @@ def pressure_context(player: Player, reason: str | None) -> dict[str, float | bo
     }
 
 
-def _apply_delta(current_value: float, delta: float, potential: float) -> float:
+def _apply_delta(current_value: int, delta: int, potential: int) -> int:
     if delta >= 0:
         growth_cap = max(current_value, potential)
         return min(growth_cap, current_value + delta)
-    return max(1.0, current_value + delta)
+    return max(1, current_value + delta)
 
 
 def _performance_signal(season_stats: PlayerMatchStats) -> float:

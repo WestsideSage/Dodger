@@ -53,9 +53,20 @@ export function DevelopmentResults({
                                     gap: '1rem',
                                 }}
                             >
-                                <span style={{ flex: 1, color: '#e2e8f0', fontSize: '0.9rem', fontWeight: 500 }}>
-                                    {player.name}
-                                </span>
+                                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '0.25rem' }}>
+                                    <span style={{ color: '#e2e8f0', fontSize: '0.9rem', fontWeight: 500 }}>
+                                        {player.name}
+                                    </span>
+                                    {player.notes && player.notes.length > 0 && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                            {player.notes.map((note: string, idx: number) => (
+                                                <span key={idx} style={{ color: '#fbbf24', fontSize: '0.75rem', fontStyle: 'italic' }}>
+                                                    ✨ {note}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                                 <span style={{ color: '#64748b', fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums' }}>
                                     {ovrDisplay}
                                 </span>

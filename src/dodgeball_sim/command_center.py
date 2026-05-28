@@ -37,7 +37,7 @@ def _player_summary(player: Player) -> dict[str, Any]:
     return {
         "id": player.id,
         "name": player.name,
-        "overall": round(player.overall_skill(), 1),
+        "overall": player.overall_skill(),
         "age": player.age,
         "potential": player.traits.potential,
         "stamina": player.ratings.stamina,
