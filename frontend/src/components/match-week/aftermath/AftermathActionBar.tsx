@@ -1,8 +1,6 @@
 function advanceLabel(result?: string): string {
   if (result === 'Win') return 'BANK THE RESULT →';
-  if (result === 'Loss') return 'MOVE ON →';
-  if (result === 'Draw') return 'SHAKE IT OFF →';
-  return 'MOVE ON →';
+  return 'NEXT WEEK →';
 }
 
 export function AftermathActionBar({
