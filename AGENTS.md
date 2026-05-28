@@ -1,3 +1,7 @@
+# IMPORTANT
+
+ALWAYS use Pare MCP commands (a tool that returns structured JSON to help reduce token usage while preserving vital information) when necessary and where applicable. If Pare is unavailable, unsuitable for the task, or raw command output is required, fall back to normal shell/git commands and state that fallback in the handoff.
+
 # Repository Guidelines
 
 ## Project Shape
@@ -46,32 +50,27 @@ The project has three main layers:
 
 The web app is the supported foundation. `server.py` wraps the domain and persistence layers for the React client; new player-facing work should target the web surface.
 
-## Current Facts Worth Remembering
+## Documentation Routing & Read Order
 
-- `Club` is the persistent franchise entity; `Team` is the immutable match-time snapshot.
-- `franchise.build_match_team_snapshot()` bridges Club/roster data into match teams.
-- `MatchResult` uses `winner_team_id`, not `.winner`.
-- `CoachPolicy` has 8 fields: `target_stars`, `target_ball_holder`, `risk_tolerance`, `sync_throws`, `rush_frequency`, `rush_proximity`, `tempo`, and `catch_bias`.
-- Save/resume is governed by `CareerStateCursor` in `career_state.py`.
-- Offseason ceremony keys are: `champion`, `recap`, `awards`, `records_ratified`, `hof_induction`, `development`, `retirements`, `rookie_class_preview`, `recruitment`, `schedule_reveal`.
-- Prospect scouting progresses `UNKNOWN -> GLIMPSED -> KNOWN -> VERIFIED`; carry-forward decay happens through `apply_scouting_carry_forward_at_transition(conn, prior_class_year)`.
+Required read order and source-of-truth hierarchy:
+1. `AGENTS.md` (this file): Durable repo rules and architecture boundaries.
+2. `docs/README.md`: Documentation map.
+3. `docs/STATUS.md`: Current build state, current implementation phase, and open work.
+4. `docs/specs/MILESTONES.md`: Milestone history/index (not the sole source of current work).
+5. Active spec / issue / handoff: Task-specific intent.
+6. Source code and tests: Final authority when docs disagree.
 
-## Milestones
+For GitHub issue work, read `docs/agents/issue-tracker.md` and `docs/agents/triage-labels.md` before creating, labeling, closing, or triaging issues.
 
-Read `docs/README.md` before documentation, milestone, workflow, or handoff work. Read `docs/STATUS.md` for current build state and open work, and `docs/specs/MILESTONES.md` before milestone work.
+Model-specific files like `CLAUDE.md` and `GEMINI.md` may add workflow preferences, but they do not override root `AGENTS.md` unless Maurice explicitly says so.
 
-Current orientation:
+**Anti-Staleness Rule:**
+Do not store fast-moving implementation facts, API field lists, shipped-milestone rosters, or current-phase labels in root `AGENTS.md`, `CLAUDE.md`, or `GEMINI.md`. Put current implementation state in `docs/STATUS.md`; put milestone history in `docs/specs/MILESTONES.md`; put task-specific details in active specs/issues/handoffs.
 
-- V1 season-management foundation shipped 2026-04-26.
-- V2-A through V2-F shipped 2026-04-28.
-- V3 Experience Rebuild shipped 2026-04-29.
-- V4 Web Architecture Foundation shipped 2026-04-29.
-- V5 Weekly Command Center shipped 2026-05-04.
-- V6 Player Identity and Development Loop shipped 2026-05-05.
-- V7 Watchable Match Proof Loop shipped 2026-05-05.
-- V8-V10 shipped thin on 2026-05-06 through the Dynasty Office. Treat the current work as post-blitz polish and hardening unless `docs/specs/MILESTONES.md` says otherwise.
-
-When adding a milestone, create a focused spec under `docs/specs/`, update `docs/specs/MILESTONES.md`, and add retrospective/learnings documents when it ships.
+**Document Destinations:**
+- **Active specs/plans**: `docs/specs/`
+- **Shipped milestone retrospectives/learnings**: follow `docs/specs/MILESTONES.md` and use `docs/retrospectives/...` plus `docs/learnings/...`. Do not let a milestone shipping agent place milestone retrospectives in `docs/archive/retrospectives/`.
+- **General analysis/audit/balance reports**: `docs/archive/retrospectives/`
 
 ## Engineering Rules
 
@@ -82,6 +81,7 @@ When adding a milestone, create a focused spec under `docs/specs/`, update `docs
 - Add or update tests when behavior changes.
 - Run verification appropriate to the change. Full tests are expected for broad behavior, persistence, or engine changes; focused docs-only edits do not need the full integrity harness.
 - If match outcomes intentionally change, update golden logs and document why.
+- If a reported bug/gap is already fixed, report the evidence and do not force a code change just to produce a diff.
 
 ## Coding Style
 
@@ -90,32 +90,11 @@ When adding a milestone, create a focused spec under `docs/specs/`, update `docs
 - Match the surrounding style; no formatter is configured in `pyproject.toml`.
 - Keep edits scoped. Avoid unrelated rewrites and metadata churn.
 
-## Squad Notes
-
-Use the squad model when planning a new milestone or when Maurice explicitly asks for it. Reports belong in `docs/archive/retrospectives/`; active sprint plans belong in `docs/specs/`.
-
-Role routing, when useful:
-
-- Architecture: Principal Systems Architect
-- Balance: Lead Game Systems & Balance Analyst
-- Frontend UX: Lead Front-End UX Engineer
-- QA abuse testing: Adversarial QA Tester
-- Debug/maintenance: Senior Debug & Maintenance Engineer
-- Content/narrative: Lead Procedural Content & Narrative Designer
-- Planning: Lead Technical Project Manager
-- Implementation: Codex
-
-Do not force the full squad ceremony for small fixes or routine documentation cleanup.
-
 ## Git / Main Repo / Multi-Agent Workflow
-
-Every agent starts by reading this file before touching the repo. For documentation, milestone, workflow, or handoff work, also read `docs/README.md`. For milestone work, also read `docs/specs/MILESTONES.md` and the relevant spec or active plan.
 
 Current source of truth:
 
 - Active local repo: `C:\GPT5-Projects\Dodgeball Simulator`
-- Documentation front door: `docs/README.md`
-- Current build state and open-work backlog: `docs/STATUS.md`
 - The old external `.worktrees` checkout at `C:\GPT5-Projects\Dodgeball Simulator.worktrees\...` is retired and stale. Do not use it for implementation, planning truth, verification, or handoff state unless Maurice explicitly re-authorizes it for a specific recovery task.
 - If old `.worktrees` files are referenced, treat them as historical reference only. Port by inspecting diffs and adapting to this repo; never assume those files include current main-repo changes.
 
