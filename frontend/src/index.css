@@ -1070,6 +1070,36 @@ textarea:focus-visible {
   color: #94a3b8;
 }
 
+.dm-badge-pink-light {
+  border-color: rgba(251,207,232,0.3);
+  background: rgba(251,207,232,0.10);
+  color: #fbcfe8;
+}
+
+.dm-badge-pink {
+  border-color: rgba(244,114,182,0.3);
+  background: rgba(244,114,182,0.10);
+  color: #f472b6;
+}
+
+.dm-badge-magenta {
+  border-color: rgba(232,121,249,0.3);
+  background: rgba(232,121,249,0.10);
+  color: #e879f9;
+}
+
+.dm-badge-purple {
+  border-color: rgba(192,132,252,0.3);
+  background: rgba(192,132,252,0.10);
+  color: #c084fc;
+}
+
+.dm-badge-purple-deep {
+  border-color: rgba(168,85,247,0.3);
+  background: rgba(168,85,247,0.10);
+  color: #a855f7;
+}
+
 .dm-data {
   font-family: var(--font-mono-data);
   font-variant-numeric: tabular-nums;
@@ -2342,6 +2372,11 @@ textarea:focus-visible {
   align-items: stretch;
   justify-content: flex-end;
   padding: 4px 16px 12px;
+  position: sticky;
+  bottom: 0;
+  background: #0a0f1c;
+  z-index: 10;
+  border-top: 1px solid #1e293b;
 }
 
 .command-action-bar-secondary {
