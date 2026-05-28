@@ -48,6 +48,16 @@ export function KeyPlayersPanel({
   performers: TopPerformer[];
   playerClubName?: string;
 }) {
+  const top3 = performers.slice(0, 3);
+  const top3HasYours = playerClubName
+    ? top3.some(p => p.club_name === playerClubName)
+    : false;
+
+  // Best user-club performer not already in top 3
+  const yourStandout = (!top3HasYours && playerClubName)
+    ? performers.find(p => p.club_name === playerClubName)
+    : null;
+
   if (performers.length === 0) {
     return (
       <section className="dm-panel command-key-players" data-testid="key-players-panel">
@@ -65,7 +75,7 @@ export function KeyPlayersPanel({
         <p className="dm-kicker">Key Performers</p>
       </div>
       <div className="command-key-player-list">
-        {performers.slice(0, 3).map((player, index) => {
+        {top3.map((player, index) => {
           const isYours = Boolean(playerClubName && player.club_name === playerClubName);
           const badgeColor = isYours ? '#f97316' : '#334155';
 
@@ -110,6 +120,59 @@ export function KeyPlayersPanel({
           );
         })}
       </div>
+
+      {yourStandout && (
+        <div
+          data-testid="your-standout"
+          style={{
+            marginTop: '0.75rem',
+            paddingTop: '0.75rem',
+            borderTop: '1px solid #1e293b',
+          }}
+        >
+          <p
+            style={{
+              fontSize: '0.6rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              color: '#64748b',
+              margin: '0 0 0.4rem',
+            }}
+          >
+            Your Club&apos;s Best
+          </p>
+          <article
+            className="command-key-player"
+            style={{ paddingTop: '2px', paddingBottom: '2px' }}
+          >
+            <span
+              className="command-rank-badge"
+              style={{ background: '#f97316' }}
+              aria-label="Your standout"
+            >
+              ★
+            </span>
+            <div>
+              <strong style={{ fontSize: '0.82rem', color: '#f1f5f9' }}>{yourStandout.player_name}</strong>
+              <span
+                style={{
+                  marginLeft: '0.4rem',
+                  fontSize: '0.6rem',
+                  fontWeight: 700,
+                  background: '#f97316',
+                  color: '#000',
+                  borderRadius: '3px',
+                  padding: '1px 5px',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                Your Club
+              </span>
+              <StatChips player={yourStandout} />
+            </div>
+          </article>
+        </div>
+      )}
     </section>
   );
 }
