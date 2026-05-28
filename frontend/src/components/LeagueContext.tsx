@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { PlayoffBracketResponse, RecentMatchSummary, StandingRow, StandingsResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
 import { StatusMessage } from './ui';
@@ -207,9 +207,51 @@ const buildWireRows = (
   });
 };
 
+type ClubHeadToHead = {
+  wins: number;
+  losses: number;
+  draws: number;
+  matches: RecentMatchSummary[];
+};
+
+const buildClubMatchView = (
+  recentMatches: RecentMatchSummary[] | undefined,
+  clubName: string,
+  userClubName: string,
+): { involving: RecentMatchSummary[]; h2h: ClubHeadToHead } => {
+  const involving: RecentMatchSummary[] = [];
+  const h2h: ClubHeadToHead = { wins: 0, losses: 0, draws: 0, matches: [] };
+  if (!recentMatches || recentMatches.length === 0) {
+    return { involving, h2h };
+  }
+
+  for (const match of recentMatches) {
+    const parsed = parseMatchSummary(match.summary);
+    if (!parsed) continue;
+    const involves = parsed.homeClubName === clubName || parsed.awayClubName === clubName;
+    if (!involves) continue;
+    involving.push(match);
+
+    const isVsUser =
+      (parsed.homeClubName === clubName && parsed.awayClubName === userClubName) ||
+      (parsed.awayClubName === clubName && parsed.homeClubName === userClubName);
+    if (!isVsUser) continue;
+    h2h.matches.push(match);
+    if (match.winner_name === 'Draw') {
+      h2h.draws += 1;
+    } else if (match.winner_name === userClubName) {
+      h2h.wins += 1;
+    } else {
+      h2h.losses += 1;
+    }
+  }
+  return { involving, h2h };
+};
+
 export function Standings() {
   const { data, error, loading } = useApiResource<StandingsResponse>('/api/standings');
   const { data: bracket } = useApiResource<PlayoffBracketResponse>('/api/playoffs/bracket');
+  const [openClubId, setOpenClubId] = useState<string | null>(null);
 
   const standings = useMemo<RankedStanding[]>(
     () => (data?.standings ?? []).map((standing, index) => ({ ...standing, rank: index + 1 })),
@@ -243,12 +285,15 @@ export function Standings() {
   const wireRows = buildWireRows(data.recent_matches, us.club_name, data.current_week);
   const tiebreakRows = standings.slice(0, Math.min(standings.length, playoffLine + 2));
 
-  const handleClubOpen = (clubId: string) => {
-    const params = new URLSearchParams(window.location.search);
-    params.set('tab', 'dynasty');
-    params.set('subtab', 'history');
-    params.set('team_id', clubId);
-    window.location.assign(`${window.location.pathname}?${params.toString()}`);
+  const toggleClub = (clubId: string) => {
+    setOpenClubId((current) => (current === clubId ? null : clubId));
+  };
+
+  const handleClubKey = (event: React.KeyboardEvent<HTMLElement>, clubId: string) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      toggleClub(clubId);
+    }
   };
 
   return (
@@ -345,6 +390,13 @@ export function Standings() {
               <tbody>
                 {standings.map((standing, index) => {
                   const isCutLine = index === playoffLine;
+                  const isOpen = openClubId === standing.club_id;
+                  const { involving, h2h } = buildClubMatchView(
+                    data.recent_matches,
+                    standing.club_name,
+                    us.club_name,
+                  );
+                  const expandId = `ls-expand-${standing.club_id}`;
                   return (
                     <React.Fragment key={standing.club_id}>
                       {isCutLine && (
@@ -359,8 +411,13 @@ export function Standings() {
                         </tr>
                       )}
                       <tr
-                        className={standing.is_user_club ? 'ls-user' : undefined}
-                        onClick={() => handleClubOpen(standing.club_id)}
+                        className={`${standing.is_user_club ? 'ls-user ' : ''}ls-row-clickable${isOpen ? ' is-open' : ''}`}
+                        onClick={() => toggleClub(standing.club_id)}
+                        onKeyDown={(event) => handleClubKey(event, standing.club_id)}
+                        tabIndex={0}
+                        role="button"
+                        aria-expanded={isOpen}
+                        aria-controls={expandId}
                         style={{ cursor: 'pointer' }}
                       >
                         <td className="num">
@@ -368,7 +425,10 @@ export function Standings() {
                         </td>
                         <td>
                           <div className="ls-club">
-                            <span className="club-name">{standing.club_name}</span>
+                            <span className="club-name">
+                              <span className={`ls-chevron${isOpen ? ' is-open' : ''}`} aria-hidden="true">{'>'}</span>
+                              {standing.club_name}
+                            </span>
                             <div className="ls-subtle" style={{ display: 'block', marginLeft: 0 }}>
                               {standing.program_trajectory_label ?? standing.program_archetype ?? 'Program track live'}
                             </div>
@@ -385,6 +445,80 @@ export function Standings() {
                         </td>
                         <td><DiffBar diff={standing.elimination_differential} max={maxDiff} /></td>
                       </tr>
+                      {isOpen && (
+                        <tr className="ls-expand-row" id={expandId}>
+                          <td colSpan={8}>
+                            <div className="ls-expand">
+                              <div className="ls-expand-head">
+                                <span className="dm-kicker">Club Snapshot</span>
+                                <h4>{standing.club_name}</h4>
+                              </div>
+                              <div className="ls-expand-grid">
+                                <div className="ls-expand-cell">
+                                  <span className="lbl">Season Record</span>
+                                  <span className="val">{standing.wins}-{standing.losses}-{standing.draws}</span>
+                                  <span className="meta">{standing.points} pts - {formatDiff(standing.elimination_differential)} diff</span>
+                                </div>
+                                <div className="ls-expand-cell">
+                                  <span className="lbl">Head-to-Head vs {us.club_name}</span>
+                                  {standing.is_user_club ? (
+                                    <>
+                                      <span className="val">-</span>
+                                      <span className="meta">This is your club.</span>
+                                    </>
+                                  ) : h2h.matches.length === 0 ? (
+                                    <>
+                                      <span className="val">0-0-0</span>
+                                      <span className="meta">No meetings on recent wire yet.</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="val">{h2h.wins}-{h2h.losses}-{h2h.draws}</span>
+                                      <span className="meta">From last {h2h.matches.length} meeting{h2h.matches.length === 1 ? '' : 's'} on wire.</span>
+                                    </>
+                                  )}
+                                </div>
+                                <div className="ls-expand-cell">
+                                  <span className="lbl">Plan Tendency</span>
+                                  <span className="val">
+                                    <span className={`dm-badge ${approachToneClass(standing.latest_approach)}`}>
+                                      {normalizeApproach(standing.latest_approach)}
+                                    </span>
+                                  </span>
+                                  <span className="meta">{standing.program_trajectory_label ?? standing.program_archetype ?? 'Track live'}</span>
+                                </div>
+                              </div>
+                              <div className="ls-expand-matches">
+                                <span className="dm-kicker">Recent Matches</span>
+                                {involving.length === 0 ? (
+                                  <p className="ls-expand-empty">No recent results on the league wire for this club yet.</p>
+                                ) : (
+                                  <ul className="ls-expand-match-list">
+                                    {involving.slice(0, 5).map((match) => {
+                                      const parsed = parseMatchSummary(match.summary);
+                                      const isDraw = match.winner_name === 'Draw';
+                                      const wonByThisClub = !isDraw && match.winner_name === standing.club_name;
+                                      const tag = isDraw ? 'DRAW' : wonByThisClub ? 'WIN' : 'LOSS';
+                                      const tagClass = isDraw ? 'tag-draw' : wonByThisClub ? 'tag-win' : 'tag-loss';
+                                      return (
+                                        <li key={match.match_id} className="ls-expand-match">
+                                          <span className="wk">W{String(match.week).padStart(2, '0')}</span>
+                                          <span className="fx">
+                                            {parsed
+                                              ? `${parsed.homeClubName} ${parsed.homeScore}-${parsed.awayScore} ${parsed.awayClubName}`
+                                              : match.summary}
+                                          </span>
+                                          <span className={`ls-wire-tag ${tagClass}`}>{tag}</span>
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                     </React.Fragment>
                   );
                 })}
@@ -397,7 +531,7 @@ export function Standings() {
             <span className="ls-legend-sep">-</span>
             <span className="ls-legend-item"><span className="dm-badge dm-badge-amber">CUT</span> Playoff line</span>
             <span className="ls-legend-sep">-</span>
-            <span className="ls-legend-note">Click a club to open its history lane.</span>
+            <span className="ls-legend-note">Click a club row to see head-to-head and recent matches.</span>
           </div>
         </div>
 
@@ -422,7 +556,11 @@ export function Standings() {
                   <div
                     key={`tb-${standing.club_id}`}
                     className="ls-tb-row"
-                    onClick={() => handleClubOpen(standing.club_id)}
+                    onClick={() => toggleClub(standing.club_id)}
+                    onKeyDown={(event) => handleClubKey(event, standing.club_id)}
+                    tabIndex={0}
+                    role="button"
+                    aria-expanded={openClubId === standing.club_id}
                     style={{ cursor: 'pointer' }}
                   >
                     <span className="ls-tb-from">#{standing.rank}</span>
