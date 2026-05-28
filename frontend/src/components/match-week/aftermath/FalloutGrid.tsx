@@ -30,7 +30,7 @@ export function FalloutGrid({
         </span>
       </div>
       <div className="command-fallout-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-        <FalloutCard title="Who Grew">
+        <FalloutCard title="Development Reps">
           {playerGrowth.length > 0 ? (
             <ul className="command-clean-list">
               {playerGrowth.slice(0, 4).map((item) => (
@@ -43,7 +43,11 @@ export function FalloutGrid({
               ))}
             </ul>
           ) : (
-            <p className="command-fallout-empty">No growth logged this week.</p>
+            <p className="command-fallout-empty">
+              Minutes played this week feed offseason growth.
+              <br />
+              Attribute changes are tallied at season&rsquo;s end.
+            </p>
           )}
         </FalloutCard>
 
