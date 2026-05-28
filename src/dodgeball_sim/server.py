@@ -108,6 +108,7 @@ from dodgeball_sim.web_status_service import (
     build_standings_payload,
     build_status_payload,
     build_tactics_payload,
+    update_manual_lineup_payload,
     update_tactics_payload,
 )
 from dodgeball_sim.replay_service import (
@@ -557,6 +558,29 @@ def update_tactics(policy: dict[str, Any], conn = Depends(get_db)) -> dict[str, 
         return update_tactics_payload(conn, policy)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/lineup", response_model=dict[str, Any])
+def update_lineup(payload: dict[str, Any], conn = Depends(get_db)) -> dict[str, Any]:
+    """Persist a manual lineup override (or clear it).
+
+    Body:
+      ``{"starter_ids": [...]}`` to set, ``{"starter_ids": null}`` to clear.
+    Returns 400 with the ``LineupViolation.reason`` tag as ``detail`` when
+    the submission fails structural validation, so the frontend can branch
+    on a stable string.
+    """
+    from dodgeball_sim.lineup import LineupViolation
+
+    starter_ids = payload.get("starter_ids", None)
+    if starter_ids is not None and not isinstance(starter_ids, list):
+        raise HTTPException(status_code=400, detail="starter_ids must be a list or null")
+    try:
+        return update_manual_lineup_payload(conn, starter_ids)
+    except LineupViolation as exc:
+        raise HTTPException(status_code=400, detail=exc.reason) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

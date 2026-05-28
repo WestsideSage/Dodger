@@ -89,6 +89,13 @@ export const commandApi = {
     apiPost<CommandCenterResponse>('/api/command-center/plan', body),
   saveTactics: (body: CoachPolicy) =>
     apiPost<CoachPolicy>('/api/tactics', body),
+  saveLineup: (starterIds: string[]) =>
+    apiPost<{ status: string; ordered_player_ids: string[]; warnings: string[] }>(
+      '/api/lineup',
+      { starter_ids: starterIds },
+    ),
+  clearLineup: () =>
+    apiPost<{ status: string; warnings: string[] }>('/api/lineup', { starter_ids: null }),
   simulate: (body: { intent?: string }) =>
     apiPost<CommandCenterSimResponse>('/api/command-center/simulate', body),
   replay: (matchId: string) =>

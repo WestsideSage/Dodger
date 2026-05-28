@@ -3,6 +3,7 @@ import type { Player, RosterResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
 import { StatusMessage } from './ui';
 import { PlayerDetailModal } from './PlayerDetailModal';
+import { LineupEditor } from './lineup/LineupEditor';
 
 type RosterEntry = {
   player: Player;
@@ -201,10 +202,11 @@ const RatingMini = ({ label, value }: { label: string; value: number }) => {
 };
 
 export function Roster() {
-  const { data, loading, error } = useApiResource<RosterResponse>('/api/roster');
+  const { data, loading, error, setData } = useApiResource<RosterResponse>('/api/roster');
   const [view, setView] = useState<'detailed' | 'compact'>('detailed');
   const [sortKey, setSortKey] = useState<'lineup' | 'potential' | 'overall' | 'age'>('lineup');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [lineupEditorOpen, setLineupEditorOpen] = useState(false);
 
   const defaultLineupIds = useMemo(
     () => new Set((data?.default_lineup ?? []).slice(0, 6)),
@@ -258,7 +260,13 @@ export function Roster() {
             <option value="overall">Sort · OVR</option>
             <option value="age">Sort · Age</option>
           </select>
-          <button className="dm-btn" type="button" disabled>Lineup Editor ▸</button>
+          <button
+            className="dm-btn"
+            type="button"
+            onClick={() => setLineupEditorOpen(true)}
+          >
+            Lineup Editor ▸
+          </button>
         </div>
       </div>
 
@@ -389,6 +397,23 @@ export function Roster() {
       
       {selectedPlayer && (
         <PlayerDetailModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />
+      )}
+      {lineupEditorOpen && data && (
+        <LineupEditor
+          roster={data.roster}
+          defaultLineup={data.default_lineup}
+          onClose={() => setLineupEditorOpen(false)}
+          onSaved={(orderedPlayerIds) => {
+            // If the server returned a fresh order, splice it into the
+            // cached roster payload so the Roster screen reflects the new
+            // starting six immediately. An empty list means "we cleared
+            // the override" — let the next mount re-fetch the resolved
+            // order from /api/roster.
+            if (orderedPlayerIds.length > 0) {
+              setData({ ...data, default_lineup: orderedPlayerIds });
+            }
+          }}
+        />
       )}
     </div>
   );

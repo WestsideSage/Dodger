@@ -25,6 +25,7 @@ from .persistence import (
     load_standings,
     load_weekly_command_plan,
     save_club,
+    save_lineup_default,
 )
 from .playoffs import PLAYOFF_FIELD_SIZE, playoff_stage_label
 from .view_models import build_schedule_rows, build_wire_items
@@ -109,6 +110,50 @@ def build_tactics_payload(conn: sqlite3.Connection) -> dict[str, str]:
     if club is None:
         raise LookupError("Club not found")
     return club.coach_policy.as_dict()
+
+
+def update_manual_lineup_payload(
+    conn: sqlite3.Connection,
+    starter_ids: list[str] | None,
+) -> dict[str, Any]:
+    """Persist a manual lineup override for the player's club.
+
+    ``starter_ids`` of ``None`` clears the override and lets ``LineupResolver``
+    fall back to the roster's natural OVR order. Otherwise the starters are
+    structurally validated by ``apply_manual_lineup`` and the resolved order
+    (starters + OVR-sorted bench) is saved via ``save_lineup_default``.
+
+    Raises ``LineupViolation`` on structural failure; the route maps the
+    ``.reason`` tag to a 400 with the same string so the frontend can show an
+    inline error keyed to the offending row.
+    """
+    from types import SimpleNamespace
+    from .lineup import apply_manual_lineup, check_lineup_liabilities
+
+    player_club_id = get_state(conn, "player_club_id")
+    if not player_club_id:
+        raise ValueError("No player club assigned")
+
+    if starter_ids is None:
+        conn.execute(
+            "DELETE FROM lineup_default WHERE club_id = ?",
+            (player_club_id,),
+        )
+        conn.commit()
+        return {"status": "cleared", "warnings": []}
+
+    roster = load_club_roster(conn, player_club_id)
+    bundle = SimpleNamespace(club_id=player_club_id, roster=roster)
+    result = apply_manual_lineup(bundle, starters=starter_ids)
+    save_lineup_default(conn, player_club_id, result.ordered_player_ids)
+    conn.commit()
+
+    warnings = check_lineup_liabilities(roster, [s.player_id for s in result.starters])
+    return {
+        "status": "saved",
+        "ordered_player_ids": result.ordered_player_ids,
+        "warnings": warnings,
+    }
 
 
 def update_tactics_payload(conn: sqlite3.Connection, policy_values: dict[str, Any]) -> dict[str, str]:

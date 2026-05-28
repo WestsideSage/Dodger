@@ -346,7 +346,60 @@ def scripted_tied_semifinal(
     )
 
 
+def club_with_bench_star(
+    *,
+    bench_player_id: str,
+    bench_ovr: int,
+    club_id: str = "aurora",
+):
+    """Build a 7-player club fixture with a high-OVR player on the bench.
+
+    Used by Task 2 (Lineup Editor) tests to exercise the manual override
+    pipeline. Returns a lightweight namespace carrying ``club_id`` and a
+    ``roster`` sequence — enough for ``apply_manual_lineup`` and the
+    ``save_lineup_default`` persistence call without dragging the full
+    ``Club``/``Team`` plumbing into the test.
+
+    The five "p2".."p6" starters are deliberately middling so the bench star
+    is unambiguously the highest-OVR player; ``apply_manual_lineup`` is
+    structural, but downstream resolvers sort the backfill by OVR.
+    """
+
+    from types import SimpleNamespace
+
+    # Approximate target OVR by setting all four core ratings to the same
+    # value. The exact OVR depends on ``overall_skill`` but using a uniform
+    # rating gives us a deterministic, easy-to-reason-about baseline.
+    bench_rating = float(bench_ovr)
+    bench_player = _player(
+        bench_player_id,
+        "Ezra Prism",
+        accuracy=bench_rating,
+        power=bench_rating,
+        dodge=bench_rating,
+        catch=bench_rating,
+    )
+
+    # Six "filler" starters at a middling rating so the bench star clearly
+    # outranks them on OVR ordering. ``p1``..``p6`` ids keep tests legible.
+    starters: List[Player] = [
+        _player(
+            f"p{i}",
+            f"Filler {i}",
+            accuracy=55.0,
+            power=55.0,
+            dodge=55.0,
+            catch=55.0,
+        )
+        for i in range(1, 7)
+    ]
+
+    roster: List[Player] = starters + [bench_player]
+    return SimpleNamespace(club_id=club_id, roster=roster)
+
+
 __all__ = [
+    "club_with_bench_star",
     "curated_clubs",
     "sample_match_setup",
     "describe_sample_matchup",
