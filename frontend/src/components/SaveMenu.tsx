@@ -666,7 +666,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                       letterSpacing: '0.05em',
                       boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
                     }}>
-                      Recommended
+                      Faster Start
                     </span>
                     <h3 style={{ margin: '0.5rem 0 0.5rem', color: '#f97316', fontSize: '1.25rem', fontWeight: 800 }}>Take Over a Program</h3>
                     <p style={{ margin: 0, fontSize: '0.8125rem', color: '#cbd5e1', lineHeight: 1.4 }}>
