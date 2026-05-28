@@ -90,6 +90,94 @@ def optimize_ai_lineup(roster: Sequence[Player]) -> List[str]:
     return final_ids
 
 
+class LineupViolation(ValueError):
+    """Raised when a manual lineup submission fails structural validation.
+
+    ``reason`` is a stable machine-readable tag the API surface and frontend
+    can branch on. Human-facing copy is built at the boundary, not here.
+    """
+
+    _VALID_REASONS = frozenset({"not_on_roster", "duplicate", "position_count"})
+
+    def __init__(self, reason: str, message: str = "") -> None:
+        if reason not in self._VALID_REASONS:
+            raise ValueError(f"Unknown LineupViolation reason: {reason!r}")
+        self.reason = reason
+        super().__init__(message or reason)
+
+
+@dataclass(frozen=True)
+class ManualLineupResult:
+    """Result of ``apply_manual_lineup``.
+
+    ``starters`` is the ordered list of starting players, each carrying its
+    ``player_id`` (matching ``Player.id``). ``ordered_player_ids`` is the
+    starter ids followed by the remaining roster ordered by OVR — the canonical
+    shape ``save_lineup_default`` expects.
+    """
+
+    starters: List["_LineupStarter"]
+    ordered_player_ids: List[str]
+
+
+@dataclass(frozen=True)
+class _LineupStarter:
+    """Thin starter row exposing ``player_id`` for downstream consumers."""
+
+    player_id: str
+    player: Player
+
+
+def apply_manual_lineup(club_with_roster, starters: Sequence[str]) -> ManualLineupResult:
+    """Validate and resolve a manual starter override.
+
+    Pure function: no persistence. The caller (web endpoint) is responsible
+    for persisting the resulting ``ordered_player_ids`` via
+    ``save_lineup_default``.
+
+    ``club_with_roster`` is duck-typed: it must expose a ``roster`` attribute
+    that is a sequence of ``Player`` (sample-data fixtures and the web layer
+    both wrap the persisted roster this way).
+
+    Validates structurally — does NOT enforce positional fit. Positional
+    mismatches surface separately via ``check_lineup_liabilities`` and are
+    treated as warnings, not errors.
+    """
+
+    roster: Sequence[Player] = tuple(getattr(club_with_roster, "roster", ()))
+    starter_ids = list(starters)
+
+    if len(starter_ids) != STARTERS_COUNT:
+        raise LineupViolation(
+            "position_count",
+            f"Expected {STARTERS_COUNT} starters, got {len(starter_ids)}.",
+        )
+
+    if len(set(starter_ids)) != len(starter_ids):
+        raise LineupViolation("duplicate", "Starter list contains duplicates.")
+
+    roster_by_id = {player.id: player for player in roster}
+    missing = [pid for pid in starter_ids if pid not in roster_by_id]
+    if missing:
+        raise LineupViolation(
+            "not_on_roster",
+            f"Players not on roster: {', '.join(missing)}",
+        )
+
+    # Reuse the resolver to backfill the bench in canonical OVR order.
+    resolved = LineupResolver().resolve_with_diagnostics(
+        roster, default=None, override=starter_ids,
+    )
+    starter_rows = [
+        _LineupStarter(player_id=pid, player=roster_by_id[pid])
+        for pid in resolved.lineup[:STARTERS_COUNT]
+    ]
+    return ManualLineupResult(
+        starters=starter_rows,
+        ordered_player_ids=list(resolved.lineup),
+    )
+
+
 @dataclass(frozen=True)
 class ResolvedLineup:
     """Lineup with diagnostics about IDs dropped during resolution."""
@@ -149,7 +237,10 @@ __all__ = [
     "COURT_SLOT_PREFERENCES",
     "STARTERS_COUNT",
     "LineupResolver",
+    "LineupViolation",
+    "ManualLineupResult",
     "ResolvedLineup",
+    "apply_manual_lineup",
     "check_lineup_liabilities",
     "is_liability",
     "optimize_ai_lineup",
