@@ -1,6 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { ActionButton } from '../ui';
 import { formatOverall, formatPlayerName, formatRole } from '../roster/playerDisplay';
+import {
+  countFlex,
+  diffComposition,
+  imbalanceWarning,
+} from './rosterRecommendation';
 
 interface ProspectOption {
   player_id: string;
@@ -42,6 +47,20 @@ export function StartingRecruitmentStep({
     });
   };
 
+  const pickedProspects = useMemo(
+    () => prospects.filter(p => rosterIds.has(p.player_id)),
+    [prospects, rosterIds],
+  );
+  const compositionRows = useMemo(
+    () => diffComposition(pickedProspects),
+    [pickedProspects],
+  );
+  const flexCount = useMemo(() => countFlex(pickedProspects), [pickedProspects]);
+  const imbalance = useMemo(
+    () => imbalanceWarning(pickedProspects),
+    [pickedProspects],
+  );
+
   const needed = 6 - rosterIds.size;
   const rosterReady = rosterIds.size >= 6;
   const rosterFull = rosterIds.size >= 10;
@@ -78,63 +97,161 @@ export function StartingRecruitmentStep({
         <p style={{ color: '#64748b', fontSize: '0.875rem' }}>Loading prospects...</p>
       )}
 
-      <div style={{ maxHeight: '360px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.375rem', paddingRight: '0.25rem' }}>
-        {prospects.map(p => {
-          const selected = rosterIds.has(p.player_id);
-          const canSelect = selected || rosterIds.size < 10;
-          const displayName = formatPlayerName(p);
-          const displayRole = formatRole(p);
-          const displayOverall = formatOverall(p);
-          return (
-            <button
-              key={p.player_id}
-              type="button"
-              role="checkbox"
-              aria-checked={selected}
-              aria-label={`${displayName}, ${p.hometown}, ${displayRole}, overall ${displayOverall}`}
-              onClick={() => {
-                if (canSelect) toggleProspect(p.player_id);
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0.625rem 0.875rem',
-                background: selected ? 'rgba(34,211,238,0.06)' : '#0f172a',
-                border: selected ? '1px solid rgba(34,211,238,0.4)' : '1px solid #1e293b',
-                borderRadius: '4px',
-                cursor: canSelect ? 'pointer' : 'not-allowed',
-                opacity: canSelect ? 1 : 0.55,
-                transition: 'border-color 0.12s, background 0.12s',
-                flexShrink: 0,
-                textAlign: 'left',
-              }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: selected ? '#67e8f9' : '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {displayName}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.125rem' }}>
-                  {p.hometown}
-                  {displayRole && <span style={{ color: '#475569' }}> | {displayRole}</span>}
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, marginLeft: '1rem' }}>
-                <div style={{ textAlign: 'right' }}>
-                  <div className="dm-data" style={{ fontWeight: 800, color: selected ? '#22d3ee' : '#94a3b8', fontSize: '0.875rem' }} title="Current overall rating">
-                    <strong>{displayOverall}</strong>
-                    <span style={{ fontSize: '0.5625rem', opacity: 0.6, marginLeft: '0.25rem' }}>
-                      OVR
-                    </span>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr) minmax(180px, 220px)',
+          gap: '1rem',
+          alignItems: 'start',
+        }}
+      >
+        <div style={{ maxHeight: '360px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.375rem', paddingRight: '0.25rem', minWidth: 0 }}>
+          {prospects.map(p => {
+            const selected = rosterIds.has(p.player_id);
+            const canSelect = selected || rosterIds.size < 10;
+            const displayName = formatPlayerName(p);
+            const displayRole = formatRole(p);
+            const displayOverall = formatOverall(p);
+            return (
+              <button
+                key={p.player_id}
+                type="button"
+                role="checkbox"
+                aria-checked={selected}
+                aria-label={`${displayName}, ${p.hometown}, ${displayRole}, overall ${displayOverall}`}
+                onClick={() => {
+                  if (canSelect) toggleProspect(p.player_id);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.625rem 0.875rem',
+                  background: selected ? 'rgba(34,211,238,0.06)' : '#0f172a',
+                  border: selected ? '1px solid rgba(34,211,238,0.4)' : '1px solid #1e293b',
+                  borderRadius: '4px',
+                  cursor: canSelect ? 'pointer' : 'not-allowed',
+                  opacity: canSelect ? 1 : 0.55,
+                  transition: 'border-color 0.12s, background 0.12s',
+                  flexShrink: 0,
+                  textAlign: 'left',
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: selected ? '#67e8f9' : '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {displayName}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.125rem' }}>
+                    {p.hometown}
+                    {displayRole && <span style={{ color: '#475569' }}> | {displayRole}</span>}
                   </div>
                 </div>
-                <div style={{ width: '18px', height: '18px', borderRadius: '9999px', border: selected ? '2px solid #22d3ee' : '2px solid #334155', background: selected ? 'rgba(34,211,238,0.15)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {selected && <span style={{ color: '#22d3ee', fontSize: '0.625rem', lineHeight: 1 }}>OK</span>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, marginLeft: '1rem' }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div className="dm-data" style={{ fontWeight: 800, color: selected ? '#22d3ee' : '#94a3b8', fontSize: '0.875rem' }} title="Current overall rating">
+                      <strong>{displayOverall}</strong>
+                      <span style={{ fontSize: '0.5625rem', opacity: 0.6, marginLeft: '0.25rem' }}>
+                        OVR
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ width: '18px', height: '18px', borderRadius: '9999px', border: selected ? '2px solid #22d3ee' : '2px solid #334155', background: selected ? 'rgba(34,211,238,0.15)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {selected && <span style={{ color: '#22d3ee', fontSize: '0.625rem', lineHeight: 1 }}>OK</span>}
+                  </div>
                 </div>
-              </div>
-            </button>
-          );
-        })}
+              </button>
+            );
+          })}
+        </div>
+
+        <aside
+          aria-label="Recommended roster composition"
+          style={{
+            background: '#0f172a',
+            border: '1px solid #1e293b',
+            borderRadius: '4px',
+            padding: '0.75rem 0.875rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.5rem',
+            position: 'sticky',
+            top: '0.5rem',
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: '0.6875rem',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: '#64748b',
+                fontWeight: 700,
+              }}
+            >
+              Recommended composition
+            </div>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.6875rem', color: '#64748b', lineHeight: 1.4 }}>
+              The court has four archetype-preferred slots. One of each pure
+              archetype clears all lineup-mismatch warnings.
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            {compositionRows.map(row => {
+              const onTarget = row.actual >= row.recommended;
+              const indicator = onTarget ? 'OK' : row.actual === 0 ? '—' : '↓';
+              const color = onTarget ? '#22d3ee' : '#fb923c';
+              return (
+                <div
+                  key={row.role}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'baseline',
+                    fontSize: '0.75rem',
+                  }}
+                >
+                  <span style={{ color: '#cbd5e1' }}>{row.role}</span>
+                  <span
+                    className="dm-data"
+                    style={{ color, fontWeight: 700, fontSize: '0.6875rem', letterSpacing: '0.04em' }}
+                    aria-label={`${row.role}: picked ${row.actual} of recommended ${row.recommended}`}
+                  >
+                    {row.actual} / {row.recommended} {indicator}
+                  </span>
+                </div>
+              );
+            })}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+                fontSize: '0.75rem',
+                marginTop: '0.25rem',
+                paddingTop: '0.25rem',
+                borderTop: '1px dashed #1e293b',
+              }}
+            >
+              <span style={{ color: '#94a3b8' }}>Flex / hybrids</span>
+              <span className="dm-data" style={{ color: '#94a3b8', fontWeight: 700, fontSize: '0.6875rem' }}>
+                {flexCount}
+              </span>
+            </div>
+          </div>
+          {imbalance && rosterIds.size > 0 && (
+            <p
+              role="status"
+              style={{
+                margin: 0,
+                fontSize: '0.6875rem',
+                color: '#fb923c',
+                lineHeight: 1.4,
+              }}
+            >
+              {imbalance}
+            </p>
+          )}
+        </aside>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
