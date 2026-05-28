@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from .career_state import CareerStateCursor
 
 # Increment when new migrations are added.
-CURRENT_SCHEMA_VERSION = 16
+CURRENT_SCHEMA_VERSION = 17
 _MAX_OFFSEASON_BEAT_INDEX = 9
 
 
@@ -1056,6 +1056,25 @@ def _migrate_v16(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE prospect_pool ADD COLUMN pipeline_tier INTEGER NOT NULL DEFAULT 1")
 
 
+def _migrate_v17(conn: sqlite3.Connection) -> None:
+    """V17: explicit playoff resolution surface.
+
+    Task 1 of 2026-05-27 playtest-fixes plan. Adds two nullable columns to
+    ``match_records`` so a tied playoff match can carry its
+    decided-by/narrative-note alongside the resolved winner instead of
+    silently advancing by seed inside ``create_final_match``.
+
+    Columns are NULL for non-playoff matches and for legacy rows; callers
+    must treat ``decided_by IS NULL`` as "regulation, nothing to surface".
+    """
+
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(match_records)")}
+    if "decided_by" not in columns:
+        conn.execute("ALTER TABLE match_records ADD COLUMN decided_by TEXT")
+    if "narrative_note" not in columns:
+        conn.execute("ALTER TABLE match_records ADD COLUMN narrative_note TEXT")
+
+
 _MIGRATIONS: Dict[int, Any] = {
     1: _migrate_v1,
     2: _migrate_v2,
@@ -1073,6 +1092,7 @@ _MIGRATIONS: Dict[int, Any] = {
     14: _migrate_v14,
     15: _migrate_v15,
     16: _migrate_v16,
+    17: _migrate_v17,
 }
 
 
@@ -1619,6 +1639,8 @@ def save_match_result(
     tied_games: int = 0,
     no_point_games: int = 0,
     official_score_json: Optional[str] = None,
+    decided_by: Optional[str] = None,
+    narrative_note: Optional[str] = None,
 ) -> None:
     conn.execute(
         """
@@ -1629,8 +1651,8 @@ def save_match_result(
             meta_patch_id, seed, event_log_hash, final_state_hash, engine_match_id,
             scoring_model, home_game_points, away_game_points,
             home_games_won, away_games_won, tied_games, no_point_games,
-            official_score_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            official_score_json, decided_by, narrative_note
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             match_id, season_id, week, home_club_id, away_club_id,
@@ -1639,8 +1661,34 @@ def save_match_result(
             meta_patch_id, seed, event_log_hash, final_state_hash, engine_match_id,
             scoring_model, home_game_points, away_game_points,
             home_games_won, away_games_won, tied_games, no_point_games,
-            official_score_json,
+            official_score_json, decided_by, narrative_note,
         ),
+    )
+
+
+def apply_playoff_resolution(
+    conn: sqlite3.Connection,
+    *,
+    match_id: str,
+    winner_club_id: str,
+    decided_by: str,
+    narrative_note: str,
+) -> None:
+    """Patch a stored match_records row with an explicit playoff outcome.
+
+    Used after ``resolve_playoff_match`` decides a tied playoff match by
+    seed (or, in future, overtime). Writes both the winner and the
+    decided-by/narrative pair atomically so the aftermath payload can
+    surface them without re-deriving anything.
+    """
+
+    conn.execute(
+        """
+        UPDATE match_records
+           SET winner_club_id = ?, decided_by = ?, narrative_note = ?
+         WHERE match_id = ?
+        """,
+        (winner_club_id, decided_by, narrative_note, match_id),
     )
 
 
@@ -3550,6 +3598,7 @@ __all__ = [
     "save_scheduled_matches",
     "load_season",
     "save_match_result",
+    "apply_playoff_resolution",
     "save_player_stats_batch",
     "save_standings",
     "load_standings",

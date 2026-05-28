@@ -307,9 +307,49 @@ def scripted_blowout_loss(
     return result, player_club_id, opponent_club_id
 
 
+def scripted_tied_semifinal(
+    *,
+    home_seed: int,
+    away_seed: int,
+    regulation_score: tuple[int, int],
+    home_club_id: str = "aurora",
+    away_club_id: str = "lunar",
+):
+    """Build a scripted semifinal stub for playoff-resolution tests.
+
+    Returns a lightweight namespace carrying just the fields
+    ``resolve_playoff_match`` needs (home/away club ids, the seeds they
+    entered the bracket with, and the regulation survivor counts). The
+    intent is to mirror the shape of a finalised regular match without
+    pulling in the full ``MatchRecord``/``MatchResult`` plumbing.
+    """
+
+    from types import SimpleNamespace
+
+    home_survivors, away_survivors = regulation_score
+    if home_survivors > away_survivors:
+        regulation_winner_id: str | None = home_club_id
+    elif away_survivors > home_survivors:
+        regulation_winner_id = away_club_id
+    else:
+        regulation_winner_id = None
+
+    return SimpleNamespace(
+        match_id=f"sample_semifinal_{home_club_id}_{away_club_id}",
+        home_club_id=home_club_id,
+        away_club_id=away_club_id,
+        home_seed=home_seed,
+        away_seed=away_seed,
+        home_survivors=home_survivors,
+        away_survivors=away_survivors,
+        regulation_winner_id=regulation_winner_id,
+    )
+
+
 __all__ = [
     "curated_clubs",
     "sample_match_setup",
     "describe_sample_matchup",
     "scripted_blowout_loss",
+    "scripted_tied_semifinal",
 ]

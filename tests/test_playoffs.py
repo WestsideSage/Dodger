@@ -65,8 +65,17 @@ def test_create_final_match_higher_remaining_seed_hosts_and_outcome_uses_final_w
     assert outcome.champion_source == "playoff_final"
 
 
-def test_create_final_match_draw_fallback_uses_better_seed():
-    """If a semifinal winner_club_id is None (true draw), the better seed advances."""
+def test_create_final_match_raises_when_winner_unresolved():
+    """A semifinal winner of None must raise — the silent seed fallback is gone.
+
+    Task 1 of the 2026-05-27 playtest-fixes plan: tied semifinals are now
+    resolved upstream via ``playoff_resolution.resolve_playoff_match``.
+    If ``None`` reaches ``create_final_match`` it means the orchestrator
+    forgot to resolve, and we'd rather crash loudly than silently advance
+    a club the player never saw win.
+    """
+    import pytest
+
     standings = [
         StandingsRow("one", 5, 0, 0, 10, 15),
         StandingsRow("two", 4, 1, 0, 8, 12),
@@ -75,15 +84,9 @@ def test_create_final_match_draw_fallback_uses_better_seed():
     ]
     bracket, _matches = create_semifinal_bracket("season_1", standings, week=6)
 
-    # m1: one vs four → draw (None); m2: two vs three → "two" won
-    bracket, final = create_final_match(
-        bracket,
-        {"season_1_p_r1_m1": None, "season_1_p_r1_m2": "two"},
-        week=7,
-    )
-
-    # "one" (seed 0) should advance over "four" (seed 3)
-    finalist_ids = {final.home_club_id, final.away_club_id}
-    assert "one" in finalist_ids
-    assert "two" in finalist_ids
-    assert "four" not in finalist_ids
+    with pytest.raises(ValueError, match="unresolved semifinal winners"):
+        create_final_match(
+            bracket,
+            {"season_1_p_r1_m1": None, "season_1_p_r1_m2": "two"},
+            week=7,
+        )

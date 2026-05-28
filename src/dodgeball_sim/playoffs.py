@@ -97,23 +97,28 @@ def create_final_match(
         raise ValueError("Bracket must have two semifinal matches")
     finalists = tuple(winners_by_match_id.get(match["match_id"]) for match in semi_matches)
     seed_rank = {club_id: index for index, club_id in enumerate(bracket.seeds)}
-    # If a semifinal ended as a true draw (equal survivors, time cap), fall
-    # back to the better seed advancing rather than crashing the bracket.
-    resolved: list[str] = []
-    for finalist, semi_match in zip(finalists, semi_matches):
-        if finalist is not None:
-            resolved.append(str(finalist))
-        else:
-            participants = [semi_match.get("home"), semi_match.get("away")]
-            ranked = sorted(
-                (c for c in participants if c is not None),
-                key=lambda c: seed_rank.get(c, 9999),
-            )
-            if not ranked:
-                raise ValueError("Both semifinal winners are required")
-            resolved.append(ranked[0])
-    finalists = tuple(resolved)
-    first, second = finalists
+    # Bracket invariant: callers must hand us concrete winners. The old
+    # silent seed-fallback here was the single most-cited trust break in
+    # the 2026-05 rookie-run playtest report — the season jumped to
+    # offseason without telling the player whether they advanced or were
+    # eliminated. Tied semifinals are now resolved upstream in
+    # ``match_orchestration._resolve_playoff_winners`` (which calls
+    # ``playoff_resolution.resolve_playoff_match`` and persists the
+    # decided-by / narrative-note pair). If ``None`` ever reaches this
+    # call site again, the orchestrator forgot to resolve — raise loudly
+    # rather than picking a winner the player never sees.
+    if any(finalist is None for finalist in finalists):
+        unresolved = [
+            match["match_id"]
+            for match, finalist in zip(semi_matches, finalists)
+            if finalist is None
+        ]
+        raise ValueError(
+            "create_final_match received unresolved semifinal winners "
+            f"(match_ids={unresolved!r}); resolve via playoff_resolution.resolve_playoff_match"
+            " upstream before building the final."
+        )
+    first, second = (str(finalists[0]), str(finalists[1]))
     home, away = sorted((str(first), str(second)), key=lambda club_id: seed_rank[club_id])
     final = ScheduledMatch(
         match_id=f"{bracket.season_id}_p_final",

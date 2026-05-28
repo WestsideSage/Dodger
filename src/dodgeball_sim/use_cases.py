@@ -334,6 +334,59 @@ def _degraded_postgame_payload(
     }
 
 
+def _load_playoff_resolution(
+    conn,
+    record,
+    player_club_id: str | None,
+) -> dict[str, Any] | None:
+    """Return the playoff-resolution block for a finished match, if any.
+
+    Task 1 (2026-05-27 playtest-fixes): if the match is a playoff match
+    that needed a tiebreaker, surface ``decided_by`` and the upstream
+    ``narrative_note`` to the aftermath payload so the frontend banner
+    can render an unambiguous "Advanced / Eliminated" sentence instead
+    of leaving the player guessing. Returns ``None`` for regular-season
+    matches and for playoff matches decided in regulation (no banner
+    needed — the score itself tells the story).
+    """
+
+    from dodgeball_sim.playoffs import is_playoff_match_id, playoff_stage_label
+
+    season_id = getattr(record, "season_id", None)
+    match_id = getattr(record, "match_id", None)
+    if not season_id or not match_id:
+        return None
+    if not is_playoff_match_id(season_id, match_id):
+        return None
+
+    row = conn.execute(
+        "SELECT decided_by, narrative_note, winner_club_id"
+        " FROM match_records WHERE match_id = ?",
+        (match_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    decided_by = row["decided_by"] or "regulation"
+    if decided_by == "regulation":
+        return None
+    winner_id = row["winner_club_id"]
+    loser_id = (
+        record.away_club_id if winner_id == record.home_club_id else record.home_club_id
+    )
+    stage = playoff_stage_label(season_id, match_id)
+    player_outcome: str | None = None
+    if player_club_id is not None and player_club_id in (record.home_club_id, record.away_club_id):
+        player_outcome = "advanced" if winner_id == player_club_id else "eliminated"
+    return {
+        "decided_by": decided_by,
+        "narrative_note": row["narrative_note"] or "",
+        "winner_club_id": winner_id,
+        "loser_club_id": loser_id,
+        "stage": stage,
+        "player_outcome": player_outcome,
+    }
+
+
 def _build_aftermath(
     conn,
     dashboard: dict[str, Any],
@@ -511,6 +564,13 @@ def _build_aftermath(
     }
     if verdict is not None:
         aftermath["verdict"] = verdict
+
+    # Task 1 (2026-05-27 playtest-fixes): surface playoff resolution.
+    # Only present for playoff matches that needed a tiebreaker; the
+    # frontend renders a banner only when this key exists.
+    playoff_resolution = _load_playoff_resolution(conn, record, player_club_id)
+    if playoff_resolution is not None:
+        aftermath["playoff_resolution"] = playoff_resolution
 
     # Structural validation: confirm the assembled payload doesn't
     # contradict the resolved MatchResult (winner, survivor counts,

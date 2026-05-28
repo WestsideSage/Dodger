@@ -47,6 +47,25 @@ function MatchCard({
       >
         {label}
         {!played && <span style={{ color: '#f59e0b' }}> · upcoming</span>}
+        {played && match.decided_by && match.decided_by !== 'regulation' && (
+          <span
+            data-testid="playoff-bracket-decided-by-chip"
+            data-decided-by={match.decided_by}
+            title={match.narrative_note ?? undefined}
+            style={{
+              marginLeft: '0.4rem',
+              padding: '0.05rem 0.3rem',
+              fontSize: '0.5rem',
+              fontWeight: 700,
+              letterSpacing: '0.06em',
+              color: '#0b1220',
+              background: '#22d3ee',
+              borderRadius: '2px',
+            }}
+          >
+            {match.decided_by === 'overtime' ? 'OT' : 'SEED'}
+          </span>
+        )}
       </p>
       {teamRow(match.home_club_id, match.home_club_name, match.home_survivors)}
       {teamRow(match.away_club_id, match.away_club_name, match.away_survivors)}

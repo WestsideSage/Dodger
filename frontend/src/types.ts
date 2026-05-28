@@ -412,6 +412,11 @@ export interface PlayoffBracketMatch {
     away_survivors: number | null;
     winner_club_id: string | null;
     status: string;
+    // Task 1 (2026-05-27 playtest-fixes): tiebreaker surfacing. NULL on
+    // regulation wins / unplayed matches; "overtime" or "seed_tiebreaker"
+    // when the resolver had to step in.
+    decided_by?: string | null;
+    narrative_note?: string | null;
 }
 
 export interface PlayoffBracketRound {
@@ -636,6 +641,17 @@ export interface Aftermath {
     body: string[];
     verdict?: string;
     top_performers?: TopPerformer[];
+    // Task 1 (2026-05-27 playtest-fixes): present only for playoff matches
+    // that needed a tiebreaker (overtime / seed). The banner renders
+    // ``narrative_note`` verbatim; ``decided_by`` selects the chip text.
+    playoff_resolution?: {
+        decided_by: 'overtime' | 'seed_tiebreaker' | 'regulation';
+        narrative_note: string;
+        winner_club_id: string;
+        loser_club_id: string;
+        stage: string;
+        player_outcome: 'advanced' | 'eliminated' | null;
+    };
 }
 
 export interface OffseasonAward {

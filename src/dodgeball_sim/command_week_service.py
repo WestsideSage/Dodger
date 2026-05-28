@@ -396,23 +396,20 @@ def advance_playoffs_if_needed(conn: sqlite3.Connection, season: Season, clubs: 
                 continue
             if pending:
                 return season
-            winners = {}
-            for row in conn.execute(
-                "SELECT match_id, winner_club_id, home_club_id, away_club_id, home_survivors, away_survivors"
-                " FROM match_records WHERE match_id IN (?, ?)",
-                (f"{season.season_id}_p_r1_m1", f"{season.season_id}_p_r1_m2"),
-            ).fetchall():
-                winner_id = row["winner_club_id"]
-                if winner_id is None:
-                    # Derive from survivors when engine stored NULL (e.g. time-cap equal-count edge case)
-                    if row["home_survivors"] > row["away_survivors"]:
-                        winner_id = row["home_club_id"]
-                    elif row["away_survivors"] > row["home_survivors"]:
-                        winner_id = row["away_club_id"]
-                    else:
-                        # True tie: home side (higher seed by bracket assignment) advances
-                        winner_id = row["home_club_id"]
-                winners[row["match_id"]] = winner_id
+            from .match_orchestration import _resolve_playoff_winners
+
+            winners = _resolve_playoff_winners(
+                conn,
+                bracket=bracket,
+                match_ids=(
+                    f"{season.season_id}_p_r1_m1",
+                    f"{season.season_id}_p_r1_m2",
+                ),
+                participants_by_match_id={
+                    match.match_id: (match.home_club_id, match.away_club_id)
+                    for match in semifinal_matches
+                },
+            )
             next_week = max(match.week for match in semifinal_matches) + 1
             bracket, final = create_final_match(bracket, winners, next_week)
             save_playoff_bracket(conn, bracket)
@@ -435,11 +432,18 @@ def advance_playoffs_if_needed(conn: sqlite3.Connection, season: Season, clubs: 
                 recompute_regular_season_standings(conn, season)
                 completed = load_completed_match_ids(conn, season.season_id)
             if final.match_id in completed:
-                row = conn.execute(
-                    "SELECT winner_club_id FROM match_records WHERE match_id = ?",
-                    (final.match_id,),
-                ).fetchone()
-                if row is None or row["winner_club_id"] is None:
+                from .match_orchestration import _resolve_playoff_winners
+
+                winners = _resolve_playoff_winners(
+                    conn,
+                    bracket=bracket,
+                    match_ids=(final.match_id,),
+                    participants_by_match_id={
+                        final.match_id: (final.home_club_id, final.away_club_id),
+                    },
+                )
+                final_winner_id = winners.get(final.match_id)
+                if final_winner_id is None:
                     return season
                 save_season_outcome(
                     conn,
@@ -448,7 +452,7 @@ def advance_playoffs_if_needed(conn: sqlite3.Connection, season: Season, clubs: 
                         final_match_id=final.match_id,
                         home_club_id=final.home_club_id,
                         away_club_id=final.away_club_id,
-                        winner_club_id=row["winner_club_id"],
+                        winner_club_id=final_winner_id,
                     ),
                 )
                 save_playoff_bracket(conn, dataclasses.replace(bracket, status="complete"))
