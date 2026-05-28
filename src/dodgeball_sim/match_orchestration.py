@@ -22,6 +22,7 @@ from dodgeball_sim.game_loop import (
 from dodgeball_sim.models import CoachPolicy
 from dodgeball_sim.offseason_ceremony import ensure_ai_rosters_playable
 from dodgeball_sim.persistence import (
+    apply_playoff_resolution,
     load_clubs,
     load_club_roster,
     load_completed_match_ids,
@@ -37,6 +38,7 @@ from dodgeball_sim.persistence import (
     save_season_outcome,
     get_state,
 )
+from dodgeball_sim.playoff_resolution import resolve_playoff_match
 from dodgeball_sim.playoffs import (
     create_final_match,
     create_semifinal_bracket,
@@ -50,6 +52,66 @@ from dodgeball_sim.view_models import normalize_root_seed
 
 class SimulateWeekError(ValueError):
     """Raised when the simulate-week use case cannot proceed."""
+
+
+def _resolve_playoff_winners(
+    conn,
+    *,
+    bracket,
+    match_ids: tuple[str, ...],
+    participants_by_match_id: dict[str, tuple[str, str]],
+) -> dict[str, str]:
+    """Return ``{match_id: winner_club_id}`` with tied matches resolved.
+
+    Reads each completed playoff match's ``winner_club_id`` from
+    ``match_records``. When a row's winner is NULL (regulation tied,
+    e.g. a cloth match with equal active counts at time cap), invokes
+    :func:`dodgeball_sim.playoff_resolution.resolve_playoff_match` and
+    patches the row with the chosen winner plus an explicit
+    ``decided_by`` / ``narrative_note`` pair the aftermath payload can
+    surface to the player. Rows the engine has not produced yet are
+    omitted from the result.
+    """
+
+    seed_rank = {club_id: index for index, club_id in enumerate(bracket.seeds)}
+    placeholders = ",".join("?" for _ in match_ids)
+    rows = conn.execute(
+        f"SELECT match_id, winner_club_id, home_survivors, away_survivors,"
+        f" decided_by FROM match_records WHERE match_id IN ({placeholders})",
+        match_ids,
+    ).fetchall()
+
+    resolved: dict[str, str] = {}
+    from types import SimpleNamespace
+
+    for row in rows:
+        match_id = row["match_id"]
+        winner = row["winner_club_id"]
+        if winner is not None:
+            resolved[match_id] = winner
+            continue
+        home_id, away_id = participants_by_match_id[match_id]
+        # seed_rank lookup defaults to a very large number so any seeded
+        # club beats an unseeded participant (defensive — shouldn't happen).
+        match_view = SimpleNamespace(
+            match_id=match_id,
+            home_club_id=home_id,
+            away_club_id=away_id,
+            home_seed=seed_rank.get(home_id, 9999),
+            away_seed=seed_rank.get(away_id, 9999),
+            regulation_winner_id=None,
+        )
+        outcome = resolve_playoff_match(match_view)
+        apply_playoff_resolution(
+            conn,
+            match_id=match_id,
+            winner_club_id=outcome.winner_id,
+            decided_by=outcome.decided_by,
+            narrative_note=outcome.narrative_note,
+        )
+        resolved[match_id] = outcome.winner_id
+
+    return resolved
 
 
 # ---------------------------------------------------------------------------
@@ -149,13 +211,15 @@ def _advance_playoffs_if_needed(conn, season: Season, clubs: dict[str, Any], pla
                 continue
             if pending:
                 return season
-            winners = {
-                row["match_id"]: row["winner_club_id"]
-                for row in conn.execute(
-                    "SELECT match_id, winner_club_id FROM match_records WHERE match_id IN (?, ?)",
-                    (f"{season.season_id}_p_r1_m1", f"{season.season_id}_p_r1_m2"),
-                ).fetchall()
-            }
+            winners = _resolve_playoff_winners(
+                conn,
+                bracket=bracket,
+                match_ids=(f"{season.season_id}_p_r1_m1", f"{season.season_id}_p_r1_m2"),
+                participants_by_match_id={
+                    match.match_id: (match.home_club_id, match.away_club_id)
+                    for match in semifinal_matches
+                },
+            )
             next_week = max(match.week for match in semifinal_matches) + 1
             bracket, final = create_final_match(bracket, winners, next_week)
             save_playoff_bracket(conn, bracket)
@@ -178,11 +242,16 @@ def _advance_playoffs_if_needed(conn, season: Season, clubs: dict[str, Any], pla
                 recompute_regular_season_standings(conn, season)
                 completed = load_completed_match_ids(conn, season.season_id)
             if final.match_id in completed:
-                row = conn.execute(
-                    "SELECT winner_club_id FROM match_records WHERE match_id = ?",
-                    (final.match_id,),
-                ).fetchone()
-                if row is None or row["winner_club_id"] is None:
+                winners = _resolve_playoff_winners(
+                    conn,
+                    bracket=bracket,
+                    match_ids=(final.match_id,),
+                    participants_by_match_id={
+                        final.match_id: (final.home_club_id, final.away_club_id),
+                    },
+                )
+                final_winner_id = winners.get(final.match_id)
+                if final_winner_id is None:
                     return season
                 save_season_outcome(
                     conn,
@@ -191,7 +260,7 @@ def _advance_playoffs_if_needed(conn, season: Season, clubs: dict[str, Any], pla
                         final_match_id=final.match_id,
                         home_club_id=final.home_club_id,
                         away_club_id=final.away_club_id,
-                        winner_club_id=row["winner_club_id"],
+                        winner_club_id=final_winner_id,
                     ),
                 )
                 save_playoff_bracket(conn, dataclasses.replace(bracket, status="complete"))

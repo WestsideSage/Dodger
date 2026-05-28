@@ -290,7 +290,7 @@ def build_playoff_bracket_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     for row in conn.execute(
         """
         SELECT match_id, home_club_id, away_club_id, winner_club_id,
-               home_survivors, away_survivors
+               home_survivors, away_survivors, decided_by, narrative_note
         FROM match_records
         WHERE season_id = ?
         """,
@@ -335,6 +335,8 @@ def build_playoff_bracket_payload(conn: sqlite3.Connection) -> dict[str, Any]:
                     "away_survivors": result["away_survivors"] if result else None,
                     "winner_club_id": result["winner_club_id"] if result else None,
                     "status": "played" if result else "scheduled",
+                    "decided_by": (result.get("decided_by") if result else None),
+                    "narrative_note": (result.get("narrative_note") if result else None),
                 }
             )
         rounds.append({"round": round_info.get("round"), "matches": matches})
