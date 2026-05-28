@@ -30,6 +30,30 @@ class AftermathContext:
     # the first key in box_score["teams"] is treated as "mine" — fine for
     # writer-side tests that don't care about player perspective.
     player_club_id: str | None = None
+    # Selected coach Intent at match start. When supplied (alongside
+    # ``player_club_id``) the lazy ``narrative_beats`` property derives
+    # ``selected_plan_label`` from this intent.
+    selected_intent: str | None = None
+
+    @property
+    def narrative_beats(self):
+        """Lazily derive ``NarrativeBeats`` from the resolved MatchResult.
+
+        Every aftermath copy generator (headline, body, verdict, frontend
+        gates) consults this struct instead of recomputing comeback /
+        deficit / plan-label state from pre-resolution inputs. See
+        ``replay_proof.derive_narrative_beats`` for the contract.
+        """
+        # Imported lazily to avoid a circular import with replay_proof,
+        # which itself pulls voice_verdict for the approach-label helper.
+        from .replay_proof import derive_narrative_beats
+
+        return derive_narrative_beats(
+            self.match_result,
+            player_club_id=self.player_club_id,
+            moment_events=self.moment_events,
+            selected_intent=self.selected_intent,
+        )
 
     def player_name(self, player_id: str | None) -> str:
         if not player_id:

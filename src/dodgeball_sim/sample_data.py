@@ -307,6 +307,62 @@ def scripted_blowout_loss(
     return result, player_club_id, opponent_club_id
 
 
+def scripted_shutout_win(
+    *,
+    home_score: int,
+    away_score: int,
+    player_club_id: str = "aurora",
+    opponent_club_id: str = "lunar",
+):
+    """Build a fully-resolved ``MatchResult`` for a shutout-win scenario.
+
+    Convention: ``home_score`` is the player team's survivor count and
+    ``away_score`` is the opponent's. Returns ``(result, player_club_id,
+    opponent_club_id)`` mirroring ``scripted_blowout_loss`` so postgame
+    copy tests can assert against either perspective.
+    """
+
+    return scripted_blowout_loss(
+        player_survivors=home_score,
+        opponent_survivors=away_score,
+        player_club_id=player_club_id,
+        opponent_club_id=opponent_club_id,
+    )
+
+
+def scripted_match(
+    *,
+    selected_plan: str,
+    final_score: tuple[int, int],
+    player_club_id: str = "aurora",
+    opponent_club_id: str = "lunar",
+):
+    """Build a fully-resolved ``MatchResult`` with a chosen plan + score.
+
+    ``selected_plan`` is the player-facing plan label (e.g. "Defensive",
+    "Aggressive") — stored on the start event's team-policy snapshot so
+    aftermath generators that consult ``team_policies`` see the same
+    value the user saw at the command-center. ``final_score`` is
+    ``(player_survivors, opponent_survivors)``.
+
+    Returns ``(result, player_club_id, opponent_club_id)``.
+    """
+
+    player_survivors, opponent_survivors = final_score
+    result, _player, _opponent = scripted_blowout_loss(
+        player_survivors=player_survivors,
+        opponent_survivors=opponent_survivors,
+        player_club_id=player_club_id,
+        opponent_club_id=opponent_club_id,
+    )
+    # Stash the selected plan label on the match-start context so any
+    # consumer that walks ``events[0].context["selected_plan_label"]``
+    # can recover the user's choice without re-deriving from intent.
+    if result.events:
+        result.events[0].context["selected_plan_label"] = selected_plan
+    return result, player_club_id, opponent_club_id
+
+
 def scripted_tied_semifinal(
     *,
     home_seed: int,
@@ -404,5 +460,7 @@ __all__ = [
     "sample_match_setup",
     "describe_sample_matchup",
     "scripted_blowout_loss",
+    "scripted_match",
+    "scripted_shutout_win",
     "scripted_tied_semifinal",
 ]

@@ -69,12 +69,19 @@ function BeatList({
   );
 }
 
+interface NarrativeBeatsLike {
+  was_shutout: boolean;
+  largest_deficit: number;
+}
+
 export function ReplayTimeline({
   replay,
   lanes,
+  narrativeBeats,
 }: {
   replay: MatchReplayResponse | null;
   lanes: CommandDashboardLane[];
+  narrativeBeats?: NarrativeBeatsLike;
 }) {
   const beats = lanes.filter((lane) => lane.summary.trim().length > 0);
   const [isOpen, setIsOpen] = useState(false);
@@ -147,7 +154,7 @@ export function ReplayTimeline({
           )}
 
           {comeback?.display_text && replay?.winner_club_id === comeback.team_id && (
-            <ComebackCard text={comeback.display_text} />
+            <ComebackCard text={comeback.display_text} narrativeBeats={narrativeBeats} />
           )}
         </div>
       )}

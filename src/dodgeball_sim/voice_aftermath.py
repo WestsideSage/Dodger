@@ -141,6 +141,18 @@ def render_headline(
 
 def render_body(ctx: AftermathContext) -> tuple[str, ...]:
     paragraphs: list[str] = []
+    # NarrativeBeats gate: never narrate a comeback for a side that never
+    # trailed, or for either side in a shutout. The Comeback moment can
+    # still be emitted by the engine, but the render layer is the single
+    # source of truth for whether the player ever sees that copy.
+    # When ``player_club_id`` is absent (writer-side tests, generic
+    # contexts) we have no player perspective to derive the deficit from,
+    # so we trust the engine's emitted moment and don't suppress.
+    if ctx.player_club_id is not None:
+        beats = ctx.narrative_beats
+        suppress_comeback = beats.was_shutout or beats.largest_deficit == 0
+    else:
+        suppress_comeback = False
     for moment in sorted(ctx.moment_events, key=lambda event: event.tick, reverse=True):
         if moment.kind.value == "dramatic_catch" and ctx.policy_team.catch_posture == CatchPosture.GO_FOR_CATCHES:
             paragraphs.append(
@@ -153,6 +165,8 @@ def render_body(ctx: AftermathContext) -> tuple[str, ...]:
             )
             break
         if moment.kind.value == "comeback":
+            if suppress_comeback:
+                continue
             if moment.team_id != ctx.match_result.winner_team_id:
                 continue
             paragraphs.append(

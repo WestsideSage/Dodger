@@ -641,6 +641,19 @@ export interface Aftermath {
     body: string[];
     verdict?: string;
     top_performers?: TopPerformer[];
+    // Task 3 (2026-05-28 playtest-fixes): derived narrative facts about
+    // the resolved match. Frontend copy generators (e.g. ComebackCard)
+    // gate themselves on these fields so a shutout never renders
+    // "clawed it back" text. Absent on bye weeks and on payloads where
+    // derivation failed — components must treat undefined as "render
+    // nothing narrative".
+    narrative_beats?: {
+        was_shutout: boolean;
+        largest_deficit: number;
+        lead_changes: number;
+        selected_plan_label: string;
+        actual_plan_executed: string;
+    };
     // Task 1 (2026-05-27 playtest-fixes): present only for playoff matches
     // that needed a tiebreaker (overtime / seed). The banner renders
     // ``narrative_note`` verbatim; ``decided_by`` selects the chip text.

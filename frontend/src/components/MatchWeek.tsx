@@ -414,7 +414,11 @@ export function MatchWeek({
               standingsShift={aftermath.standings_shift}
               recruitReactions={aftermath.recruit_reactions}
             />
-            <ReplayTimeline replay={replayForMatch} lanes={activeResult.dashboard.lanes} />
+            <ReplayTimeline
+              replay={replayForMatch}
+              lanes={activeResult.dashboard.lanes}
+              narrativeBeats={aftermath.narrative_beats}
+            />
           </div>
         )}
 
