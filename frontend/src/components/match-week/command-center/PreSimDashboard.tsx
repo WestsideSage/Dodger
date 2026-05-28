@@ -278,6 +278,14 @@ export function PreSimDashboard({
       ? (hasApproachConflict ? `${currentApproach} is exposed vs ${threat.role} threat.` : staminaWarningShortText)
       : 'Current approach aligns with the opponent profile.';
 
+  // Note (playtest-fixes 2026-05-27 / Task 11-B): the backend default plan intent is
+  // "Win Now" (Aggressive) — see src/dodgeball_sim/command_center.py build_default_weekly_plan.
+  // The recommendation logic below is *contextual*: it only suggests Defensive on a fatigue
+  // issue or a role-counter conflict. So there is no blanket "UI recommends Defensive while
+  // default is Aggressive" disconnect to fix here — they only disagree when the matchup
+  // actually warrants a change. The S3-A/S3-B postgame copy issue ("won despite Aggressive")
+  // lives in src/dodgeball_sim/voice_verdict.py around the result == "Win" Aggressive branch
+  // and should be addressed there, not in this contextual recommendation surface.
   const recommendationLabel = isBye
     ? 'n/a'
     : hasPlanConflict ? `Adjust to ${hasFatigueIssue ? 'Defensive' : counterApproach}` : 'Keep current plan';

@@ -256,9 +256,32 @@ function RecruitBoard({
   );
 }
 
-function StaffTab({ data }: { data: DynastyOfficeResponse }) {
+function StaffTab({ data, onReload }: { data: DynastyOfficeResponse; onReload: () => void }) {
   const staff = data.staff_market.current_staff;
   const candidates = data.staff_market.candidates;
+  const [pendingHire, setPendingHire] = useState<string | null>(null);
+  const [hireError, setHireError] = useState<string | null>(null);
+  const recentHireIds = useMemo(
+    () => new Set(data.staff_market.recent_actions.map((action) => action.candidate_id).filter(Boolean)),
+    [data.staff_market.recent_actions],
+  );
+
+  const handleInterview = (candidateId: string) => {
+    if (pendingHire) return;
+    setPendingHire(candidateId);
+    setHireError(null);
+    dynastyApi.hireStaff(candidateId)
+      .then(() => {
+        onReload();
+      })
+      .catch((err: Error) => {
+        setHireError(err.message);
+      })
+      .finally(() => {
+        setPendingHire(null);
+      });
+  };
+
   const avgRating = averageRating(staff);
   const vacancies = buildVacancies(data);
 
@@ -350,9 +373,21 @@ function StaffTab({ data }: { data: DynastyOfficeResponse }) {
             <span className="dm-kicker">Pipeline</span>
             <h3>Candidates</h3>
           </div>
+          {hireError && (
+            <div style={{ padding: '0.5rem 1.2rem', color: '#fca5a5', fontSize: '0.78rem' }}>
+              Could not complete interview: {hireError}
+            </div>
+          )}
           <div className="do-pipe-list">
             {candidates.length > 0 ? candidates.map((candidate) => {
-              const normalizedStage = candidate.effect_lanes.length > 1 ? 'interview' : candidate.effect_lanes.length === 1 ? 'background' : 'offer-sent';
+              const alreadyHired = recentHireIds.has(candidate.candidate_id);
+              const isPending = pendingHire === candidate.candidate_id;
+              const isLocked = Boolean(pendingHire) && !isPending;
+              const buttonLabel = alreadyHired
+                ? 'Interviewed'
+                : isPending
+                  ? 'Interviewing…'
+                  : 'Interview';
               return (
                 <div key={candidate.candidate_id} className="do-pipe-row">
                   <div className="do-pipe-id">
@@ -362,7 +397,17 @@ function StaffTab({ data }: { data: DynastyOfficeResponse }) {
                   </div>
                   <div className="do-pipe-meta">
                     <span className="rating">{candidate.rating_primary}<small> OVR</small></span>
-                    <span className={`stage stage-${normalizedStage}`}>{normalizedStage.replace('-', ' ')}</span>
+                    <button
+                      type="button"
+                      className="dm-btn"
+                      disabled={alreadyHired || isPending || isLocked}
+                      aria-label={alreadyHired ? `Already interviewed ${candidate.name}` : `Interview ${candidate.name}`}
+                      aria-busy={isPending}
+                      onClick={() => handleInterview(candidate.candidate_id)}
+                      style={{ minWidth: '7.5rem' }}
+                    >
+                      {buttonLabel}
+                    </button>
                   </div>
                 </div>
               );
@@ -454,7 +499,7 @@ export function DynastyOffice() {
           </div>
         )}
 
-        {activeSubTab === 'staff' && <StaffTab data={data} />}
+        {activeSubTab === 'staff' && <StaffTab data={data} onReload={reload} />}
       </div>
 
       {showSettings && planContext && (
