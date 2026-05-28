@@ -31,8 +31,7 @@ function humanize(value: string | undefined) {
 }
 
 function formatEdge(value: number) {
-  const rounded = Math.round(value * 10) / 10;
-  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  return String(Math.round(value));
 }
 
 function parseKeyMatchup(raw: string) {
@@ -296,8 +295,15 @@ export function PreSimDashboard({
   const identityRecordValue = playoffStage ? regularSeasonRecord : recentRecord;
   const yourStarterTotal = activePlayers.reduce((sum, player) => sum + player.overall, 0);
   const oppStarterTotal = opponentPlayers.reduce((sum, player) => sum + player.overall, 0);
-  const netStarterEdge = Math.round((yourStarterTotal - oppStarterTotal) * 10) / 10;
-  const playerEdgeLabel = netStarterEdge === 0 ? 'Even starter line' : `${data.player_club_name} ${netStarterEdge > 0 ? '+' : ''}${formatEdge(netStarterEdge)} net OVR`;
+  const netStarterEdge = Math.round(yourStarterTotal - oppStarterTotal);
+  const edgeContext = netStarterEdge === 0
+    ? ''
+    : netStarterEdge > 0
+      ? ' (Favorite)'
+      : ' (Underdog)';
+  const playerEdgeLabel = netStarterEdge === 0
+    ? 'Even starter line'
+    : `${data.player_club_name} ${netStarterEdge > 0 ? '+' : ''}${formatEdge(netStarterEdge)} net OVR${edgeContext}`;
   const primaryActionLabel = planConfirmed ? 'SIMULATE WEEK' : 'LOCK PLAN';
   const primaryActionHint = planConfirmed
     ? 'The weekly plan is locked. Run the match when you are ready to move the season forward.'
@@ -450,7 +456,12 @@ export function PreSimDashboard({
             <div className="cc-court-card">
               <div className="head">
                 <span className="lbl">Court Read</span>
-                <span className="side">▸ {threat.name ? `${threat.name} flagged` : 'Schematic — live positions'}</span>
+                <span
+                  className="side"
+                  title={threat.name ? 'Opponent key threat — watch this player' : undefined}
+                >
+                  ▸ {threat.name ? `${threat.name} flagged` : 'Schematic — live positions'}
+                </span>
               </div>
               <MiniCourt homePlayers={activePlayers} awayPlayers={opponentPlayers} threatName={threat.name} />
             </div>
@@ -533,7 +544,7 @@ export function PreSimDashboard({
                   onClick={() => setPolicyEditorOpen(true)}
                   data-testid="open-policy-editor"
                 >
-                  Edit Policy ▸
+                  Edit Game Plan ▸
                 </button>
               )}
             </div>
