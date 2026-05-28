@@ -2372,11 +2372,6 @@ textarea:focus-visible {
   align-items: stretch;
   justify-content: flex-end;
   padding: 4px 16px 12px;
-  position: sticky;
-  bottom: 0;
-  background: #0a0f1c;
-  z-index: 10;
-  border-top: 1px solid #1e293b;
 }
 
 .command-action-bar-secondary {

@@ -19,7 +19,11 @@ export function AftermathActionBar({
   const hasReplay = Boolean(matchId && onViewReplay);
 
   return (
-    <div className="command-action-bar" data-testid="after-action-bar">
+    <div
+      className="command-action-bar"
+      data-testid="after-action-bar"
+      style={{ position: 'sticky', bottom: 0, background: '#0a0f1c', zIndex: 10, borderTop: '1px solid #1e293b' }}
+    >
       {hasReplay && (
         <button onClick={onViewReplay} className="command-action-bar-secondary">
           VIEW FULL REPLAY
