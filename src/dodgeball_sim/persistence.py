@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from .career_state import CareerStateCursor
 
 # Increment when new migrations are added.
-CURRENT_SCHEMA_VERSION = 15
+CURRENT_SCHEMA_VERSION = 16
 _MAX_OFFSEASON_BEAT_INDEX = 9
 
 
@@ -159,21 +159,21 @@ def _player_from_dict(d: Dict[str, Any]) -> Player:
         newcomer=d.get("newcomer", True),
         archetype=archetype,
         ratings=PlayerRatings(
-            accuracy=r["accuracy"],
-            power=r["power"],
-            dodge=r["dodge"],
-            catch=r["catch"],
-            stamina=r["stamina"],
-            tactical_iq=r["tactical_iq"],
-            catch_courage=r["catch_courage"],
-            throw_selection_iq=r["throw_selection_iq"],
-            conditioning_curve=r["conditioning_curve"],
+            accuracy=int(round(float(r["accuracy"]))),
+            power=int(round(float(r["power"]))),
+            dodge=int(round(float(r["dodge"]))),
+            catch=int(round(float(r["catch"]))),
+            stamina=int(round(float(r["stamina"]))),
+            tactical_iq=int(round(float(r["tactical_iq"]))),
+            catch_courage=int(round(float(r["catch_courage"]))),
+            throw_selection_iq=int(round(float(r["throw_selection_iq"]))),
+            conditioning_curve=int(round(float(r["conditioning_curve"]))),
         ),
         traits=PlayerTraits(
-            potential=t.get("potential", 60),
-            growth_curve=t.get("growth_curve", 50.0),
-            consistency=t.get("consistency", 0.5),
-            pressure=t.get("pressure", 0.5),
+            potential=int(round(float(t.get("potential", 50)))),
+            growth_curve=15 if str(t.get("growth_curve")).lower().strip() == "early" else (85 if str(t.get("growth_curve")).lower().strip() == "late" else (50 if str(t.get("growth_curve")).lower().strip() == "steady" else int(round(float(t.get("growth_curve", 50)))))),
+            consistency=int(round(float(t.get("consistency", 50)) * 100)) if float(t.get("consistency", 50)) <= 1.0 else int(round(float(t.get("consistency", 50)))),
+            pressure=int(round(float(t.get("pressure", 50)) * 100)) if float(t.get("pressure", 50)) <= 1.0 else int(round(float(t.get("pressure", 50)))),
         ),
     )
 
@@ -612,6 +612,7 @@ def _migrate_v8(conn: sqlite3.Connection) -> None:
             public_archetype_guess TEXT NOT NULL,
             public_ratings_band_json TEXT NOT NULL,
             is_signed INTEGER NOT NULL DEFAULT 0,
+            pipeline_tier INTEGER NOT NULL DEFAULT 1,
             PRIMARY KEY (class_year, player_id)
         );
 
@@ -1048,6 +1049,13 @@ def _migrate_v15(conn: sqlite3.Connection) -> None:
             conn.execute(f"ALTER TABLE season_standings ADD COLUMN {col} {definition}")
 
 
+def _migrate_v16(conn: sqlite3.Connection) -> None:
+    """Add pipeline_tier to prospect_pool."""
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(prospect_pool)")}
+    if "pipeline_tier" not in columns:
+        conn.execute("ALTER TABLE prospect_pool ADD COLUMN pipeline_tier INTEGER NOT NULL DEFAULT 1")
+
+
 _MIGRATIONS: Dict[int, Any] = {
     1: _migrate_v1,
     2: _migrate_v2,
@@ -1064,6 +1072,7 @@ _MIGRATIONS: Dict[int, Any] = {
     13: _migrate_v13,
     14: _migrate_v14,
     15: _migrate_v15,
+    16: _migrate_v16,
 }
 
 
@@ -2701,6 +2710,7 @@ def save_prospect_pool(conn: sqlite3.Connection, prospects: Iterable[Prospect]) 
             p.public_archetype_guess,
             _json_dump({key: list(value) for key, value in p.public_ratings_band.items()}),
             0,
+            p.pipeline_tier,
         )
         for p in prospects
     ]
@@ -2709,8 +2719,8 @@ def save_prospect_pool(conn: sqlite3.Connection, prospects: Iterable[Prospect]) 
         INSERT OR REPLACE INTO prospect_pool (
             class_year, player_id, name, age, hometown, archetype, hidden_ratings_json,
             hidden_trajectory, hidden_traits_json, public_archetype_guess,
-            public_ratings_band_json, is_signed
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            public_ratings_band_json, is_signed, pipeline_tier
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         rows,
     )
@@ -2737,6 +2747,7 @@ def load_prospect_pool(conn: sqlite3.Connection, class_year: int) -> List[Prospe
                 hidden_traits=list(json.loads(row["hidden_traits_json"])),
                 public_archetype_guess=row["public_archetype_guess"],
                 public_ratings_band={key: tuple(value) for key, value in band_raw.items()},
+                pipeline_tier=row["pipeline_tier"] if "pipeline_tier" in row.keys() else 1,
             )
         )
     return result

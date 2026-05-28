@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Player, RosterResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
 import { StatusMessage } from './ui';
+import { PlayerDetailModal } from './PlayerDetailModal';
 
 type RosterEntry = {
   player: Player;
@@ -145,7 +146,7 @@ const AgeCurve = ({ roster }: { roster: RosterEntry[] }) => {
   const ages = roster.map((entry) => entry.player.age);
   const min = ages.length > 0 ? Math.min(...ages) : 0;
   const max = ages.length > 0 ? Math.max(...ages) : 0;
-  const avg = ages.length > 0 ? (ages.reduce((total, age) => total + age, 0) / ages.length).toFixed(1) : '0.0';
+  const avg = ages.length > 0 ? Math.round(ages.reduce((total, age) => total + age, 0) / ages.length) : 0;
   const buckets = [
     { label: '18-21', min: 18, max: 21 },
     { label: '22-25', min: 22, max: 25 },
@@ -203,6 +204,7 @@ export function Roster() {
   const { data, loading, error } = useApiResource<RosterResponse>('/api/roster');
   const [view, setView] = useState<'detailed' | 'compact'>('detailed');
   const [sortKey, setSortKey] = useState<'lineup' | 'potential' | 'overall' | 'age'>('lineup');
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 
   const defaultLineupIds = useMemo(
     () => new Set((data?.default_lineup ?? []).slice(0, 6)),
@@ -300,7 +302,12 @@ export function Roster() {
               {roster.map(({ player, starter }, index) => {
                 const isElite = player.potential_tier === 'Elite';
                 return (
-                  <tr key={player.id} className={`${isElite ? 'rl-row-elite' : ''} ${starter ? 'rl-row-starter' : ''}`.trim()}>
+                  <tr 
+                    key={player.id} 
+                    className={`${isElite ? 'rl-row-elite' : ''} ${starter ? 'rl-row-starter' : ''}`.trim()}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setSelectedPlayer(player)}
+                  >
                     <td className="num rl-rank">{String(index + 1).padStart(2, '0')}</td>
                     <td>
                       <div className="rl-player">
@@ -379,6 +386,10 @@ export function Roster() {
           <span className="rl-foot-note">Live roster data sorted from the active club sheet.</span>
         </div>
       </div>
+      
+      {selectedPlayer && (
+        <PlayerDetailModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />
+      )}
     </div>
   );
 }

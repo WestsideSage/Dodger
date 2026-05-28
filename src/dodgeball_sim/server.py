@@ -781,15 +781,15 @@ def api_build_from_scratch(req: BuildFromScratchRequest):
         if pid in roster_map:
             prospect = roster_map[pid]
             ratings = PlayerRatings(
-                accuracy=prospect.hidden_ratings["accuracy"],
-                power=prospect.hidden_ratings["power"],
-                dodge=prospect.hidden_ratings["dodge"],
-                catch=prospect.hidden_ratings["catch"],
-                stamina=prospect.hidden_ratings["stamina"],
-                tactical_iq=prospect.hidden_ratings.get("tactical_iq", 50.0),
-                catch_courage=prospect.hidden_ratings.get("catch_courage", 50.0),
-                throw_selection_iq=prospect.hidden_ratings.get("throw_selection_iq", 50.0),
-                conditioning_curve=prospect.hidden_ratings.get("conditioning_curve", 50.0),
+                accuracy=int(round(float(prospect.hidden_ratings.get("accuracy", 50.0)))),
+                power=int(round(float(prospect.hidden_ratings.get("power", 50.0)))),
+                dodge=int(round(float(prospect.hidden_ratings.get("dodge", 50.0)))),
+                catch=int(round(float(prospect.hidden_ratings.get("catch", 50.0)))),
+                stamina=int(round(float(prospect.hidden_ratings.get("stamina", 50.0)))),
+                tactical_iq=int(round(float(prospect.hidden_ratings.get("tactical_iq", 50.0)))),
+                catch_courage=int(round(float(prospect.hidden_ratings.get("catch_courage", 50.0)))),
+                throw_selection_iq=int(round(float(prospect.hidden_ratings.get("throw_selection_iq", 50.0)))),
+                conditioning_curve=int(round(float(prospect.hidden_ratings.get("conditioning_curve", 50.0)))),
             ).apply_bounds()
             custom_roster.append(Player(
                 id=prospect.player_id,
@@ -800,10 +800,10 @@ def api_build_from_scratch(req: BuildFromScratchRequest):
                 ratings=ratings,
                 archetype=derive_archetype(ratings),
                 traits=PlayerTraits(
-                    potential=min(100.0, max(70.0, max(prospect.hidden_ratings.values()) + 8.0)),
-                    growth_curve=50.0,
-                    consistency=0.5,
-                    pressure=0.5,
+                    potential=int(round(min(100.0, max(70.0, float(max(prospect.hidden_ratings.values())) + 8.0)))),
+                    growth_curve=50,
+                    consistency=50,
+                    pressure=50,
                 ),
             ))
 
@@ -953,7 +953,7 @@ def get_history_my_program(club_id: str, conn = Depends(get_db)):
             if t["club_id"] == club_id and t["trophy_type"] == "championship"
         )
         avg_ovr = (
-            round(sum(p.overall_skill() for p in current_roster) / len(current_roster), 1)
+            round(sum(p.overall_skill() for p in current_roster) / len(current_roster))
             if current_roster else 0
         )
         hero["season_1"] = _standing_hero(all_seasons[0])
@@ -1086,7 +1086,7 @@ def get_history_my_program(club_id: str, conn = Depends(get_db)):
             "seasons_played": int((career or {}).get("seasons_played", 0)),
             "career_elims": int((career or {}).get("total_eliminations", 0)),
             "championships": int((career or {}).get("championships", 0)),
-            "ovr_final": float(r.get("overall", round(p.overall_skill(), 1))),
+            "ovr_final": int(r.get("overall", p.overall_skill())),
             "potential_tier": calculate_potential_tier(p.traits.potential),
         })
 

@@ -2,6 +2,10 @@ from fastapi.testclient import TestClient
 from dodgeball_sim.server import app, SAVES_DIR, _active_save_path
 import shutil
 import pytest
+import json
+
+from dodgeball_sim.persistence import connect, get_state, load_prospect_pool
+from dodgeball_sim.save_service import build_from_scratch_save, starting_prospects_payload
 
 def test_build_from_scratch_endpoints():
     client = TestClient(app)
@@ -50,3 +54,30 @@ def test_build_from_scratch_endpoints():
     if _active_save_path:
         _active_save_path.unlink(missing_ok=True)
         _active_save_path = None
+
+
+def test_build_from_scratch_warm_prospects_target_active_pool(tmp_path):
+    prospects = starting_prospects_payload()["prospects"]
+    chosen_ids = [prospect["player_id"] for prospect in prospects[:10]]
+    payload = {
+        "save_name": "warm_pool_check",
+        "club_name": "Warm Pool Checkers",
+        "city": "Testville",
+        "colors": "#FF0000,#000000",
+        "coach_name": "Test Coach",
+        "coach_backstory": "Tactical Mastermind",
+        "roster_player_ids": chosen_ids,
+        "root_seed": 20260426,
+    }
+
+    result = build_from_scratch_save(tmp_path, payload)
+    conn = connect(result["path"])
+    try:
+        active_pool_ids = {prospect.player_id for prospect in load_prospect_pool(conn, 1)}
+        actions = json.loads(get_state(conn, "prospect_recruitment_actions_json") or "{}")
+    finally:
+        conn.close()
+
+    assert actions
+    assert set(actions).issubset(active_pool_ids)
+    assert all(action == {"scouted": True, "contacted": True} for action in actions.values())

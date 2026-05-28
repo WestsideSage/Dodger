@@ -73,3 +73,16 @@ worktrees/
 /0*.png
 /1*.png
 .playwright-mcp/
+
+# Playtest scratch scripts and screenshot dumps
+playtest_newplayer.py
+playtest_deep.py
+playtest_deep2.py
+playtest_full.py
+playtest_roster_recruit_staff.py
+playtest_shots/
+playtest_shots2/
+playtest_screenshots/
+playtest_screenshots_deep/
+playtest_full_ss/
+dodgeball-playtest-*.png

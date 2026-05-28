@@ -32,12 +32,12 @@ class UpsetResult:
     winner_club_name: str
     loser_club_id: str
     loser_club_name: str
-    winner_overall: float
-    loser_overall: float
+    winner_overall: int
+    loser_overall: int
 
     @property
-    def overall_gap(self) -> float:
-        return round(self.loser_overall - self.winner_overall, 2)
+    def overall_gap(self) -> int:
+        return self.loser_overall - self.winner_overall
 
 
 @dataclass(frozen=True)

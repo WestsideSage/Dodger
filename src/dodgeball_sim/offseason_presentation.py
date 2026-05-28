@@ -139,7 +139,7 @@ def build_beat_payload(
                     "season_stat": int(season_stat),
                     "season_stat_label": season_stat_label,
                     "career_stat": int(career_stat),
-                    "ovr": int(round(player.overall_skill())) if player else 0,
+                    "ovr": player.overall_skill() if player else 0,
                     "extra_stats": (
                         {
                             "throw_elims": int(stats.eliminations_by_throw),
@@ -255,7 +255,7 @@ def build_beat_payload(
             if player:
                 player_signing = {
                     "name": player.name,
-                    "ovr": int(round(player.overall_skill())),
+                    "ovr": player.overall_skill(),
                     "age": player.age,
                 }
 

@@ -462,7 +462,7 @@ def initialize_manager_offseason(
                 staff_development_modifier=_staff_dev_modifier if is_player_club else 0.0,
             )
             aged = replace(developed, age=developed.age + 1)
-            delta = round(aged.overall_skill() - player.overall_skill(), 2)
+            delta = aged.overall_skill() - player.overall_skill()
             if should_retire(aged, load_player_career_stats(conn, player.id)):
                 save_retired_player(conn, aged, season.season_id, "age_decline")
                 retirement_rows.append(
@@ -471,19 +471,27 @@ def initialize_manager_offseason(
                         "player_name": aged.name,
                         "club_id": club_id,
                         "age": aged.age,
-                        "overall": round(aged.overall_skill(), 1),
+                        "overall": aged.overall_skill(),
                         "reason": "age_decline",
                     }
                 )
                 continue
+            staff_notes = []
+            if aged.traits.potential > player.traits.potential:
+                staff_notes.append("Potential upgraded by great coaching & performance!")
+            if delta > 3:
+                staff_notes.append("Outstanding offseason growth!")
+            elif delta < 0:
+                staff_notes.append("Signs of regression.")
             development_rows.append(
                 {
                     "player_id": aged.id,
                     "player_name": aged.name,
                     "club_id": club_id,
-                    "before": round(player.overall_skill(), 1),
-                    "after": round(aged.overall_skill(), 1),
+                    "before": player.overall_skill(),
+                    "after": aged.overall_skill(),
                     "delta": delta,
+                    "notes": staff_notes,
                 }
             )
             next_roster.append(aged)
@@ -572,11 +580,13 @@ def available_recruitment_choices(
             {
                 "prospect_id": prospect.player_id,
                 "name": prospect.name,
-                "overall": round(prospect.true_overall(), 1),
+                "overall": prospect.true_overall(),
                 "age": prospect.age,
                 "hometown": prospect.hometown,
                 "archetype": prospect.public_archetype_guess,
                 "kind": "prospect",
+                "pipeline_tier": prospect.pipeline_tier,
+                "fit_score": round(prospect.true_overall() * 0.8 + prospect.pipeline_tier * 4.0),
             }
         )
     for free_agent in sorted(
@@ -586,7 +596,7 @@ def available_recruitment_choices(
             {
                 "prospect_id": free_agent.id,
                 "name": free_agent.name,
-                "overall": round(free_agent.overall_skill(), 1),
+                "overall": free_agent.overall_skill(),
                 "age": free_agent.age,
                 "hometown": "Free agent",
                 "archetype": free_agent.archetype.display_name,

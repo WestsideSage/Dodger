@@ -189,7 +189,7 @@ def build_prospect_board_rows(conn: sqlite3.Connection, class_year: int) -> List
         archetype_tier = state.archetype_tier if state else "UNKNOWN"
         traits_tier = state.traits_tier if state else "UNKNOWN"
         trajectory_tier = state.trajectory_tier if state else "UNKNOWN"
-        true_ovr = int(round(prospect.true_overall()))
+        true_ovr = prospect.true_overall()
         if ratings_tier == "VERIFIED":
             ovr_band = (true_ovr, true_ovr)
         elif ratings_tier == "KNOWN":
@@ -394,7 +394,7 @@ def build_accuracy_reckoning(
             player_id=contribution.player_id,
             season=contribution.season,
             predicted_ovr_band=tuple(predicted_band) if predicted_band else None,
-            actual_ovr=int(round(prospect.true_overall())),
+            actual_ovr=prospect.true_overall(),
             predicted_archetype=contribution.last_estimated_archetype,
             actual_archetype=prospect.true_archetype(),
             predicted_trajectory=contribution.last_estimated_trajectory,
@@ -409,7 +409,7 @@ def build_accuracy_reckoning(
         if prospect is None:
             continue
         predicted_band = contribution.last_estimated_ratings_band.get("ovr")
-        actual_ovr = int(round(prospect.true_overall()))
+        actual_ovr = prospect.true_overall()
         bucket = summary.setdefault(contribution.scout_id, {"scout_id": contribution.scout_id, "rows": []})
         bucket["rows"].append(
             {
@@ -452,7 +452,7 @@ def build_hidden_gem_spotlight(
             continue
         low, high = prospect.public_ratings_band["ovr"]
         public_mid = (low + high) // 2
-        true_ovr = int(round(prospect.true_overall()))
+        true_ovr = prospect.true_overall()
         if public_mid + floor < true_ovr:
             return {
                 "player_id": prospect.player_id,
