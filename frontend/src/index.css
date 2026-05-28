@@ -6837,10 +6837,60 @@ textarea:focus-visible {
 }
 .mr-log-event:first-child { border-top: 0; }
 .mr-log-event:hover { background: rgba(34,211,238,0.04); }
-.mr-log-event.is-active { background: rgba(34,211,238,0.08); box-shadow: inset 2px 0 0 var(--dm-cyan); }
+.mr-log-event.is-past { opacity: 0.55; }
+.mr-log-event.is-past:hover { opacity: 0.85; }
+.mr-log-event.is-active {
+  background: linear-gradient(90deg, rgba(34,211,238,0.16), rgba(34,211,238,0.04));
+  box-shadow: inset 4px 0 0 var(--dm-cyan-bright);
+  position: relative;
+  z-index: 1;
+}
+.mr-log-event.is-active .mr-log-title { color: #fff; font-weight: 700; }
 .mr-log-rail { display: grid; gap: 4px; text-align: center; }
 .mr-log-tick { font-family: var(--font-mono); font-size: 0.74rem; font-weight: 800; color: var(--dm-text-muted); letter-spacing: 0.04em; }
 .mr-log-event.is-active .mr-log-tick { color: var(--dm-cyan-bright); }
+
+/* --- Court row + Current event card --- */
+.mr-court-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
+  gap: 16px;
+  align-items: stretch;
+}
+@media (max-width: 1100px) {
+  .mr-court-row { grid-template-columns: 1fr; }
+}
+.mr-current-card {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--dm-border);
+  border-left: 3px solid var(--dm-cyan-bright);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, rgba(34,211,238,0.06), rgba(15,23,42,0.85));
+  min-width: 0;
+}
+.mr-current-head { display: flex; justify-content: space-between; align-items: baseline; }
+.mr-current-kicker { font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.22em; color: var(--dm-cyan-bright); text-transform: uppercase; }
+.mr-current-pos { font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.12em; color: var(--dm-text-muted); }
+.mr-current-empty { margin: 0; font-family: var(--font-mono); font-size: 0.74rem; color: var(--dm-text-muted); }
+.mr-current-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.mr-current-tick { font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.14em; color: var(--dm-text-muted); text-transform: uppercase; }
+.mr-current-keyplay { font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.18em; color: #fb923c; border: 1px solid rgba(251,146,60,0.5); padding: 2px 6px; border-radius: 3px; text-transform: uppercase; }
+.mr-current-summary { margin: 0; font-family: var(--font-display); font-size: 0.95rem; font-weight: 700; color: #fff; line-height: 1.3; letter-spacing: 0.01em; }
+.mr-current-actors { display: grid; gap: 6px; }
+.mr-current-actor { display: grid; grid-template-columns: 56px 1fr; gap: 8px; align-items: baseline; }
+.mr-current-actor .role { font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.18em; color: var(--dm-text-dead); text-transform: uppercase; }
+.mr-current-actor .name { font-family: var(--font-body); font-size: 0.82rem; color: #f1f5f9; font-weight: 600; }
+.mr-current-actor .club { font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.1em; color: var(--dm-text-muted); text-transform: uppercase; grid-column: 2; }
+.mr-current-detail { margin: 0; font-family: var(--font-mono); font-size: 0.7rem; color: var(--dm-text-muted); line-height: 1.45; border-top: 1px solid var(--dm-border); padding-top: 8px; }
+.mr-current-score { display: grid; gap: 4px; margin-top: auto; border-top: 1px solid var(--dm-border); padding-top: 8px; }
+.mr-current-score-lbl { font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.22em; color: var(--dm-text-dead); text-transform: uppercase; }
+.mr-current-score-row { display: flex; justify-content: space-between; gap: 8px; }
+.mr-current-score-row .team { display: flex; align-items: baseline; gap: 6px; font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.08em; color: var(--dm-text-muted); text-transform: uppercase; }
+.mr-current-score-row .team b { font-family: var(--font-display); font-size: 1.1rem; color: #f1f5f9; font-weight: 800; }
+.mr-current-score-row .team em { font-style: normal; font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700; padding: 1px 5px; border-radius: 3px; }
+.mr-current-score-row .team em.down { color: #fb7185; background: rgba(244,63,94,0.12); }
+.mr-current-score-row .team em.up { color: #34d399; background: rgba(16,185,129,0.12); }
 .mr-log-time { font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.1em; color: var(--dm-text-dead); }
 .mr-log-body { min-width: 0; }
 .mr-log-row { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }

@@ -1,4 +1,4 @@
-import { memo, useMemo, useEffect, useState } from 'react';
+import { memo, useMemo, useEffect, useRef, useState } from 'react';
 
 import type { MatchReplayResponse, ReplayProofEvent } from '../types';
 
@@ -291,11 +291,26 @@ const chipClass = (resolution: string) => {
 };
 
 const EventLog = ({ events, activeIdx, onSelect }: { events: ReplayProofEvent[], activeIdx: number, onSelect: (i: number) => void }) => {
+  const activeRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (activeRef.current) {
+      activeRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [activeIdx]);
+
   return (
     <div className="mr-log">
       {events.map((ev, idx) => {
+        const state = idx === activeIdx ? 'is-active' : idx < activeIdx ? 'is-past' : 'is-future';
         return (
-          <button key={idx} className={`mr-log-event ${idx === activeIdx ? 'is-active' : ''}`} onClick={() => onSelect(idx)}>
+          <button
+            key={idx}
+            ref={idx === activeIdx ? activeRef : undefined}
+            className={`mr-log-event ${state}`}
+            onClick={() => onSelect(idx)}
+            aria-current={idx === activeIdx ? 'step' : undefined}
+          >
             <div className="mr-log-rail">
               <span className="mr-log-tick">{(idx + 1).toString().padStart(2, '0')}</span>
               <span className="mr-log-time">T{ev.tick}</span>
@@ -315,6 +330,97 @@ const EventLog = ({ events, activeIdx, onSelect }: { events: ReplayProofEvent[],
         );
       })}
     </div>
+  );
+};
+
+interface CurrentEventCardProps {
+  event: ReplayProofEvent | undefined;
+  prevEvent: ReplayProofEvent | undefined;
+  homeClubId: string;
+  homeName: string;
+  awayName: string;
+  index: number;
+  total: number;
+}
+
+const CurrentEventCard = ({ event, prevEvent, homeClubId, homeName, awayName, index, total }: CurrentEventCardProps) => {
+  if (!event) {
+    return (
+      <aside className="mr-current-card" data-testid="replay-current-event" aria-label="Current event">
+        <div className="mr-current-head">
+          <span className="mr-current-kicker">CURRENT EVENT</span>
+          <span className="mr-current-pos">--/--</span>
+        </div>
+        <p className="mr-current-empty">Press play to begin the sequence.</p>
+      </aside>
+    );
+  }
+
+  const isHomeOffense = event.offense_club_id === homeClubId;
+  const offenseName = isHomeOffense ? homeName : awayName;
+  const defenseName = isHomeOffense ? awayName : homeName;
+  const chip = chipClass(event.resolution);
+  const score = event.score_state;
+  const prevScore = prevEvent?.score_state;
+  const homeNow = score?.home_living ?? null;
+  const awayNow = score?.away_living ?? null;
+  const homePrev = prevScore?.home_living ?? homeNow;
+  const awayPrev = prevScore?.away_living ?? awayNow;
+  const homeDelta = homeNow != null && homePrev != null ? homeNow - homePrev : 0;
+  const awayDelta = awayNow != null && awayPrev != null ? awayNow - awayPrev : 0;
+  const hasDelta = homeDelta !== 0 || awayDelta !== 0;
+
+  return (
+    <aside className="mr-current-card" data-testid="replay-current-event" aria-label="Current event">
+      <div className="mr-current-head">
+        <span className="mr-current-kicker">CURRENT EVENT</span>
+        <span className="mr-current-pos">{(index + 1).toString().padStart(2, '0')}/{total.toString().padStart(2, '0')}</span>
+      </div>
+      <div className="mr-current-row">
+        <span className={`mr-log-chip ${chip}`}>{event.resolution.toUpperCase()}</span>
+        <span className="mr-current-tick">TICK {event.tick}</span>
+        {event.is_key_play && <span className="mr-current-keyplay">KEY PLAY</span>}
+      </div>
+      <p className="mr-current-summary">{event.summary}</p>
+      {event.thrower_name && (
+        <div className="mr-current-actors">
+          <div className="mr-current-actor">
+            <span className="role">THROW</span>
+            <span className="name">{event.thrower_name}</span>
+            <span className="club">{offenseName}</span>
+          </div>
+          {event.target_name && (
+            <div className="mr-current-actor">
+              <span className="role">TARGET</span>
+              <span className="name">{event.target_name}</span>
+              <span className="club">{defenseName}</span>
+            </div>
+          )}
+        </div>
+      )}
+      {event.detail && <p className="mr-current-detail">{event.detail}</p>}
+      {score && (
+        <div className="mr-current-score">
+          <span className="mr-current-score-lbl">SURVIVORS</span>
+          <div className="mr-current-score-row">
+            <span className="team home">
+              {homeName}
+              <b>{homeNow}</b>
+              {hasDelta && homeDelta !== 0 && (
+                <em className={homeDelta < 0 ? 'down' : 'up'}>{homeDelta > 0 ? `+${homeDelta}` : homeDelta}</em>
+              )}
+            </span>
+            <span className="team away">
+              {awayName}
+              <b>{awayNow}</b>
+              {hasDelta && awayDelta !== 0 && (
+                <em className={awayDelta < 0 ? 'down' : 'up'}>{awayDelta > 0 ? `+${awayDelta}` : awayDelta}</em>
+              )}
+            </span>
+          </div>
+        </div>
+      )}
+    </aside>
   );
 };
 
@@ -485,20 +591,31 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
           <span className="sep" />
           <span className="title">{currentEvent?.summary || 'Match Start'}</span>
         </div>
-        <div className="mr-court-wrap">
-          <DarkCourt
-            homeName={data.home_club_name}
-            awayName={data.away_club_name}
-            homeIds={homeIds}
-            awayIds={awayIds}
-            positions={positions}
-            playerRegistry={playerRegistry}
-            eliminatedIds={eliminatedIds}
-            throwerId={throwerId}
-            targetId={targetId}
-            activeResolution={activeResolution}
-            flashTargetId={flashTargetId}
-            ballAnimKey={ballAnimKey}
+        <div className="mr-court-row">
+          <div className="mr-court-wrap">
+            <DarkCourt
+              homeName={data.home_club_name}
+              awayName={data.away_club_name}
+              homeIds={homeIds}
+              awayIds={awayIds}
+              positions={positions}
+              playerRegistry={playerRegistry}
+              eliminatedIds={eliminatedIds}
+              throwerId={throwerId}
+              targetId={targetId}
+              activeResolution={activeResolution}
+              flashTargetId={flashTargetId}
+              ballAnimKey={ballAnimKey}
+            />
+          </div>
+          <CurrentEventCard
+            event={currentEvent}
+            prevEvent={eventIndex > 0 ? data.proof_events[eventIndex - 1] : undefined}
+            homeClubId={data.home_club_id}
+            homeName={data.home_club_name || 'HOME'}
+            awayName={data.away_club_name || 'AWAY'}
+            index={eventIndex}
+            total={totalEvents}
           />
         </div>
         <PossessionBar events={data.proof_events} activeIdx={eventIndex} onJump={setEventIndex} homeClubId={data.home_club_id} />
