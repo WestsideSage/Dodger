@@ -15,6 +15,7 @@ from .ai_program_manager import prepare_ai_plans_for_matches
 from .game_loop import current_week, recompute_regular_season_standings, simulate_scheduled_match
 from .match_orchestration import _choose_next_user_match_after_automation
 from .match_orchestration import _apply_command_plan_to_match
+from .match_orchestration import resolve_playoff_winners
 from .models import CoachPolicy
 from .offseason_ceremony import ensure_ai_rosters_playable
 from .persistence import (
@@ -396,9 +397,7 @@ def advance_playoffs_if_needed(conn: sqlite3.Connection, season: Season, clubs: 
                 continue
             if pending:
                 return season
-            from .match_orchestration import _resolve_playoff_winners
-
-            winners = _resolve_playoff_winners(
+            winners = resolve_playoff_winners(
                 conn,
                 bracket=bracket,
                 match_ids=(
@@ -432,9 +431,7 @@ def advance_playoffs_if_needed(conn: sqlite3.Connection, season: Season, clubs: 
                 recompute_regular_season_standings(conn, season)
                 completed = load_completed_match_ids(conn, season.season_id)
             if final.match_id in completed:
-                from .match_orchestration import _resolve_playoff_winners
-
-                winners = _resolve_playoff_winners(
+                winners = resolve_playoff_winners(
                     conn,
                     bracket=bracket,
                     match_ids=(final.match_id,),

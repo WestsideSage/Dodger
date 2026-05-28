@@ -415,7 +415,7 @@ export interface PlayoffBracketMatch {
     // Task 1 (2026-05-27 playtest-fixes): tiebreaker surfacing. NULL on
     // regulation wins / unplayed matches; "overtime" or "seed_tiebreaker"
     // when the resolver had to step in.
-    decided_by?: string | null;
+    decided_by?: 'overtime' | 'seed_tiebreaker' | 'regulation' | null;
     narrative_note?: string | null;
 }
 

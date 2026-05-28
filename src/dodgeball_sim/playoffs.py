@@ -102,7 +102,7 @@ def create_final_match(
     # the 2026-05 rookie-run playtest report — the season jumped to
     # offseason without telling the player whether they advanced or were
     # eliminated. Tied semifinals are now resolved upstream in
-    # ``match_orchestration._resolve_playoff_winners`` (which calls
+    # ``match_orchestration.resolve_playoff_winners`` (which calls
     # ``playoff_resolution.resolve_playoff_match`` and persists the
     # decided-by / narrative-note pair). If ``None`` ever reaches this
     # call site again, the orchestrator forgot to resolve — raise loudly
