@@ -106,7 +106,20 @@ def approach_label_for_intent(intent: str) -> str:
 
 
 def render_headline(ctx: AftermathContext) -> str:
+    # NarrativeBeats gate: comeback headlines may not render on shutouts
+    # or on matches where the player never trailed, regardless of any
+    # stray Comeback moment emitted by the engine. When ``player_club_id``
+    # is absent (writer-side tests, generic contexts) we have no player
+    # perspective to derive the deficit from, so we trust the engine's
+    # emitted moment and don't suppress.
+    if ctx.player_club_id is not None:
+        beats = ctx.narrative_beats
+        suppress_comeback = beats.was_shutout or beats.largest_deficit == 0
+    else:
+        suppress_comeback = False
     for kind in HEADLINE_PRIORITY:
+        if kind == MomentKind.COMEBACK.value and suppress_comeback:
+            continue
         matching = [event for event in ctx.moment_events if event.kind.value == kind]
         if not matching:
             continue

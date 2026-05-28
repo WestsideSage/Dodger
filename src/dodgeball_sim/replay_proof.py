@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Mapping, Sequence
+from dataclasses import dataclass
+from typing import Any, Iterable, Mapping, Sequence
 
 from .command_center import policy_effect, policy_label, POLICY_KEYS
 from .copy_quality import title_label
@@ -9,6 +10,161 @@ from .models import CoachPolicy, PlayerArchetype
 
 
 ThrowEvent = Mapping[str, Any]
+
+
+# ---------------------------------------------------------------------------
+# NarrativeBeats — single source of truth for aftermath copy generators.
+#
+# All aftermath/verdict copy generators must consult this struct (or fields
+# on the resolved ``MatchResult`` it was derived from) rather than recomputing
+# narrative state from pre-resolution inputs (intended plan, mid-match state,
+# projected outcome). The struct is intentionally minimal: five fields cover
+# the postgame contradictions reported in the multi-season playtest
+# (shutout-comeback, plan-label mismatch).
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class NarrativeBeats:
+    """Derived narrative facts about a fully-resolved match.
+
+    Attributes
+    ----------
+    was_shutout:
+        True iff one side ended with 0 survivors.
+    largest_deficit:
+        How far the *player* team trailed at its worst point. 0 means
+        the player team never trailed. Positive values mean the player
+        team was behind by that many survivors at the low point.
+        (For copy gates, ``> 0`` is the "had to claw back" signal.)
+    lead_changes:
+        How many times the player-vs-opponent lead flipped sign during
+        the match. Surfaced for future per-period writers but currently
+        suppressed below the minimum needed for the shutout/comeback
+        gate.
+    selected_plan_label:
+        The player-facing label for the plan the user selected at match
+        start (e.g. "Defensive", "Aggressive"). Derived from the stored
+        coach Intent via ``approach_label_for_intent``.
+    actual_plan_executed:
+        The same label, but reflecting the plan id surfaced by the engine
+        if it differs from ``selected_plan_label`` (e.g. an in-match
+        override). Equal to ``selected_plan_label`` when no divergence.
+    """
+
+    was_shutout: bool
+    largest_deficit: int
+    lead_changes: int
+    selected_plan_label: str
+    actual_plan_executed: str
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "was_shutout": self.was_shutout,
+            "largest_deficit": self.largest_deficit,
+            "lead_changes": self.lead_changes,
+            "selected_plan_label": self.selected_plan_label,
+            "actual_plan_executed": self.actual_plan_executed,
+        }
+
+
+def derive_narrative_beats(
+    match_result: Any,
+    *,
+    player_club_id: str | None,
+    moment_events: Iterable[Any] = (),
+    selected_intent: str | None = None,
+    actual_intent: str | None = None,
+) -> NarrativeBeats:
+    """Build ``NarrativeBeats`` from a resolved ``MatchResult``.
+
+    The deficit/lead-change beats are computed by replaying the
+    ``player_out`` state-diffs in the match's event stream — this is the
+    same record the engine writes when finalising a match, so the beats
+    are guaranteed to align with the final ``box_score``.
+    """
+
+    from .voice_verdict import approach_label_for_intent
+
+    teams = (getattr(match_result, "box_score", {}) or {}).get("teams", {}) or {}
+    home_living = away_living = None
+    player_id = player_club_id
+    opponent_id: str | None = None
+    if player_id and player_id in teams:
+        ids = list(teams.keys())
+        opponent_id = next((tid for tid in ids if tid != player_id), None)
+    if player_id and opponent_id:
+        player_living = int(((teams.get(player_id) or {}).get("totals") or {}).get("living") or 0)
+        opp_living = int(((teams.get(opponent_id) or {}).get("totals") or {}).get("living") or 0)
+        home_living, away_living = player_living, opp_living
+
+    # Shutout flag: derived from final survivor counts, never from intent
+    # or mid-match state. Either side ending at zero is a shutout.
+    was_shutout = False
+    if home_living is not None and away_living is not None:
+        was_shutout = home_living == 0 or away_living == 0
+
+    # Replay ``player_out`` diffs to track when the player team trailed.
+    largest_deficit = 0
+    lead_changes = 0
+    prev_lead_sign = 0
+    events = getattr(match_result, "events", ()) or ()
+    # Active counts start at survivors-at-end + eliminations charged to that
+    # team; we recover them by counting future eliminations.
+    if player_id and opponent_id:
+        player_eliminated = 0
+        opponent_eliminated = 0
+        # First pass: total eliminations per side.
+        total_player_outs = 0
+        total_opponent_outs = 0
+        for event in events:
+            state_diff = getattr(event, "state_diff", None)
+            if not isinstance(state_diff, Mapping):
+                continue
+            player_out = state_diff.get("player_out")
+            if not isinstance(player_out, Mapping):
+                continue
+            team_id = str(player_out.get("team", ""))
+            if team_id == player_id:
+                total_player_outs += 1
+            elif team_id == opponent_id:
+                total_opponent_outs += 1
+        # Starting counts = final living + total eliminations on that side.
+        player_active = (home_living or 0) + total_player_outs
+        opponent_active = (away_living or 0) + total_opponent_outs
+        # Walk events forward updating active counts. After each elimination
+        # check the differential (positive = player ahead).
+        for event in events:
+            state_diff = getattr(event, "state_diff", None)
+            if not isinstance(state_diff, Mapping):
+                continue
+            player_out = state_diff.get("player_out")
+            if not isinstance(player_out, Mapping):
+                continue
+            team_id = str(player_out.get("team", ""))
+            if team_id == player_id:
+                player_active -= 1
+            elif team_id == opponent_id:
+                opponent_active -= 1
+            diff = player_active - opponent_active
+            if diff < 0 and -diff > largest_deficit:
+                largest_deficit = -diff
+            sign = (diff > 0) - (diff < 0)
+            if sign != 0 and prev_lead_sign != 0 and sign != prev_lead_sign:
+                lead_changes += 1
+            if sign != 0:
+                prev_lead_sign = sign
+
+    selected_label = approach_label_for_intent(str(selected_intent or "")) or ""
+    actual_label = approach_label_for_intent(str(actual_intent or selected_intent or "")) or selected_label
+
+    return NarrativeBeats(
+        was_shutout=was_shutout,
+        largest_deficit=largest_deficit,
+        lead_changes=lead_changes,
+        selected_plan_label=selected_label,
+        actual_plan_executed=actual_label,
+    )
 
 
 def _player_name(player_id: Any, name_map: Mapping[str, str]) -> str:
@@ -452,7 +608,9 @@ def _policy_snapshot_note(policy: Mapping[str, Any]) -> str:
 
 
 __all__ = [
+    "NarrativeBeats",
     "build_replay_proof",
+    "derive_narrative_beats",
     "event_detail",
     "event_label",
 ]

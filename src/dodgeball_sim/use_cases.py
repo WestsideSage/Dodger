@@ -459,6 +459,7 @@ def _build_aftermath(
                 policy_opponent=opponent_policy,
                 tier=1,
                 player_club_id=player_club_id,
+                selected_intent=str(plan.get("intent", "") or ""),
             )
             headline = render_headline(voice_ctx)
             body = render_body(voice_ctx)
@@ -564,6 +565,24 @@ def _build_aftermath(
     }
     if verdict is not None:
         aftermath["verdict"] = verdict
+
+    # Surface NarrativeBeats so the frontend can gate comeback cards and
+    # any narrative chip without re-deriving from raw box-score data.
+    if plan is not None and player_club_id is not None:
+        try:
+            from dodgeball_sim.replay_proof import derive_narrative_beats
+            beats = derive_narrative_beats(
+                record.result,
+                player_club_id=player_club_id,
+                moment_events=parsed_moments,
+                selected_intent=str(plan.get("intent", "") or ""),
+            )
+            aftermath["narrative_beats"] = beats.as_dict()
+        except Exception:
+            # Beats are a polish surface — if derivation fails, the
+            # frontend conservatively renders nothing rather than blowing
+            # up the entire aftermath payload.
+            pass
 
     # Task 1 (2026-05-27 playtest-fixes): surface playoff resolution.
     # Only present for playoff matches that needed a tiebreaker; the

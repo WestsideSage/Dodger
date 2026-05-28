@@ -175,3 +175,97 @@ def test_guard_draw_accepts_neutral_headline():
         player_survivors=3,
         opponent_survivors=3,
     )
+
+
+# ---------------------------------------------------------------------------
+# 2026-05-28 Task 3: NarrativeBeats and shutout/comeback consistency.
+#
+# A `NarrativeBeats` struct is derived once from the resolved `MatchResult`
+# and consumed by every aftermath copy generator. The two playtest bugs
+# this locks in:
+#
+#   * "Down 2 and clawed it back with 0 catches" rendered on a 3-0 SHUTOUT
+#     win. No copy surface may emit comeback/clawed-back text on a shutout
+#     or on a match where the team never trailed.
+#   * "Defensive selected / Aggressive on tactic cards" — the verdict /
+#     tactic-summary surface must reflect the *selected* plan label, not
+#     the effective post-policy approach name.
+# ---------------------------------------------------------------------------
+
+from dodgeball_sim.moment_events import Comeback
+from dodgeball_sim.replay_proof import NarrativeBeats, derive_narrative_beats
+from dodgeball_sim.sample_data import scripted_match, scripted_shutout_win
+from dodgeball_sim.voice_aftermath import render_body
+from dodgeball_sim.voice_verdict import render_headline as render_verdict_headline
+from dodgeball_sim.voice_verdict import render_verdict
+
+
+def _ctx_with_moments(result, player_club_id, moments=()):
+    from dodgeball_sim.aftermath_context import AftermathContext
+    from dodgeball_sim.models import CoachPolicy
+    return AftermathContext(
+        match_result=result,
+        moment_events=tuple(moments),
+        policy_team=CoachPolicy(),
+        policy_opponent=CoachPolicy(),
+        tier=1,
+        player_club_id=player_club_id,
+    )
+
+
+def test_narrative_beats_shutout_win_has_zero_deficit_and_was_shutout():
+    result, player_club_id, _ = scripted_shutout_win(home_score=3, away_score=0)
+    beats = derive_narrative_beats(
+        result,
+        player_club_id=player_club_id,
+        moment_events=(),
+        selected_intent="Preserve Health",
+    )
+    assert isinstance(beats, NarrativeBeats)
+    assert beats.was_shutout is True
+    assert beats.largest_deficit == 0  # we never trailed
+    assert beats.selected_plan_label == "Defensive"
+
+
+def test_no_comeback_copy_on_shutout_win():
+    """A 3-0 shutout win must not contain comeback/claw-back language even
+    if a stray Comeback moment was emitted by the engine."""
+    result, player_club_id, _ = scripted_shutout_win(home_score=3, away_score=0)
+    # Inject a stray Comeback moment for the player team — the render layer
+    # must suppress it because the beats say `was_shutout` / no deficit.
+    stray = Comeback(
+        match_id="m1",
+        tick=10,
+        team_id=player_club_id,
+        deficit_at_low_point=2,
+        catches_during_comeback=0,
+    )
+    ctx = _ctx_with_moments(result, player_club_id, moments=(stray,))
+
+    headline = render_verdict_headline(ctx)
+    body = render_body(ctx)
+
+    blobs = (headline, *body)
+    for blob in blobs:
+        lowered = blob.lower()
+        assert "comeback" not in lowered, f"shutout copy contained 'comeback': {blob!r}"
+        assert "clawed" not in lowered, f"shutout copy contained 'clawed': {blob!r}"
+
+
+def test_tactic_summary_matches_selected_plan_label():
+    """A user who selected the Defensive plan must see Defensive (not
+    Aggressive) on the tactic-summary surface, even on a shutout win."""
+    result, player_club_id, opponent_club_id = scripted_match(
+        selected_plan="Defensive", final_score=(3, 0)
+    )
+    box = result.box_score["teams"]
+    verdict = render_verdict(
+        intent="Preserve Health",  # → Defensive
+        tactics={"approach": "patient"},
+        base_tactics={"approach": "mixed"},
+        result="Win",
+        player_team_box=box[player_club_id],
+        opponent_team_box=box[opponent_club_id],
+    )
+    assert "defensive" in verdict.lower(), verdict
+    assert "aggressive" not in verdict.lower(), verdict
