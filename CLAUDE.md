@@ -4,11 +4,13 @@ Claude agents should read root `AGENTS.md` first. This file is only a short Clau
 
 ## Useful Commands
 
-- Install: `python -m pip install -e .[dev]`
+- Install: `python -m pip install -e '.[dev]'`
 - Test all Python: `python -m pytest -q`
 - Launch web app: `python -m dodgeball_sim` or `dodgeball-manager`
 - Launch web app explicitly: `python -m dodgeball_sim.web_cli` or `dodgeball-manager-web`
 - Build frontend from `frontend/`: `npm run build`
+
+*(Root `AGENTS.md` contains the full command list; this file only repeats the most common Claude commands.)*
 
 ## Workflow Preferences
 
@@ -24,12 +26,7 @@ Claude agents should read root `AGENTS.md` first. This file is only a short Clau
 - Prefer search-first reading over opening huge files end to end.
 - Keep plans and reports concise. Link to existing docs rather than restating them.
 - When receiving a handoff, implement only the requested phase unless Maurice expands scope.
-
-## Current Gotchas
-
-See the "Current Facts Worth Remembering" section of root `AGENTS.md` for the
-canonical list (e.g. `MatchResult.winner_team_id`, the 8-field `CoachPolicy`,
-the `recruitment` offseason key). New player-facing work targets the web app.
+- Do not rely on remembered repo API details. Verify current names, fields, routes, and behavior in source/tests or `docs/STATUS.md` before editing.
 
 ## Agent skills
 
