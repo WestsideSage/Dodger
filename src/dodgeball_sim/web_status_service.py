@@ -128,7 +128,7 @@ def update_manual_lineup_payload(
     inline error keyed to the offending row.
     """
     from types import SimpleNamespace
-    from .lineup import apply_manual_lineup, check_lineup_liabilities
+    from .lineup import LineupResolver, apply_manual_lineup, check_lineup_liabilities
 
     player_club_id = get_state(conn, "player_club_id")
     if not player_club_id:
@@ -140,7 +140,15 @@ def update_manual_lineup_payload(
             (player_club_id,),
         )
         conn.commit()
-        return {"status": "cleared", "warnings": []}
+        # Return the freshly-resolved auto-fill ordering so the client can
+        # update its cached roster view without a follow-up refetch.
+        roster = load_club_roster(conn, player_club_id)
+        resolved = LineupResolver().resolve(roster, default=None, override=None)
+        return {
+            "status": "cleared",
+            "ordered_player_ids": resolved,
+            "warnings": [],
+        }
 
     roster = load_club_roster(conn, player_club_id)
     bundle = SimpleNamespace(club_id=player_club_id, roster=roster)

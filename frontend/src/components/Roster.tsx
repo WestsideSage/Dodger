@@ -404,14 +404,10 @@ export function Roster() {
           defaultLineup={data.default_lineup}
           onClose={() => setLineupEditorOpen(false)}
           onSaved={(orderedPlayerIds) => {
-            // If the server returned a fresh order, splice it into the
-            // cached roster payload so the Roster screen reflects the new
-            // starting six immediately. An empty list means "we cleared
-            // the override" — let the next mount re-fetch the resolved
-            // order from /api/roster.
-            if (orderedPlayerIds.length > 0) {
-              setData({ ...data, default_lineup: orderedPlayerIds });
-            }
+            // Splice the server-returned order into the cached roster
+            // payload so the Roster screen reflects the resolved starting
+            // six immediately — both for manual saves and Reset-to-Auto.
+            setData({ ...data, default_lineup: orderedPlayerIds });
           }}
         />
       )}
