@@ -39,7 +39,7 @@ from dodgeball_sim.scouting_center import (
 )
 
 
-def test_schema_version_is_11():
+def test_schema_version_is_current():
     assert CURRENT_SCHEMA_VERSION == 17
 
 

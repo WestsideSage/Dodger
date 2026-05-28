@@ -13,6 +13,7 @@ so placing the error class here avoids a use_cases → match_orchestration
 from __future__ import annotations
 
 import dataclasses
+from types import SimpleNamespace
 from typing import Any
 
 from dodgeball_sim.game_loop import (
@@ -54,7 +55,7 @@ class SimulateWeekError(ValueError):
     """Raised when the simulate-week use case cannot proceed."""
 
 
-def _resolve_playoff_winners(
+def resolve_playoff_winners(
     conn,
     *,
     bracket,
@@ -82,7 +83,6 @@ def _resolve_playoff_winners(
     ).fetchall()
 
     resolved: dict[str, str] = {}
-    from types import SimpleNamespace
 
     for row in rows:
         match_id = row["match_id"]
@@ -211,7 +211,7 @@ def _advance_playoffs_if_needed(conn, season: Season, clubs: dict[str, Any], pla
                 continue
             if pending:
                 return season
-            winners = _resolve_playoff_winners(
+            winners = resolve_playoff_winners(
                 conn,
                 bracket=bracket,
                 match_ids=(f"{season.season_id}_p_r1_m1", f"{season.season_id}_p_r1_m2"),
@@ -242,7 +242,7 @@ def _advance_playoffs_if_needed(conn, season: Season, clubs: dict[str, Any], pla
                 recompute_regular_season_standings(conn, season)
                 completed = load_completed_match_ids(conn, season.season_id)
             if final.match_id in completed:
-                winners = _resolve_playoff_winners(
+                winners = resolve_playoff_winners(
                     conn,
                     bracket=bracket,
                     match_ids=(final.match_id,),

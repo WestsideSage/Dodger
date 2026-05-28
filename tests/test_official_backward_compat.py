@@ -23,7 +23,7 @@ def test_migration_v15_schema_upgrade():
     conn.row_factory = sqlite3.Row
     _migrate_v1(conn)
 
-    # Perform migration up to CURRENT_SCHEMA_VERSION (15)
+    # Perform migration up to CURRENT_SCHEMA_VERSION (17)
     migrate_schema(conn, 1, CURRENT_SCHEMA_VERSION)
 
     assert get_schema_version(conn) == CURRENT_SCHEMA_VERSION

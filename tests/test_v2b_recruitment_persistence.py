@@ -34,7 +34,7 @@ def _conn() -> sqlite3.Connection:
     return conn
 
 
-def test_schema_version_is_11():
+def test_schema_version_is_current():
     assert CURRENT_SCHEMA_VERSION == 17
 
 

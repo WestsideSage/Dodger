@@ -22,7 +22,15 @@ export function PlayoffResolutionBanner({
   const isEliminated = resolution.player_outcome === 'eliminated';
 
   let title: string;
-  if (isAdvanced) {
+  if (resolution.decided_by === 'seed_tiebreaker') {
+    if (isAdvanced) {
+      title = 'Advanced — won on the seed tiebreaker';
+    } else if (isEliminated) {
+      title = 'Eliminated — lost on the seed tiebreaker';
+    } else {
+      title = 'Decided on the seed tiebreaker';
+    }
+  } else if (isAdvanced) {
     title = `Advanced — won in ${decidedByLabel(resolution.decided_by)}`;
   } else if (isEliminated) {
     title = `Eliminated — lost in ${decidedByLabel(resolution.decided_by)}`;
