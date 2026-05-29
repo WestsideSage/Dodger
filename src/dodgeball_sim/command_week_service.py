@@ -32,8 +32,10 @@ from .persistence import (
     load_weekly_command_plan,
     save_career_state_cursor,
     save_weekly_command_plan,
+    set_state,
 )
-from .playoffs import is_playoff_match_id, playoff_stage_label
+from .playoffs import PLAYOFF_FIELD_SIZE, is_playoff_match_id, playoff_stage_label
+from .season_preview import build_season_preview, derive_schedule_facts
 from .scheduler import ScheduledMatch
 from .season import Season, StandingsRow
 from .sim_pacing import SimRequest, choose_matches_to_sim
@@ -74,7 +76,67 @@ def command_center_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         "plan": plan,
         "latest_dashboard": latest_dashboard,
         "history": history,
+        "season_preview": _build_season_preview_payload(conn, state),
     }
+
+
+SEASON_PREVIEW_SKIP_KEY = "season_preview_skipped"
+
+
+def _build_season_preview_payload(
+    conn: sqlite3.Connection, state: dict[str, Any]
+) -> dict[str, Any] | None:
+    """Orientation screen for Week 1 only; ``None`` otherwise.
+
+    Shapes schedule length, bye week, playoff cut, top goal, and one
+    roster strength/weakness from facts the engine already has. Returns
+    ``None`` past Week 1 so the screen never re-appears mid-season.
+    """
+
+    if int(state.get("week") or 0) != 1:
+        return None
+    try:
+        season_id = state["season_id"]
+        player_club_id = state["player_club_id"]
+        season = load_season(conn, season_id)
+        clubs = load_clubs(conn)
+        regular = regular_season_matches(season)
+        regular_weeks = [match.week for match in regular]
+        user_match_weeks = [
+            match.week
+            for match in regular
+            if player_club_id in (match.home_club_id, match.away_club_id)
+        ]
+        facts = derive_schedule_facts(
+            regular_weeks=regular_weeks,
+            user_match_weeks=user_match_weeks,
+        )
+        roster_rows = [
+            {
+                "archetype": getattr(player.archetype, "value", str(player.archetype)),
+                "overall": player.overall_skill(),
+            }
+            for player in state.get("roster", [])
+        ]
+        skipped = (get_state(conn, SEASON_PREVIEW_SKIP_KEY, "0") or "0") == "1"
+        return build_season_preview(
+            regular_season_weeks=facts["regular_season_weeks"],
+            bye_week=facts["bye_week"],
+            playoff_cut=PLAYOFF_FIELD_SIZE,
+            total_clubs=len(clubs),
+            roster=roster_rows,
+            skipped=skipped,
+        )
+    except Exception:
+        return None
+
+
+def set_season_preview_skipped(conn: sqlite3.Connection, skipped: bool) -> dict[str, Any]:
+    """Persist the player's 'skip the W1 preview' preference."""
+
+    set_state(conn, SEASON_PREVIEW_SKIP_KEY, "1" if skipped else "0")
+    conn.commit()
+    return command_center_payload(conn)
 
 
 def _build_plan_briefing(

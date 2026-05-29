@@ -100,6 +100,8 @@ export const commandApi = {
       '/api/lineup',
       { starter_ids: null },
     ),
+  skipSeasonPreview: (skipped: boolean) =>
+    apiPost<CommandCenterResponse>('/api/command-center/season-preview/skip', { skipped }),
   simulate: (body: { intent?: string }) =>
     apiPost<CommandCenterSimResponse>('/api/command-center/simulate', body),
   replay: (matchId: string) =>
