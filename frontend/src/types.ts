@@ -39,6 +39,12 @@ export interface Player {
     potential_tier: string;
     scouting_confidence: number;
     weekly_ovr_history: number[];
+    // Phase 5 — Growth legibility: Player Card fields
+    potential_ceiling: number;
+    headroom: number;
+    projected_growth: 'growing' | 'plateauing' | 'declining';
+    /** null = no season-over-season history yet (honest empty-state) */
+    ovr_season_trend: number[] | null;
 }
 
 export interface RosterResponse {
@@ -910,6 +916,9 @@ export interface DevelopmentPlayer {
     ovr_after: number;
     delta: number;
     notes?: string[];
+    // Phase 5 — Growth legibility: per-attribute deltas and ceiling
+    attr_deltas?: Record<string, number>;
+    potential_ceiling?: number | null;
 }
 
 export interface DevelopmentBeatPayload {

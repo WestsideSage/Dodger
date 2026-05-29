@@ -521,6 +521,17 @@ def initialize_manager_offseason(
                 staff_notes.append("Outstanding offseason growth!")
             elif delta < 0:
                 staff_notes.append("Signs of regression.")
+            # Phase 5 — Growth legibility: per-attribute deltas (presentation only).
+            # Computed from before (player) and after (aged) ratings so the dev beat
+            # can show which attributes moved beneath the composite +N OVR headline.
+            _RATING_ATTRS = (
+                "accuracy", "power", "dodge", "catch", "stamina",
+                "tactical_iq", "catch_courage", "throw_selection_iq", "conditioning_curve",
+            )
+            attr_deltas = {
+                attr: int(getattr(aged.ratings, attr)) - int(getattr(player.ratings, attr))
+                for attr in _RATING_ATTRS
+            }
             development_rows.append(
                 {
                     "player_id": aged.id,
@@ -530,6 +541,8 @@ def initialize_manager_offseason(
                     "after": aged.overall_skill(),
                     "delta": delta,
                     "notes": staff_notes,
+                    "attr_deltas": attr_deltas,
+                    "potential_ceiling": int(aged.traits.potential),
                 }
             )
             next_roster.append(aged)

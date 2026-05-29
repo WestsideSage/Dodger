@@ -194,12 +194,18 @@ def build_beat_payload(
             ovr_after = int(round(float(row.get("after", 0))))
             # Derive the delta from the displayed OVR values so the badge always
             # agrees with the before -> after numbers (B11).
+            # Phase 5 — Growth legibility: pass through per-attribute deltas and
+            # potential ceiling so the frontend can render which attributes moved.
+            raw_attr_deltas = row.get("attr_deltas") or {}
+            attr_deltas = {k: int(v) for k, v in raw_attr_deltas.items()} if raw_attr_deltas else {}
             players.append(
                 {
                     "name": row.get("player_name", row.get("player_id", "")),
                     "ovr_before": ovr_before,
                     "ovr_after": ovr_after,
                     "delta": ovr_after - ovr_before,
+                    "attr_deltas": attr_deltas,
+                    "potential_ceiling": row.get("potential_ceiling"),
                 }
             )
         return {"players": players}

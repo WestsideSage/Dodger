@@ -6,7 +6,7 @@ import sqlite3
 from typing import Any
 
 from .career_state import CareerStateCursor
-from .development import calculate_potential_tier
+from .development import calculate_potential_tier, _normalize_growth_curve, _peak_window
 from .league_memory import recent_match_item
 from .models import CoachPolicy
 from .persistence import (
@@ -71,6 +71,33 @@ def build_status_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     }
 
 
+def _load_last_offseason_ovr_deltas(conn: sqlite3.Connection, club_id: str) -> dict[str, tuple[int, int]]:
+    """Return a mapping of player_id -> (before_ovr, after_ovr) from the most recent offseason.
+
+    This is the only genuine before/after OVR data available: the offseason
+    development JSON is overwritten each year, so this represents the **latest**
+    offseason only (not a multi-season series). Returns an empty dict when no
+    offseason has run yet.
+    """
+    raw = get_state(conn, "offseason_development_json")
+    if not raw:
+        return {}
+    try:
+        rows = json.loads(raw)
+    except (TypeError, ValueError):
+        return {}
+    result: dict[str, tuple[int, int]] = {}
+    for row in rows:
+        if row.get("club_id") != club_id:
+            continue
+        pid = row.get("player_id")
+        before = row.get("before")
+        after = row.get("after")
+        if pid and before is not None and after is not None:
+            result[pid] = (int(round(float(before))), int(round(float(after))))
+    return result
+
+
 def build_roster_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     player_club_id = get_state(conn, "player_club_id")
     if not player_club_id:
@@ -82,14 +109,46 @@ def build_roster_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         raise CorruptSaveError("roster save data is damaged") from exc
     lineup = load_lineup_default(conn, player_club_id)
 
+    # Phase 5 — Growth legibility: load last-offseason deltas once, keyed by player id.
+    # offseason_development_json holds before/after OVR for each player who went through
+    # the most recent offseason. It is overwritten each year, so this is the latest
+    # single-offseason delta — not a multi-season time series.
+    last_offseason_deltas = _load_last_offseason_ovr_deltas(conn, player_club_id)
+
     enriched = []
     for player in roster:
         player_dict = dataclasses.asdict(player)
-        player_dict["overall"] = int(round(player.overall_skill()))
+        ovr = int(round(player.overall_skill()))
+        player_dict["overall"] = ovr
         player_dict["role"] = player_archetype_label(player)
         player_dict["potential_tier"] = calculate_potential_tier(player.traits.potential)
         player_dict["scouting_confidence"] = 3
-        player_dict["weekly_ovr_history"] = [int(round(player.overall_skill()))]
+        player_dict["weekly_ovr_history"] = [ovr]
+
+        # Phase 5 — Growth legibility: Player Card fields.
+        ceiling = int(player.traits.potential)
+        headroom = max(0, ceiling - ovr)
+        growth_curve_str = _normalize_growth_curve(player.traits.growth_curve)
+        _, peak_end = _peak_window(growth_curve_str)
+        if player.age > peak_end:
+            projected_growth = "declining"
+        elif headroom <= 0:
+            projected_growth = "plateauing"
+        else:
+            projected_growth = "growing"
+        player_dict["potential_ceiling"] = ceiling
+        player_dict["headroom"] = headroom
+        player_dict["projected_growth"] = projected_growth
+
+        # Season-over-season OVR trend: no per-season ratings history is stored in
+        # the database (player_season_stats only holds match stats, not ratings).
+        # Best available: last offseason's before/after from offseason_development_json.
+        # Fresh saves (no offseason run yet) get None — honest empty-state.
+        # After the first offseason, ovr_season_trend is a 2-element [before, after]
+        # sparkline from that latest offseason. Not a full multi-season series.
+        delta_pair = last_offseason_deltas.get(player.id)
+        player_dict["ovr_season_trend"] = list(delta_pair) if delta_pair is not None else None
+
         if "traits" in player_dict:
             player_dict["traits"].pop("potential", None)
         enriched.append(player_dict)

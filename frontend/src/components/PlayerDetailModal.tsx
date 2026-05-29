@@ -95,10 +95,31 @@ export function PlayerDetailModal({
                 <div style={{ background: '#0f172a', padding: '1rem', borderRadius: '4px', border: '1px solid #1e293b' }}>
                   <div className="dm-kicker">Potential</div>
                   <div style={{ fontSize: '1.125rem', color: '#fff', fontWeight: 600 }}>{player.potential_tier}</div>
+                  <div style={{ marginTop: '0.35rem', fontSize: '0.8rem', color: '#64748b' }}>
+                    Ceiling {player.potential_ceiling}
+                    {player.headroom > 0 && (
+                      <span style={{ color: '#94a3b8' }}> · +{player.headroom} room</span>
+                    )}
+                  </div>
                 </div>
                 <div style={{ background: '#0f172a', padding: '1rem', borderRadius: '4px', border: '1px solid #1e293b' }}>
-                  <div className="dm-kicker">Consistency</div>
-                  <div style={{ fontSize: '1.125rem', color: '#fff', fontWeight: 600 }}>{player.traits?.consistency ?? 0.5}</div>
+                  <div className="dm-kicker">Growth</div>
+                  <div style={{
+                    fontSize: '1.125rem',
+                    fontWeight: 600,
+                    color: player.projected_growth === 'growing'
+                      ? '#10b981'
+                      : player.projected_growth === 'declining'
+                      ? '#ef4444'
+                      : '#94a3b8',
+                  }}>
+                    {player.projected_growth === 'growing' ? '▲ Growing'
+                      : player.projected_growth === 'declining' ? '▼ Declining'
+                      : '— Plateauing'}
+                  </div>
+                  <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: '#64748b' }}>
+                    OVR {player.overall}
+                  </div>
                 </div>
               </div>
             </div>
