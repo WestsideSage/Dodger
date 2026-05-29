@@ -69,7 +69,17 @@ def _lineup_recommendation(roster: list[Player], default_lineup: list[str] | Non
 
 def _policy_for_intent(policy: CoachPolicy, intent: str) -> dict[str, str]:
     values = policy.as_dict()
-    if intent == "Win Now":
+    if intent == "Balanced":
+        values.update(
+            {
+                "approach": "mixed",
+                "target_focus": "spread",
+                "catch_posture": "opportunistic",
+                "rush_commit": "balanced",
+                "rush_target": "nearest",
+            }
+        )
+    elif intent == "Win Now":
         values.update(
             {
                 "approach": "aggressive",

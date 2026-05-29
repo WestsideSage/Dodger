@@ -1049,6 +1049,14 @@ def simulate_week(
         save_plan=save_weekly_command_plan,
     )
 
+    # Reload clubs so the engine sees the coach policies just persisted by the
+    # plan applications above. ``_apply_command_plan_to_match`` (user) and
+    # ``prepare_ai_plans_for_matches`` (AI) write updated ``coach_policy`` rows;
+    # the ``clubs`` dict loaded earlier is stale, and the engine builds each
+    # team's tactics from ``club.coach_policy``. Without this reload the locked
+    # tactical plan never reaches the match — and the recap records the base
+    # policy instead of the player's choice.
+    clubs = load_clubs(conn)
     records = [
         simulate_scheduled_match(
             conn,

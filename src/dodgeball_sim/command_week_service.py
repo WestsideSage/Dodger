@@ -198,7 +198,24 @@ def _build_plan_briefing(
 
 def save_command_center_plan_payload(conn: sqlite3.Connection, update: dict[str, Any]) -> dict[str, Any]:
     state = build_command_center_state(conn)
-    plan = build_default_weekly_plan(state, intent=update.get("intent") or "Balanced")
+
+    # Preserve the player's already-saved decisions (tactics, lineup,
+    # department orders) across saves that don't restate them — most
+    # importantly the plan-lock action, which POSTs the intent only. Only
+    # rebuild from the intent default when the intent actually changes (or
+    # there is no saved plan yet), since switching intent is meant to reset
+    # tactics to that intent's preset. Rebuilding unconditionally silently
+    # reverted Policy Editor edits before the sim and recap ever saw them.
+    existing = load_weekly_command_plan(
+        conn, state["season_id"], state["week"], state["player_club_id"]
+    )
+    new_intent = update.get("intent") or (existing or {}).get("intent") or "Balanced"
+    intent_changed = existing is None or existing.get("intent") != new_intent
+    if existing is not None and not intent_changed:
+        plan = refresh_weekly_plan_context(dict(existing), state)
+        plan["intent"] = new_intent
+    else:
+        plan = build_default_weekly_plan(state, intent=new_intent)
 
     department_orders = update.get("department_orders")
     if department_orders:
