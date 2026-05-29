@@ -457,9 +457,90 @@ export interface MatchupDetails {
   opponent_record: string;
   last_meeting: string;
   key_matchup: string;
+  key_threat?: KeyThreat | null;
   framing_line: string;
   broadcast_frame?: BroadcastFrame | null;
   adaptation_summary?: string | null;
+  staff_impact?: StaffImpact[];
+  tactical_diff?: TacticalDiff;
+}
+
+export interface KeyThreat {
+  name: string;
+  archetype: string;
+  ovr: number;
+}
+
+export interface ReadinessGate {
+  id: string;
+  label: string;
+  short_label: string;
+  detail: string;
+  ready: boolean;
+}
+
+export interface WeekBriefing {
+  readiness: {
+    gates: ReadinessGate[];
+    total: number;
+    ready_count: number;
+    is_ready_to_lock: boolean;
+    items_remaining: number;
+    next_issue: string;
+  };
+  edge: {
+    net_starter_ovr: number;
+    standing: 'favorite' | 'even' | 'underdog';
+  };
+  fatigue: {
+    at_risk_count: number;
+    min_stamina: number | null;
+  };
+  form: {
+    recent_record: string;
+    rank: number | null;
+    regular_season_record: string;
+    games_remaining: number;
+  };
+  threat: KeyThreat | null;
+  match_context: {
+    is_home: boolean;
+    playoff_stage: string | null;
+  };
+  league_leader: string | null;
+  recommendation: {
+    verdict: 'aligned' | 'adjust';
+    advised_intent: string | null;
+    reason: string;
+    advisory: boolean;
+  };
+}
+
+export interface StaffImpact {
+  department: string;
+  name: string;
+  rating_primary: number;
+  effect: string;
+}
+
+export interface TacticalDiffRow {
+  axis: string;
+  label: string;
+  player_value: string;
+  opponent_value: string | null;
+  opponent_known: boolean;
+}
+
+export interface TacticalDiffIntel {
+  source: string;
+  text: string;
+}
+
+export interface TacticalDiff {
+  player_plan: TacticalDiffRow[];
+  opponent_intel: TacticalDiffIntel[];
+  opponent_unscouted: boolean;
+  note: string;
 }
 
 export interface BroadcastTag {
@@ -555,6 +636,7 @@ export interface CommandCenterPlan {
     tactics: CoachPolicy;
     history_count: number;
     matchup_details?: MatchupDetails;
+    briefing?: WeekBriefing;
 }
 
 export interface CommandDashboardLane {
@@ -595,6 +677,15 @@ export interface CommandCenterResponse {
     plan: CommandCenterPlan;
     latest_dashboard: CommandDashboard | null;
     history: CommandHistoryRecord[];
+}
+
+// A post-match body paragraph carries its own audience, assigned by the
+// backend that authors the copy. "result" = what happened on court,
+// "you" = the player's own plan, "them" = the opponent's posture. Surfaces
+// read this tag instead of prefix-matching the prose.
+export interface AftermathParagraph {
+    text: string;
+    audience: 'you' | 'them' | 'result';
 }
 
 export interface Aftermath {
@@ -638,9 +729,19 @@ export interface Aftermath {
         interest_delta: string;
         evidence: string;
     }>;
-    body: string[];
+    body: AftermathParagraph[];
     verdict?: string;
     top_performers?: TopPerformer[];
+    // V14 Task 1: deterministic, proof-backed Primary Factor explaining the
+    // result. Absent on bye weeks / payloads where derivation failed —
+    // components must treat undefined as "render nothing".
+    primary_factor?: {
+        code: string;
+        title: string;
+        sentence: string;
+        confidence: 'high' | 'medium' | 'low';
+        evidence_chips: string[];
+    };
     // Task 3 (2026-05-28 playtest-fixes): derived narrative facts about
     // the resolved match. Frontend copy generators (e.g. ComebackCard)
     // gate themselves on these fields so a shutout never renders

@@ -6,11 +6,39 @@ from typing import Any, Mapping
 from .broadcast import load_matchup_broadcast_frame
 from .dynasty_office import team_overall
 from .models import MatchSetup, Player
+from .staff_market import staff_effect_summary
 
 
 def _humanize_policy(value: str) -> str:
     text = value.replace("_", " ")
     return text[:1].upper() + text[1:]
+
+
+# Departments whose advisory output shapes how the player prepares for and
+# reads the upcoming match. Order controls display order. This surfaces the
+# EXISTING staff effect summaries against the next opponent — it does not add
+# any in-match staff math (see staff_market honesty rule).
+_MATCH_DAY_DEPARTMENTS = ("tactics", "conditioning", "medical")
+
+
+def _build_staff_impact(department_heads: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    if not department_heads:
+        return []
+    by_department = {str(head.get("department")): head for head in department_heads}
+    impact: list[dict[str, Any]] = []
+    for department in _MATCH_DAY_DEPARTMENTS:
+        head = by_department.get(department)
+        if head is None:
+            continue
+        impact.append(
+            {
+                "department": department,
+                "name": str(head.get("name", "")),
+                "rating_primary": float(head.get("rating_primary", 0.0)),
+                "effect": staff_effect_summary(department),
+            }
+        )
+    return impact
 
 
 def build_matchup_details(
@@ -23,7 +51,9 @@ def build_matchup_details(
     match_id: str | None = None,
     week: int = 1,
     is_bye: bool = False,
+    department_heads: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    staff_impact = _build_staff_impact(department_heads)
     if not opponent_id:
         return {
             "opponent_record": "n/a" if is_bye else "0-0",
@@ -31,6 +61,7 @@ def build_matchup_details(
             "key_matchup": "Bye week - no opponent." if is_bye else "Season schedule complete.",
             "broadcast_frame": None,
             "framing_line": "Bye week - no opponent." if is_bye else "Season schedule complete.",
+            "staff_impact": staff_impact,
         }
 
     standing = conn.execute(
@@ -84,12 +115,18 @@ def build_matchup_details(
         )
 
     opponent_roster = list(rosters.get(opponent_id, []))
+    key_threat: dict[str, Any] | None = None
     if opponent_roster:
         focal_player = max(opponent_roster, key=lambda p: (p.overall_skill(), p.id))
         key_matchup = (
             f"{focal_player.name}, {focal_player.archetype.display_name}, "
             f"{focal_player.overall_skill()} OVR"
         )
+        key_threat = {
+            "name": focal_player.name,
+            "archetype": focal_player.archetype.display_name,
+            "ovr": focal_player.overall_skill(),
+        }
     else:
         key_matchup = "Opponent roster unavailable."
 
@@ -115,6 +152,7 @@ def build_matchup_details(
         "opponent_record": opponent_record,
         "last_meeting": last_meeting,
         "key_matchup": key_matchup,
+        "key_threat": key_threat,
         "broadcast_frame": broadcast_frame.to_dict(),
         "framing_line": (
             broadcast_frame.historical_hook.text
@@ -122,6 +160,7 @@ def build_matchup_details(
             else broadcast_frame.stakes_tag.label
         ),
         "adaptation_summary": adaptation_summary,
+        "staff_impact": staff_impact,
     }
 
 

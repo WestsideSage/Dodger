@@ -1,13 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
-import { apiGet } from '../../../api/client';
+import { useMemo, useState } from 'react';
 import type {
   CoachPolicy,
   CommandCenterResponse,
   LineupPlayer,
-  ScheduleResponse,
-  ScheduleRow,
-  StandingRow,
-  StandingsResponse,
+  WeekBriefing,
 } from '../../../types';
 import { BroadcastFrameBlock } from '../../BroadcastFrameBlock';
 import { PolicyEditor } from './PolicyEditor';
@@ -21,8 +17,20 @@ const approaches = [
 ];
 
 const intentLabels = new Map(approaches.map(approach => [approach.id, approach.label]));
-const roleCounterMap: Record<string, string> = { Tactical: 'Control', Pressure: 'Defensive', Balanced: 'Balanced' };
 const DEV_FOCUS_OPTIONS = ['BALANCED', 'YOUTH_ACCELERATION', 'TACTICAL_DRILLS', 'STRENGTH_AND_CONDITIONING'];
+
+// Neutral default used only if the server omits the briefing (it always sends
+// one through command_center_payload); keeps rendering safe without re-deriving.
+const FALLBACK_BRIEFING: WeekBriefing = {
+  readiness: { gates: [], total: 0, ready_count: 0, is_ready_to_lock: false, items_remaining: 0, next_issue: 'No blockers' },
+  edge: { net_starter_ovr: 0, standing: 'even' },
+  fatigue: { at_risk_count: 0, min_stamina: null },
+  form: { recent_record: '—', rank: null, regular_season_record: '—', games_remaining: 0 },
+  threat: null,
+  match_context: { is_home: true, playoff_stage: null },
+  league_leader: null,
+  recommendation: { verdict: 'aligned', advised_intent: null, reason: '', advisory: true },
+};
 
 function humanize(value: string | undefined) {
   if (!value) return 'Not set';
@@ -32,23 +40,6 @@ function humanize(value: string | undefined) {
 
 function formatEdge(value: number) {
   return String(Math.round(value));
-}
-
-function parseKeyMatchup(raw: string) {
-  const parts = raw.split(',').map(s => s.trim());
-  if (parts.length >= 3) {
-    const name = parts[0];
-    const role = parts[1];
-    const ovrMatch = parts[2].match(/(\d+)/);
-    return { name, role, ovr: ovrMatch ? ovrMatch[1] : null };
-  }
-  return { name: raw, role: null, ovr: null };
-}
-
-function intentForRecommendation(recommendation: string) {
-  if (recommendation === 'Control') return 'Prepare For Playoffs';
-  if (recommendation === 'Defensive') return 'Preserve Health';
-  return 'Balanced';
 }
 
 function playerAbbrev(name: string) {
@@ -166,30 +157,12 @@ export function PreSimDashboard({
   planConfirmed: boolean;
   saving?: boolean;
 }) {
-  const [standings, setStandings] = useState<StandingRow[]>([]);
-  const [schedule, setSchedule] = useState<ScheduleRow[]>([]);
   const [policyEditorOpen, setPolicyEditorOpen] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      apiGet<StandingsResponse>('/api/standings'),
-      apiGet<ScheduleResponse>('/api/schedule'),
-    ])
-      .then(([standingsPayload, schedulePayload]) => {
-        if (cancelled) return;
-        setStandings(standingsPayload.standings ?? []);
-        setSchedule(schedulePayload.schedule ?? []);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setStandings([]);
-        setSchedule([]);
-      });
-    return () => { cancelled = true; };
-  }, [data.season_id]);
-
   const plan = data.plan;
+  const briefing = plan.briefing ?? FALLBACK_BRIEFING;
+  const { readiness, edge, form, match_context, recommendation } = briefing;
+  const briefingThreat = briefing.threat;
   const details = plan.matchup_details ?? {
     opponent_record: 'Unknown',
     last_meeting: 'First meeting — no tape on them yet. Trust your reads.',
@@ -206,102 +179,80 @@ export function PreSimDashboard({
     { label: 'Opening commit', value: humanize(plan.tactics?.rush_commit) },
     { label: 'Opening target', value: humanize(plan.tactics?.rush_target) },
   ], [plan.tactics]);
-  const userStanding = standings.find(row => row.club_id === data.player_club_id);
-  const anyGamesPlayed = standings.some(row =>
-    (row.wins ?? 0) + (row.losses ?? 0) + (row.draws ?? 0) > 0
-  );
-  const leagueRank = (userStanding && anyGamesPlayed)
-    ? standings.findIndex(row => row.club_id === data.player_club_id) + 1
-    : null;
+  const isBye = Boolean(plan.is_bye);
+
+  const leagueRank = form.rank;
+  const regularSeasonRecord = form.regular_season_record;
+  const recentRecord = form.recent_record;
+  const gamesRemaining = form.games_remaining;
+  const playoffStage = match_context.playoff_stage;
+  const leagueLeader = briefing.league_leader;
+  // Ordered W/L sequence is still derived locally — stakesLine needs the streak,
+  // which the briefing's record string can't express.
   const recentResults = data.history
     .slice(-5)
     .map(record => record.dashboard?.result)
     .filter((result): result is string => Boolean(result));
-  const recentWins = recentResults.filter(result => result === 'Win').length;
-  const recentRecord = recentResults.length ? `${recentWins}-${recentResults.length - recentWins}` : '—';
-  const regularSeasonRecord = userStanding
-    ? `${userStanding.wins}-${userStanding.losses}${userStanding.draws ? `-${userStanding.draws}` : ''}`
-    : '—';
   const latestDashboard = data.latest_dashboard;
   const lastRecord = data.history.length > 0 ? data.history[data.history.length - 1] : null;
   const seasonName = seasonTitle(data.season_id);
   const watchLine = playerToWatch(activePlayers);
-  const isBye = Boolean(plan.is_bye);
 
-  const readinessChecks = useMemo(() => [
-    { id: 'scout', label: isBye ? 'Bye week - no scouting needed' : 'Opponent file available', shortLabel: 'Scout', detail: isBye ? 'No scouting needed for a bye week.' : 'Scout report, threat profile, and staff recommendation available.', ready: true },
-    { id: 'gameplan', label: 'Command intent selected', shortLabel: 'Intent', detail: selectedIntent, ready: Boolean(selectedIntent) },
-    { id: 'training', label: 'Training order saved', shortLabel: 'Training', detail: humanize(plan.department_orders?.training), ready: Boolean(plan.department_orders?.training) },
-    { id: 'rotation', label: 'Playable rotation present', shortLabel: 'Rotation', detail: `${activePlayers.length} listed starters`, ready: activePlayers.length >= 6 },
-    { id: 'health', label: 'Starter stamina checked', shortLabel: 'Health', detail: activePlayers.some(player => typeof player.stamina === 'number') ? `${Math.round(Math.min(...activePlayers.map(player => player.stamina ?? 100)))} minimum stamina` : 'No stamina warnings reported', ready: activePlayers.every(player => player.stamina === undefined || player.stamina >= 35) },
-  ], [activePlayers, plan.department_orders?.training, selectedIntent, isBye]);
-
-  const readyCount = readinessChecks.filter(check => check.ready).length;
-  const isReadyToLock = readyCount === readinessChecks.length;
-  const itemsRemaining = readinessChecks.length - readyCount;
-  const pendCount = readinessChecks.filter(c => !c.ready).length;
+  const readinessChecks = readiness.gates;
+  const readyCount = readiness.ready_count;
+  const isReadyToLock = readiness.is_ready_to_lock;
+  const itemsRemaining = readiness.items_remaining;
+  const pendCount = readiness.items_remaining;
   const currentApproach = intentLabels.get(selectedIntent) ?? selectedIntent;
   const isAggressive = selectedIntent === 'Win Now';
   const isDefensive = selectedIntent === 'Preserve Health';
-  const threat = parseKeyMatchup(details.key_matchup);
+
+  const threatName = briefingThreat?.name ?? null;
+  const threatArchetype = briefingThreat?.archetype ?? null;
+  const threatOvr = briefingThreat?.ovr ?? null;
   const topOvr = activePlayers.length > 0 ? Math.max(...activePlayers.map(player => player.overall)) : 0;
   const topPlayer = activePlayers.find(player => player.overall === topOvr) ?? null;
-  const ovrGap = threat.ovr ? parseInt(threat.ovr) - Math.round(topOvr) : null;
-  const hasApproachConflict = !isBye && selectedIntent === 'Win Now' && (threat.role === 'Tactical' || threat.role === 'Pressure');
-  const counterApproach = threat.role ? (roleCounterMap[threat.role] ?? 'Control') : 'Control';
-  const hasFatigueIssue = !isBye && activePlayers.filter(player => player.stamina !== undefined && player.stamina < 60).length > 1;
-  const recommendedIntent = hasFatigueIssue ? 'Preserve Health' : intentForRecommendation(counterApproach);
-  const hasPlanConflict = !isBye && (hasApproachConflict || hasFatigueIssue) && selectedIntent !== recommendedIntent;
+  const ovrGap = threatOvr !== null ? threatOvr - Math.round(topOvr) : null;
+
+  const hasPlanConflict = recommendation.verdict === 'adjust';
+  const advisedIntentLabel = recommendation.advised_intent
+    ? intentLabels.get(recommendation.advised_intent) ?? recommendation.advised_intent
+    : null;
+  const recommendationLabel = isBye
+    ? 'n/a'
+    : hasPlanConflict && advisedIntentLabel
+      ? `Adjust to ${advisedIntentLabel}`
+      : 'Keep current plan';
 
   const scoutGapRead = ovrGap !== null && topPlayer
     ? ovrGap > 0
       ? `Primary threat outrates ${topPlayer.name} by +${ovrGap} OVR. `
       : `${topPlayer.name} covers the primary threat by +${Math.abs(ovrGap)} OVR. `
     : '';
-  const staminaWarningText = 'Low Starter Stamina: multiple starters have low stamina ratings, which will cause them to tire quickly.';
-  const staminaWarningShortText = 'Low Starter Stamina: multiple starters have low stamina ratings, which will cause them to tire quickly during the match.';
 
   const scoutRead = isBye
     ? 'This is a bye week. No opponent to scout. Use this time to rest players and plan training.'
     : hasPlanConflict
-      ? `${scoutGapRead}${hasApproachConflict ? `${currentApproach} approach is exposed vs ${threat.role} threat.` : staminaWarningText}`
+      ? `${scoutGapRead}${recommendation.reason}`
       : `${scoutGapRead}Current approach aligns with the opponent profile.`;
 
   const planRead = isBye
     ? 'Bye week.'
     : hasPlanConflict
-      ? (hasApproachConflict ? `${currentApproach} is exposed vs ${threat.role} threat.` : staminaWarningShortText)
+      ? recommendation.reason
       : 'Current approach aligns with the opponent profile.';
 
-  const recommendationLabel = isBye
-    ? 'n/a'
-    : hasPlanConflict ? `Adjust to ${hasFatigueIssue ? 'Defensive' : counterApproach}` : 'Keep current plan';
-
-  const currentMatch = useMemo(
-    () =>
-      [...schedule]
-        .sort((a, b) => a.week - b.week)
-        .find(match => match.is_user_match && match.status !== 'played' && match.week === data.week) ?? null,
-    [schedule, data.week],
-  );
-  const displayWeek = currentMatch?.week ?? data.week;
-  const gamesRemaining = schedule.filter(match => match.is_user_match && match.status !== 'played').length;
+  const displayWeek = data.week;
   const stakes = stakesLine(leagueRank, gamesRemaining, recentResults, displayWeek);
-  const playoffStage =
-    currentMatch && currentMatch.stage && currentMatch.stage !== 'Regular Season'
-      ? currentMatch.stage
-      : null;
   const identityRecordLabel = playoffStage ? 'Record' : 'Form';
   const identityRecordValue = playoffStage ? regularSeasonRecord : recentRecord;
-  const yourStarterTotal = activePlayers.reduce((sum, player) => sum + player.overall, 0);
-  const oppStarterTotal = opponentPlayers.reduce((sum, player) => sum + player.overall, 0);
-  const netStarterEdge = Math.round(yourStarterTotal - oppStarterTotal);
-  const edgeContext = netStarterEdge === 0
-    ? ''
-    : netStarterEdge > 0
-      ? ' (Favorite)'
-      : ' (Underdog)';
-  const playerEdgeLabel = netStarterEdge === 0
+  const netStarterEdge = edge.net_starter_ovr;
+  const edgeContext = edge.standing === 'favorite'
+    ? ' (Favorite)'
+    : edge.standing === 'underdog'
+      ? ' (Underdog)'
+      : '';
+  const playerEdgeLabel = edge.standing === 'even'
     ? 'Even starter line'
     : `${data.player_club_name} ${netStarterEdge > 0 ? '+' : ''}${formatEdge(netStarterEdge)} net OVR${edgeContext}`;
   const primaryActionLabel = planConfirmed ? 'SIMULATE WEEK' : 'LOCK PLAN';
@@ -312,10 +263,9 @@ export function PreSimDashboard({
     : isReadyToLock
     ? 'No blockers. Review the decision, then lock the plan.'
     : `${itemsRemaining} checklist item${itemsRemaining === 1 ? '' : 's'} still need attention before plan lock.`;
-  const unresolvedIssue = !isReadyToLock ? readinessChecks.find(check => !check.ready)?.label ?? 'Review plan setup' : 'No blockers';
+  const unresolvedIssue = readiness.next_issue;
 
   const wk = String(displayWeek).padStart(2, '0');
-  const topStanding = standings[0];
   const recentLeagueWire = data.history.slice(-3).map(h => ({
     week: h.week ?? '?',
     summary: h.dashboard?.result ? `${h.dashboard.result} vs ${h.dashboard.opponent_name ?? 'opponent'}` : 'No result',
@@ -405,7 +355,7 @@ export function PreSimDashboard({
             {isBye ? (
               <span style={{ color: '#67e8f9' }}>Bye Week</span>
             ) : (
-              <span>{currentMatch?.home_club_name === data.player_club_name ? 'Home' : 'Away'}</span>
+              <span>{match_context.is_home ? 'Home' : 'Away'}</span>
             )}
           </div>
 
@@ -458,20 +408,20 @@ export function PreSimDashboard({
                 <span className="lbl">Court Read</span>
                 <span
                   className="side"
-                  title={threat.name ? 'Opponent key threat — watch this player' : undefined}
+                  title={threatName ? 'Opponent key threat — watch this player' : undefined}
                 >
-                  ▸ {threat.name ? `${threat.name} flagged` : 'Schematic — live positions'}
+                  ▸ {threatName ? `${threatName} flagged` : 'Schematic — live positions'}
                 </span>
               </div>
-              <MiniCourt homePlayers={activePlayers} awayPlayers={opponentPlayers} threatName={threat.name} />
+              <MiniCourt homePlayers={activePlayers} awayPlayers={opponentPlayers} threatName={threatName} />
             </div>
 
             <div className={`cc-threat-card-kit command-threat-row${ovrGap !== null && ovrGap > 0 ? ' is-disadvantage' : ''}`}>
               <span className="lbl">Key Threat</span>
-              <div className="name">{threat.name || plan.opponent.name}</div>
+              <div className="name">{threatName || plan.opponent.name}</div>
               <div className="row">
-                <span><b>{threat.role ?? 'Anchor'}</b></span>
-                {threat.ovr && <span className="ovr">{threat.ovr} OVR</span>}
+                <span><b>{threatArchetype ?? 'Anchor'}</b></span>
+                {threatOvr !== null && <span className="ovr">{threatOvr} OVR</span>}
               </div>
             </div>
           </div>
@@ -590,6 +540,95 @@ export function PreSimDashboard({
                   <BroadcastFrameBlock frame={details.broadcast_frame} title="Broadcast Frame" compact />
                 )}
 
+                {details.tactical_diff && (
+                  <div data-testid="tactical-diff" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
+                    <span className="lbl">Tactical Diff — Your Plan vs Their Tendencies</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      {details.tactical_diff.player_plan.map((row) => (
+                        <div
+                          key={row.axis}
+                          data-testid="tactical-diff-row"
+                          data-axis={row.axis}
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: '8rem 1fr 1fr',
+                            gap: '0.5rem',
+                            alignItems: 'baseline',
+                            padding: '0.3rem 0.55rem',
+                            background: 'rgba(15,23,42,0.6)',
+                            border: '1px solid rgba(30,41,59,0.8)',
+                            borderRadius: '4px',
+                            fontSize: '0.75rem',
+                          }}
+                        >
+                          <span className="lbl" style={{ fontSize: '0.6rem' }}>{row.label}</span>
+                          <span data-testid="tactical-diff-player" style={{ color: 'var(--dm-cyan)', fontWeight: 600 }}>{row.player_value}</span>
+                          <span
+                            data-testid="tactical-diff-opponent"
+                            style={{ color: row.opponent_known ? '#e2e8f0' : '#64748b', fontStyle: row.opponent_known ? 'normal' : 'italic' }}
+                          >
+                            {row.opponent_known && row.opponent_value ? row.opponent_value : 'Unscouted'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    {details.tactical_diff.opponent_intel.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.15rem' }}>
+                        {details.tactical_diff.opponent_intel.map((item, index) => (
+                          <p
+                            key={`${item.source}-${index}`}
+                            data-testid="tactical-diff-intel"
+                            data-source={item.source}
+                            style={{ margin: 0, fontSize: '0.72rem', color: '#94a3b8', lineHeight: 1.4 }}
+                          >
+                            <span style={{ color: '#475569', textTransform: 'uppercase', fontSize: '0.6rem', marginRight: '0.4rem' }}>
+                              {item.source === 'adaptation' ? 'Observed' : 'Prior'}
+                            </span>
+                            {item.text}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    <p style={{ margin: '0.1rem 0 0', fontSize: '0.68rem', color: '#475569', fontStyle: 'italic', lineHeight: 1.4 }}>
+                      {details.tactical_diff.note}
+                    </p>
+                  </div>
+                )}
+
+                {details.staff_impact && details.staff_impact.length > 0 && (
+                  <div data-testid="staff-impact" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
+                    <span className="lbl">Match-Day Staff</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      {details.staff_impact.map((staff) => (
+                        <div
+                          key={staff.department}
+                          data-testid="staff-impact-row"
+                          data-department={staff.department}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'baseline',
+                            gap: '0.5rem',
+                            padding: '0.4rem 0.55rem',
+                            background: 'rgba(15,23,42,0.6)',
+                            border: '1px solid rgba(30,41,59,0.8)',
+                            borderRadius: '4px',
+                          }}
+                        >
+                          <span className="dm-data" style={{ fontSize: '0.7rem', color: 'var(--dm-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0 }}>
+                            {staff.department}
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: '#e2e8f0', fontWeight: 600, flexShrink: 0 }}>
+                            {staff.name} ({Math.round(staff.rating_primary)})
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                            {staff.effect}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div
                   className={`cc-align-callout${hasPlanConflict ? ' is-warning' : ''}`}
                   style={hasPlanConflict ? undefined : { borderColor: 'rgba(34,211,238,0.25)', borderLeftColor: 'var(--dm-cyan)', background: 'rgba(34,211,238,0.05)' }}
@@ -630,8 +669,8 @@ export function PreSimDashboard({
               <span className="pulse-em" />
               <span className="lbl">
                 {isReadyToLock
-                  ? `All gates green · ${readyCount}/${readinessChecks.length}`
-                  : `${readyCount} of ${readinessChecks.length} ready · ${pendCount} pending`}
+                  ? `All gates green · ${readyCount}/${readiness.total}`
+                  : `${readyCount} of ${readiness.total} ready · ${pendCount} pending`}
               </span>
             </div>
           </div>
@@ -644,7 +683,7 @@ export function PreSimDashboard({
                   title={check.detail}
                 >
                   <span className="tick">{check.ready ? '✓' : '!'}</span>
-                  <span className="lbl">{check.shortLabel}</span>
+                  <span className="lbl">{check.short_label}</span>
                 </div>
               ))}
             </div>
@@ -677,7 +716,7 @@ export function PreSimDashboard({
               </div>
               <div className="lr">
                 <span className="lbl">Readiness</span>
-                <span className="val mono em">{readyCount} / {readinessChecks.length}</span>
+                <span className="val mono em">{readyCount} / {readiness.total}</span>
               </div>
               <div className="lr">
                 <span className="lbl">Recommendation</span>
@@ -738,8 +777,8 @@ export function PreSimDashboard({
             : <span>No recent match history</span>
           }
         </span>
-        {topStanding && (
-          <span className="wkbadge">Top: {topStanding.club_name ?? topStanding.club_id}</span>
+        {leagueLeader && (
+          <span className="wkbadge">Top: {leagueLeader}</span>
         )}
         {lastRecord && (
           <button

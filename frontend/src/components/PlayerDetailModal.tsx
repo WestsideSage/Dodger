@@ -112,6 +112,20 @@ export function PlayerDetailModal({
               <RatingBar label="Catch" rating={player.ratings.catch} />
               <RatingBar label="Stamina" rating={player.ratings.stamina} />
               <RatingBar label="Tactical IQ" rating={player.ratings.tactical_iq} />
+              {typeof player.ratings.throw_selection_iq === 'number' && (
+                <RatingBar
+                  label="Throw Selection IQ"
+                  rating={player.ratings.throw_selection_iq}
+                  explanation="Raises the value threshold a throw must clear before this player commits to it. Higher ratings mean fewer low-percentage and flood throws, and a lower chance of illegal or headshot throws that gift the opponent a catch."
+                />
+              )}
+              {typeof player.ratings.catch_courage === 'number' && (
+                <RatingBar
+                  label="Catch Courage"
+                  rating={player.ratings.catch_courage}
+                  explanation="Sets how often this player attempts a catch instead of blocking or dodging an incoming throw. Higher ratings convert more defenses into catch attempts (gaining returns when successful, risking elimination when not), scaled by the team's catch posture."
+                />
+              )}
             </div>
           )}
 

@@ -141,6 +141,8 @@ def build_command_center_state(conn: sqlite3.Connection) -> dict[str, Any]:
     if upcoming is not None and not is_bye:
         opponent_id = upcoming.away_club_id if upcoming.home_club_id == player_club_id else upcoming.home_club_id
 
+    department_heads = load_department_heads(conn)
+
     return {
         "season_id": season_id,
         "week": week,
@@ -159,11 +161,12 @@ def build_command_center_state(conn: sqlite3.Connection) -> dict[str, Any]:
             match_id=upcoming.match_id if upcoming is not None else None,
             week=upcoming.week if upcoming is not None else week,
             is_bye=is_bye,
+            department_heads=department_heads,
         ),
         "roster": list(rosters.get(player_club_id, [])),
         "opponent_roster": list(rosters.get(opponent_id, [])) if opponent_id else [],
         "default_lineup": load_lineup_default(conn, player_club_id),
-        "department_heads": load_department_heads(conn),
+        "department_heads": department_heads,
         "history": load_command_history(conn, season_id),
     }
 
@@ -193,7 +196,20 @@ def build_default_weekly_plan(state: Mapping[str, Any], intent: str = "Balanced"
         **dict(state.get("matchup_details") or {}),
     }
     matchup_details.setdefault("framing_line", render_policy_line(policy))
-    
+
+    if not is_bye and opponent is not None:
+        from .tactical_diff import build_tactical_diff
+        last_meeting = matchup_details.get("last_meeting")
+        has_prior_meeting = bool(
+            last_meeting and not str(last_meeting).lower().startswith("first meeting")
+        )
+        matchup_details["tactical_diff"] = build_tactical_diff(
+            player_policy=tactics,
+            adaptation_summary=matchup_details.get("adaptation_summary"),
+            has_prior_meeting=has_prior_meeting,
+            last_meeting=last_meeting if has_prior_meeting else None,
+        )
+
     return {
         "season_id": state["season_id"],
         "week": state["week"],

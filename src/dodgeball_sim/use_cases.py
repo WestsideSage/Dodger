@@ -487,8 +487,7 @@ def _build_aftermath(
         headline = dashboard["result"]
 
     try:
-        from dodgeball_sim.persistence import roster_snapshots
-        from dodgeball_sim.replay_service import stats_for_match, score_player
+        from dodgeball_sim.replay_service import roster_snapshots, stats_for_match, score_player
 
         _clubs = clubs if clubs is not None else load_clubs(conn)
         snapshots = roster_snapshots(conn, record.match_id, record.home_club_id, record.away_club_id)
@@ -582,6 +581,77 @@ def _build_aftermath(
             # Beats are a polish surface — if derivation fails, the
             # frontend conservatively renders nothing rather than blowing
             # up the entire aftermath payload.
+            pass
+
+    # V14 Task 1: deterministic Primary Factor explanation. Read-only over the
+    # resolved MatchResult, moment events, deficit timeline, and lineup
+    # liabilities — never alters outcomes. Polish surface: if anything fails
+    # we simply omit the key rather than break the aftermath payload.
+    if player_club_id is not None and player_club_id in box:
+        try:
+            from dodgeball_sim.match_explanation import (
+                deficit_timeline,
+                derive_match_explanation,
+            )
+            from dodgeball_sim.replay_proof import _liability_map
+            from dodgeball_sim.replay_service import roster_snapshots
+
+            opponent_club_id = (
+                record.away_club_id
+                if record.home_club_id == player_club_id
+                else record.home_club_id
+            )
+            if opponent_club_id in box:
+                winner = record.result.winner_team_id
+                result_pf = (
+                    "Draw"
+                    if winner is None
+                    else ("Win" if winner == player_club_id else "Loss")
+                )
+                timeline = deficit_timeline(
+                    record.result,
+                    player_club_id=player_club_id,
+                    opponent_club_id=opponent_club_id,
+                )
+                snapshots = roster_snapshots(
+                    conn, record.match_id, record.home_club_id, record.away_club_id
+                )
+                liab_map = _liability_map(snapshots)
+                name_map_pf = {
+                    str(p.get("id", "")): str(p.get("name", p.get("id", "")))
+                    for players in snapshots.values()
+                    for p in players
+                }
+                eliminated_player = set(timeline.eliminated_by_club.get(player_club_id, ()))
+                liabilities = [
+                    {
+                        "name": name_map_pf.get(pid, pid),
+                        "role_name": meta.get("role_name", "role"),
+                        "archetype": meta.get("archetype", "archetype"),
+                        "on_player_team": True,
+                        "eliminated": pid in eliminated_player,
+                    }
+                    for pid, meta in liab_map.items()
+                    if meta.get("is_liability")
+                    and pid in {str(p.get("id", "")) for p in snapshots.get(player_club_id, [])}
+                ]
+                explanation = derive_match_explanation(
+                    result=result_pf,
+                    player_survivors=int(box[player_club_id]["totals"]["living"]),
+                    opponent_survivors=int(box[opponent_club_id]["totals"]["living"]),
+                    player_catches=int(box[player_club_id]["totals"].get("catches", 0)),
+                    opponent_catches=int(box[opponent_club_id]["totals"].get("catches", 0)),
+                    moment_events=parsed_moments,
+                    player_club_id=player_club_id,
+                    opponent_club_id=opponent_club_id,
+                    largest_deficit=timeline.largest_deficit,
+                    deficit_low_tick=timeline.deficit_low_tick,
+                    final_tick=int(getattr(record.result, "final_tick", 0) or 0),
+                    name_map=name_map_pf,
+                    liabilities=liabilities,
+                )
+                aftermath["primary_factor"] = explanation.primary_factor.as_dict()
+        except Exception:
             pass
 
     # Task 1 (2026-05-27 playtest-fixes): surface playoff resolution.
