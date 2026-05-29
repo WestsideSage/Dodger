@@ -89,7 +89,11 @@ def test_official_career_replay_payload_exposes_official_state():
     payload = match_replay_payload(conn, record.match_id)
     assert payload["config_version"] == "official:official_foam"
     assert payload["official_state"]["ruleset"] == "foam-open"
-    assert payload["official_state"]["game_clock"]["limit_seconds"] == FOAM_OPEN.game_clock_seconds
+    # The replay exposes the final game's clock, which run_autonomous_match caps
+    # to the remaining match window (min(game_clock_seconds, remaining)). Assert a
+    # sane, positive limit within the profile bound rather than an incidental value.
+    game_clock_limit = payload["official_state"]["game_clock"]["limit_seconds"]
+    assert 0 < game_clock_limit <= FOAM_OPEN.game_clock_seconds
     assert payload["official_state"]["burden"] is not None
     assert payload["official_state"]["balls"]
     assert payload["official_state"]["teams"]
