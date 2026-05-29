@@ -492,6 +492,9 @@ export interface WeekBriefing {
   edge: {
     net_starter_ovr: number;
     standing: 'favorite' | 'even' | 'underdog';
+    headline?: string;
+    advisory_detail?: string;
+    advisory?: boolean;
   };
   fatigue: {
     at_risk_count: number;

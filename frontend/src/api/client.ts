@@ -103,6 +103,10 @@ export const commandApi = {
     ),
   skipSeasonPreview: (skipped: boolean) =>
     apiPost<CommandCenterResponse>('/api/command-center/season-preview/skip', { skipped }),
+  scoutOpponent: () =>
+    apiPost<CommandCenterResponse>('/api/command-center/scout', {}),
+  confirmLineup: () =>
+    apiPost<CommandCenterResponse>('/api/command-center/confirm-lineup', {}),
   simulate: (body: { intent?: string }) =>
     apiPost<CommandCenterSimResponse>('/api/command-center/simulate', body),
   fastForward: (body: { max_weeks?: number } = {}) =>

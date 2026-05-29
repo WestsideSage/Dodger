@@ -98,14 +98,43 @@ def _build_readiness(plan: dict[str, Any]) -> dict[str, Any]:
     orders = plan.get("department_orders") or {}
     stamina = _stamina_values(starters)
     health_ok = not any(value < _CRITICAL_STAMINA for value in stamina)
+    is_bye = bool(plan.get("is_bye"))
+
+    # D3: scout-opponent and confirm-lineup are deliberate-action gates. They
+    # start UNMET on a fresh weekly plan and are cleared only by a real player
+    # action (which persists a flag on the plan) — so readiness is meaningful
+    # rather than auto-5/5. A bye week auto-clears both: there is no opponent to
+    # scout and no six to field. Gameplan/training/health stay
+    # default-satisfied to preserve the Balanced-default convenience.
+    scouted = is_bye or bool(plan.get("opponent_scouted"))
+    lineup_confirmed = is_bye or bool(plan.get("lineup_confirmed"))
 
     gates = [
         {
             "id": "scout",
             "label": "Scout the opponent",
             "short_label": "Scout",
-            "detail": "No opponent to scout." if plan.get("is_bye") else "Opponent lineup reviewed.",
-            "ready": bool(_opponents(plan)) or bool(plan.get("is_bye")),
+            "detail": (
+                "No opponent to scout."
+                if is_bye
+                else "Opponent lineup reviewed."
+                if scouted
+                else "Review the opponent's projected six."
+            ),
+            "ready": scouted,
+        },
+        {
+            "id": "confirm_lineup",
+            "label": "Confirm your starting six",
+            "short_label": "Lineup",
+            "detail": (
+                "No lineup to confirm on a bye."
+                if is_bye
+                else "Starting six confirmed."
+                if lineup_confirmed
+                else "Confirm the six you will field."
+            ),
+            "ready": lineup_confirmed,
         },
         {
             "id": "gameplan",
@@ -155,7 +184,22 @@ def _build_readiness(plan: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+_EDGE_HEADLINES = {
+    "favorite": "Favorite",
+    "even": "Even Matchup",
+    "underdog": "Underdog",
+}
+
+
 def _build_edge(plan: dict[str, Any]) -> dict[str, Any]:
+    """Banded matchup standing (D2).
+
+    The headline is the BAND (Favorite / Even / Underdog) derived from the
+    fielded-6 net starter OVR — never a raw ``+NNN`` that reads like a
+    win-probability. The signed net OVR is kept as a small, explicitly advisory
+    "roster strength" detail; it informs but never implies a mechanical edge
+    (see AGENTS.md "no hidden boosts").
+    """
     net = _sum_overall(_starters(plan)) - _sum_overall(_opponents(plan))
     if net > _EVEN_BAND:
         standing = "favorite"
@@ -163,7 +207,14 @@ def _build_edge(plan: dict[str, Any]) -> dict[str, Any]:
         standing = "underdog"
     else:
         standing = "even"
-    return {"net_starter_ovr": net, "standing": standing}
+    advisory = f"{net:+d} net starter OVR" if not plan.get("is_bye") else "Bye week"
+    return {
+        "net_starter_ovr": net,
+        "standing": standing,
+        "headline": _EDGE_HEADLINES[standing],
+        "advisory_detail": advisory,
+        "advisory": True,
+    }
 
 
 def _build_fatigue(plan: dict[str, Any]) -> dict[str, Any]:

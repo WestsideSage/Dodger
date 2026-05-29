@@ -32,6 +32,8 @@ def _plan(
     opponents: list[dict[str, Any]] | None = None,
     is_bye: bool = False,
     key_threat: dict[str, Any] | None = None,
+    opponent_scouted: bool = True,
+    lineup_confirmed: bool = True,
 ) -> dict[str, Any]:
     if starters is None:
         starters = [_starter(f"P{i}", 70) for i in range(6)]
@@ -47,6 +49,10 @@ def _plan(
         "lineup": {"players": starters},
         "opponent_lineup": {"players": opponents},
         "matchup_details": matchup,
+        # Default the deliberate-action gates to satisfied so unrelated tests
+        # exercise the other gates; D3-specific tests override these.
+        "opponent_scouted": opponent_scouted,
+        "lineup_confirmed": lineup_confirmed,
     }
 
 
@@ -81,11 +87,68 @@ def _briefing(**overrides: Any) -> dict[str, Any]:
 def test_all_gates_ready_is_ready_to_lock():
     out = _briefing()
     readiness = out["readiness"]
-    assert readiness["total"] == 5
-    assert readiness["ready_count"] == 5
+    assert readiness["total"] == 6
+    assert readiness["ready_count"] == 6
     assert readiness["is_ready_to_lock"] is True
     assert readiness["items_remaining"] == 0
     assert readiness["next_issue"] == "No blockers"
+
+
+# --- D3: deliberate-action gates (scout + confirm lineup) ------------------
+
+def test_scout_gate_starts_unmet_and_clears_on_action():
+    out = _briefing(plan=_plan(opponent_scouted=False))
+    gate = next(g for g in out["readiness"]["gates"] if g["id"] == "scout")
+    assert gate["ready"] is False
+    assert out["readiness"]["is_ready_to_lock"] is False
+    assert out["readiness"]["next_issue"] == "Scout the opponent"
+
+    cleared = _briefing(plan=_plan(opponent_scouted=True))
+    gate = next(g for g in cleared["readiness"]["gates"] if g["id"] == "scout")
+    assert gate["ready"] is True
+
+
+def test_confirm_lineup_gate_starts_unmet_and_clears_on_action():
+    out = _briefing(plan=_plan(lineup_confirmed=False))
+    gate = next(g for g in out["readiness"]["gates"] if g["id"] == "confirm_lineup")
+    assert gate["ready"] is False
+    assert out["readiness"]["is_ready_to_lock"] is False
+
+    cleared = _briefing(plan=_plan(lineup_confirmed=True))
+    gate = next(g for g in cleared["readiness"]["gates"] if g["id"] == "confirm_lineup")
+    assert gate["ready"] is True
+
+
+def test_bye_week_auto_clears_scout_and_confirm_lineup():
+    # On a bye both deliberate-action gates auto-satisfy: no opponent to scout,
+    # no six to field. The Balanced-default convenience is preserved.
+    out = _briefing(plan=_plan(is_bye=True, opponent_scouted=False, lineup_confirmed=False))
+    scout = next(g for g in out["readiness"]["gates"] if g["id"] == "scout")
+    confirm = next(g for g in out["readiness"]["gates"] if g["id"] == "confirm_lineup")
+    assert scout["ready"] is True
+    assert confirm["ready"] is True
+
+
+def test_missing_flags_default_to_unmet():
+    # A legacy plan with no flag keys must read the gates as UNMET (start state),
+    # never silently satisfied.
+    plan = _plan()
+    del plan["opponent_scouted"]
+    del plan["lineup_confirmed"]
+    out = build_week_briefing(
+        plan=plan,
+        standings_rows=[_row("you", 0, 0)],
+        player_club_id="you",
+        league_leader=None,
+        recent_results=[],
+        games_remaining=5,
+        is_home=True,
+        playoff_stage=None,
+    )
+    scout = next(g for g in out["readiness"]["gates"] if g["id"] == "scout")
+    confirm = next(g for g in out["readiness"]["gates"] if g["id"] == "confirm_lineup")
+    assert scout["ready"] is False
+    assert confirm["ready"] is False
 
 
 def test_missing_training_order_blocks_lock():
@@ -138,6 +201,28 @@ def test_equal_starters_are_even():
     out = _briefing()
     assert out["edge"]["net_starter_ovr"] == 0
     assert out["edge"]["standing"] == "even"
+
+
+def test_edge_headline_is_the_band_and_net_ovr_is_advisory():
+    # D2: the headline is the band; the signed net OVR is a small advisory
+    # detail, never the headline (no false win-probability precision).
+    fav = _briefing(plan=_plan(
+        starters=[_starter(f"P{i}", 80) for i in range(6)],
+        opponents=[_starter(f"O{i}", 70) for i in range(6)],
+    ))["edge"]
+    assert fav["headline"] == "Favorite"
+    assert fav["advisory_detail"] == "+60 net starter OVR"
+    assert fav["advisory"] is True
+
+    dog = _briefing(plan=_plan(
+        starters=[_starter(f"P{i}", 60) for i in range(6)],
+        opponents=[_starter(f"O{i}", 70) for i in range(6)],
+    ))["edge"]
+    assert dog["headline"] == "Underdog"
+    assert dog["advisory_detail"] == "-60 net starter OVR"
+
+    even = _briefing()["edge"]
+    assert even["headline"] == "Even Matchup"
 
 
 # --- fatigue + recommendation ---------------------------------------------

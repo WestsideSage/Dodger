@@ -230,6 +230,11 @@ def build_default_weekly_plan(state: Mapping[str, Any], intent: str = "Balanced"
         "player_club_id": state["player_club_id"],
         "is_bye": is_bye,
         "intent": intent,
+        # D3 deliberate-action readiness flags. Start unmet on a fresh weekly
+        # plan; cleared by a real scout / confirm-lineup action (see
+        # command_week_service). Bye weeks auto-clear in the briefing.
+        "opponent_scouted": False,
+        "lineup_confirmed": False,
         "available_intents": list(INTENTS),
         "opponent": {
             "club_id": opponent.club_id if opponent else None,

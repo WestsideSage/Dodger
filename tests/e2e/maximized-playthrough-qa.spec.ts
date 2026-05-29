@@ -76,6 +76,15 @@ test.describe('Maximized browser playthrough and V11 QA Pass', () => {
   }
   await expect(page.getByTestId('weekly-command-center')).toBeVisible();
       
+      // D3: clear the deliberate-action readiness gates (scout + confirm
+      // lineup) before the plan can be locked.
+      if (await page.getByTestId('scout-opponent').isVisible().catch(() => false)) {
+        await page.getByTestId('scout-opponent').click();
+      }
+      if (await page.getByTestId('confirm-lineup').isVisible().catch(() => false)) {
+        await page.getByTestId('confirm-lineup').click();
+      }
+
       // Lock weekly plan
       await page.getByTestId('lock-weekly-plan').click();
       await expect(page.getByTestId('simulate-command-week')).toBeEnabled();
@@ -208,6 +217,15 @@ test.describe('Maximized browser playthrough and V11 QA Pass', () => {
       await advanceBtn.click();
 
       await expect(page.getByTestId('weekly-command-center').getByText(/week\s*0?2/i)).toBeVisible();
+
+      // D3: clear the deliberate-action readiness gates (scout + confirm
+      // lineup) before the plan can be locked.
+      if (await page.getByTestId('scout-opponent').isVisible().catch(() => false)) {
+        await page.getByTestId('scout-opponent').click();
+      }
+      if (await page.getByTestId('confirm-lineup').isVisible().catch(() => false)) {
+        await page.getByTestId('confirm-lineup').click();
+      }
 
       // Lock weekly plan
       await page.getByTestId('lock-weekly-plan').click();
