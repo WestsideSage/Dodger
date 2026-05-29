@@ -23,45 +23,15 @@ repo_root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(repo_root / "src"))
 sys.path.insert(0, str(repo_root / "tools"))
 
-from dodgeball_sim.engine_driver import DriverMatchInput, DriverMatchOutput  # noqa: E402
-from dodgeball_sim.official_engine import run_autonomous_match  # noqa: E402
-from dodgeball_sim.rulesets import RulesetSelection  # noqa: E402
+from dodgeball_sim.official_engine import OfficialMatchEngineDriver  # noqa: E402
 
 from probe_lib import run_ovr_curve, summarize_match_lengths, summarize_outcomes  # noqa: E402
 
 RUNGS = (0, 4, 8, 12)
 
-
-class RealOfficialMatchDriver:
-    """EngineDriver that drives the multi-set run_autonomous_match (the shipping path)."""
-
-    tier_id = "official_match"
-
-    def __init__(self, ruleset: str = "official_foam") -> None:
-        self.profile = RulesetSelection(ruleset).to_profile()
-
-    def run(self, mi: DriverMatchInput) -> DriverMatchOutput:
-        res = run_autonomous_match(
-            profile=self.profile,
-            match_id=mi.match_id,
-            team_a_id=mi.team_a_id,
-            team_b_id=mi.team_b_id,
-            starters_a=mi.starters_a,
-            starters_b=mi.starters_b,
-            player_lookup=mi.player_lookup,
-            policy_a=mi.policy_a,
-            policy_b=mi.policy_b,
-            seed=mi.seed,
-        )
-        score = res.official_match_score
-        return DriverMatchOutput(
-            events=res.events,
-            winner_team_id=res.winner_team_id,
-            final_active_a=getattr(score, "team_a_game_points", 0),
-            final_active_b=getattr(score, "team_b_game_points", 0),
-            moment_events=(),
-            replay_state=res.replay_state,
-        )
+# Back-compat alias: the source now owns the shipping-engine driver (it also
+# exposes moment_events), so the probe just re-uses it.
+RealOfficialMatchDriver = OfficialMatchEngineDriver
 
 
 def main() -> int:
@@ -70,7 +40,7 @@ def main() -> int:
     ap.add_argument("--ruleset", default="official_foam")
     args = ap.parse_args()
 
-    driver = RealOfficialMatchDriver(args.ruleset)
+    driver = RealOfficialMatchDriver(ruleset=args.ruleset)
     print(f"=== REAL official engine (run_autonomous_match, {args.ruleset}) ===")
     results = run_ovr_curve(driver, rungs=RUNGS, trials_per_rung=args.trials)
 

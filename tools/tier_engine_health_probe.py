@@ -38,11 +38,12 @@ def _build_driver(name: str) -> EngineDriver:
         from dodgeball_sim.rec_engine import RecTier1Driver
         return RecTier1Driver()
     if name == "official":
-        try:
-            from dodgeball_sim.official_engine import OfficialDriver
-        except ImportError as e:
-            raise RuntimeError(f"OfficialDriver not yet implemented") from e
-        return OfficialDriver()
+        # The shipping multi-set engine real official careers play through —
+        # NOT the single-game official_driver.OfficialDriver stub the old probe
+        # imported from the wrong module (it measured a 1-0/0-0 toy, never
+        # run_autonomous_match). See OfficialMatchEngineDriver's docstring.
+        from dodgeball_sim.official_engine import OfficialMatchEngineDriver
+        return OfficialMatchEngineDriver()
     raise ValueError(f"Unknown driver: {name}")
 
 
