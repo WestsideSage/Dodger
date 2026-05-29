@@ -36,7 +36,11 @@ test.describe('Maximized browser playthrough and V11 QA Pass', () => {
     // 2. Multi-viewport verification on pre-sim weekly command center
     await test.step('Verify pre-sim hub across viewports', async () => {
       await page.goto(`${baseUrl}/?tab=command`);
-      await expect(page.getByTestId('weekly-command-center')).toBeVisible();
+      await expect(page.locator('[data-testid="weekly-command-center"], [data-testid="season-preview"]').first()).toBeVisible({ timeout: 10000 });
+  if (await page.getByTestId('season-preview').isVisible()) {
+    await page.getByRole('button', { name: /To the Command Center/i }).click();
+  }
+  await expect(page.getByTestId('weekly-command-center')).toBeVisible();
 
       // Wide Desktop Viewport
       await page.setViewportSize({ width: 1920, height: 1080 });
@@ -66,7 +70,11 @@ test.describe('Maximized browser playthrough and V11 QA Pass', () => {
     // 3. Locking plan and simulating Week 1
     await test.step('Lock plan and simulate Week 1', async () => {
       await page.goto(`${baseUrl}/?tab=command`);
-      await expect(page.getByTestId('weekly-command-center')).toBeVisible();
+      await expect(page.locator('[data-testid="weekly-command-center"], [data-testid="season-preview"]').first()).toBeVisible({ timeout: 10000 });
+  if (await page.getByTestId('season-preview').isVisible()) {
+    await page.getByRole('button', { name: /To the Command Center/i }).click();
+  }
+  await expect(page.getByTestId('weekly-command-center')).toBeVisible();
       
       // Lock weekly plan
       await page.getByTestId('lock-weekly-plan').click();

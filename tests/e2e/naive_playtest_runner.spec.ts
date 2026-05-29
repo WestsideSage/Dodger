@@ -109,7 +109,11 @@ test.describe('Dodger Naive Playtester Playthrough', () => {
 
     // 5. Game week loop
     console.log('Waiting for the weekly Command Center to load...');
-    await expect(page.getByTestId('weekly-command-center')).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('[data-testid="weekly-command-center"], [data-testid="season-preview"]').first()).toBeVisible({ timeout: 20000 });
+    if (await page.getByTestId('season-preview').isVisible()) {
+      await page.getByRole('button', { name: /To the Command Center/i }).click();
+    }
+    await expect(page.getByTestId('weekly-command-center')).toBeVisible();
     await page.screenshot({ path: path.join(outputDir, '08_command_center_loaded.png') });
 
     let seasonCount = 1;
@@ -120,6 +124,14 @@ test.describe('Dodger Naive Playtester Playthrough', () => {
     while (loopIterations < maxIterations) {
       loopIterations++;
       await page.waitForTimeout(1500);
+
+      // Handle Season Preview overlay if present (e.g. at the start of Season 2)
+      if (await page.getByTestId('season-preview').isVisible()) {
+        console.log('Dismissing Season Preview...');
+        await page.getByRole('button', { name: /To the Command Center/i }).click();
+        await page.waitForTimeout(500);
+        continue;
+      }
 
       // Check if we are in the offseason ceremony state
       const isOffseason = await page.getByTestId('match-week-offseason').isVisible();

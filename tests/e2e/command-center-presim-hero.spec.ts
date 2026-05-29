@@ -12,6 +12,10 @@ test('Command Center pre-sim keeps the core dashboard surfaces visible', async (
   await page.setViewportSize({ width: 2048, height: 633 });
   await page.goto(`${baseUrl}/?tab=command`);
 
+  await expect(page.locator('[data-testid="weekly-command-center"], [data-testid="season-preview"]').first()).toBeVisible({ timeout: 10000 });
+  if (await page.getByTestId('season-preview').isVisible()) {
+    await page.getByRole('button', { name: /To the Command Center/i }).click();
+  }
   await expect(page.getByTestId('weekly-command-center')).toBeVisible();
   await expect(page.getByTestId('presim-command-strip')).toBeVisible();
   await expect(page.getByText('WAR ROOM', { exact: true })).toHaveCount(1);
@@ -30,7 +34,7 @@ test('Command Center pre-sim keeps the core dashboard surfaces visible', async (
   const scoutChip = page.getByTestId('readiness-panel').locator('.command-readiness-chips .cc-gate').first();
   await expect(scoutChip).toHaveAttribute(
     'title',
-    'Scout report, threat profile, and staff recommendation available.',
+    'Opponent lineup reviewed.',
   );
 
   const rawThreatRows = page.locator('.command-threat-row');
