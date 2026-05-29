@@ -64,3 +64,18 @@ def test_panel_returns_at_most_three_with_categories():
 def test_panel_degrades_when_inputs_missing():
     panel = build_improvement_panel(roster=[], starters=[], recruits=[])
     assert panel == []
+
+
+def test_position_group_title_prettifies_raw_archetype_key() -> None:
+    from dodgeball_sim.next_best_improvement import build_improvement_panel
+    cards = build_improvement_panel(
+        roster=[
+            {"archetype": "hawk_dodger", "overall": 55},
+            {"archetype": "hawk_dodger", "overall": 57},
+        ],
+        starters=[],
+        recruits=[],
+    )
+    titles = " ".join(c["title"] for c in cards)
+    assert "Ball Hawk / Dodger" in titles
+    assert "hawk_dodger" not in titles

@@ -290,6 +290,20 @@ _ARCHETYPE_DISPLAY_NAMES: dict[PlayerArchetype, str] = {
 }
 
 
+def archetype_display_name(raw: str) -> str:
+    """Map a raw archetype key to its player-facing display name.
+
+    Accepts a raw enum value (e.g. ``"hawk_dodger"`` -> ``"Ball Hawk / Dodger"``)
+    and returns anything that is not a known archetype value unchanged, so
+    callers can safely pass already-formatted labels through without
+    double-translating.
+    """
+    try:
+        return PlayerArchetype(str(raw).strip()).display_name
+    except ValueError:
+        return str(raw)
+
+
 @dataclass(frozen=True)
 class MatchSetup:
     team_a: Team
