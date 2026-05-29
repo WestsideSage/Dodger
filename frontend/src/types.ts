@@ -509,6 +509,11 @@ export interface WeekBriefing {
     playoff_stage: string | null;
   };
   league_leader: string | null;
+  staff_recommendation: {
+    action: 'keep' | 'change';
+    recommended_intent: string | null;
+    reason: string;
+  };
   recommendation: {
     verdict: 'aligned' | 'adjust';
     advised_intent: string | null;

@@ -11,7 +11,10 @@ from __future__ import annotations
 from typing import Any
 
 from dodgeball_sim.season import StandingsRow
-from dodgeball_sim.week_briefing import build_week_briefing
+from dodgeball_sim.week_briefing import (
+    build_week_briefing,
+    compute_staff_recommendation,
+)
 
 
 def _starter(name: str, overall: int, stamina: int | None = 80) -> dict[str, Any]:
@@ -170,6 +173,36 @@ def test_recommendation_never_claims_archetype_counter():
     out = _briefing(plan=_plan(intent="Win Now", key_threat=threat))
     assert out["recommendation"]["verdict"] == "aligned"
     assert out["recommendation"]["advised_intent"] is None
+
+
+# --- staff recommendation is selection-independent ------------------------
+
+def test_staff_recommendation_ignores_selected_plan():
+    # The staff call reads only verifiable context (recent form, squad health),
+    # never the currently-selected intent. Same context => same call, no matter
+    # what the player picked. A recommendation that mirrored the selection would
+    # be meaningless feedback.
+    base = compute_staff_recommendation(recent_results=["Win"], at_risk_count=0)
+    for intent in ("Balanced", "Win Now", "Preserve Health"):
+        out = _briefing(plan=_plan(intent=intent), recent_results=["Win"])
+        assert out["staff_recommendation"] == base
+
+
+def test_staff_recommendation_pushes_win_now_on_skid():
+    rec = compute_staff_recommendation(
+        recent_results=["Loss", "Loss"], at_risk_count=0
+    )
+    assert rec["action"] == "change"
+    assert rec["recommended_intent"] == "Win Now"
+
+
+def test_staff_recommendation_prioritizes_health_over_form():
+    # Two losses AND two tired starters: health is the louder signal.
+    rec = compute_staff_recommendation(
+        recent_results=["Loss", "Loss"], at_risk_count=2
+    )
+    assert rec["action"] == "change"
+    assert rec["recommended_intent"] == "Preserve Health"
 
 
 # --- bye week --------------------------------------------------------------
