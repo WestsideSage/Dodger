@@ -64,11 +64,14 @@ class RecordBroken:
     detail: str = ""
 
 
+# Phase 7 trim: dropped career_dodges (too noisy to be dramatic — dodging is
+# largely a survival stat with high variance) and most_seasons_at_one_club
+# (loyalty trivia, not a competitive achievement; carries no strategic weight).
+# Kept: career_eliminations (most impactful offensive stat), career_catches
+# (high-risk play rewarded), most_championships (legacy / winner identity).
 _INDIVIDUAL_RECORD_TYPES = {
     "career_eliminations": "career_eliminations",
     "career_catches": "career_catches",
-    "career_dodges": "career_dodges",
-    "most_seasons_at_one_club": "seasons_at_one_club",
     "most_championships": "championships",
 }
 

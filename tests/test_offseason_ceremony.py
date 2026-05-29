@@ -242,12 +242,14 @@ def test_compute_active_beats_always_includes_core():
 
 
 def test_compute_active_beats_excludes_empty_conditional():
+    # Phase 7: records_ratified is unconditional (always shows with honest
+    # empty-state); hof_induction and retirements remain conditional.
     active = compute_active_beats(
         records_payload_json=None,
         hof_payload_json=None,
         retirement_rows=[],
     )
-    assert "records_ratified" not in active
+    assert "records_ratified" in active  # always included now
     assert "hof_induction" not in active
     assert "retirements" not in active
 

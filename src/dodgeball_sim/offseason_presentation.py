@@ -22,6 +22,7 @@ from .persistence import (
     load_club_trophies,
     load_free_agents,
     load_json_state,
+    load_league_records,
     load_player_career_stats,
     load_prospect_pool,
     load_recruitment_signings,
@@ -252,7 +253,11 @@ def build_beat_payload(
         }
 
     if beat_key == "records_ratified":
-        return {"records": _parse_record_entries(records_json)}
+        records_book_empty = len(load_league_records(conn)) == 0
+        return {
+            "records": _parse_record_entries(records_json, player_club_id),
+            "records_book_empty": records_book_empty,
+        }
 
     if beat_key == "hof_induction":
         return {"inductees": _parse_hof_entries(hof_json)}
@@ -435,6 +440,7 @@ def build_beat_response(conn: sqlite3.Connection, cursor) -> dict[str, Any]:
     player_club_id = get_state(conn, "player_club_id") or ""
 
     canonical_index = OFFSEASON_CEREMONY_BEATS.index(beat_key)
+    records_book_empty = len(load_league_records(conn)) == 0
     beat = build_offseason_ceremony_beat(
         beat_index=canonical_index,
         season=season,
@@ -452,6 +458,7 @@ def build_beat_response(conn: sqlite3.Connection, cursor) -> dict[str, Any]:
         records_payload_json=records_json,
         hof_payload_json=hof_json,
         rookie_preview_payload_json=rookie_preview_json,
+        records_book_empty=records_book_empty,
     )
     payload = build_beat_payload(
         beat_key,
@@ -515,12 +522,17 @@ def _json_list(raw: Optional[str]) -> list:
     return loaded if isinstance(loaded, list) else []
 
 
-def _parse_record_entries(raw: Optional[str]) -> list[dict[str, Any]]:
-    """Structured league-record entries for the records_ratified beat card."""
+def _parse_record_entries(raw: Optional[str], player_club_id: str = "") -> list[dict[str, Any]]:
+    """Structured league-record entries for the records_ratified beat card.
+
+    Phase 7: each entry now carries holder_club_id and is_my_club so the
+    frontend can render the My Club / League scope filter without a round-trip.
+    """
     out: list[dict[str, Any]] = []
     for entry in _json_list(raw):
         if not isinstance(entry, dict):
             continue
+        holder_club_id = str(entry.get("holder_club_id", ""))
         out.append(
             {
                 "record_id": str(entry.get("record_type", "")),
@@ -530,6 +542,8 @@ def _parse_record_entries(raw: Optional[str]) -> list[dict[str, Any]]:
                 "new_value": float(entry.get("new_value", 0.0)),
                 "detail": str(entry.get("detail", "")),
                 "proof_source": f"record:{entry.get('record_type', '')}",
+                "holder_club_id": holder_club_id,
+                "is_my_club": bool(player_club_id and holder_club_id == player_club_id),
             }
         )
     return out

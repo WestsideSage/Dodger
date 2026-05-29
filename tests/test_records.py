@@ -10,6 +10,9 @@ from dodgeball_sim.records import (
 
 
 def test_build_individual_records_picks_correct_leaders() -> None:
+    # Phase 7 trim: career_dodges and most_seasons_at_one_club removed from
+    # _INDIVIDUAL_RECORD_TYPES (too noisy / loyalty trivia). Only the three
+    # impactful records remain.
     records = build_individual_records(
         [
             CareerStats(
@@ -36,8 +39,8 @@ def test_build_individual_records_picks_correct_leaders() -> None:
 
     assert records["career_eliminations"].holder_id == "p1"
     assert records["career_catches"].holder_id == "p2"
-    assert records["career_dodges"].holder_id == "p2"
-    assert records["most_seasons_at_one_club"].value == 6
+    assert "career_dodges" not in records
+    assert "most_seasons_at_one_club" not in records
     assert records["most_championships"].holder_name == "Mara Keene"
 
 

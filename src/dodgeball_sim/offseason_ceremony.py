@@ -82,9 +82,13 @@ def compute_active_beats(
     hof_payload_json: Optional[str],
     retirement_rows: List[Dict[str, Any]],
 ) -> List[str]:
-    """Return the ordered subset of OFFSEASON_CEREMONY_BEATS that have real content."""
+    """Return the ordered subset of OFFSEASON_CEREMONY_BEATS that have real content.
+
+    Phase 7: records_ratified is always included so its honest empty-state
+    ("no new records this season" / "book is empty") is always reachable.
+    """
     _CONDITIONAL = {
-        "records_ratified": lambda: bool(_parse_json_list(records_payload_json)),
+        # records_ratified is unconditional — always shows with honest empty-state
         "hof_induction": lambda: bool(_parse_json_list(hof_payload_json)),
         "retirements": lambda: bool(retirement_rows),
     }
@@ -285,9 +289,14 @@ def _update_career_summaries(
             continue
         player_awards = [award for award in award_rows if award.player_id == player_id]
         club_ids = {str(row.get("club_id") or "") for row in rows if row.get("club_id")}
+        # Current club_id: taken from the player object (most-recent assignment).
+        # Persisted into career_summary_json so ratify_records can scope records
+        # to the My Club filter without a separate roster join.
+        current_club_id = player.club_id or ""
         summary = {
             "player_id": player_id,
             "player_name": player.name,
+            "club_id": current_club_id,
             "seasons_played": len(rows),
             "championships": sum(1 for row in rows if int(row.get("champion") or 0)),
             "awards_won": len(player_awards),
@@ -844,6 +853,7 @@ def build_offseason_ceremony_beat(
     records_payload_json: Optional[str] = None,
     hof_payload_json: Optional[str] = None,
     rookie_preview_payload_json: Optional[str] = None,
+    records_book_empty: bool = False,
 ) -> OffseasonCeremonyBeat:
     """Build factual v1 offseason ceremony copy from persisted season data."""
     clamped_index = clamp_offseason_beat_index(beat_index)
@@ -912,7 +922,16 @@ def build_offseason_ceremony_beat(
             except (TypeError, ValueError):
                 entries = []
         if not entries:
-            body = "No new records were set this season."
+            if records_book_empty:
+                # Phase 7 honest empty-state A: the league record book itself is
+                # empty (no seasons ratified yet). Copy is honest — records seed
+                # from ALL active players, not just retirees, so they will appear
+                # after the first offseason is processed.
+                body = "The record book is empty — records will be set as seasons are played."
+            else:
+                # Phase 7 honest empty-state B: book exists but no NEW records
+                # broken this season (all incumbents held).
+                body = "No new records were set this season."
         else:
             lines = ["New league records:"]
             for entry in entries:

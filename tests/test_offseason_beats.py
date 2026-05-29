@@ -153,6 +153,124 @@ def test_ratify_records_payload_round_trips_through_dynasty_state():
 
 
 # ---------------------------------------------------------------------------
+# Phase 7 — Records empty-state + scope filter tests
+# ---------------------------------------------------------------------------
+
+
+def _seed_career_with_club(
+    conn,
+    player_id: str,
+    name: str,
+    eliminations: int,
+    club_id: str,
+    championships: int = 0,
+):
+    """Seed a player_career_stats row including club_id in the summary JSON."""
+    save_player_career_stats(
+        conn,
+        player_id,
+        {
+            "player_id": player_id,
+            "player_name": name,
+            "club_id": club_id,
+            "seasons_played": 3,
+            "championships": championships,
+            "awards_won": 0,
+            "total_matches": 30,
+            "total_eliminations": eliminations,
+            "total_catches_made": 0,
+            "total_dodges_successful": 0,
+            "total_times_eliminated": 0,
+            "peak_eliminations": eliminations,
+            "career_eliminations": eliminations,
+            "career_catches": 0,
+            "career_dodges": 0,
+            "clubs_served": 1,
+        },
+    )
+
+
+def test_ratify_records_carries_holder_club_id_for_player_record():
+    """Phase 7: RatifiedRecord.holder_club_id is populated from career summary."""
+    conn = _fresh_conn()
+    _seed_career_with_club(conn, "p_aurora", "Alpha", eliminations=100, club_id="aurora")
+    _seed_career_with_club(conn, "p_blaze", "Bravo", eliminations=50, club_id="blaze")
+
+    payload = ratify_records(conn, "season_1")
+    elim_record = next(r for r in payload.new_records if r.record_type == "career_eliminations")
+    assert elim_record.holder_club_id == "aurora"
+
+
+def test_ratify_records_scope_filter_club_vs_league():
+    """Phase 7: filtering new_records by holder_club_id returns club-scoped subset."""
+    conn = _fresh_conn()
+    _seed_career_with_club(conn, "p_aurora", "Alpha", eliminations=100, club_id="aurora")
+    _seed_career_with_club(conn, "p_blaze", "Bravo", eliminations=50, club_id="blaze", championships=2)
+
+    payload = ratify_records(conn, "season_1")
+    league_records = list(payload.new_records)
+    aurora_records = [r for r in payload.new_records if r.holder_club_id == "aurora"]
+    blaze_records = [r for r in payload.new_records if r.holder_club_id == "blaze"]
+
+    # League-wide = both clubs represented
+    assert len(league_records) >= 2
+    # Aurora holds eliminations record, blaze holds championships record
+    aurora_types = {r.record_type for r in aurora_records}
+    blaze_types = {r.record_type for r in blaze_records}
+    assert "career_eliminations" in aurora_types
+    assert "most_championships" in blaze_types
+    # Club scopes don't overlap
+    assert not (aurora_types & blaze_types)
+
+
+def test_payload_round_trips_holder_club_id():
+    """Phase 7: holder_club_id survives JSON round-trip through dynasty_state."""
+    conn = _fresh_conn()
+    _seed_career_with_club(conn, "p_aurora", "Alpha", eliminations=100, club_id="aurora")
+
+    ratify_records(conn, "season_1")
+    raw = get_state(conn, "offseason_records_ratified_json")
+    parsed = json.loads(raw)
+    elim_entry = next(e for e in parsed if e["record_type"] == "career_eliminations")
+    assert elim_entry.get("holder_club_id") == "aurora"
+
+
+def test_trimmed_record_types_are_absent():
+    """Phase 7: career_dodges and most_seasons_at_one_club no longer produce records."""
+    conn = _fresh_conn()
+    _seed_career_with_club(conn, "p1", "Alpha", eliminations=50, club_id="aurora")
+    # Give p1 the max dodges and loyalty streak so they WOULD have topped those
+    # records if the types still existed.
+    save_player_career_stats(
+        conn,
+        "p1",
+        {
+            "player_id": "p1",
+            "player_name": "Alpha",
+            "club_id": "aurora",
+            "seasons_played": 10,
+            "championships": 0,
+            "awards_won": 0,
+            "total_matches": 100,
+            "total_eliminations": 50,
+            "total_catches_made": 0,
+            "total_dodges_successful": 999,
+            "total_times_eliminated": 0,
+            "peak_eliminations": 50,
+            "career_eliminations": 50,
+            "career_catches": 0,
+            "career_dodges": 999,
+            "clubs_served": 1,
+        },
+    )
+
+    payload = ratify_records(conn, "season_1")
+    types = {r.record_type for r in payload.new_records}
+    assert "career_dodges" not in types
+    assert "most_seasons_at_one_club" not in types
+
+
+# ---------------------------------------------------------------------------
 # Task 4 helpers and tests
 # ---------------------------------------------------------------------------
 
