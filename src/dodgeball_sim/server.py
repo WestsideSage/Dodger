@@ -92,7 +92,11 @@ from dodgeball_sim.dynasty_office import (
 )
 from dodgeball_sim.league_memory import recent_match_item
 from dodgeball_sim.match_orchestration import _choose_next_user_match_after_automation
-from dodgeball_sim.use_cases import SimulateWeekError, simulate_week as _simulate_week
+from dodgeball_sim.use_cases import (
+    SimulateWeekError,
+    auto_pilot_weeks as _auto_pilot_weeks,
+    simulate_week as _simulate_week,
+)
 from dodgeball_sim.command_week_service import (
     CommandWeekError,
     command_center_payload,
@@ -437,6 +441,21 @@ class CommandCenterSimResponse(BaseModel):
     aftermath: dict[str, Any] | None = None
 
 
+class FastForwardRequest(BaseModel):
+    max_weeks: int | None = None
+
+
+class FastForwardResponse(BaseModel):
+    status: str
+    message: str
+    weeks_simulated: int
+    stop_reason: str
+    next_state: str | None = None
+    week_summaries: list[dict[str, Any]]
+    final_dashboard: dict[str, Any] | None = None
+    final_aftermath: dict[str, Any] | None = None
+
+
 class RecruitingPromiseRequest(BaseModel):
     player_id: str
     promise_type: str
@@ -607,6 +626,22 @@ def simulate_command_center_week(update: WeeklyCommandPlanUpdate | None = None, 
         return _simulate_week(
             conn,
             update=update.model_dump(exclude_none=True) if update else None,
+        )
+    except SimulateWeekError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@app.post("/api/command-center/fast-forward", response_model=FastForwardResponse)
+def fast_forward_command_center(
+    request: FastForwardRequest | None = None, conn = Depends(get_db)
+) -> FastForwardResponse:
+    """Auto-pilot the remaining season (or ``max_weeks`` weeks) using the
+    persisted weekly plan and canonical fielded-6. Additive convenience over
+    the per-week ``/api/command-center/simulate`` path."""
+    try:
+        return _auto_pilot_weeks(
+            conn,
+            max_weeks=request.max_weeks if request else None,
         )
     except SimulateWeekError as exc:
         raise HTTPException(status_code=409, detail=str(exc))

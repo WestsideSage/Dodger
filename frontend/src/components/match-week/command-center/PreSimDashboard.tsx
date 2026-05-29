@@ -147,6 +147,7 @@ export function PreSimDashboard({
   onIntentChange,
   planConfirmed,
   saving = false,
+  fastForward,
 }: {
   data: CommandCenterResponse;
   simulate: () => void;
@@ -157,6 +158,7 @@ export function PreSimDashboard({
   onIntentChange: (intent: string) => void;
   planConfirmed: boolean;
   saving?: boolean;
+  fastForward?: () => void;
 }) {
   const [policyEditorOpen, setPolicyEditorOpen] = useState(false);
 
@@ -753,6 +755,18 @@ export function PreSimDashboard({
                   className="command-secondary-button"
                 >
                   Unlock Plan
+                </button>
+              )}
+              {fastForward && (
+                <button
+                  type="button"
+                  data-testid="fast-forward-season"
+                  disabled={saving}
+                  onClick={fastForward}
+                  className="command-secondary-button"
+                  title="Auto-pilot the rest of the season with the persisted plan and best lineup."
+                >
+                  Fast-forward Season ⏭
                 </button>
               )}
               <div className="cc-lock-meta">

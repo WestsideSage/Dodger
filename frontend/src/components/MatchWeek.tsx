@@ -181,6 +181,25 @@ export function MatchWeek({
       .finally(() => setSaving(false));
   };
 
+  const fastForward = () => {
+    setError(null);
+    setIsTransitioning(true);
+    setSaving(true);
+    commandApi.fastForward({})
+      .then(() => {
+        setIsTransitioning(false);
+        return load();
+      })
+      .then(() => {
+        onAdvanceWeek?.();
+      })
+      .catch(err => {
+        setError(err.message);
+        setIsTransitioning(false);
+      })
+      .finally(() => setSaving(false));
+  };
+
   const handleAdvanceWeek = () => {
     setIsAdvancingWeek(true);
     setRevealStage(4);
@@ -271,6 +290,7 @@ export function MatchWeek({
         onIntentChange={handleIntentChange}
         planConfirmed={planConfirmed}
         saving={saving}
+        fastForward={fastForward}
       />
     );
   };
