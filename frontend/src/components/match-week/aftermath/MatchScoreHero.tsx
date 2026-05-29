@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { formatScoreline, survivorDetail } from '../matchResult';
 
 function useCountUp(value: number, durationMs = 1500) {
   const [displayValue, setDisplayValue] = useState(0);
@@ -62,7 +63,7 @@ function TeamScore({
         {displayedSurvivors}
       </span>
       <span className="command-score-detail">
-        {isOfficial ? `${survivors} survivors (Final)` : `${survivors} survivors`}
+        {survivorDetail(survivors, Boolean(isOfficial))}
       </span>
       {isWinner && (
         <span
@@ -103,9 +104,16 @@ export function MatchScoreHero({
   homeGamePoints?: number;
   awayGamePoints?: number;
 }) {
-  const isOfficial = Boolean(scoringModel && scoringModel !== 'legacy');
-  const displayedHome = useCountUp(isOfficial ? (homeGamePoints ?? 0) : homeSurvivors);
-  const displayedAway = useCountUp(isOfficial ? (awayGamePoints ?? 0) : awaySurvivors);
+  const scoreline = formatScoreline({
+    scoring_model: scoringModel,
+    home_game_points: homeGamePoints,
+    away_game_points: awayGamePoints,
+    home_survivors: homeSurvivors,
+    away_survivors: awaySurvivors,
+  });
+  const isOfficial = scoreline.isOfficial;
+  const displayedHome = useCountUp(scoreline.home.value);
+  const displayedAway = useCountUp(scoreline.away.value);
   const homeWon = winnerClubId === homeClubId;
   const awayWon = Boolean(winnerClubId) && !homeWon;
 
@@ -120,7 +128,7 @@ export function MatchScoreHero({
         isOfficial={isOfficial}
       />
       <div className="command-score-center">
-        <span className="dm-kicker">{isOfficial ? `Final (USAD ${scoringModel?.toUpperCase()})` : 'Final'}</span>
+        <span className="dm-kicker">{scoreline.centerLabel}</span>
         <span className="command-score-vs">VS</span>
       </div>
       <TeamScore

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { HTMLAttributes, KeyboardEvent, ReactNode } from 'react';
 
 export type Tone = 'neutral' | 'accent' | 'success' | 'warning' | 'danger' | 'info';
@@ -296,8 +297,9 @@ export function TableCell({ children, align = 'left', sticky = false, className 
   );
 }
 
-export function RatingBar({ rating, max = 100, label, compact = false }: { rating: number; max?: number; label?: string; compact?: boolean }) {
+export function RatingBar({ rating, max = 100, label, compact = false, explanation }: { rating: number; max?: number; label?: string; compact?: boolean; explanation?: string }) {
   const percentage = Math.min(100, Math.max(0, (rating / max) * 100));
+  const [showInfo, setShowInfo] = useState(false);
 
   let color = '#f43f5e'; // rose — poor
   if (percentage >= 80) color = '#22d3ee'; // cyan — elite
@@ -308,7 +310,77 @@ export function RatingBar({ rating, max = 100, label, compact = false }: { ratin
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%' }}>
       {label && (
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontFamily: 'var(--font-display)', letterSpacing: '0.075em', color: '#64748b', textTransform: 'uppercase' }}>
-          <span>{label}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+            {label}
+            {explanation && (
+              <span
+                data-testid="rating-explanation"
+                data-explanation-label={label}
+                role="button"
+                tabIndex={0}
+                aria-label={`${label} explanation: ${explanation}`}
+                aria-expanded={showInfo}
+                title={explanation}
+                onMouseEnter={() => setShowInfo(true)}
+                onMouseLeave={() => setShowInfo(false)}
+                onFocus={() => setShowInfo(true)}
+                onBlur={() => setShowInfo(false)}
+                onClick={() => setShowInfo((v) => !v)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setShowInfo((v) => !v);
+                  } else if (e.key === 'Escape') {
+                    setShowInfo(false);
+                  }
+                }}
+                style={{
+                  position: 'relative',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '0.9rem',
+                  height: '0.9rem',
+                  borderRadius: '50%',
+                  border: '1px solid #334155',
+                  color: '#94a3b8',
+                  fontSize: '0.6rem',
+                  lineHeight: 1,
+                  cursor: 'help',
+                  textTransform: 'none',
+                  userSelect: 'none',
+                }}
+              >
+                ?
+                {showInfo && (
+                  <span
+                    role="tooltip"
+                    style={{
+                      position: 'absolute',
+                      bottom: 'calc(100% + 6px)',
+                      left: 0,
+                      zIndex: 20,
+                      width: '15rem',
+                      padding: '0.5rem 0.6rem',
+                      background: '#020617',
+                      border: '1px solid #334155',
+                      borderRadius: '4px',
+                      color: '#cbd5e1',
+                      fontSize: '0.7rem',
+                      fontFamily: 'var(--font-body, sans-serif)',
+                      letterSpacing: 'normal',
+                      textTransform: 'none',
+                      lineHeight: 1.45,
+                      fontWeight: 400,
+                      boxShadow: '0 6px 18px rgba(0,0,0,0.5)',
+                    }}
+                  >
+                    {explanation}
+                  </span>
+                )}
+              </span>
+            )}
+          </span>
           <span>{Math.round(rating)}</span>
         </div>
       )}

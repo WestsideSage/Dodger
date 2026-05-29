@@ -7,6 +7,7 @@ import { AftermathActionBar } from './match-week/aftermath/AftermathActionBar';
 import { ReplayTimeline } from './match-week/aftermath/ReplayTimeline';
 import { KeyPlayersPanel } from './match-week/aftermath/KeyPlayersPanel';
 import { TacticalSummaryCard } from './match-week/aftermath/TacticalSummaryCard';
+import { PrimaryFactorCard } from './match-week/aftermath/PrimaryFactorCard';
 import { PreSimDashboard } from './match-week/command-center/PreSimDashboard';
 import { useState, useEffect } from 'react';
 import type { Aftermath, CommandCenterResponse, CommandCenterSimResponse, MatchReplayResponse } from '../types';
@@ -327,21 +328,12 @@ export function MatchWeek({
                 {aftermath.verdict}
               </p>
             )}
+            {aftermath.primary_factor && <PrimaryFactorCard factor={aftermath.primary_factor} />}
             {aftermath.body.length > 0 && (
               <div style={{ display: 'grid', gap: '0.65rem', marginBottom: '1.5rem' }}>
                 {aftermath.body.map((paragraph, index) => {
-                  const youPrefixes = ["Aggressive - ", "Patient - ", "Mixed - ", "Their stars - ", "Ball-holders - ", "Spread - ", "All in - ", "Balanced - ", "Hold back - ", "Nearest - ", "Strongest side - ", "Center - "];
-                  const themPrefixes = ["Go for catches - ", "Play safe - ", "Opportunistic - "];
-
-                  let label = 'RESULT';
-                  let tone = 'success';
-                  if (youPrefixes.some(prefix => paragraph.startsWith(prefix))) {
-                    label = 'YOU';
-                    tone = 'accent';
-                  } else if (themPrefixes.some(prefix => paragraph.startsWith(prefix))) {
-                    label = 'THEM';
-                    tone = 'warning';
-                  }
+                  const label = paragraph.audience === 'you' ? 'YOU' : paragraph.audience === 'them' ? 'THEM' : 'RESULT';
+                  const tone = paragraph.audience === 'you' ? 'accent' : paragraph.audience === 'them' ? 'warning' : 'success';
 
                   const badgeColor = tone === 'accent' ? '#22d3ee' : tone === 'warning' ? '#f59e0b' : '#10b981';
                   const badgeBg = tone === 'accent' ? 'rgba(34,211,238,0.1)' : tone === 'warning' ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)';
@@ -349,7 +341,7 @@ export function MatchWeek({
 
                   return (
                     <p
-                      key={`${index}-${paragraph.slice(0, 12)}`}
+                      key={`${index}-${paragraph.text.slice(0, 12)}`}
                       data-testid="aftermath-body-paragraph"
                       style={{
                         margin: 0,
@@ -381,7 +373,7 @@ export function MatchWeek({
                       }}>
                         {label}
                       </span>
-                      <span style={{ flex: 1 }}>{paragraph}</span>
+                      <span style={{ flex: 1 }}>{paragraph.text}</span>
                     </p>
                   );
                 })}

@@ -16,8 +16,11 @@ async function fastForwardToWeek(request: APIRequestContext, week: number) {
 
 test('playoff command strip labels regular-season record instead of recent form', async ({ page, request }) => {
   const saveName = `e2e-playoff-record-label-${Date.now()}`;
+  // root_seed 7 deterministically lands aurora as the #1 seed, so the week-6
+  // fast-forward reaches an aurora playoff semifinal (the default seed leaves
+  // aurora out of the top 4, ending the season before any playoff week).
   const create = await request.post(`${baseUrl}/api/saves/new`, {
-    data: { name: saveName, club_id: 'aurora' },
+    data: { name: saveName, club_id: 'aurora', root_seed: 7 },
   });
   expect(create.ok()).toBeTruthy();
 

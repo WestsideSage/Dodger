@@ -33,7 +33,7 @@ from .persistence import (
     save_career_state_cursor,
     save_weekly_command_plan,
 )
-from .playoffs import is_playoff_match_id
+from .playoffs import is_playoff_match_id, playoff_stage_label
 from .scheduler import ScheduledMatch
 from .season import Season, StandingsRow
 from .sim_pacing import SimRequest, choose_matches_to_sim
@@ -62,6 +62,7 @@ def command_center_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     else:
         plan = existing
     plan = refresh_weekly_plan_context(plan, state)
+    plan["briefing"] = _build_plan_briefing(conn, state, plan)
     history = sanitized_command_history(conn, state["season_id"])
     latest_dashboard = history[-1]["dashboard"] if history else None
     return {
@@ -74,6 +75,63 @@ def command_center_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         "latest_dashboard": latest_dashboard,
         "history": history,
     }
+
+
+def _build_plan_briefing(
+    conn: sqlite3.Connection,
+    state: dict[str, Any],
+    plan: dict[str, Any],
+) -> dict[str, Any]:
+    """Attach the canonical week briefing (computed, never persisted).
+
+    All inputs come from data the player can verify and the engine actually
+    uses; see week_briefing for the honesty contract.
+    """
+    from .view_models import build_schedule_rows
+    from .week_briefing import build_week_briefing
+
+    season_id = state["season_id"]
+    player_club_id = state["player_club_id"]
+    season = load_season(conn, season_id)
+    clubs = load_clubs(conn)
+    completed = load_completed_match_ids(conn, season_id)
+
+    standings_rows = sorted(
+        load_standings(conn, season_id),
+        key=lambda r: (-r.points, -r.elimination_differential, r.club_id),
+    )
+    leader = clubs.get(standings_rows[0].club_id) if standings_rows else None
+    league_leader = leader.name if leader else None
+
+    recent_results = [
+        result
+        for record in state.get("history", [])[-5:]
+        if (result := (record.get("dashboard") or {}).get("result"))
+    ]
+
+    schedule_rows = build_schedule_rows(season, completed, player_club_id)
+    games_remaining = sum(
+        1 for row in schedule_rows if row.is_user_match and row.status != "played"
+    )
+
+    upcoming = state.get("upcoming_match")
+    is_home = bool(upcoming is not None and upcoming.home_club_id == player_club_id)
+    playoff_stage = None
+    if upcoming is not None:
+        stage = playoff_stage_label(season_id, upcoming.match_id)
+        if stage and stage != "Regular Season":
+            playoff_stage = stage
+
+    return build_week_briefing(
+        plan=plan,
+        standings_rows=standings_rows,
+        player_club_id=player_club_id,
+        league_leader=league_leader,
+        recent_results=recent_results,
+        games_remaining=games_remaining,
+        is_home=is_home,
+        playoff_stage=playoff_stage,
+    )
 
 
 def save_command_center_plan_payload(conn: sqlite3.Connection, update: dict[str, Any]) -> dict[str, Any]:

@@ -30,7 +30,7 @@ def test_render_body_anchors_on_moment_and_tactic_without_invention():
     )
 
     paragraphs = render_body(ctx)
-    rendered = " ".join(paragraphs)
+    rendered = " ".join(p["text"] for p in paragraphs)
     assert 2 <= len(paragraphs) <= 4
     assert "Maurice" in rendered and "Sam" in rendered
     assert "Go for catches" in rendered
@@ -46,7 +46,7 @@ def test_render_body_with_no_moments_does_not_invent_one():
     )
 
     paragraphs = render_body(ctx)
-    rendered = " ".join(paragraphs).lower()
+    rendered = " ".join(p["text"] for p in paragraphs).lower()
     assert 2 <= len(paragraphs) <= 4
     assert "maurice" not in rendered
     assert "plucks" not in rendered
@@ -64,7 +64,7 @@ def test_render_body_comeback_only_narrates_for_winner():
         policy_opponent=CoachPolicy(),
         tier=1,
     )
-    rendered_winner = " ".join(render_body(ctx_winner))
+    rendered_winner = " ".join(p["text"] for p in render_body(ctx_winner))
     assert "comeback" in rendered_winner.lower() or "deficit" in rendered_winner.lower() or "Aurora" in rendered_winner
 
     ctx_loser = AftermathContext(
@@ -74,8 +74,64 @@ def test_render_body_comeback_only_narrates_for_winner():
         policy_opponent=CoachPolicy(),
         tier=1,
     )
-    rendered_loser = " ".join(render_body(ctx_loser))
+    rendered_loser = " ".join(p["text"] for p in render_body(ctx_loser))
     assert "Solstice" not in rendered_loser or "comeback" not in rendered_loser.lower()
+
+
+def test_render_body_tags_each_paragraph_with_audience():
+    """The backend owns body copy, so it must also own each paragraph's
+    audience (you/them/result). The frontend reads this tag instead of
+    reverse-engineering prose by prefix-matching."""
+    ctx = AftermathContext(
+        match_result=_match_result(),
+        moment_events=(
+            DramaticCatch(
+                match_id="m1",
+                tick=8,
+                catcher_id="a1",
+                catcher_team_id="A",
+                thrower_id="b1",
+                thrower_team_id="B",
+                returning_player_id="a2",
+                active_count_a=3,
+                active_count_b=2,
+            ),
+        ),
+        policy_team=CoachPolicy(catch_posture="go_for_catches"),
+        policy_opponent=CoachPolicy(catch_posture="play_safe"),
+        tier=1,
+    )
+
+    paragraphs = render_body(ctx)
+
+    # Every paragraph is a structured {text, audience} mapping.
+    for para in paragraphs:
+        assert set(para.keys()) >= {"text", "audience"}
+        assert para["audience"] in {"you", "them", "result"}
+        assert isinstance(para["text"], str) and para["text"]
+
+    audiences = [para["audience"] for para in paragraphs]
+    # The moment paragraph is a result beat; the player's approach and
+    # target-focus previews address "you"; the opponent's posture is "them".
+    assert audiences[0] == "result"
+    assert "you" in audiences
+    assert "them" in audiences
+
+
+def test_render_body_no_moment_tags_plan_and_opponent():
+    ctx = AftermathContext(
+        match_result=_match_result(),
+        moment_events=(),
+        policy_team=CoachPolicy(),
+        policy_opponent=CoachPolicy(catch_posture="play_safe"),
+        tier=1,
+    )
+
+    paragraphs = render_body(ctx)
+    audiences = [para["audience"] for para in paragraphs]
+    assert audiences.count("you") >= 2  # approach + target_focus
+    assert "them" in audiences  # opponent posture preview
+    assert "result" not in audiences  # no moment occurred
 
 
 def _match_result() -> MatchResult:

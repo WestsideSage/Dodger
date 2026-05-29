@@ -325,7 +325,7 @@ def build_evidence_report(
         {
             "title": "Liability proof",
             "summary": "Uses roster-snapshot role fit and throw participants; it does not infer hidden boosts.",
-            "items": _lane_items(liability_events, "No lineup liability appeared in the saved throw evidence."),
+            "items": _liability_lane_items(liability_events),
         },
         {
             "title": "Key plays",
@@ -389,8 +389,27 @@ def _proof_event(
         )
         tags.append("EXHAUSTED" if max_fatigue > 0.8 else "FATIGUE")
     liability_items = _liability_items(thrower_id, target_id, liability_map)
+    liability_tag = _liability_tag(
+        thrower_id=thrower_id,
+        target_id=target_id,
+        resolution=resolution,
+        liability_map=liability_map,
+        state_diff=state_diff,
+    )
     if liability_items:
         tags.append("LIABILITY")
+    if liability_tag == "exploited":
+        tags.append("LIABILITY EXPLOITED")
+        liability_items = liability_items + [
+            _liability_exploited_note(
+                thrower_id=thrower_id,
+                target_id=target_id,
+                resolution=resolution,
+                liability_map=liability_map,
+                state_diff=state_diff,
+                name_map=name_map,
+            )
+        ]
 
     score_state = _score_state(home_club_id, away_club_id, eliminated_by_club, active_counts)
     return {
@@ -412,7 +431,7 @@ def _proof_event(
         "fatigue": _fatigue_context(context.get("fatigue")),
         "decision_context": _decision_context(context, name_map),
         "tactic_context": _tactic_context(context),
-        "liability_context": {"items": liability_items},
+        "liability_context": {"items": liability_items, "tag": liability_tag},
         "score_state": score_state,
     }
 
@@ -518,6 +537,76 @@ def _liability_items(
     return items
 
 
+def _eliminated_player_id(state_diff: Mapping[str, Any]) -> str:
+    player_out = state_diff.get("player_out") if isinstance(state_diff, Mapping) else None
+    if isinstance(player_out, Mapping):
+        return str(player_out.get("player_id", ""))
+    return ""
+
+
+def _liability_tag(
+    *,
+    thrower_id: str,
+    target_id: str,
+    resolution: str,
+    liability_map: Mapping[str, Mapping[str, Any]],
+    state_diff: Mapping[str, Any],
+) -> str | None:
+    """Classify a throw's relationship to a lineup liability.
+
+    Returns ``"exploited"`` only when the event log proves the liability was
+    directly punished: the eliminated player IS the liability, the resolution
+    is a punishing one, and both thrower and target are represented. Returns
+    ``"involved"`` when a liability participated but the proof of punishment is
+    incomplete, and ``None`` when no liability participated. The tag is never
+    asserted beyond what the saved throw evidence supports.
+    """
+    thrower_liab = bool(liability_map.get(thrower_id, {}).get("is_liability"))
+    target_liab = bool(liability_map.get(target_id, {}).get("is_liability"))
+    if not (thrower_liab or target_liab):
+        return None
+
+    eliminated_id = _eliminated_player_id(state_diff)
+    if eliminated_id and thrower_id and target_id:
+        # A liability TARGET eliminated by the throw was directly punished.
+        if target_liab and eliminated_id == target_id and resolution in {"hit", "failed_catch"}:
+            return "exploited"
+        # A liability THROWER whose throw is caught (thrower goes out) had their
+        # poor selection punished.
+        if thrower_liab and eliminated_id == thrower_id and resolution == "catch":
+            return "exploited"
+    return "involved"
+
+
+def _liability_exploited_note(
+    *,
+    thrower_id: str,
+    target_id: str,
+    resolution: str,
+    liability_map: Mapping[str, Mapping[str, Any]],
+    state_diff: Mapping[str, Any],
+    name_map: Mapping[str, str],
+) -> str:
+    eliminated_id = _eliminated_player_id(state_diff)
+    if eliminated_id == target_id:
+        liability = liability_map.get(target_id, {})
+        target_name = _player_name(target_id, name_map)
+        thrower_name = _player_name(thrower_id, name_map)
+        return (
+            f"Liability exploited: {thrower_name} eliminated {target_name}, "
+            f"a mismatched {liability.get('role_name', 'role')} "
+            f"({liability.get('archetype', 'unknown')} archetype), on a {resolution.replace('_', ' ')}."
+        )
+    liability = liability_map.get(thrower_id, {})
+    thrower_name = _player_name(thrower_id, name_map)
+    target_name = _player_name(target_id, name_map)
+    return (
+        f"Liability exploited: {thrower_name}, a mismatched {liability.get('role_name', 'role')} "
+        f"({liability.get('archetype', 'unknown')} archetype), was punished when {target_name} "
+        f"caught the throw."
+    )
+
+
 def _liability_map(roster_snapshots: Mapping[str, Sequence[Mapping[str, Any]]]) -> dict[str, dict[str, Any]]:
     liabilities: dict[str, dict[str, Any]] = {}
     for players in roster_snapshots.values():
@@ -564,6 +653,20 @@ def _lane_items(events: Sequence[Mapping[str, Any]], fallback: str) -> list[str]
         summary = event.get("summary", "Throw event")
         items.append(f"Tick {tick}: {summary}")
     return items or [fallback]
+
+
+def _liability_lane_items(events: Sequence[Mapping[str, Any]]) -> list[str]:
+    # Prefer exploited evidence (the strongest, proof-backed claim) before
+    # mere involvement, so the player sees punished liabilities first.
+    exploited = [event for event in events if event.get("liability_context", {}).get("tag") == "exploited"]
+    ordered = exploited + [event for event in events if event not in exploited]
+    items: list[str] = []
+    for event in ordered[:3]:
+        tick = event.get("tick", "?")
+        for note in event.get("liability_context", {}).get("items", []):
+            items.append(f"Tick {tick}: {note}")
+            break
+    return items or ["No lineup liability appeared in the saved throw evidence."]
 
 
 def _fatigue_lane_items(events: Sequence[Mapping[str, Any]], player_match_stats: Mapping[str, Any], name_map: Mapping[str, str]) -> list[str]:

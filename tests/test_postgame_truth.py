@@ -245,7 +245,7 @@ def test_no_comeback_copy_on_shutout_win():
     headline = render_verdict_headline(ctx)
     body = render_body(ctx)
 
-    blobs = (headline, *body)
+    blobs = (headline, *(p["text"] for p in body))
     for blob in blobs:
         lowered = blob.lower()
         assert "comeback" not in lowered, f"shutout copy contained 'comeback': {blob!r}"

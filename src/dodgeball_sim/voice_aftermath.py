@@ -139,8 +139,19 @@ def render_headline(
     return rng.choice(_DRAW_TEMPLATES)
 
 
-def render_body(ctx: AftermathContext) -> tuple[str, ...]:
-    paragraphs: list[str] = []
+# A body paragraph carries its own audience so downstream surfaces never
+# have to re-derive it from the prose. "result" = what happened on court
+# (moment beats); "you" = the player team's own plan; "them" = the
+# opponent's posture.
+BodyParagraph = dict[str, str]
+
+
+def render_body(ctx: AftermathContext) -> tuple[BodyParagraph, ...]:
+    paragraphs: list[BodyParagraph] = []
+
+    def _para(text: str, audience: str) -> BodyParagraph:
+        return {"text": text, "audience": audience}
+
     # NarrativeBeats gate: never narrate a comeback for a side that never
     # trailed, or for either side in a shutout. The Comeback moment can
     # still be emitted by the engine, but the render layer is the single
@@ -156,11 +167,14 @@ def render_body(ctx: AftermathContext) -> tuple[str, ...]:
     for moment in sorted(ctx.moment_events, key=lambda event: event.tick, reverse=True):
         if moment.kind.value == "dramatic_catch" and ctx.policy_team.catch_posture == CatchPosture.GO_FOR_CATCHES:
             paragraphs.append(
-                f"{tier1('policy.catch_posture.go_for_catches.label')}: "
-                + tier1(
-                    "moment.dramatic_catch.body",
-                    catcher=ctx.player_name(moment.catcher_id),
-                    returning=ctx.player_name(moment.returning_player_id),
+                _para(
+                    f"{tier1('policy.catch_posture.go_for_catches.label')}: "
+                    + tier1(
+                        "moment.dramatic_catch.body",
+                        catcher=ctx.player_name(moment.catcher_id),
+                        returning=ctx.player_name(moment.returning_player_id),
+                    ),
+                    "result",
                 )
             )
             break
@@ -170,52 +184,67 @@ def render_body(ctx: AftermathContext) -> tuple[str, ...]:
             if moment.team_id != ctx.match_result.winner_team_id:
                 continue
             paragraphs.append(
-                tier1(
-                    "moment.comeback.body",
-                    team=ctx.team_name(moment.team_id),
-                    deficit=moment.deficit_at_low_point,
-                    catches=moment.catches_during_comeback,
+                _para(
+                    tier1(
+                        "moment.comeback.body",
+                        team=ctx.team_name(moment.team_id),
+                        deficit=moment.deficit_at_low_point,
+                        catches=moment.catches_during_comeback,
+                    ),
+                    "result",
                 )
             )
             break
         if moment.kind.value == "late_game_escape":
             paragraphs.append(
-                tier1(
-                    "moment.late_game_escape.body",
-                    survivor=ctx.player_name(moment.survivor_id),
-                    attacker_count=moment.attacker_count,
+                _para(
+                    tier1(
+                        "moment.late_game_escape.body",
+                        survivor=ctx.player_name(moment.survivor_id),
+                        attacker_count=moment.attacker_count,
+                    ),
+                    "result",
                 )
             )
             break
         if moment.kind.value == "flood_throw":
             paragraphs.append(
-                tier1(
-                    "moment.flood_throw.body",
-                    team=ctx.team_name(moment.thrower_team_id),
-                    count=len(moment.thrower_ids),
+                _para(
+                    tier1(
+                        "moment.flood_throw.body",
+                        team=ctx.team_name(moment.thrower_team_id),
+                        count=len(moment.thrower_ids),
+                    ),
+                    "result",
                 )
             )
             break
         if moment.kind.value == "gassed_collapse":
             paragraphs.append(
-                tier1(
-                    "moment.gassed_collapse.body",
-                    player=ctx.player_name(moment.player_id),
+                _para(
+                    tier1(
+                        "moment.gassed_collapse.body",
+                        player=ctx.player_name(moment.player_id),
+                    ),
+                    "result",
                 )
             )
             break
         if moment.kind.value == "one_v_one_finale":
             paragraphs.append(
-                tier1(
-                    "moment.one_v_one_finale.body",
-                    a=ctx.player_name(moment.player_a_id),
-                    b=ctx.player_name(moment.player_b_id),
+                _para(
+                    tier1(
+                        "moment.one_v_one_finale.body",
+                        a=ctx.player_name(moment.player_a_id),
+                        b=ctx.player_name(moment.player_b_id),
+                    ),
+                    "result",
                 )
             )
             break
 
-    paragraphs.append(tier1(f"policy.approach.{ctx.policy_team.approach.value}.preview"))
-    paragraphs.append(tier1(f"policy.target_focus.{ctx.policy_team.target_focus.value}.preview"))
+    paragraphs.append(_para(tier1(f"policy.approach.{ctx.policy_team.approach.value}.preview"), "you"))
+    paragraphs.append(_para(tier1(f"policy.target_focus.{ctx.policy_team.target_focus.value}.preview"), "you"))
     if len(paragraphs) < 4:
-        paragraphs.append(tier1(f"policy.catch_posture.{ctx.policy_opponent.catch_posture.value}.preview"))
+        paragraphs.append(_para(tier1(f"policy.catch_posture.{ctx.policy_opponent.catch_posture.value}.preview"), "them"))
     return tuple(paragraphs[:4])
