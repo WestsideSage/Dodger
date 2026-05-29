@@ -9,6 +9,7 @@ from .config import DEFAULT_SCOUTING_CONFIG
 from .franchise import create_season
 from .models import Player, PlayerRatings, PlayerTraits
 from .league import Conference, League, Club
+from .lineup import optimize_ai_lineup
 from .persistence import (
     create_schema,
     get_state,
@@ -96,6 +97,21 @@ MANAGER_TABLES = (
     "season_outcomes",
     "season_formats",
 )
+
+
+def _persist_initial_lineup_default(
+    conn: sqlite3.Connection, club_id: str, roster: List[Player], *, is_user: bool
+) -> None:
+    """Persist a club's starting lineup default.
+
+    The user club gets the best-by-role/OVR six (``optimize_ai_lineup``) so the
+    fielded-6 is strong from week 1 and the briefing's matchup edge reflects the
+    same six the sim activates (D1: one canonical fielded-6). AI clubs keep raw
+    roster order — their on-court lineup is governed elsewhere and changing it
+    would shift AI-vs-AI sim baselines.
+    """
+    ordered = optimize_ai_lineup(roster) if is_user else [player.id for player in roster]
+    save_lineup_default(conn, club_id, ordered)
 
 
 def _clamp(value: float, low: float, high: float) -> float:
@@ -214,7 +230,7 @@ def initialize_curated_manager_career(
         arch = classify_club_archetype(club.club_id, is_user, rosters[club.club_id])
         club = dataclasses.replace(club, program_archetype=arch)
         save_club(conn, club, rosters[club.club_id])
-        save_lineup_default(conn, club.club_id, [player.id for player in rosters[club.club_id]])
+        _persist_initial_lineup_default(conn, club.club_id, rosters[club.club_id], is_user=is_user)
 
     league = League(
         league_id="manager_league",
@@ -414,7 +430,7 @@ def initialize_manager_career(
         arch = classify_club_archetype(club.club_id, is_user, rosters[club.club_id])
         club = dataclasses.replace(club, program_archetype=arch)
         save_club(conn, club, rosters[club.club_id])
-        save_lineup_default(conn, club.club_id, [player.id for player in rosters[club.club_id]])
+        _persist_initial_lineup_default(conn, club.club_id, rosters[club.club_id], is_user=is_user)
 
     league = League(
         league_id="manager_league",
@@ -473,7 +489,7 @@ def initialize_build_a_club_career(
         arch = classify_club_archetype(club.club_id, is_user, rosters[club.club_id])
         club = dataclasses.replace(club, program_archetype=arch)
         save_club(conn, club, rosters[club.club_id])
-        save_lineup_default(conn, club.club_id, [player.id for player in rosters[club.club_id]])
+        _persist_initial_lineup_default(conn, club.club_id, rosters[club.club_id], is_user=is_user)
 
     league = League(
         league_id="manager_league",

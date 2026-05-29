@@ -166,7 +166,11 @@ def test_initialize_build_a_club_career_creates_expansion_save_with_recruitment_
     assert len(clubs) == 7
     assert clubs[club_id].name == "Portland Breakers"
     assert len(rosters[club_id]) == 6
-    assert load_lineup_default(conn, club_id) == [player.id for player in rosters[club_id]]
+    # The user club's default is the canonical best-by-role/OVR ordering (D1):
+    # a permutation of the roster, not raw roster order.
+    from dodgeball_sim.lineup import optimize_ai_lineup
+
+    assert load_lineup_default(conn, club_id) == optimize_ai_lineup(rosters[club_id])
     assert len(season.scheduled_matches) == 21
     assert len(load_prospect_pool(conn, 1)) > 0
     assert set(load_club_recruitment_profiles(conn)) == set(clubs)

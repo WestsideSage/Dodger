@@ -4,6 +4,7 @@ import sqlite3
 from typing import Any, Iterable, Mapping
 
 from .game_loop import current_week
+from .lineup import LineupResolver, optimize_ai_lineup
 from .models import CoachPolicy, Player
 from .persistence import (
     load_all_rosters,
@@ -46,12 +47,15 @@ def _player_summary(player: Player) -> dict[str, Any]:
 
 def _lineup_recommendation(roster: list[Player], default_lineup: list[str] | None, intent: str) -> dict[str, Any]:
     players_by_id = {player.id: player for player in roster}
-    if default_lineup:
-        chosen = [players_by_id[player_id] for player_id in default_lineup if player_id in players_by_id]
-    else:
-        chosen = []
-    if len(chosen) < min(6, len(roster)):
-        chosen = sorted(roster, key=lambda player: (-player.overall_skill(), player.id))[: min(6, len(roster))]
+    # Resolve the ONE canonical fielded-6 the sim also fields: the same
+    # LineupResolver path, capped to the active starters. With no saved default,
+    # the fresh-club lineup is the best-by-role/OVR six (optimize_ai_lineup) —
+    # matching what club creation / season rollover now persist. This stops the
+    # briefing from summing the whole roster while the sim fields only six.
+    resolver = LineupResolver()
+    base = list(default_lineup) if default_lineup else optimize_ai_lineup(roster)
+    fielded_ids = resolver.active_starters(resolver.resolve(roster, base, None))
+    chosen = [players_by_id[player_id] for player_id in fielded_ids if player_id in players_by_id]
 
     if intent == "Develop Youth":
         prospects = sorted(roster, key=lambda player: (-player.traits.potential, player.age, -player.overall_skill()))

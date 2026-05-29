@@ -98,7 +98,11 @@ def test_roster_endpoint_returns_players_and_default_lineup():
     payload = response.json()
     assert payload["club_id"] == "aurora"
     assert payload["default_lineup"] == expected_lineup
-    assert [player["id"] for player in payload["roster"]][: len(expected_lineup)] == expected_lineup
+    # The default lineup is the canonical best-by-role/OVR ordering (D1), so it is
+    # a permutation of the roster ids rather than raw roster order.
+    roster_ids = [player["id"] for player in payload["roster"]]
+    assert set(expected_lineup) == set(roster_ids)
+    assert len(expected_lineup) == len(roster_ids)
 
 
 def test_league_context_endpoints_return_display_ready_rows():

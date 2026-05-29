@@ -27,6 +27,7 @@ from .persistence import (
     load_json_state,
     load_free_agents,
     load_player_career_stats,
+    load_lineup_default,
     load_player_trajectory,
     load_prospect_pool,
     load_season,
@@ -110,6 +111,43 @@ def clamp_offseason_beat_index(beat_index: Any) -> int:
 
 def stored_root_seed(conn: sqlite3.Connection, default: int = 1) -> int:
     return normalize_root_seed(get_state(conn, "root_seed", str(default)), default_on_invalid=True)
+
+
+def _reconcile_user_lineup_default(
+    existing_default: Optional[List[str]], next_roster: List[Player]
+) -> List[str]:
+    """Carry the user's manual lineup forward across a season rollover.
+
+    Surviving players keep their chosen order, departed players (retirements) are
+    dropped, and any roster member not already in the default — chiefly because a
+    vacated slot needs filling — is appended in best-by-role/OVR order. The first
+    six entries remain the fielded-6, so a retired starter's slot is backfilled by
+    the best available rather than reset to raw roster order.
+    """
+    from .lineup import optimize_ai_lineup
+
+    roster_ids = {player.id for player in next_roster}
+    kept = [pid for pid in (existing_default or []) if pid in roster_ids]
+    seen = set(kept)
+    for pid in optimize_ai_lineup(next_roster):
+        if pid not in seen:
+            kept.append(pid)
+            seen.add(pid)
+    return kept
+
+
+def _lineup_default_after_signing(
+    existing_default: Optional[List[str]], roster: List[Player], signed_id: str
+) -> List[str]:
+    """Fold a newly-signed player into the user's lineup default.
+
+    Preserves the manual/optimized order of the existing starters (so signing a
+    rookie does NOT reset the lineup to raw roster order), drops nobody, and
+    seats the recruit at slot 6 (index 5) so they field as an active starter.
+    """
+    others = [player for player in roster if player.id != signed_id]
+    ordered = _reconcile_user_lineup_default(existing_default, others)
+    return ordered[:5] + [signed_id] + ordered[5:]
 
 
 def _is_already_signed(conn: sqlite3.Connection, class_year: int, player_id: str) -> bool:
@@ -524,11 +562,21 @@ def initialize_manager_offseason(
     )
     from .lineup import optimize_ai_lineup
     for club_id, club in clubs.items():
-        save_club(conn, club, updated_rosters.get(club_id, []))
+        next_roster = updated_rosters.get(club_id, [])
+        save_club(conn, club, next_roster)
         if club_id == player_club_id:
-            save_lineup_default(conn, club_id, [player.id for player in updated_rosters.get(club_id, [])])
+            # D1: the user's manual lineup persists across seasons. Keep surviving
+            # starters in their chosen order, drop departed players (retirements),
+            # and backfill any vacated slot by best-by-role/OVR.
+            save_lineup_default(
+                conn,
+                club_id,
+                _reconcile_user_lineup_default(
+                    load_lineup_default(conn, club_id), next_roster
+                ),
+            )
         else:
-            save_lineup_default(conn, club_id, optimize_ai_lineup(updated_rosters.get(club_id, [])))
+            save_lineup_default(conn, club_id, optimize_ai_lineup(next_roster))
     save_free_agents(conn, free_agents, next_season_id)
     set_state(conn, "offseason_development_json", json.dumps(development_rows))
     set_state(conn, "offseason_retirements_json", json.dumps(retirement_rows))
@@ -609,14 +657,19 @@ def available_recruitment_choices(
 def _commit_prospect_signing(
     conn: sqlite3.Connection, prospect, player_club_id: str, class_year: int
 ) -> Player:
+    # Capture the user's lineup default BEFORE signing: sign_prospect_to_club
+    # rewrites it to raw roster order, which would erase the manual/optimized
+    # order we must carry forward (D1).
+    prior_default = load_lineup_default(conn, player_club_id)
     signed_prospect = sign_prospect_to_club(conn, prospect, player_club_id, class_year)
     rosters = load_all_rosters(conn)
     set_state(conn, "offseason_draft_signed_player_id", signed_prospect.id)
     roster = list(rosters.get(player_club_id, []))
-    other_ids = [p.id for p in roster if p.id != signed_prospect.id]
-    # Insert recruit at slot 6 (index 5) so they're an active starter, not bench
-    lineup_ids = other_ids[:5] + [signed_prospect.id] + other_ids[5:]
-    save_lineup_default(conn, player_club_id, lineup_ids)
+    save_lineup_default(
+        conn,
+        player_club_id,
+        _lineup_default_after_signing(prior_default, roster, signed_prospect.id),
+    )
     conn.commit()
     return signed_prospect
 
@@ -635,10 +688,13 @@ def _commit_free_agent_signing(
     roster.append(signed)
     clubs = load_clubs(conn)
     save_club(conn, clubs[player_club_id], roster)
-    other_ids = [p.id for p in roster if p.id != signed.id]
-    # Insert recruit at slot 6 (index 5) so they're an active starter, not bench
-    lineup_ids = other_ids[:5] + [signed.id] + other_ids[5:]
-    save_lineup_default(conn, player_club_id, lineup_ids)
+    save_lineup_default(
+        conn,
+        player_club_id,
+        _lineup_default_after_signing(
+            load_lineup_default(conn, player_club_id), roster, signed.id
+        ),
+    )
     save_free_agents(conn, remaining, f"season_{(season_number or 1) + 1}")
     set_state(conn, "offseason_draft_signed_player_id", signed.id)
     conn.commit()
