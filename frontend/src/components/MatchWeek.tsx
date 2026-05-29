@@ -3,6 +3,7 @@ import { Headline } from './match-week/aftermath/Headline';
 import { PlayoffResolutionBanner } from './match-week/aftermath/PlayoffResolutionBanner';
 import { EliminationCeremony } from './match-week/aftermath/EliminationCeremony';
 import { ChampionshipHero } from './match-week/aftermath/ChampionshipHero';
+import { NextBestImprovementPanel } from './match-week/aftermath/NextBestImprovementPanel';
 import { MatchScoreHero } from './match-week/aftermath/MatchScoreHero';
 import { FalloutGrid } from './match-week/aftermath/FalloutGrid';
 import { AftermathActionBar } from './match-week/aftermath/AftermathActionBar';
@@ -415,6 +416,9 @@ export function MatchWeek({
               narrativeBeats={aftermath.narrative_beats}
               isBye={Boolean(aftermath.bye_recovery)}
             />
+            {aftermath.improvement_panel && aftermath.improvement_panel.length > 0 && (
+              <NextBestImprovementPanel panel={aftermath.improvement_panel} />
+            )}
           </div>
         )}
 

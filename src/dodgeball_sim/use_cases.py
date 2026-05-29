@@ -511,6 +511,62 @@ def _load_championship(
     }
 
 
+def _load_improvement_panel(
+    conn,
+    *,
+    season_id: str | None,
+    player_club_id: str | None,
+    plan: Mapping[str, Any] | None,
+) -> list[dict[str, str]]:
+    """Build the post-loss "next best improvement" suggestions.
+
+    Pulls only from already-computed engine values: roster OVR by
+    archetype, starter stamina from the saved plan lineup, and recruit
+    fit/interest. Recruit data needs extra loads, so it is fetched in its
+    own guard -- if it fails the panel simply drops the recruit card.
+    """
+
+    from dodgeball_sim.next_best_improvement import build_improvement_panel
+
+    if player_club_id is None:
+        return []
+
+    roster_rows: list[dict[str, Any]] = []
+    try:
+        for player in load_all_rosters(conn).get(player_club_id, []):
+            arch = getattr(player, "archetype", None)
+            roster_rows.append(
+                {
+                    "archetype": getattr(arch, "value", str(arch or "")),
+                    "overall": int(player.overall_skill()),
+                }
+            )
+    except Exception:
+        roster_rows = []
+
+    starters = list(((plan or {}).get("lineup") or {}).get("players") or [])
+
+    recruits: list[dict[str, Any]] = []
+    try:
+        from dodgeball_sim.offseason_ceremony import stored_root_seed
+        from dodgeball_sim.persistence import load_command_history_all_seasons
+        from dodgeball_sim.recruiting_office import build_recruiting_state
+
+        if season_id:
+            state = build_recruiting_state(
+                conn,
+                season_id=season_id,
+                player_club_id=player_club_id,
+                root_seed=stored_root_seed(conn),
+                history=load_command_history_all_seasons(conn),
+            )
+            recruits = list(state.get("prospects") or [])
+    except Exception:
+        recruits = []
+
+    return build_improvement_panel(roster=roster_rows, starters=starters, recruits=recruits)
+
+
 def _build_aftermath(
     conn,
     dashboard: dict[str, Any],
@@ -821,6 +877,22 @@ def _build_aftermath(
             aftermath["championship"] = championship
     except Exception:
         pass
+
+    # Task 11 (2026-05-28 playtest-fixes): on a loss, give the player a
+    # concrete next step instead of a dead end. Loss-only -- a win screen
+    # doesn't need a to-do list.
+    if str(dashboard.get("result")) == "Loss":
+        try:
+            panel = _load_improvement_panel(
+                conn,
+                season_id=season_id,
+                player_club_id=player_club_id,
+                plan=plan,
+            )
+            if panel:
+                aftermath["improvement_panel"] = panel
+        except Exception:
+            pass
 
     # Structural validation: confirm the assembled payload doesn't
     # contradict the resolved MatchResult (winner, survivor counts,
