@@ -72,10 +72,11 @@ export function ProspectCard({
       promoteStatus(current ?? serverStatus, nextStatus),
     );
     dynastyApi[verb](prospect.player_id)
-      .then(() => {
+      .then((response) => {
         setFeedbackTone('success');
-        setFeedbackMessage(label);
-        setTimeout(() => setFeedbackMessage(null), 2500);
+        // Show the concrete before/after delta, not just "Scouted."
+        setFeedbackMessage(response?.result?.headline ?? label);
+        setTimeout(() => setFeedbackMessage(null), 3200);
         onAction();
       })
       .catch((error) => {
@@ -151,6 +152,9 @@ export function ProspectCard({
         </div>
         <div className="do-recruit-meter-labels">
           <span>{fitLabel.toUpperCase()}</span>
+          {typeof prospect.interest === 'number' && (
+            <span className="mono">INT {prospect.interest}%</span>
+          )}
           <span className="ovr mono">OVR {low}-{high}</span>
         </div>
       </div>
