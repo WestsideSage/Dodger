@@ -229,6 +229,17 @@ test.describe('Dodger Naive Playtester Playthrough', () => {
           consoleErrors.length = 0; // Clear handled errors
         }
 
+        // Playoff elimination: the debrief renders an EliminationCeremony with
+        // its own "Continue to offseason" control instead of the standard
+        // aftermath action bar. Handle it before looking for the weekly advance.
+        const eliminationContinue = page.getByTestId('elimination-continue');
+        if (await eliminationContinue.isVisible()) {
+          console.log('Playoff elimination debrief — continuing to offseason.');
+          await eliminationContinue.click();
+          await page.waitForTimeout(2000);
+          continue;
+        }
+
         // Advance to next week
         const advanceBtn = page.getByTestId('after-action-bar').locator('button.command-action-bar-primary');
         await expect(advanceBtn).toBeVisible({ timeout: 10000 });
