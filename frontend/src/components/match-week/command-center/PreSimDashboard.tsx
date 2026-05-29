@@ -244,7 +244,7 @@ export function PreSimDashboard({
       : 'Current approach aligns with the opponent profile.';
 
   const displayWeek = data.week;
-  const stakes = stakesLine(leagueRank, gamesRemaining, recentResults, displayWeek);
+  const stakes = stakesLine(leagueRank, gamesRemaining, recentResults, displayWeek, playoffStage);
   const identityRecordLabel = playoffStage ? 'Record' : 'Form';
   const identityRecordValue = playoffStage ? regularSeasonRecord : recentRecord;
   const netStarterEdge = edge.net_starter_ovr;

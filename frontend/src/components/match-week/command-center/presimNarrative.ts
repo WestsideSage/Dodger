@@ -62,7 +62,19 @@ export function stakesLine(
   gamesRemaining: number,
   recentResults: string[],
   week: number | null = null,
+  playoffStage: string | null = null,
 ): string {
+  // In the playoffs there is no "N regular-season games to play" framing —
+  // every match is win-or-go-home, so name the round directly.
+  if (playoffStage) {
+    if (/final/i.test(playoffStage)) {
+      return 'The Final. Win it and the banner is yours — there is no next week.';
+    }
+    if (/semifinal/i.test(playoffStage)) {
+      return 'A Semifinal. Win and the Final is one step away; lose and the season ends here.';
+    }
+    return `${playoffStage}. Win or the season ends here.`;
+  }
   const run = streak(recentResults);
   if (run.kind === 'Loss' && run.length >= 3) {
     return `${run.length} straight losses — a win won't fix everything, but it stops the slide.`;
