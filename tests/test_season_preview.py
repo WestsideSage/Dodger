@@ -68,3 +68,19 @@ def test_build_season_preview_marks_skipped() -> None:
         skipped=True,
     )
     assert preview["skipped"] is True
+
+
+def test_build_season_preview_prettifies_raw_archetype_keys() -> None:
+    """Raw archetype enum values must render as display names, not keys."""
+    roster = [
+        {"archetype": "thrower", "overall": 80},
+        {"archetype": "thrower", "overall": 78},
+        {"archetype": "hawk_dodger", "overall": 60},
+        {"archetype": "hawk_dodger", "overall": 62},
+    ]
+    preview = build_season_preview(
+        regular_season_weeks=12, bye_week=6, playoff_cut=8, total_clubs=16, roster=roster,
+    )
+    assert preview["strength"]["archetype"] == "Thrower"
+    assert preview["weakness"]["archetype"] == "Ball Hawk / Dodger"
+    assert "hawk_dodger" not in preview["weakness"]["archetype"]

@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from .models import archetype_display_name
+
 
 def _mean(values: list[float]) -> float:
     return sum(values) / len(values) if values else 0.0
@@ -111,7 +113,7 @@ def build_improvement_panel(
         out.append(
             {
                 "category": "position_group",
-                "title": f"Shore up your {group['archetype']} depth",
+                "title": f"Shore up your {archetype_display_name(group['archetype'])} depth",
                 "detail": (
                     f"Lowest group average at {group['avg_overall']} OVR "
                     f"across {group['count']}. Target it in recruiting or development."

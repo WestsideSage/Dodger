@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from .models import archetype_display_name
 from .next_best_improvement import strongest_position_group, weakest_position_group
 
 
@@ -60,7 +61,7 @@ def build_season_preview(
         ),
         "strength": (
             {
-                "archetype": strength["archetype"],
+                "archetype": archetype_display_name(strength["archetype"]),
                 "avg_overall": strength["avg_overall"],
             }
             if strength is not None
@@ -68,7 +69,7 @@ def build_season_preview(
         ),
         "weakness": (
             {
-                "archetype": weakness["archetype"],
+                "archetype": archetype_display_name(weakness["archetype"]),
                 "avg_overall": weakness["avg_overall"],
             }
             if weakness is not None
