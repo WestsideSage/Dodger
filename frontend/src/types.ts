@@ -983,10 +983,15 @@ export interface RatifiedRecordEntry {
     new_value: number;
     detail: string;
     proof_source?: string;
+    // Phase 7: club scope filter fields
+    holder_club_id?: string;
+    is_my_club?: boolean;
 }
 
 export interface RecordsRatifiedBeatPayload {
     records: RatifiedRecordEntry[];
+    /** Phase 7: true when no seasons have been ratified yet (fresh league). */
+    records_book_empty?: boolean;
 }
 
 export interface HallOfFameInductee {

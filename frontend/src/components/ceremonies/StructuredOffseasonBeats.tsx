@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import type { OffseasonBeat } from '../../types';
 import { ActionButton, PageHeader } from '../ui';
 
@@ -106,7 +107,34 @@ export function RecordsRatified({
   onComplete: () => void;
   acting?: boolean;
 }) {
-  const records = beat.payload.records ?? [];
+  const allRecords = beat.payload.records ?? [];
+  const recordsBookEmpty = beat.payload.records_book_empty ?? false;
+
+  // Phase 7: My Club / League scope filter. Default to My Club when the player's
+  // club holds at least one record (open question #5 resolution: lean My Club),
+  // otherwise fall back to League so the beat doesn't open on an empty panel.
+  const hasMyClubRecords = allRecords.some(r => r.is_my_club);
+  const [scope, setScope] = useState<'my_club' | 'league'>(
+    hasMyClubRecords ? 'my_club' : 'league'
+  );
+
+  const records = scope === 'my_club'
+    ? allRecords.filter(r => r.is_my_club)
+    : allRecords;
+
+  // Decide which empty-state to show when the filtered list is empty.
+  function emptyMessage(): string {
+    if (recordsBookEmpty) {
+      // Honest empty-state: no seasons have been ratified yet.
+      return 'The record book is empty — records will be set as seasons are played.';
+    }
+    if (scope === 'my_club' && allRecords.length > 0 && !hasMyClubRecords) {
+      // My Club scoped but no records held by this club.
+      return 'Your club holds no league records yet.';
+    }
+    return 'No new records were set this season.';
+  }
+
   return (
     <BeatShell
       beat={beat}
@@ -116,9 +144,45 @@ export function RecordsRatified({
       acting={acting}
     >
       <article className="dm-panel command-offseason-feature">
-        <p className="dm-kicker">Records Ratified</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <p className="dm-kicker" style={{ margin: 0 }}>Records Ratified</p>
+          {!recordsBookEmpty && (
+            <div style={{ display: 'flex', gap: '0.4rem' }} role="group" aria-label="Records scope filter">
+              <button
+                onClick={() => setScope('my_club')}
+                style={{
+                  padding: '0.25rem 0.6rem',
+                  fontSize: '0.72rem',
+                  borderRadius: '3px',
+                  border: '1px solid #334155',
+                  background: scope === 'my_club' ? '#1e40af' : '#0f172a',
+                  color: scope === 'my_club' ? '#e2e8f0' : '#64748b',
+                  cursor: 'pointer',
+                }}
+                aria-pressed={scope === 'my_club'}
+              >
+                My Club
+              </button>
+              <button
+                onClick={() => setScope('league')}
+                style={{
+                  padding: '0.25rem 0.6rem',
+                  fontSize: '0.72rem',
+                  borderRadius: '3px',
+                  border: '1px solid #334155',
+                  background: scope === 'league' ? '#1e40af' : '#0f172a',
+                  color: scope === 'league' ? '#e2e8f0' : '#64748b',
+                  cursor: 'pointer',
+                }}
+                aria-pressed={scope === 'league'}
+              >
+                League
+              </button>
+            </div>
+          )}
+        </div>
         {records.length === 0 ? (
-          <p className="command-offseason-copy">No new league records were set this season.</p>
+          <p className="command-offseason-copy">{emptyMessage()}</p>
         ) : (
           <div style={{ display: 'grid', gap: '0.6rem', marginTop: '0.5rem' }}>
             {records.map(record => (

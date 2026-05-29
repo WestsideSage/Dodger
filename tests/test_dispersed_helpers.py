@@ -1427,6 +1427,113 @@ def test_offseason_records_ratified_beat_renders_empty_state():
     assert "No new records" in beat.body or "No league records" in beat.body
 
 
+# ---------------------------------------------------------------------------
+# Phase 7 — records_book_empty distinct empty-state tests
+# ---------------------------------------------------------------------------
+
+
+def test_records_ratified_beat_book_empty_state():
+    """Phase 7: records_book_empty=True yields the 'book is empty' copy, not 'no new records'."""
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_manager_career(conn, "aurora", root_seed=20260426)
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+
+    beat = build_offseason_ceremony_beat(
+        OFFSEASON_CEREMONY_BEATS.index("records_ratified"),
+        load_season(conn, "season_1"),
+        clubs,
+        rosters,
+        [],
+        [],
+        "aurora",
+        records_payload_json="[]",
+        records_book_empty=True,
+    )
+
+    assert beat.title == "Records Ratified"
+    # Book-empty state uses different copy from the "no new records this season" path
+    assert "record book is empty" in beat.body.lower() or "records will be set" in beat.body.lower()
+    assert "No new records" not in beat.body
+
+
+def test_records_ratified_beat_no_new_records_state():
+    """Phase 7: records_book_empty=False + no new records uses 'no new records this season'."""
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_manager_career(conn, "aurora", root_seed=20260426)
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+
+    beat = build_offseason_ceremony_beat(
+        OFFSEASON_CEREMONY_BEATS.index("records_ratified"),
+        load_season(conn, "season_1"),
+        clubs,
+        rosters,
+        [],
+        [],
+        "aurora",
+        records_payload_json="[]",
+        records_book_empty=False,
+    )
+
+    assert beat.title == "Records Ratified"
+    assert "No new records" in beat.body
+    assert "record book is empty" not in beat.body.lower()
+
+
+def test_parse_record_entries_scope_filter():
+    """Phase 7: _parse_record_entries sets is_my_club per record."""
+    import json as _json
+    from dodgeball_sim.offseason_presentation import _parse_record_entries
+
+    records_json = _json.dumps([
+        {
+            "record_type": "career_eliminations",
+            "holder_id": "p1",
+            "holder_type": "player",
+            "holder_name": "Alpha Star",
+            "previous_value": 0.0,
+            "new_value": 120.0,
+            "set_in_season": "season_1",
+            "detail": "Alpha Star now leads",
+            "holder_club_id": "aurora",
+        },
+        {
+            "record_type": "most_championships",
+            "holder_id": "p2",
+            "holder_type": "player",
+            "holder_name": "Bravo",
+            "previous_value": 0.0,
+            "new_value": 3.0,
+            "set_in_season": "season_1",
+            "detail": "Bravo now leads",
+            "holder_club_id": "granite",
+        },
+    ])
+
+    entries = _parse_record_entries(records_json, player_club_id="aurora")
+    aurora_entry = next(e for e in entries if e["record_type"] == "career_eliminations")
+    granite_entry = next(e for e in entries if e["record_type"] == "most_championships")
+
+    assert aurora_entry["is_my_club"] is True
+    assert aurora_entry["holder_club_id"] == "aurora"
+    assert granite_entry["is_my_club"] is False
+    assert granite_entry["holder_club_id"] == "granite"
+
+    # League view returns all records
+    league_entries = _parse_record_entries(records_json, player_club_id="aurora")
+    assert len(league_entries) == 2
+
+    # My-club filter: only keep is_my_club=True
+    my_club_entries = [e for e in league_entries if e["is_my_club"]]
+    assert len(my_club_entries) == 1
+    assert my_club_entries[0]["record_type"] == "career_eliminations"
+
+
 def test_offseason_hof_induction_beat_renders_persisted_payload():
     import json as _json
 
@@ -1554,6 +1661,65 @@ def test_initialize_manager_offseason_runs_three_new_computations_once():
     assert get_state(conn, "offseason_records_ratified_json") == before_records
     assert get_state(conn, "offseason_hof_inducted_json") == before_hof
     assert get_state(conn, "offseason_rookie_preview_json") == before_preview
+
+
+def test_holder_club_id_populated_after_finalize_then_ratify():
+    """Phase 7 integration: finalize_season runs before ratify_records in the live
+    flow (offseason_service.py lines 51/53), so club_id written by
+    _update_career_summaries is present when ratify_records reads career_summary_json.
+    This test reproduces that ordering and asserts holder_club_id is non-empty.
+
+    Note: career summaries are only written for players who have season stats.
+    We seed PlayerMatchStats for all roster players so finalize_season actually
+    writes summaries (a fresh career with no matches played has no stats to
+    summarise, which is the correct pre-game state)."""
+    import json as _json
+    from dodgeball_sim.offseason_ceremony import finalize_season
+    from dodgeball_sim.persistence import save_player_season_stats
+    from dodgeball_sim.stats import PlayerMatchStats
+
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_manager_career(conn, "aurora", root_seed=20260426)
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+    season = load_season(conn, "season_1")
+
+    # Seed minimal match stats so finalize_season builds career summaries.
+    all_players = [p for roster in rosters.values() for p in roster]
+    season_stats = {
+        p.id: PlayerMatchStats(
+            eliminations_by_throw=30,
+            catches_made=5,
+            dodges_successful=15,
+            times_eliminated=10,
+        )
+        for p in all_players
+    }
+    player_club_map = {p.id: p.club_id for p in all_players}
+    matches_by_player = {p.id: 8 for p in all_players}
+    save_player_season_stats(
+        conn, "season_1", season_stats, player_club_map, matches_by_player, frozenset()
+    )
+    conn.commit()
+
+    # Finalize first (writes club_id to career summaries), then offseason init
+    # (calls ratify_records, which reads club_id from summaries).
+    finalize_season(conn, season, rosters)
+    initialize_manager_offseason(conn, season, clubs, rosters, root_seed=20260426)
+
+    raw = get_state(conn, "offseason_records_ratified_json")
+    assert raw is not None
+    entries = _json.loads(raw)
+    # Records must have been set (stats were seeded for all active players)
+    assert len(entries) > 0, "Expected at least one record entry after seeding match stats"
+    # Every entry must carry holder_club_id (non-empty string)
+    for entry in entries:
+        assert entry.get("holder_club_id"), (
+            f"record {entry.get('record_type')} missing holder_club_id; "
+            f"got: {entry.get('holder_club_id')!r}"
+        )
 
 
 def test_offseason_rookie_class_preview_beat_renders_empty_state():

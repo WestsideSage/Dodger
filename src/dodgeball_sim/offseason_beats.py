@@ -45,6 +45,9 @@ class RatifiedRecord:
     new_value: float
     set_in_season: str
     detail: str
+    # Phase 7: club the holder belongs to (player's current club, or the club
+    # itself for team records). Used by the My Club / League scope filter.
+    holder_club_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -103,6 +106,7 @@ def _record_to_dict(record: RatifiedRecord) -> Dict[str, Any]:
         "new_value": float(record.new_value),
         "set_in_season": record.set_in_season,
         "detail": record.detail,
+        "holder_club_id": record.holder_club_id,
     }
 
 
@@ -117,6 +121,7 @@ def _record_from_dict(d: Dict[str, Any]) -> RatifiedRecord:
         new_value=float(d["new_value"]),
         set_in_season=d["set_in_season"],
         detail=d["detail"],
+        holder_club_id=str(d.get("holder_club_id", "")),
     )
 
 
@@ -142,13 +147,18 @@ def ratify_records(
     rows = cursor.fetchall()
 
     career_stats: List[CareerStats] = []
+    # Build a player_id -> club_id lookup for the My Club / League scope filter.
+    # club_id is now written to career_summary_json by _update_career_summaries.
+    player_club_map: Dict[str, str] = {}
     for row in rows:
         summary = json.loads(row["career_summary_json"])
+        club_id = summary.get("club_id") or ""
+        player_club_map[row["player_id"]] = club_id
         career_stats.append(
             CareerStats(
                 player_id=row["player_id"],
                 player_name=summary.get("player_name", row["player_id"]),
-                club_id=summary.get("club_id", None),
+                club_id=club_id or None,
                 career_eliminations=int(row["career_eliminations"]),
                 career_catches=int(row["career_catches"]),
                 career_dodges=int(row["career_dodges"]),
@@ -187,6 +197,12 @@ def ratify_records(
                 "detail": candidate.detail,
             },
         )
+        # Resolve holder_club_id: for player records use the player's club;
+        # for team records the holder_id IS the club_id.
+        if candidate.holder_type == "club":
+            holder_club_id = candidate.holder_id
+        else:
+            holder_club_id = player_club_map.get(candidate.holder_id, "")
         broken.append(
             RatifiedRecord(
                 record_type=record_type,
@@ -197,6 +213,7 @@ def ratify_records(
                 new_value=float(candidate.value),
                 set_in_season=season_id,
                 detail=candidate.detail,
+                holder_club_id=holder_club_id,
             )
         )
 
