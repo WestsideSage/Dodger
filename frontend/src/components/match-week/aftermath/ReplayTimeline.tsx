@@ -78,10 +78,12 @@ export function ReplayTimeline({
   replay,
   lanes,
   narrativeBeats,
+  isBye = false,
 }: {
   replay: MatchReplayResponse | null;
   lanes: CommandDashboardLane[];
   narrativeBeats?: NarrativeBeatsLike;
+  isBye?: boolean;
 }) {
   const beats = lanes.filter((lane) => lane.summary.trim().length > 0);
   const [isOpen, setIsOpen] = useState(false);
@@ -118,7 +120,7 @@ export function ReplayTimeline({
         aria-expanded={isOpen}
       >
         <span className="command-timeline-collapse-label">
-          <span style={{ color: '#f97316', fontWeight: 700 }}>POSTGAME REPORT</span>
+          <span style={{ color: '#f97316', fontWeight: 700 }}>{isBye ? 'BYE WEEK REPORT' : 'POSTGAME REPORT'}</span>
           <span style={{ color: '#475569' }}>
             {' '}
             · {beats.length} moment{beats.length !== 1 ? 's' : ''}

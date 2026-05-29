@@ -153,11 +153,14 @@ def _build_form(
     )
     ordered = sorted(standings_rows, key=lambda r: r.points, reverse=True)
     rank: int | None = None
-    regular_season_record = "0-0"
+    # Three-part W-L-D so this matches the standings table verbatim; a
+    # two-part record silently folds draws into the loss column and reads as a
+    # different record than the league office shows.
+    regular_season_record = "0-0-0"
     for index, row in enumerate(ordered):
         if row.club_id == player_club_id:
             rank = index + 1 if any_games else None
-            regular_season_record = f"{row.wins}-{row.losses}"
+            regular_season_record = f"{row.wins}-{row.losses}-{row.draws}"
             break
     return {
         "recent_record": _recent_record(recent_results),

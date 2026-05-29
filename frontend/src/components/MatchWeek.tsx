@@ -410,6 +410,7 @@ export function MatchWeek({
               replay={replayForMatch}
               lanes={activeResult.dashboard.lanes}
               narrativeBeats={aftermath.narrative_beats}
+              isBye={Boolean(aftermath.bye_recovery)}
             />
           </div>
         )}

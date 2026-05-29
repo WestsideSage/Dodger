@@ -251,12 +251,24 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     ).fetchall()
 
     season = load_season(conn, season_id)
+    # Count unplayed user matches the same way the command center does, so the
+    # standings "to play" line never contradicts the pre-sim dashboard. This is
+    # games (byes excluded), not calendar weeks remaining.
+    user_games_remaining = 0
+    if player_club_id:
+        completed_ids = load_completed_match_ids(conn, season_id)
+        user_games_remaining = sum(
+            1
+            for schedule_row in build_schedule_rows(season, completed_ids, player_club_id)
+            if schedule_row.is_user_match and schedule_row.status != "played"
+        )
     return {
         "season_id": season_id,
         "standings": rows,
         "recent_matches": [recent_match_item(row, clubs) for row in recent],
         "total_weeks": season.total_weeks(),
         "current_week": current_week or season.total_weeks(),
+        "user_games_remaining": user_games_remaining,
         "playoff_spots": PLAYOFF_FIELD_SIZE,
         "is_offseason": is_offseason,
     }
