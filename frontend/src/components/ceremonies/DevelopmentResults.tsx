@@ -3,6 +3,18 @@ import { ActionButton } from '../ui';
 
 type DevelopmentBeat = Extract<OffseasonBeat, { key: 'development' }>;
 
+const _ATTR_LABEL: Record<string, string> = {
+    accuracy: 'ACC',
+    power: 'POW',
+    dodge: 'DOD',
+    catch: 'CAT',
+    stamina: 'STA',
+    tactical_iq: 'IQ',
+    catch_courage: 'CC',
+    throw_selection_iq: 'TIQ',
+    conditioning_curve: 'CON',
+};
+
 export function DevelopmentResults({
     beat,
     onComplete,
@@ -42,46 +54,83 @@ export function DevelopmentResults({
 
                         const ovrDisplay = `${Math.round(player.ovr_before)} → ${Math.round(player.ovr_after)}`;
 
+                        const movedAttrs = player.attr_deltas
+                            ? Object.entries(player.attr_deltas).filter(([, v]) => v !== 0)
+                            : [];
+
                         return (
                             <div
                                 key={i}
                                 style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
                                     padding: '0.65rem 1rem',
                                     borderBottom: '1px solid #0f172a',
-                                    gap: '1rem',
                                 }}
                             >
-                                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '0.25rem' }}>
-                                    <span style={{ color: '#e2e8f0', fontSize: '0.9rem', fontWeight: 500 }}>
-                                        {player.name}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '0.25rem' }}>
+                                        <span style={{ color: '#e2e8f0', fontSize: '0.9rem', fontWeight: 500 }}>
+                                            {player.name}
+                                        </span>
+                                        {player.potential_ceiling != null && (
+                                            <span style={{ color: '#64748b', fontSize: '0.7rem' }}>
+                                                Ceiling {player.potential_ceiling}
+                                            </span>
+                                        )}
+                                        {player.notes && player.notes.length > 0 && (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                {player.notes.map((note: string, idx: number) => (
+                                                    <span key={idx} style={{ color: '#fbbf24', fontSize: '0.75rem', fontStyle: 'italic' }}>
+                                                        ✨ {note}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <span style={{ color: '#64748b', fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums' }}>
+                                        {ovrDisplay}
                                     </span>
-                                    {player.notes && player.notes.length > 0 && (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                            {player.notes.map((note: string, idx: number) => (
-                                                <span key={idx} style={{ color: '#fbbf24', fontSize: '0.75rem', fontStyle: 'italic' }}>
-                                                    ✨ {note}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
+                                    <span
+                                        style={{
+                                            minWidth: '2.5rem',
+                                            textAlign: 'right',
+                                            fontWeight: 700,
+                                            fontSize: '0.85rem',
+                                            color: deltaColor,
+                                            fontVariantNumeric: 'tabular-nums',
+                                        }}
+                                    >
+                                        {deltaLabel}
+                                    </span>
                                 </div>
-                                <span style={{ color: '#64748b', fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums' }}>
-                                    {ovrDisplay}
-                                </span>
-                                <span
-                                    style={{
-                                        minWidth: '2.5rem',
-                                        textAlign: 'right',
-                                        fontWeight: 700,
-                                        fontSize: '0.85rem',
-                                        color: deltaColor,
-                                        fontVariantNumeric: 'tabular-nums',
-                                    }}
-                                >
-                                    {deltaLabel}
-                                </span>
+                                {movedAttrs.length > 0 && (
+                                    <div style={{
+                                        display: 'flex',
+                                        flexWrap: 'wrap',
+                                        gap: '0.3rem 0.6rem',
+                                        marginTop: '0.4rem',
+                                        paddingLeft: '0',
+                                    }}>
+                                        {movedAttrs.map(([attr, val]) => {
+                                            const attrColor = val > 0 ? '#10b981' : '#ef4444';
+                                            const label = _ATTR_LABEL[attr] ?? attr;
+                                            return (
+                                                <span
+                                                    key={attr}
+                                                    style={{
+                                                        fontSize: '0.7rem',
+                                                        color: '#94a3b8',
+                                                        fontVariantNumeric: 'tabular-nums',
+                                                    }}
+                                                >
+                                                    {label}{' '}
+                                                    <span style={{ color: attrColor, fontWeight: 600 }}>
+                                                        {val > 0 ? `+${val}` : `${val}`}
+                                                    </span>
+                                                </span>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         );
                     })

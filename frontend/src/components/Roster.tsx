@@ -4,6 +4,7 @@ import { useApiResource } from '../hooks/useApiResource';
 import { StatusMessage } from './ui';
 import { PlayerDetailModal } from './PlayerDetailModal';
 import { LineupEditor } from './lineup/LineupEditor';
+import { Sparkline } from './roster/Sparkline';
 
 type RosterEntry = {
   player: Player;
@@ -363,6 +364,11 @@ export function Roster() {
                         <div className="rl-pot-info">
                           <span className="rl-pot-tier" style={{ color: potentialColor(player.potential_tier) }}>{player.potential_tier}</span>
                           <span className="rl-pot-conf">{'●'.repeat(player.scouting_confidence)}{'○'.repeat(Math.max(0, 4 - player.scouting_confidence))}</span>
+                          {player.potential_ceiling != null && (
+                            <span style={{ fontSize: '0.65rem', color: '#475569' }}>
+                              Ceil {player.potential_ceiling}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -372,9 +378,16 @@ export function Roster() {
                       <td>
                         <div className="rl-ovr">
                           <span className="rl-ovr-val">{player.overall}</span>
-                          <div className="rl-ovr-spark">
-                            <div className="rl-ovr-fill" style={{ width: `${player.overall}%` }} />
-                          </div>
+                          {player.ovr_season_trend != null && player.ovr_season_trend.length >= 2 ? (
+                            <Sparkline data={player.ovr_season_trend} />
+                          ) : (
+                            <div
+                              title="Last-offseason OVR change shown here after first offseason completes"
+                              className="rl-ovr-spark"
+                            >
+                              <div className="rl-ovr-fill" style={{ width: `${player.overall}%` }} />
+                            </div>
+                          )}
                         </div>
                       </td>
                     )}

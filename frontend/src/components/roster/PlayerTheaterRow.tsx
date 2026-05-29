@@ -50,7 +50,16 @@ export function PlayerTheaterRow({ player, starter, onClick }: { player: Player,
       </td>
       <td style={{ padding: '1rem', textAlign: 'right' }}>
         <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#22d3ee' }}>{formatOverall(player)}</div>
-        <Sparkline data={player.weekly_ovr_history} />
+        {player.ovr_season_trend != null && player.ovr_season_trend.length >= 2 ? (
+          <Sparkline data={player.ovr_season_trend} />
+        ) : (
+          <div
+            title="Last-offseason OVR change shown here after first offseason completes"
+            style={{ height: '20px', width: '60px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <span style={{ fontSize: '0.6rem', color: '#334155', letterSpacing: '0.05em' }}>NO DATA</span>
+          </div>
+        )}
       </td>
       <td style={{ padding: '1rem' }}>
         <span className={`dm-badge ${starter ? 'dm-badge-cyan' : 'dm-badge-slate'}`}>{formatRole(player)}</span>
