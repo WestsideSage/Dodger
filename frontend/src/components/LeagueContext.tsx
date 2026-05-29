@@ -91,10 +91,11 @@ const buildNeedCopy = (
   leader: RankedStanding,
   cutoffTeam: RankedStanding,
   playoffLine: number,
-  totalWeeks: number,
-  currentWeek: number,
+  gamesRemaining: number,
 ) => {
-  const weeksRemaining = Math.max(0, totalWeeks - currentWeek);
+  // "Games to play" (byes excluded), matching the command center's count so
+  // the two surfaces never disagree on how much season is left.
+  const weeksRemaining = gamesRemaining;
   const cushion = Math.max(0, us.points - cutoffTeam.points);
   const pointsBack = Math.max(0, cutoffTeam.points - us.points);
   const leaderGap = Math.max(0, leader.points - us.points);
@@ -105,7 +106,7 @@ const buildNeedCopy = (
       outcome: 'Stay #1',
       helper:
         weeksRemaining > 0
-          ? `You are pacing the table with ${weeksRemaining} week${weeksRemaining === 1 ? '' : 's'} left. Keep the edge on survivor differential.`
+          ? `You are pacing the table with ${weeksRemaining} to play. Keep the edge on survivor differential.`
           : 'The table lead is yours. Survivor differential is the live tiebreaker.',
     };
   }
@@ -126,7 +127,7 @@ const buildNeedCopy = (
     outcome: `Break Top ${playoffLine}`,
     helper:
       weeksRemaining > 0
-        ? `You are ${pointsBack} point${pointsBack === 1 ? '' : 's'} outside the playoff line with ${weeksRemaining} week${weeksRemaining === 1 ? '' : 's'} left to close it.`
+        ? `You are ${pointsBack} point${pointsBack === 1 ? '' : 's'} outside the playoff line with ${weeksRemaining} to play to close it.`
         : `You finish ${pointsBack} point${pointsBack === 1 ? '' : 's'} outside the playoff line unless the tiebreak flips.`,
   };
 };
@@ -292,7 +293,7 @@ export function Standings() {
         outcome: 'Preparing for Next Season',
         helper: `Final standing: #${us.rank} of ${standings.length}. ${us.wins}-${us.losses}-${us.draws} on the season.`,
       }
-    : buildNeedCopy(us, leader, cutoffTeam, playoffLine, data.total_weeks, data.current_week);
+    : buildNeedCopy(us, leader, cutoffTeam, playoffLine, data.user_games_remaining ?? Math.max(0, data.total_weeks - data.current_week));
   const wireRows = buildWireRows(data.recent_matches, us.club_name, data.current_week);
   const tiebreakRows = standings.slice(0, Math.min(standings.length, playoffLine + 2));
 

@@ -369,6 +369,7 @@ export interface StandingsResponse {
     recent_matches?: RecentMatchSummary[];
     total_weeks: number;
     current_week: number;
+    user_games_remaining?: number;
     playoff_spots: number;
     is_offseason?: boolean;
 }

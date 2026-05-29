@@ -191,10 +191,11 @@ def test_rank_is_none_before_any_games_played():
 
 
 def test_rank_reflects_position_once_games_played():
-    rows = [_row("leader", 3, 0), _row("you", 1, 2)]
+    rows = [_row("leader", 3, 0), _row("you", 1, 2, draws=1)]
     out = _briefing(standings_rows=rows, player_club_id="you")
     assert out["form"]["rank"] == 2
-    assert out["form"]["regular_season_record"] == "1-2"
+    # W-L-D, matching the standings table verbatim (draws are not folded in).
+    assert out["form"]["regular_season_record"] == "1-2-1"
 
 
 def test_recent_record_counts_wins_vs_rest():

@@ -294,6 +294,8 @@ class StandingsResponse(BaseModel):
     recent_matches: list[dict[str, Any]] | None = None
     total_weeks: int = 0
     current_week: int = 0
+    user_games_remaining: int = 0
+    is_offseason: bool = False
     playoff_spots: int = 4
 
 
