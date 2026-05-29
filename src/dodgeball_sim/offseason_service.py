@@ -13,7 +13,7 @@ from .offseason_ceremony import (
     sign_chosen_rookie,
     stored_root_seed,
 )
-from .offseason_presentation import build_beat_response, load_active_beats
+from .offseason_presentation import MAX_USER_ROSTER, build_beat_response, load_active_beats
 from .persistence import (
     get_state,
     load_all_rosters,
@@ -144,8 +144,10 @@ def recruit_offseason_payload(
     rosters = load_all_rosters(conn)
     user_roster = rosters.get(player_club_id, [])
 
-    if len(user_roster) >= 9:
-        raise OffseasonError("Roster is full (maximum 9 players).", status_code=409)
+    if len(user_roster) >= MAX_USER_ROSTER:
+        raise OffseasonError(
+            f"Roster is full (maximum {MAX_USER_ROSTER} players).", status_code=409
+        )
 
     if signed_count >= 3:
         raise OffseasonError("Already recruited 3 players this offseason.", status_code=409)
@@ -168,7 +170,7 @@ def recruit_offseason_payload(
     rosters = load_all_rosters(conn)
     user_roster = rosters.get(player_club_id, [])
 
-    if signed_count >= 3 or len(user_roster) >= 9:
+    if signed_count >= 3 or len(user_roster) >= MAX_USER_ROSTER:
         cursor = state_advance(
             cursor,
             CareerState.NEXT_SEASON_READY,
