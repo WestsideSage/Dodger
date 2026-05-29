@@ -239,8 +239,17 @@ def _grade(score: int) -> str:
 
 
 def _class_year_from_season(season_id: str) -> int:
+    """Class year the in-season recruiting board targets.
+
+    This must match the class the offseason actually signs from
+    (``offseason_service`` / ``offseason_ceremony`` use ``season_number``), so
+    the Scout/Contact/Visit interest a player builds during the season lands on
+    the same prospects they can sign afterward. Previously this returned
+    ``season + 1``, pointing the board at a different (unsigned) class so all
+    in-season recruiting effort was cosmetic.
+    """
     digits = "".join(ch for ch in season_id if ch.isdigit())
-    return int(digits or "1") + 1
+    return int(digits or "1")
 
 
 __all__ = [
