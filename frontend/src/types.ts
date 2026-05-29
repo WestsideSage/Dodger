@@ -787,6 +787,19 @@ export interface Aftermath {
         stage: string;
         player_outcome: 'advanced' | 'eliminated' | null;
     };
+    // Task 9 (2026-05-28 playtest-fixes): present only when the player
+    // lost a playoff match (their season ended). Drives the one-screen
+    // EliminationCeremony shown before the regular-season recap.
+    elimination?: {
+        stage: string;
+        opponent_name: string;
+        player_score: number;
+        opponent_score: number;
+        decided_by: 'overtime' | 'seed_tiebreaker' | 'regulation';
+        cause: string;
+        contributors: Array<{ player_name: string; score: number }>;
+        returning: string[];
+    };
 }
 
 export interface OffseasonAward {
