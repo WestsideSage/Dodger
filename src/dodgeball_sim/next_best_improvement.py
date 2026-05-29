@@ -39,7 +39,9 @@ def weakest_position_group(roster: list[dict[str, Any]]) -> dict[str, Any] | Non
     if not groups:
         return None
     arch, ovrs = min(groups.items(), key=lambda kv: (_mean(kv[1]), kv[0]))
-    return {"archetype": arch, "avg_overall": round(_mean(ovrs), 1), "count": len(ovrs)}
+    # OVR is integer-valued to the player; round the group average to a whole
+    # number at this boundary so no raw float (e.g. "62.0 OVR") leaks into copy.
+    return {"archetype": arch, "avg_overall": int(round(_mean(ovrs))), "count": len(ovrs)}
 
 
 def strongest_position_group(roster: list[dict[str, Any]]) -> dict[str, Any] | None:
@@ -58,7 +60,9 @@ def strongest_position_group(roster: list[dict[str, Any]]) -> dict[str, Any] | N
     if not groups:
         return None
     arch, ovrs = max(groups.items(), key=lambda kv: (_mean(kv[1]), kv[0]))
-    return {"archetype": arch, "avg_overall": round(_mean(ovrs), 1), "count": len(ovrs)}
+    # OVR is integer-valued to the player; round the group average to a whole
+    # number at this boundary so no raw float (e.g. "62.0 OVR") leaks into copy.
+    return {"archetype": arch, "avg_overall": int(round(_mean(ovrs))), "count": len(ovrs)}
 
 
 def lowest_condition_starter(starters: list[dict[str, Any]]) -> dict[str, Any] | None:

@@ -33,6 +33,24 @@ def _make_real_save(path: Path) -> None:
         conn.close()
 
 
+def test_new_save_name_collision_returns_409(tmp_path, monkeypatch):
+    """2.7: creating a save whose name already exists must fail with a clear
+    409 (the frontend surfaces it as a visible banner / Step-1 block)."""
+    saves_dir = tmp_path / "saves"
+    saves_dir.mkdir()
+    monkeypatch.setattr(server, "SAVES_DIR", saves_dir)
+    monkeypatch.setattr(server, "DEFAULT_DB_PATH", tmp_path / "dodgeball_sim.db")
+    monkeypatch.setattr(server, "_active_save_path", None)
+    client = TestClient(server.app)
+
+    body = {"name": "My Career", "club_id": "aurora", "root_seed": 7}
+    first = client.post("/api/saves/new", json=body)
+    assert first.status_code == 200
+    second = client.post("/api/saves/new", json=body)
+    assert second.status_code == 409
+    assert "already exists" in second.json()["detail"].lower()
+
+
 @pytest.fixture()
 def sandbox(tmp_path, monkeypatch):
     """Redirect SAVES_DIR/DEFAULT_DB_PATH at the temp dir for each test."""
