@@ -870,7 +870,20 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                 </div>
 
                 {createError && (
-                  <p style={{ fontSize: '0.875rem', color: '#fb7185', margin: 0 }}>{createError}</p>
+                  <div
+                    role="alert"
+                    data-testid="new-save-error-banner"
+                    style={{
+                      padding: '0.75rem 1rem',
+                      background: 'rgba(251,113,133,0.12)',
+                      border: '1px solid #fb7185',
+                      borderRadius: '4px',
+                      color: '#fecdd3',
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    {createError}
+                  </div>
                 )}
 
                 <div style={{ display: 'flex', gap: '1rem' }}>
@@ -901,10 +914,26 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
               </form>
             )}
 
-            {view === 'build_identity' && <IdentityStep identity={buildIdentity} setIdentity={setBuildIdentity} onNext={() => setView('build_coach')} onBack={() => setView('new')} />}
+            {view === 'build_identity' && <IdentityStep identity={buildIdentity} setIdentity={setBuildIdentity} onNext={() => setView('build_coach')} onBack={() => setView('new')} takenNames={saves.map(s => s.name)} />}
             {view === 'build_coach' && <CoachStep coach={buildCoach} setCoach={setBuildCoach} onBack={() => setView('build_identity')} onNext={() => setView('build_roster')} />}
             {view === 'build_roster' && <StartingRecruitmentStep onCommit={handleBuildFromScratch} onBack={() => setView('build_coach')} creating={creating} />}
-            {createError && view.startsWith('build_') && <p style={{ fontSize: '0.875rem', color: '#fb7185', marginTop: '1rem' }}>{createError}</p>}
+            {createError && view.startsWith('build_') && (
+              <div
+                role="alert"
+                data-testid="build-commit-error-banner"
+                style={{
+                  marginTop: '1rem',
+                  padding: '0.75rem 1rem',
+                  background: 'rgba(251,113,133,0.12)',
+                  border: '1px solid #fb7185',
+                  borderRadius: '4px',
+                  color: '#fecdd3',
+                  fontSize: '0.875rem',
+                }}
+              >
+                {createError}
+              </div>
+            )}
           </div>
         </div>
       </div>

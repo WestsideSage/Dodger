@@ -319,6 +319,16 @@ export function PreSimDashboard({
     },
   ];
 
+  // 2.4: the Operational Plan alignment indicator must reflect the REAL state
+  // of the operational orders, not only the staff intent verdict. A plan with
+  // pending department orders is NOT aligned, even if the staff has no intent
+  // adjustment to advise — the previous code showed a green "Aligned" pill
+  // while orders were still pending (green-while-misaligned). The pending count
+  // shown here is the operational-order count, not the readiness-gate count
+  // (which counts unrelated scout/confirm gates).
+  const operationalPending = deptOrders.filter(o => o.state === 'pending').length;
+  const operationalMisaligned = hasPlanConflict || operationalPending > 0;
+
   return (
     <div className="max-content" data-testid="weekly-command-center">
 
@@ -467,13 +477,19 @@ export function PreSimDashboard({
             </p>
           </div>
           <div className="cc-panel-body">
-            <div className={`cc-align-callout${hasPlanConflict ? ' is-warning' : ''}`} data-testid="plan-readout">
+            <div className={`cc-align-callout${operationalMisaligned ? ' is-warning' : ''}`} data-testid="plan-readout">
               <div className="copy">
-                <b>{hasPlanConflict ? 'Adjustment advised.' : 'Profile aligned.'}</b>{' '}
+                <b>
+                  {operationalPending > 0
+                    ? `${operationalPending} order${operationalPending === 1 ? '' : 's'} still pending.`
+                    : hasPlanConflict
+                    ? 'Adjustment advised.'
+                    : 'Profile aligned.'}
+                </b>{' '}
                 {planRead}
               </div>
-              <span className={`cc-pill${hasPlanConflict ? ' amber' : ' emer'}`}>
-                {hasPlanConflict ? 'Misaligned' : 'Aligned'}
+              <span className={`cc-pill${operationalMisaligned ? ' amber' : ' emer'}`}>
+                {operationalMisaligned ? 'Misaligned' : 'Aligned'}
               </span>
             </div>
 
@@ -508,7 +524,7 @@ export function PreSimDashboard({
             </div>
 
             <div className="cc-plan-foot">
-              <span className="note">{deptOrders.length} orders · {pendCount} pending</span>
+              <span className="note">{deptOrders.length} orders · {operationalPending} pending</span>
               {!planConfirmed && (
                 <button
                   type="button"

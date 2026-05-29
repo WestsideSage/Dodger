@@ -119,20 +119,14 @@ export function PolicyEditor({
               onKeyDown={(event) => handleKeyDown(event, row, selectedValue)}
               style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}
             >
+              {/* 4.7: the selected option is conveyed by the highlighted pill
+                  below and described by the preview line; the former
+                  right-of-box echo of the same label was the redundant third
+                  showing per category, so it is removed (de-dup at the data
+                  boundary; visual restyle deferred to Phase 8). */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '1rem' }}>
                 <span id={labelId} style={{ color: '#e2e8f0', fontWeight: 700, fontSize: '0.84rem' }}>
                   {row.label}
-                </span>
-                <span
-                  style={{
-                    fontFamily: 'JetBrains Mono, monospace',
-                    fontSize: '0.64rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
-                    color: '#64748b',
-                  }}
-                >
-                  {t(`policy.${row.key}.${selectedValue}.label`)}
                 </span>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>

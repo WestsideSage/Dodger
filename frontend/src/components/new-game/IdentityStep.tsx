@@ -58,11 +58,14 @@ export function IdentityStep({
   setIdentity,
   onNext,
   onBack,
+  takenNames = [],
 }: {
   identity: ProgramIdentity;
   setIdentity: (v: ProgramIdentity) => void;
   onNext: () => void;
   onBack: () => void;
+  /** Existing save names; used to block a duplicate up front (2.7). */
+  takenNames?: string[];
 }) {
   const currentPrimary = identity.colors?.split(',')[0] ?? '#22d3ee';
   const currentSecondary = identity.colors?.split(',')[1] ?? '#0f172a';
@@ -70,7 +73,13 @@ export function IdentityStep({
   if (!identity.save_name.trim()) missingFields.push('save name');
   if (!identity.club_name.trim()) missingFields.push('club name');
   if (!identity.city.trim()) missingFields.push('city');
-  const canContinue = missingFields.length === 0;
+  // 2.7: validate save-name uniqueness on Step 1 so the collision surfaces
+  // here with a visible banner — not silently at Commit on the final step.
+  const trimmedName = identity.save_name.trim().toLowerCase();
+  const nameTaken =
+    trimmedName.length > 0 &&
+    takenNames.some(n => n.trim().toLowerCase() === trimmedName);
+  const canContinue = missingFields.length === 0 && !nameTaken;
   const selectedPreset = COLOR_PRESETS.find(
     preset => identity.colors === colorsToValue(preset.primary, preset.secondary)
   );
@@ -91,8 +100,28 @@ export function IdentityStep({
           placeholder="My Career"
           value={identity.save_name}
           onChange={e => setIdentity({ ...identity, save_name: e.target.value })}
-          style={inputStyle}
+          aria-invalid={nameTaken}
+          aria-describedby={nameTaken ? 'identity-save-name-error' : undefined}
+          style={{ ...inputStyle, borderColor: nameTaken ? '#fb7185' : inputStyle.border ? undefined : '#334155' }}
         />
+        {nameTaken && (
+          <div
+            id="identity-save-name-error"
+            role="alert"
+            data-testid="save-name-collision-banner"
+            style={{
+              marginTop: '0.5rem',
+              padding: '0.5rem 0.75rem',
+              background: 'rgba(251,113,133,0.12)',
+              border: '1px solid #fb7185',
+              borderRadius: '4px',
+              color: '#fecdd3',
+              fontSize: '0.8125rem',
+            }}
+          >
+            A save named “{identity.save_name.trim()}” already exists. Choose a different name to continue.
+          </div>
+        )}
       </Field>
 
       <Field label="Club Name" htmlFor="identity-club-name">
@@ -190,7 +219,7 @@ export function IdentityStep({
             Next: Coach Profile
           </ActionButton>
         </div>
-        {!canContinue && (
+        {missingFields.length > 0 && (
           <p id="identity-step-help" className="dm-helper-copy dm-helper-copy-warning" style={{ margin: 0 }}>
             Add a {missingFields.join(', ').replace(/, ([^,]*)$/, ' and $1')} to continue.
           </p>
