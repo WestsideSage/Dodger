@@ -522,6 +522,21 @@ export interface WeekBriefing {
   };
 }
 
+export interface RecruitingActionResult {
+  action: 'scout' | 'contact' | 'visit';
+  headline: string;
+  interest_before: number;
+  interest_after: number;
+  ovr_band_before: number[];
+  ovr_band_after: number[];
+  next_step: string;
+}
+
+export interface RecruitingActionResponse {
+  status: string;
+  result: RecruitingActionResult;
+}
+
 export interface StaffImpact {
   department: string;
   name: string;
@@ -1012,6 +1027,7 @@ export interface DynastyOfficeResponse {
             public_archetype: string;
             public_ovr_band: number[];
             fit_score: number;
+            interest?: number;
             pipeline_tier: number;
             promise_options: string[];
             active_promise: { promise_type: string; status: string } | null;

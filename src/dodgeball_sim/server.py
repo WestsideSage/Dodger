@@ -614,58 +614,45 @@ def simulate_week(conn = Depends(get_db)) -> SimResponse:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
-@app.post("/api/recruiting/scout/{prospect_id}")
-def recruiting_scout(prospect_id: str, conn = Depends(get_db)):
+def _run_recruiting_action(conn, prospect_id: str, action: str) -> dict[str, Any]:
+    """Deduct a slot, apply the action, and return the visible before/after delta."""
     from dodgeball_sim.recruitment import deduct_recruiting_slot
+    from dodgeball_sim.recruiting_office import apply_recruiting_action
+    from dodgeball_sim.persistence import load_command_history_all_seasons
+
     season_id = get_state(conn, "active_season_id")
+    player_club_id = get_state(conn, "player_club_id")
     week = load_career_state_cursor(conn).week
     try:
-        deduct_recruiting_slot(conn, season_id, week, "scout")
-        actions = load_json_state(conn, "prospect_recruitment_actions_json", {})
-        if prospect_id not in actions:
-            actions[prospect_id] = {}
-        actions[prospect_id]["scouted"] = True
-        set_state(conn, "prospect_recruitment_actions_json", json.dumps(actions))
+        deduct_recruiting_slot(conn, season_id, week, action)
+        delta = apply_recruiting_action(
+            conn,
+            prospect_id=prospect_id,
+            action=action,  # type: ignore[arg-type]
+            season_id=season_id,
+            player_club_id=player_club_id or "",
+            root_seed=stored_root_seed(conn),
+            history=load_command_history_all_seasons(conn),
+        )
         conn.commit()
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    return {"status": "success"}
+    return {"status": "success", "result": delta}
+
+
+@app.post("/api/recruiting/scout/{prospect_id}")
+def recruiting_scout(prospect_id: str, conn = Depends(get_db)):
+    return _run_recruiting_action(conn, prospect_id, "scout")
 
 
 @app.post("/api/recruiting/contact/{prospect_id}")
 def recruiting_contact(prospect_id: str, conn = Depends(get_db)):
-    from dodgeball_sim.recruitment import deduct_recruiting_slot
-    season_id = get_state(conn, "active_season_id")
-    week = load_career_state_cursor(conn).week
-    try:
-        deduct_recruiting_slot(conn, season_id, week, "contact")
-        actions = load_json_state(conn, "prospect_recruitment_actions_json", {})
-        if prospect_id not in actions:
-            actions[prospect_id] = {}
-        actions[prospect_id]["contacted"] = True
-        set_state(conn, "prospect_recruitment_actions_json", json.dumps(actions))
-        conn.commit()
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-    return {"status": "success"}
+    return _run_recruiting_action(conn, prospect_id, "contact")
 
 
 @app.post("/api/recruiting/visit/{prospect_id}")
 def recruiting_visit(prospect_id: str, conn = Depends(get_db)):
-    from dodgeball_sim.recruitment import deduct_recruiting_slot
-    season_id = get_state(conn, "active_season_id")
-    week = load_career_state_cursor(conn).week
-    try:
-        deduct_recruiting_slot(conn, season_id, week, "visit")
-        actions = load_json_state(conn, "prospect_recruitment_actions_json", {})
-        if prospect_id not in actions:
-            actions[prospect_id] = {}
-        actions[prospect_id]["visited"] = True
-        set_state(conn, "prospect_recruitment_actions_json", json.dumps(actions))
-        conn.commit()
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-    return {"status": "success"}
+    return _run_recruiting_action(conn, prospect_id, "visit")
 
 
 @app.post("/api/recruiting/pitch-angle")

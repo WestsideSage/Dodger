@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from typing import Any
 
@@ -8,7 +9,9 @@ from .persistence import (
     load_career_state_cursor,
     load_json_state,
     load_prospect_pool,
+    set_state,
 )
+from .recruiting_actions import Action, apply_action, current_interest, narrow_band
 from .recruitment import generate_prospect_pool, get_current_recruiting_budget
 from .rng import DeterministicRNG, derive_seed
 
@@ -134,10 +137,17 @@ def _prospect_rows(
 
     rows = []
     for prospect in prospects[:8]:
-        low, high = prospect.public_ratings_band["ovr"]
-        fit_score = round(((low + high) / 2.0) + credibility["score"] * 0.12)
+        base_low, base_high = prospect.public_ratings_band["ovr"]
         pid = prospect.player_id
         p_actions = actions.get(pid, {})
+        scouted = bool(p_actions.get("scouted"))
+        low, high = narrow_band((base_low, base_high), scouted=scouted)
+        fit_score = round(((low + high) / 2.0) + credibility["score"] * 0.12)
+        interest = current_interest(
+            p_actions,
+            pipeline_tier=prospect.pipeline_tier,
+            credibility_score=credibility["score"],
+        )
         rows.append({
             "player_id": pid,
             "name": prospect.name,
@@ -145,21 +155,75 @@ def _prospect_rows(
             "public_archetype": prospect.public_archetype_guess,
             "public_ovr_band": [low, high],
             "fit_score": fit_score,
+            "interest": interest,
             "promise_options": list(PROMISE_OPTIONS),
             "active_promise": promised.get(pid),
             "interest_evidence": [
-                f"Public range {low}-{high}.",
+                f"Public range {low}-{high}{' (scouted)' if scouted else ''}.",
                 f"Pipeline Tier {prospect.pipeline_tier} base interest.",
+                f"Interest {interest}% — contact and visits build it.",
                 f"Credibility grade {credibility['grade']} contributes to interest.",
-                "No hidden promise effect is applied until a promise is saved.",
             ],
             "pipeline_tier": prospect.pipeline_tier,
-            "scouted": p_actions.get("scouted", False),
-            "contacted": p_actions.get("contacted", False),
-            "visited": p_actions.get("visited", False),
+            "scouted": scouted,
+            "contacted": bool(p_actions.get("contacted")),
+            "visited": bool(p_actions.get("visited")),
             "recruiting_status": compute_recruiting_status(p_actions),
         })
     return rows
+
+
+def _credibility_score(
+    conn: sqlite3.Connection,
+    season_id: str,
+    player_club_id: str,
+    history: list[dict[str, Any]],
+) -> int:
+    return int(_credibility(conn, season_id, player_club_id, history)["score"])
+
+
+def apply_recruiting_action(
+    conn: sqlite3.Connection,
+    *,
+    prospect_id: str,
+    action: Action,
+    season_id: str,
+    player_club_id: str,
+    root_seed: int,
+    history: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Apply a scout/contact/visit to a prospect and return the visible delta.
+
+    Persists the updated per-prospect action state (flags + interest) and
+    returns a ``RecruitingActionResult`` dict so the caller can show the player
+    exactly what changed. See :mod:`recruiting_actions` for the effect model.
+    """
+    class_year = _class_year_from_season(season_id)
+    persisted = load_prospect_pool(conn, class_year)
+    if persisted:
+        prospects = persisted
+    else:
+        rng = DeterministicRNG(derive_seed(root_seed, "prospect_gen", str(class_year)))
+        prospects = generate_prospect_pool(class_year, rng, DEFAULT_SCOUTING_CONFIG)
+    prospect = next((p for p in prospects if p.player_id == prospect_id), None)
+    if prospect is None:
+        raise ValueError(f"Unknown prospect: {prospect_id}")
+
+    actions = load_json_state(conn, "prospect_recruitment_actions_json", {})
+    state = actions.get(prospect_id, {})
+    base_band = tuple(prospect.public_ratings_band["ovr"])
+    credibility_score = _credibility_score(conn, season_id, player_club_id, history)
+
+    new_state, result = apply_action(
+        state,
+        action,
+        base_band=base_band,
+        pipeline_tier=prospect.pipeline_tier,
+        credibility_score=credibility_score,
+    )
+    actions[prospect_id] = new_state
+    set_state(conn, "prospect_recruitment_actions_json", json.dumps(actions))
+    return result.to_dict()
 
 
 def _grade(score: int) -> str:
@@ -186,4 +250,5 @@ __all__ = [
     "RECRUITING_STATUSES",
     "build_recruiting_state",
     "compute_recruiting_status",
+    "apply_recruiting_action",
 ]

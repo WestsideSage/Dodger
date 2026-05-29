@@ -595,6 +595,7 @@ def conduct_recruitment_round(
 ):
     from .persistence import (
         load_clubs,
+        load_json_state,
         load_prospect_pool,
         load_recruitment_offers,
         save_recruitment_round,
@@ -615,18 +616,29 @@ def conduct_recruitment_round(
     prospect = next((p for p in load_prospect_pool(conn, class_year) if p.player_id == selected_player_id), None)
     if prospect is None:
         raise ValueError(f"Unknown prospect: {selected_player_id}")
+    # The recruiting actions the user invested in (contact/visit) build a
+    # persisted interest value; it strengthens the Signing Day offer on top of
+    # the strong base, so the work the player did is mechanically rewarded
+    # rather than cosmetic. See recruiting_actions / Task 7.
+    from .recruiting_actions import current_interest
+    actions = load_json_state(conn, "prospect_recruitment_actions_json", {})
+    interest = current_interest(
+        actions.get(selected_player_id, {}),
+        pipeline_tier=prospect.pipeline_tier,
+        credibility_score=50,
+    )
     user_offer = RecruitmentOffer(
         season_id=season_id,
         round_number=round_number,
         club_id=user_club_id,
         player_id=selected_player_id,
-        offer_strength=100.0,
+        offer_strength=100.0 + interest * 0.2,
         source="user",
         need_score=5.0,
         playing_time_pitch=0.5,
         prestige=0.5,
         round_order_value=0.5,
-        visible_reason="user target; private scouting priority",
+        visible_reason=f"user target; interest {interest}% from your recruiting work",
     )
     result = resolve_recruitment_round(
         season_id,
