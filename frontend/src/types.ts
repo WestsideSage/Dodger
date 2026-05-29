@@ -800,6 +800,16 @@ export interface Aftermath {
         contributors: Array<{ player_name: string; score: number }>;
         returning: string[];
     };
+    // Task 10 (2026-05-28 playtest-fixes): present only when the player
+    // won the title-clinching final. Drives the celebration hero shown
+    // first on the aftermath screen, before the standard debrief.
+    championship?: {
+        champion_name: string;
+        opponent_name: string;
+        player_score: number;
+        opponent_score: number;
+        decided_by: 'overtime' | 'seed_tiebreaker' | 'regulation';
+    };
 }
 
 export interface OffseasonAward {
