@@ -12,6 +12,7 @@ import { KeyPlayersPanel } from './match-week/aftermath/KeyPlayersPanel';
 import { TacticalSummaryCard } from './match-week/aftermath/TacticalSummaryCard';
 import { PrimaryFactorCard } from './match-week/aftermath/PrimaryFactorCard';
 import { PreSimDashboard } from './match-week/command-center/PreSimDashboard';
+import { SeasonPreview } from './match-week/command-center/SeasonPreview';
 import { useState, useEffect } from 'react';
 import type { Aftermath, CommandCenterResponse, CommandCenterSimResponse, MatchReplayResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
@@ -87,6 +88,7 @@ export function MatchWeek({
   const [isAdvancingWeek, setIsAdvancingWeek] = useState(false);
   const [planConfirmed, setPlanConfirmed] = useState(false);
   const [replayData, setReplayData] = useState<MatchReplayResponse | null>(null);
+  const [previewDismissed, setPreviewDismissed] = useState(false);
 
   const selectedIntent = localIntent ?? data?.plan.intent ?? 'Balanced';
 
@@ -152,6 +154,12 @@ export function MatchWeek({
       })
       .catch(err => setError(err.message))
       .finally(() => setSaving(false));
+  };
+
+  const handleSkipPreviewChange = (skipped: boolean) => {
+    commandApi.skipSeasonPreview(skipped)
+      .then((payload: CommandCenterResponse) => setData(payload))
+      .catch(err => setError(err.message));
   };
 
   const simulate = () => {
@@ -241,6 +249,16 @@ export function MatchWeek({
       setPlanConfirmed(false);
       savePlan(intent, false);
     };
+
+    if (data.season_preview && !data.season_preview.skipped && !previewDismissed) {
+      return (
+        <SeasonPreview
+          preview={data.season_preview}
+          onContinue={() => setPreviewDismissed(true)}
+          onSkipChange={handleSkipPreviewChange}
+        />
+      );
+    }
 
     return (
       <PreSimDashboard

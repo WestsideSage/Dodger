@@ -698,6 +698,19 @@ export interface CommandCenterResponse {
     plan: CommandCenterPlan;
     latest_dashboard: CommandDashboard | null;
     history: CommandHistoryRecord[];
+    season_preview?: SeasonPreview | null;
+}
+
+export interface SeasonPreview {
+    regular_season_weeks: number;
+    bye_week: number | null;
+    bye_text: string;
+    playoff_cut: number;
+    total_clubs: number;
+    top_goal: string;
+    strength: { archetype: string; avg_overall: number } | null;
+    weakness: { archetype: string; avg_overall: number } | null;
+    skipped: boolean;
 }
 
 // A post-match body paragraph carries its own audience, assigned by the

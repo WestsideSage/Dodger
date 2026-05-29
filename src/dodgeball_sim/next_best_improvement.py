@@ -40,6 +40,25 @@ def weakest_position_group(roster: list[dict[str, Any]]) -> dict[str, Any] | Non
     return {"archetype": arch, "avg_overall": round(_mean(ovrs), 1), "count": len(ovrs)}
 
 
+def strongest_position_group(roster: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Group roster by archetype, return the highest average-OVR group.
+
+    Mirror of :func:`weakest_position_group`; used by the season preview
+    to name a roster strength. Ties break on archetype name.
+    """
+
+    groups: dict[str, list[float]] = {}
+    for player in roster:
+        arch = str(player.get("archetype") or "").strip()
+        if not arch:
+            continue
+        groups.setdefault(arch, []).append(float(player.get("overall", 0)))
+    if not groups:
+        return None
+    arch, ovrs = max(groups.items(), key=lambda kv: (_mean(kv[1]), kv[0]))
+    return {"archetype": arch, "avg_overall": round(_mean(ovrs), 1), "count": len(ovrs)}
+
+
 def lowest_condition_starter(starters: list[dict[str, Any]]) -> dict[str, Any] | None:
     """Return the starter with the lowest stamina. Ties break on name."""
 
@@ -132,6 +151,7 @@ def build_improvement_panel(
 __all__ = [
     "build_improvement_panel",
     "weakest_position_group",
+    "strongest_position_group",
     "lowest_condition_starter",
     "coolest_critical_recruit",
 ]

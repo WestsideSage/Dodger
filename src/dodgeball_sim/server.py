@@ -99,6 +99,7 @@ from dodgeball_sim.command_week_service import (
     command_history_payload,
     run_simulation_command,
     save_command_center_plan_payload,
+    set_season_preview_skipped,
 )
 from dodgeball_sim.web_status_service import (
     build_news_payload,
@@ -420,6 +421,11 @@ class CommandCenterResponse(BaseModel):
     plan: dict[str, Any]
     latest_dashboard: dict[str, Any] | None = None
     history: list[dict[str, Any]]
+    season_preview: dict[str, Any] | None = None
+
+
+class SeasonPreviewSkipRequest(BaseModel):
+    skipped: bool = True
 
 
 class CommandCenterSimResponse(BaseModel):
@@ -512,6 +518,14 @@ def get_command_center(conn = Depends(get_db)) -> CommandCenterResponse:
 def save_command_center_plan(update: WeeklyCommandPlanUpdate, conn = Depends(get_db)) -> CommandCenterResponse:
     try:
         return save_command_center_plan_payload(conn, update.model_dump(exclude_none=True))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/command-center/season-preview/skip", response_model=CommandCenterResponse)
+def skip_season_preview(request: SeasonPreviewSkipRequest, conn = Depends(get_db)) -> CommandCenterResponse:
+    try:
+        return set_season_preview_skipped(conn, request.skipped)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
