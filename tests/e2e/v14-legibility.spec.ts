@@ -14,6 +14,10 @@ test('V14 legibility: tactical diff + staff impact pre-sim, primary factor post-
   expect(create.ok()).toBeTruthy();
 
   await page.goto(`${baseUrl}/?tab=command`);
+  await expect(page.locator('[data-testid="weekly-command-center"], [data-testid="season-preview"]').first()).toBeVisible({ timeout: 10000 });
+  if (await page.getByTestId('season-preview').isVisible()) {
+    await page.getByRole('button', { name: /To the Command Center/i }).click();
+  }
   await expect(page.getByTestId('weekly-command-center')).toBeVisible();
 
   // Task 4: pre-match Tactical Diff renders with player plan rows; the opponent

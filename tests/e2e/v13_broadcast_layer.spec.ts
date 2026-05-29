@@ -44,6 +44,11 @@ test('V13 broadcast framing and replay log keep proof one click away', async ({ 
   expect(create.ok()).toBeTruthy();
 
   await page.goto(`${baseUrl}/?tab=command`);
+  
+  await expect(page.locator('[data-testid="weekly-command-center"], [data-testid="season-preview"]').first()).toBeVisible({ timeout: 10000 });
+  if (await page.getByTestId('season-preview').isVisible()) {
+    await page.getByRole('button', { name: /To the Command Center/i }).click();
+  }
   await expect(page.getByTestId('weekly-command-center')).toBeVisible();
 
   await expect(page.getByText('Broadcast Frame')).toBeVisible();
@@ -74,6 +79,11 @@ test('V13 playoff framing and offseason record cards stay browser-visible', asyn
   await fastForwardToWeek(request, 6);
 
   await page.goto(`${baseUrl}/?tab=command`);
+  
+  await expect(page.locator('[data-testid="weekly-command-center"], [data-testid="season-preview"]').first()).toBeVisible({ timeout: 10000 });
+  if (await page.getByTestId('season-preview').isVisible()) {
+    await page.getByRole('button', { name: /To the Command Center/i }).click();
+  }
   await expect(page.getByTestId('weekly-command-center')).toBeVisible();
   await expect(page.getByText('Broadcast Frame')).toBeVisible();
 

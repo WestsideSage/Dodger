@@ -16,6 +16,11 @@ test('replay header keeps the final survivor score visible from the first frame'
   expect(create.ok()).toBeTruthy();
 
   await page.goto(`${baseUrl}/?tab=command`);
+  
+  await expect(page.locator('[data-testid="weekly-command-center"], [data-testid="season-preview"]').first()).toBeVisible({ timeout: 10000 });
+  if (await page.getByTestId('season-preview').isVisible()) {
+    await page.getByRole('button', { name: /To the Command Center/i }).click();
+  }
   await expect(page.getByTestId('weekly-command-center')).toBeVisible();
 
   await page.getByTestId('lock-weekly-plan').click();

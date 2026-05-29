@@ -10,6 +10,10 @@ test('Command Center aftermath presents score, replay identity, fallout, and nex
   expect(create.ok()).toBeTruthy();
 
   await page.goto(`${baseUrl}/?tab=command`);
+  await expect(page.locator('[data-testid="weekly-command-center"], [data-testid="season-preview"]').first()).toBeVisible({ timeout: 10000 });
+  if (await page.getByTestId('season-preview').isVisible()) {
+    await page.getByRole('button', { name: /To the Command Center/i }).click();
+  }
   await expect(page.getByTestId('weekly-command-center')).toBeVisible();
 
   await page.getByTestId('lock-weekly-plan').click();
@@ -39,6 +43,12 @@ test('KeyPlayersPanel shows Your Club Best standout when no user player in top 3
   expect(create.ok()).toBeTruthy();
 
   await page.goto(`${baseUrl}/?tab=command`);
+  await expect(page.locator('[data-testid="weekly-command-center"], [data-testid="season-preview"]').first()).toBeVisible({ timeout: 10000 });
+  if (await page.getByTestId('season-preview').isVisible()) {
+    await page.getByRole('button', { name: /To the Command Center/i }).click();
+  }
+  await expect(page.getByTestId('weekly-command-center')).toBeVisible();
+
   await page.getByTestId('lock-weekly-plan').click();
   await expect(page.getByTestId('simulate-command-week')).toBeEnabled();
   await page.getByTestId('simulate-command-week').click();
