@@ -33,6 +33,13 @@ from .persistence import (
 from .signing_day_payload import build_signing_cards
 from .stats import PlayerMatchStats
 
+# Maximum size of the *user's* roster for recruiting purposes. Club creation
+# lets a custom club draft up to 10 players, and the official ruleset allows a
+# 12-player roster, so the recruiting gate must sit above the creation maximum —
+# otherwise a club built at the creation cap is permanently unable to recruit.
+# (AI clubs are trimmed separately in offseason_ceremony.)
+MAX_USER_ROSTER = 12
+
 
 def load_active_beats(conn: sqlite3.Connection) -> list:
     """Load the stored active beat list, falling back to the full sequence."""
@@ -247,7 +254,7 @@ def build_beat_payload(
     if beat_key == "recruitment":
         signed_count = int(get_state(conn, "offseason_draft_signed_count") or "0")
         signing_limit = 3
-        roster_limit = 9
+        roster_limit = MAX_USER_ROSTER
         player_roster = rosters.get(player_club_id, [])
         player_signing = None
         if signed_player_id:
@@ -478,7 +485,7 @@ def build_beat_response(conn: sqlite3.Connection, cursor) -> dict[str, Any]:
         "can_recruit": (
             cursor.state == CareerState.SEASON_COMPLETE_RECRUITMENT_PENDING
             and int(get_state(conn, "offseason_draft_signed_count") or "0") < 3
-            and len(rosters.get(player_club_id, [])) < 9
+            and len(rosters.get(player_club_id, [])) < MAX_USER_ROSTER
         ),
         "can_begin_season": cursor.state == CareerState.NEXT_SEASON_READY,
         "signed_player_id": signed_player_id,
