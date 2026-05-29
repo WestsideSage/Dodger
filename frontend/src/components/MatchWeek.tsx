@@ -2,6 +2,7 @@ import { SimTransition } from './match-week/SimTransition';
 import { Headline } from './match-week/aftermath/Headline';
 import { PlayoffResolutionBanner } from './match-week/aftermath/PlayoffResolutionBanner';
 import { EliminationCeremony } from './match-week/aftermath/EliminationCeremony';
+import { ChampionshipHero } from './match-week/aftermath/ChampionshipHero';
 import { MatchScoreHero } from './match-week/aftermath/MatchScoreHero';
 import { FalloutGrid } from './match-week/aftermath/FalloutGrid';
 import { AftermathActionBar } from './match-week/aftermath/AftermathActionBar';
@@ -274,6 +275,7 @@ export function MatchWeek({
 
     return (
       <div className="command-post-sim" data-testid="post-week-dashboard">
+        {aftermath.championship && <ChampionshipHero championship={aftermath.championship} />}
         {aftermath.playoff_resolution && aftermath.playoff_resolution.decided_by !== 'regulation' && (
           <PlayoffResolutionBanner resolution={aftermath.playoff_resolution} />
         )}

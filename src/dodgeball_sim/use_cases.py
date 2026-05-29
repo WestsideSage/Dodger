@@ -455,6 +455,62 @@ def _load_elimination(
     )
 
 
+def _load_championship(
+    conn,
+    record,
+    player_club_id: str | None,
+    *,
+    clubs,
+    home_survivors: int,
+    away_survivors: int,
+    winner_id: str | None,
+) -> dict[str, Any] | None:
+    """Return the championship-celebration block when the player won the
+    title-clinching final, else ``None``.
+
+    Task 10 (2026-05-28 playtest-fixes): the title win used to be
+    undersold by the standard debrief, with the celebration buried behind
+    an extra Continue into the offseason. This surfaces the trophy moment
+    as the first thing the player sees on the final-win aftermath.
+    """
+
+    from dodgeball_sim.playoffs import is_playoff_match_id
+
+    if player_club_id is None or clubs is None:
+        return None
+    season_id = getattr(record, "season_id", None)
+    match_id = getattr(record, "match_id", None)
+    if not season_id or not match_id:
+        return None
+    if not is_playoff_match_id(season_id, match_id):
+        return None
+    if match_id != f"{season_id}_p_final":
+        return None
+    if winner_id != player_club_id:
+        return None
+
+    player_is_home = record.home_club_id == player_club_id
+    opponent_club_id = record.away_club_id if player_is_home else record.home_club_id
+    opponent_club = clubs.get(opponent_club_id)
+    player_club = clubs.get(player_club_id)
+    player_score = home_survivors if player_is_home else away_survivors
+    opponent_score = away_survivors if player_is_home else home_survivors
+
+    row = conn.execute(
+        "SELECT decided_by FROM match_records WHERE match_id = ?",
+        (match_id,),
+    ).fetchone()
+    decided_by = (row["decided_by"] if row is not None else None) or "regulation"
+
+    return {
+        "champion_name": player_club.name if player_club is not None else "Your club",
+        "opponent_name": opponent_club.name if opponent_club is not None else "your opponent",
+        "player_score": int(player_score),
+        "opponent_score": int(opponent_score),
+        "decided_by": decided_by,
+    }
+
+
 def _build_aftermath(
     conn,
     dashboard: dict[str, Any],
@@ -746,6 +802,23 @@ def _build_aftermath(
         )
         if elimination is not None:
             aftermath["elimination"] = elimination
+    except Exception:
+        pass
+
+    # Task 10 (2026-05-28 playtest-fixes): celebrate a title-clinching win
+    # up front instead of underselling it with the standard debrief.
+    try:
+        championship = _load_championship(
+            conn,
+            record,
+            player_club_id,
+            clubs=clubs,
+            home_survivors=home_survivors,
+            away_survivors=away_survivors,
+            winner_id=_winner_id,
+        )
+        if championship is not None:
+            aftermath["championship"] = championship
     except Exception:
         pass
 
