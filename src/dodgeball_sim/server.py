@@ -101,6 +101,8 @@ from dodgeball_sim.command_week_service import (
     CommandWeekError,
     command_center_payload,
     command_history_payload,
+    mark_lineup_confirmed,
+    mark_opponent_scouted,
     run_simulation_command,
     save_command_center_plan_payload,
     set_season_preview_skipped,
@@ -537,6 +539,24 @@ def get_command_center(conn = Depends(get_db)) -> CommandCenterResponse:
 def save_command_center_plan(update: WeeklyCommandPlanUpdate, conn = Depends(get_db)) -> CommandCenterResponse:
     try:
         return save_command_center_plan_payload(conn, update.model_dump(exclude_none=True))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/command-center/scout", response_model=CommandCenterResponse)
+def scout_opponent(conn = Depends(get_db)) -> CommandCenterResponse:
+    """Clear the scout-opponent readiness gate (D3)."""
+    try:
+        return mark_opponent_scouted(conn)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/command-center/confirm-lineup", response_model=CommandCenterResponse)
+def confirm_lineup(conn = Depends(get_db)) -> CommandCenterResponse:
+    """Clear the confirm-lineup readiness gate (D3)."""
+    try:
+        return mark_lineup_confirmed(conn)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

@@ -252,10 +252,54 @@ def save_command_center_plan_payload(conn: sqlite3.Connection, update: dict[str,
             from .command_center import _lineup_warnings
 
             plan["warnings"] = _lineup_warnings(list(state["roster"]), selected, plan["intent"], plan["tactics"])
+            # Saving an edited lineup IS confirming the six you will field.
+            plan["lineup_confirmed"] = True
+
+    # D3: carry the deliberate-action readiness flags forward across in-week
+    # saves (tactics tweaks, intent changes) so a scout/confirm action is not
+    # silently undone. They reset only when a brand-new weekly plan is built
+    # (start of a new week with no saved plan).
+    if existing is not None:
+        plan["opponent_scouted"] = bool(plan.get("opponent_scouted")) or bool(existing.get("opponent_scouted"))
+        plan["lineup_confirmed"] = bool(plan.get("lineup_confirmed")) or bool(existing.get("lineup_confirmed"))
 
     save_weekly_command_plan(conn, plan)
     conn.commit()
     return command_center_payload(conn)
+
+
+def _set_plan_readiness_flag(conn: sqlite3.Connection, flag: str) -> dict[str, Any]:
+    """Set a deliberate-action readiness flag on the current weekly plan.
+
+    Loads the saved plan (or the default if none yet), flips the flag, and
+    persists. Returns the refreshed command-center payload so the readiness
+    gate updates in one round trip.
+    """
+    state = build_command_center_state(conn)
+    existing = load_weekly_command_plan(
+        conn, state["season_id"], state["week"], state["player_club_id"]
+    )
+    if existing is not None:
+        plan = refresh_weekly_plan_context(dict(existing), state)
+    else:
+        prior_intent = load_latest_weekly_plan_intent(
+            conn, state["season_id"], state["week"], state["player_club_id"]
+        )
+        plan = build_default_weekly_plan(state, intent=prior_intent or "Balanced")
+    plan[flag] = True
+    save_weekly_command_plan(conn, plan)
+    conn.commit()
+    return command_center_payload(conn)
+
+
+def mark_opponent_scouted(conn: sqlite3.Connection) -> dict[str, Any]:
+    """Clear the scout-opponent readiness gate (D3)."""
+    return _set_plan_readiness_flag(conn, "opponent_scouted")
+
+
+def mark_lineup_confirmed(conn: sqlite3.Connection) -> dict[str, Any]:
+    """Clear the confirm-lineup readiness gate (D3)."""
+    return _set_plan_readiness_flag(conn, "lineup_confirmed")
 
 
 def sanitized_command_history(conn: sqlite3.Connection, season_id: str) -> list[dict[str, Any]]:

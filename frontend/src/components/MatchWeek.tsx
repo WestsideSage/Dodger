@@ -181,6 +181,24 @@ export function MatchWeek({
       .finally(() => setSaving(false));
   };
 
+  const scoutOpponent = () => {
+    setError(null);
+    setSaving(true);
+    commandApi.scoutOpponent()
+      .then((payload: CommandCenterResponse) => setData(payload))
+      .catch(err => setError(err.message))
+      .finally(() => setSaving(false));
+  };
+
+  const confirmLineup = () => {
+    setError(null);
+    setSaving(true);
+    commandApi.confirmLineup()
+      .then((payload: CommandCenterResponse) => setData(payload))
+      .catch(err => setError(err.message))
+      .finally(() => setSaving(false));
+  };
+
   const fastForward = () => {
     setError(null);
     setIsTransitioning(true);
@@ -291,6 +309,8 @@ export function MatchWeek({
         planConfirmed={planConfirmed}
         saving={saving}
         fastForward={fastForward}
+        onScout={scoutOpponent}
+        onConfirmLineup={confirmLineup}
       />
     );
   };

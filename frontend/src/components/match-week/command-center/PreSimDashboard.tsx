@@ -148,6 +148,8 @@ export function PreSimDashboard({
   planConfirmed,
   saving = false,
   fastForward,
+  onScout,
+  onConfirmLineup,
 }: {
   data: CommandCenterResponse;
   simulate: () => void;
@@ -159,6 +161,8 @@ export function PreSimDashboard({
   planConfirmed: boolean;
   saving?: boolean;
   fastForward?: () => void;
+  onScout?: () => void;
+  onConfirmLineup?: () => void;
 }) {
   const [policyEditorOpen, setPolicyEditorOpen] = useState(false);
 
@@ -202,6 +206,8 @@ export function PreSimDashboard({
   const watchLine = playerToWatch(activePlayers);
 
   const readinessChecks = readiness.gates;
+  const scoutGateReady = readinessChecks.some(g => g.id === 'scout' && g.ready);
+  const confirmLineupGateReady = readinessChecks.some(g => g.id === 'confirm_lineup' && g.ready);
   const readyCount = readiness.ready_count;
   const isReadyToLock = readiness.is_ready_to_lock;
   const itemsRemaining = readiness.items_remaining;
@@ -250,14 +256,12 @@ export function PreSimDashboard({
   const identityRecordLabel = playoffStage ? 'Record' : 'Form';
   const identityRecordValue = playoffStage ? regularSeasonRecord : recentRecord;
   const netStarterEdge = edge.net_starter_ovr;
-  const edgeContext = edge.standing === 'favorite'
-    ? ' (Favorite)'
-    : edge.standing === 'underdog'
-      ? ' (Underdog)'
-      : '';
-  const playerEdgeLabel = edge.standing === 'even'
-    ? 'Even starter line'
-    : `${data.player_club_name} ${netStarterEdge > 0 ? '+' : ''}${formatEdge(netStarterEdge)} net OVR${edgeContext}`;
+  // D2: the BAND is the headline; the signed net OVR is a small advisory
+  // "roster strength" note, never a headline that reads like a win-probability.
+  const edgeHeadline = edge.headline
+    ?? (edge.standing === 'favorite' ? 'Favorite' : edge.standing === 'underdog' ? 'Underdog' : 'Even Matchup');
+  const edgeAdvisory = edge.advisory_detail
+    ?? `${netStarterEdge > 0 ? '+' : ''}${formatEdge(netStarterEdge)} net starter OVR`;
   const primaryActionLabel = planConfirmed ? 'SIMULATE WEEK' : 'LOCK PLAN';
   const primaryActionHint = planConfirmed
     ? 'The weekly plan is locked. Run the match when you are ready to move the season forward.'
@@ -398,8 +402,23 @@ export function PreSimDashboard({
               <span className="val">{leagueRank ? `#${leagueRank}` : 'n/a'}</span>
             </div>
             <div>
-              <span className="lbl">Starter Edge</span>
-              <span className="val" style={{ fontSize: '0.82rem' }}>{isBye ? '—' : playerEdgeLabel}</span>
+              <span className="lbl">Matchup</span>
+              {isBye ? (
+                <span className="val" style={{ fontSize: '0.82rem' }}>—</span>
+              ) : (
+                <span
+                  className="val"
+                  data-testid="matchup-band"
+                  data-standing={edge.standing}
+                  style={{ fontSize: '0.82rem' }}
+                  title="Banded from your fielded six vs theirs. Advisory only — it never implies a mechanical edge."
+                >
+                  {edgeHeadline}
+                  <span className="sub" style={{ display: 'block', opacity: 0.7, fontSize: '0.7rem' }}>
+                    {edgeAdvisory}
+                  </span>
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -690,6 +709,33 @@ export function PreSimDashboard({
                 </div>
               ))}
             </div>
+
+            {!planConfirmed && !isBye && (onScout || onConfirmLineup) && (
+              <div className="cc-readiness-actions" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                {onScout && !scoutGateReady && (
+                  <button
+                    type="button"
+                    data-testid="scout-opponent"
+                    className="command-secondary-button"
+                    disabled={saving}
+                    onClick={onScout}
+                  >
+                    Scout Opponent
+                  </button>
+                )}
+                {onConfirmLineup && !confirmLineupGateReady && (
+                  <button
+                    type="button"
+                    data-testid="confirm-lineup"
+                    className="command-secondary-button"
+                    disabled={saving}
+                    onClick={onConfirmLineup}
+                  >
+                    Confirm Lineup
+                  </button>
+                )}
+              </div>
+            )}
 
             {!planConfirmed && (
               <div className="cc-intent-field">
