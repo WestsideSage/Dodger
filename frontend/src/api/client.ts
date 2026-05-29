@@ -3,6 +3,7 @@ import type {
   CoachPolicy,
   CommandCenterResponse,
   CommandCenterSimResponse,
+  FastForwardResponse,
   DynastyOfficeResponse,
   MatchHighlightsResponse,
   MatchReplayResponse,
@@ -104,6 +105,8 @@ export const commandApi = {
     apiPost<CommandCenterResponse>('/api/command-center/season-preview/skip', { skipped }),
   simulate: (body: { intent?: string }) =>
     apiPost<CommandCenterSimResponse>('/api/command-center/simulate', body),
+  fastForward: (body: { max_weeks?: number } = {}) =>
+    apiPost<FastForwardResponse>('/api/command-center/fast-forward', body),
   replay: (matchId: string) =>
     apiGet<MatchReplayResponse>(`/api/matches/${encodeURIComponent(matchId)}/replay`),
   highlights: (matchId: string) =>

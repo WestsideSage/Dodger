@@ -1137,3 +1137,117 @@ def simulate_week(
         "next_state": cursor.state.value,
         "aftermath": aftermath,
     }
+
+
+# Safety cap so a malformed schedule can never spin the auto-pilot forever.
+_AUTO_PILOT_HARD_CAP = 120
+
+
+def auto_pilot_weeks(
+    conn: sqlite3.Connection,
+    *,
+    max_weeks: int | None = None,
+) -> dict[str, Any]:
+    """Fast-forward the command-center loop using persisted defaults.
+
+    Repeatedly simulates the active user week via :func:`simulate_week` with
+    ``update=None``. Passing no update means each skipped week reuses the
+    persisted weekly plan when present, otherwise rebuilds the default plan from
+    the *last* intent and the canonical fielded-6 (best-by-role/OVR lineup) — so
+    auto-piloted weeks field exactly what a manual pass would. Readiness gates
+    are an advisory briefing concern and never block simulation, so skipped
+    weeks auto-satisfy by construction. Bye weeks advance transparently.
+
+    The loop runs until the season completes (cursor leaves
+    ``SEASON_ACTIVE_PRE_MATCH``) or ``max_weeks`` weeks have been simulated,
+    whichever comes first. Determinism is inherited from the seeded per-match
+    RNG used by :func:`simulate_week`: two careers started from the same
+    ``root_seed`` produce identical week-by-week results.
+
+    Parameters
+    ----------
+    conn:
+        Open SQLite connection to the career database.
+    max_weeks:
+        Optional cap on how many weeks to simulate. ``None`` runs to the end of
+        the season. Values < 1 are treated as a no-op.
+
+    Returns
+    -------
+    dict with keys: ``status``, ``message``, ``weeks_simulated``,
+    ``stop_reason`` (``"season_complete"`` | ``"max_weeks"`` | ``"already_complete"``),
+    ``next_state``, ``week_summaries`` (one ``{week, opponent_name, result}``
+    per simulated week), ``final_dashboard``, and ``final_aftermath``.
+
+    Raises
+    ------
+    SimulateWeekError
+        If the career is not in ``season_active_pre_match`` when called.
+    """
+    cursor = load_career_state_cursor(conn)
+    if cursor.state != CareerState.SEASON_ACTIVE_PRE_MATCH:
+        if cursor.state == CareerState.SEASON_COMPLETE_OFFSEASON_BEAT:
+            return {
+                "status": "success",
+                "message": "Season already complete; offseason review is ready.",
+                "weeks_simulated": 0,
+                "stop_reason": "already_complete",
+                "next_state": cursor.state.value,
+                "week_summaries": [],
+                "final_dashboard": None,
+                "final_aftermath": None,
+            }
+        raise SimulateWeekError(
+            "Auto-pilot requires season_active_pre_match."
+        )
+
+    if max_weeks is not None and max_weeks < 1:
+        return {
+            "status": "success",
+            "message": "No weeks requested.",
+            "weeks_simulated": 0,
+            "stop_reason": "max_weeks",
+            "next_state": cursor.state.value,
+            "week_summaries": [],
+            "final_dashboard": None,
+            "final_aftermath": None,
+        }
+
+    summaries: list[dict[str, Any]] = []
+    last_result: dict[str, Any] | None = None
+    stop_reason = "season_complete"
+    cap = _AUTO_PILOT_HARD_CAP if max_weeks is None else min(max_weeks, _AUTO_PILOT_HARD_CAP)
+
+    while len(summaries) < cap:
+        result = simulate_week(conn, update=None)
+        last_result = result
+        dashboard = result.get("dashboard") or {}
+        summaries.append(
+            {
+                "week": dashboard.get("week"),
+                "opponent_name": dashboard.get("opponent_name"),
+                "result": dashboard.get("result"),
+            }
+        )
+        if result.get("next_state") != CareerState.SEASON_ACTIVE_PRE_MATCH.value:
+            stop_reason = "season_complete"
+            break
+    else:
+        # Loop exhausted the cap without the season completing.
+        stop_reason = "max_weeks"
+
+    final_state = (
+        last_result.get("next_state")
+        if last_result
+        else load_career_state_cursor(conn).state.value
+    )
+    return {
+        "status": "success",
+        "message": f"Auto-piloted {len(summaries)} week(s).",
+        "weeks_simulated": len(summaries),
+        "stop_reason": stop_reason,
+        "next_state": final_state,
+        "week_summaries": summaries,
+        "final_dashboard": last_result.get("dashboard") if last_result else None,
+        "final_aftermath": last_result.get("aftermath") if last_result else None,
+    }

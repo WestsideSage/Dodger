@@ -1039,6 +1039,17 @@ export interface CommandCenterSimResponse {
     aftermath?: Aftermath;
 }
 
+export interface FastForwardResponse {
+    status: string;
+    message: string;
+    weeks_simulated: number;
+    stop_reason: string;
+    next_state: string | null;
+    week_summaries: Array<{ week: number | null; opponent_name: string | null; result: string | null }>;
+    final_dashboard?: CommandDashboard | null;
+    final_aftermath?: Aftermath | null;
+}
+
 export interface DynastyOfficeResponse {
     season_id: string;
     week: number;
