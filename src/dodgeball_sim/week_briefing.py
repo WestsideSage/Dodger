@@ -29,6 +29,45 @@ _MIN_ROTATION = 5
 _EVEN_BAND = 8
 
 _HEALTH_INTENT = "Preserve Health"
+_AGGRESSIVE_INTENT = "Win Now"
+
+
+def compute_staff_recommendation(
+    *,
+    recent_results: Sequence[str],
+    at_risk_count: int,
+) -> dict[str, Any]:
+    """The staff's advisory call, derived purely from verifiable context.
+
+    It reads only recent results and squad health -- NEVER the player's
+    currently-selected plan. That independence is the whole point: a
+    recommendation that mirrors the active selection ("Keep current plan" no
+    matter what you pick) is meaningless feedback. Returns a stable shape:
+    ``action`` ("keep" | "change"), ``recommended_intent`` (intent label or
+    None), and a short ``reason``.
+    """
+    # Squad health outranks form: depleted starters are the louder signal.
+    if at_risk_count >= 2:
+        return {
+            "action": "change",
+            "recommended_intent": _HEALTH_INTENT,
+            "reason": (
+                f"{at_risk_count} starters are low on stamina; "
+                "Preserve Health protects them."
+            ),
+        }
+    last_two = [str(result).lower() for result in list(recent_results)[-2:]]
+    if len(last_two) >= 2 and all(result.startswith("l") for result in last_two):
+        return {
+            "action": "change",
+            "recommended_intent": _AGGRESSIVE_INTENT,
+            "reason": "Two straight losses; staff wants a Win Now push to break the skid.",
+        }
+    return {
+        "action": "keep",
+        "recommended_intent": None,
+        "reason": "Recent form and squad health support the current approach.",
+    }
 
 
 def _starters(plan: dict[str, Any]) -> list[dict[str, Any]]:
@@ -174,8 +213,17 @@ def _build_recommendation(
     plan: dict[str, Any],
     *,
     is_bye: bool,
-    fatigue: dict[str, Any],
+    staff: dict[str, Any],
 ) -> dict[str, Any]:
+    """Turn the selection-independent staff call into player-facing advice.
+
+    The staff recommendation (see :func:`compute_staff_recommendation`) is
+    computed from verifiable context alone. Here we compare it against the
+    player's *currently selected* intent to decide whether to nudge: if the
+    staff wants a different intent than the one selected, the verdict is
+    ``adjust``; otherwise it is ``aligned``. The staff call itself never reads
+    the selection, so this is honest feedback rather than an echo.
+    """
     if is_bye:
         return {
             "verdict": "aligned",
@@ -184,15 +232,12 @@ def _build_recommendation(
             "advisory": True,
         }
 
-    at_risk = int(fatigue["at_risk_count"])
-    if at_risk >= 2 and plan.get("intent") != _HEALTH_INTENT:
+    recommended_intent = staff.get("recommended_intent")
+    if recommended_intent and plan.get("intent") != recommended_intent:
         return {
             "verdict": "adjust",
-            "advised_intent": _HEALTH_INTENT,
-            "reason": (
-                f"{at_risk} starters are low on stamina; "
-                "consider Preserve Health to protect them."
-            ),
+            "advised_intent": recommended_intent,
+            "reason": staff["reason"],
             "advisory": True,
         }
 
@@ -219,6 +264,10 @@ def build_week_briefing(
     fatigue = _build_fatigue(plan)
     matchup = plan.get("matchup_details") or {}
     threat = None if is_bye else matchup.get("key_threat")
+    staff = compute_staff_recommendation(
+        recent_results=recent_results,
+        at_risk_count=int(fatigue["at_risk_count"]),
+    )
 
     return {
         "readiness": _build_readiness(plan),
@@ -233,8 +282,9 @@ def build_week_briefing(
         "threat": threat,
         "match_context": {"is_home": is_home, "playoff_stage": playoff_stage},
         "league_leader": league_leader,
+        "staff_recommendation": staff,
         "recommendation": _build_recommendation(
-            plan, is_bye=is_bye, fatigue=fatigue
+            plan, is_bye=is_bye, staff=staff
         ),
     }
 

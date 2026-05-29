@@ -29,6 +29,7 @@ const FALLBACK_BRIEFING: WeekBriefing = {
   threat: null,
   match_context: { is_home: true, playoff_stage: null },
   league_leader: null,
+  staff_recommendation: { action: 'keep', recommended_intent: null, reason: '' },
   recommendation: { verdict: 'aligned', advised_intent: null, reason: '', advisory: true },
 };
 
