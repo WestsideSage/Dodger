@@ -810,6 +810,13 @@ export interface Aftermath {
         opponent_score: number;
         decided_by: 'overtime' | 'seed_tiebreaker' | 'regulation';
     };
+    // Task 11 (2026-05-28 playtest-fixes): present only on a loss. Up to
+    // three actionable next steps ranked from existing engine values.
+    improvement_panel?: Array<{
+        category: 'position_group' | 'condition' | 'recruit';
+        title: string;
+        detail: string;
+    }>;
 }
 
 export interface OffseasonAward {
