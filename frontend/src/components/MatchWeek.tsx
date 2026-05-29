@@ -1,6 +1,7 @@
 import { SimTransition } from './match-week/SimTransition';
 import { Headline } from './match-week/aftermath/Headline';
 import { PlayoffResolutionBanner } from './match-week/aftermath/PlayoffResolutionBanner';
+import { EliminationCeremony } from './match-week/aftermath/EliminationCeremony';
 import { MatchScoreHero } from './match-week/aftermath/MatchScoreHero';
 import { FalloutGrid } from './match-week/aftermath/FalloutGrid';
 import { AftermathActionBar } from './match-week/aftermath/AftermathActionBar';
@@ -417,13 +418,21 @@ export function MatchWeek({
 
         {revealStage >= 4 && (
           <div className="command-reveal">
-            <AftermathActionBar
-              onAdvance={handleAdvanceWeek}
-              onViewReplay={onOpenReplay ? () => onOpenReplay(matchId) : undefined}
-              matchId={matchId}
-              result={activeResult.dashboard.result}
-              isAdvancing={isAdvancingWeek}
-            />
+            {aftermath.elimination ? (
+              <EliminationCeremony
+                elimination={aftermath.elimination}
+                onContinue={handleAdvanceWeek}
+                isAdvancing={isAdvancingWeek}
+              />
+            ) : (
+              <AftermathActionBar
+                onAdvance={handleAdvanceWeek}
+                onViewReplay={onOpenReplay ? () => onOpenReplay(matchId) : undefined}
+                matchId={matchId}
+                result={activeResult.dashboard.result}
+                isAdvancing={isAdvancingWeek}
+              />
+            )}
           </div>
         )}
       </div>

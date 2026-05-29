@@ -387,6 +387,74 @@ def _load_playoff_resolution(
     }
 
 
+def _load_elimination(
+    conn,
+    record,
+    player_club_id: str | None,
+    *,
+    clubs,
+    home_survivors: int,
+    away_survivors: int,
+    winner_id: str | None,
+    top_performers: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """Return the elimination-ceremony block when the player lost a playoff
+    match, else ``None``.
+
+    Unlike :func:`_load_playoff_resolution` (tiebreakers only) this fires
+    on *any* playoff loss the player took part in, including regulation,
+    since that is exactly the moment a dynasty's season ends.
+    """
+
+    from dodgeball_sim.elimination_ceremony import build_elimination_summary
+    from dodgeball_sim.playoffs import is_playoff_match_id, playoff_stage_label
+
+    if player_club_id is None or clubs is None:
+        return None
+    season_id = getattr(record, "season_id", None)
+    match_id = getattr(record, "match_id", None)
+    if not season_id or not match_id:
+        return None
+    if not is_playoff_match_id(season_id, match_id):
+        return None
+    if player_club_id not in (record.home_club_id, record.away_club_id):
+        return None
+    if winner_id is None or winner_id == player_club_id:
+        return None  # advanced, or undecided -- not an elimination
+
+    player_is_home = record.home_club_id == player_club_id
+    opponent_club_id = record.away_club_id if player_is_home else record.home_club_id
+    opponent_club = clubs.get(opponent_club_id)
+    opponent_name = opponent_club.name if opponent_club is not None else "your opponent"
+    player_score = home_survivors if player_is_home else away_survivors
+    opponent_score = away_survivors if player_is_home else home_survivors
+
+    player_club = clubs.get(player_club_id)
+    player_club_name = player_club.name if player_club is not None else None
+    contributors = [
+        {"player_name": p.get("player_name", ""), "score": p.get("score", 0)}
+        for p in top_performers
+        if player_club_name is not None and p.get("club_name") == player_club_name
+    ]
+
+    row = conn.execute(
+        "SELECT decided_by, narrative_note FROM match_records WHERE match_id = ?",
+        (match_id,),
+    ).fetchone()
+    decided_by = (row["decided_by"] if row is not None else None) or "regulation"
+    narrative_note = (row["narrative_note"] if row is not None else None) or ""
+
+    return build_elimination_summary(
+        stage=playoff_stage_label(season_id, match_id),
+        opponent_name=opponent_name,
+        player_score=int(player_score),
+        opponent_score=int(opponent_score),
+        decided_by=decided_by,
+        narrative_note=narrative_note,
+        contributors=contributors,
+    )
+
+
 def _build_aftermath(
     conn,
     dashboard: dict[str, Any],
@@ -660,6 +728,26 @@ def _build_aftermath(
     playoff_resolution = _load_playoff_resolution(conn, record, player_club_id)
     if playoff_resolution is not None:
         aftermath["playoff_resolution"] = playoff_resolution
+
+    # Task 9 (2026-05-28 playtest-fixes): when the player's playoff run
+    # ends, give the defeat its own beat instead of jumping straight to
+    # the regular-season recap. Present only on a playoff *loss* the
+    # player took part in. Polish surface -- omit on any failure.
+    try:
+        elimination = _load_elimination(
+            conn,
+            record,
+            player_club_id,
+            clubs=clubs,
+            home_survivors=home_survivors,
+            away_survivors=away_survivors,
+            winner_id=_winner_id,
+            top_performers=top_performers,
+        )
+        if elimination is not None:
+            aftermath["elimination"] = elimination
+    except Exception:
+        pass
 
     # Structural validation: confirm the assembled payload doesn't
     # contradict the resolved MatchResult (winner, survivor counts,
