@@ -413,8 +413,19 @@ def _throw_action_weight(
 import random as _random
 
 from .models import Approach, CoachPolicy, Player
+from .moment_events import (
+    Comeback,
+    DramaticCatch,
+    LateGameEscape,
+    MomentEvent,
+    OneVOneFinale,
+)
 from .official_resolution import resolve_throw
 from .official_tactics import select_target
+
+# Phase 4a moment thresholds (mirror the rec driver's recognition intent).
+_LATE_ESCAPE_ATTACKERS = 3
+_COMEBACK_MIN_DEFICIT = 2
 
 
 @dataclass
@@ -425,6 +436,7 @@ class AutonomousGameResult:
     final_active_b: int
     ticks: int
     replay_state: OfficialReplayState
+    moment_events: Tuple[MomentEvent, ...] = ()
 
 
 def run_autonomous_game(
@@ -509,6 +521,14 @@ def run_autonomous_game(
     active_a = len(starters_a)
     active_b = len(starters_b)
     seq_counter = 0
+    # Phase 4a moment recognition state (DRAMATIC_CATCH, LATE_GAME_ESCAPE,
+    # ONE_V_ONE_FINALE, COMEBACK; GASSED_COLLAPSE / FLOOD_THROW are deferred —
+    # the official loop has no fatigue model nor batch-throw tracker).
+    moments: list[MomentEvent] = []
+    one_v_one_emitted = False
+    late_escape_emitted: dict[str, bool] = {team_a_id: False, team_b_id: False}
+    worst_deficit: dict[str, int] = {team_a_id: 0, team_b_id: 0}
+    comeback_catches: dict[str, int] = {team_a_id: 0, team_b_id: 0}
     recent_pressure_by_team: dict[str, str | None] = {team_a_id: None, team_b_id: None}
     no_blocking_state = NoBlockingState(active=False, source=None)
     burden_state: BurdenState | None = None
@@ -704,12 +724,77 @@ def run_autonomous_game(
                     active_a += 1
                 else:
                     active_b += 1
+                # DRAMATIC_CATCH: a live-ball catch that returned a teammate.
+                catch_own = active_a if catch_team == team_a_id else active_b
+                catch_opp = active_b if catch_team == team_a_id else active_a
+                moments.append(
+                    DramaticCatch(
+                        match_id=match_id,
+                        tick=ticks,
+                        catcher_id=catcher_id,
+                        catcher_team_id=catch_team,
+                        thrower_id=seq.thrower_id,
+                        thrower_team_id=offense_team,
+                        returning_player_id=returning_pid,
+                        active_count_a=active_a,
+                        active_count_b=active_b,
+                    )
+                )
+                # A clutch catch made while still behind feeds COMEBACK detection.
+                if catch_own <= catch_opp:
+                    comeback_catches[catch_team] += 1
         else:
             ball.state = BallState.HELD
             new_holder = defenders[0] if defenders else None
             if new_holder is not None:
                 ball.controller_player_id = new_holder.player_id
                 ball.side = defense_team
+
+        # --- Phase 4a moment recognition (post-resolution state) ---
+        worst_deficit[team_a_id] = max(worst_deficit[team_a_id], active_b - active_a)
+        worst_deficit[team_b_id] = max(worst_deficit[team_b_id], active_a - active_b)
+        if active_a == 1 and active_b == 1 and not one_v_one_emitted:
+            a_live = _live_for(team_a_id)
+            b_live = _live_for(team_b_id)
+            if a_live and b_live:
+                moments.append(
+                    OneVOneFinale(
+                        match_id=match_id,
+                        tick=ticks,
+                        player_a_id=a_live[0].player_id,
+                        player_b_id=b_live[0].player_id,
+                        tick_started=ticks,
+                    )
+                )
+                one_v_one_emitted = True
+        if active_a == 1 and active_b >= _LATE_ESCAPE_ATTACKERS and not late_escape_emitted[team_a_id]:
+            a_live = _live_for(team_a_id)
+            if a_live:
+                moments.append(
+                    LateGameEscape(
+                        match_id=match_id,
+                        tick=ticks,
+                        survivor_id=a_live[0].player_id,
+                        survivor_team_id=team_a_id,
+                        attacker_team_id=team_b_id,
+                        attacker_count=active_b,
+                    )
+                )
+                late_escape_emitted[team_a_id] = True
+        if active_b == 1 and active_a >= _LATE_ESCAPE_ATTACKERS and not late_escape_emitted[team_b_id]:
+            b_live = _live_for(team_b_id)
+            if b_live:
+                moments.append(
+                    LateGameEscape(
+                        match_id=match_id,
+                        tick=ticks,
+                        survivor_id=b_live[0].player_id,
+                        survivor_team_id=team_b_id,
+                        attacker_team_id=team_a_id,
+                        attacker_count=active_a,
+                    )
+                )
+                late_escape_emitted[team_b_id] = True
 
         previous_burden_team_id = burden_state.team_id if burden_state is not None else previous_burden_team_id
         recent_pressure_by_team[defense_team] = target_state.player_id
@@ -735,6 +820,22 @@ def run_autonomous_game(
     else:
         winner = None
 
+    # COMEBACK: the winner clawed back from a multi-player deficit on clutch catches.
+    if (
+        winner is not None
+        and worst_deficit[winner] >= _COMEBACK_MIN_DEFICIT
+        and comeback_catches[winner] >= 1
+    ):
+        moments.append(
+            Comeback(
+                match_id=match_id,
+                tick=ticks,
+                team_id=winner,
+                deficit_at_low_point=worst_deficit[winner],
+                catches_during_comeback=comeback_catches[winner],
+            )
+        )
+
     replay_state = _replay_state_from_live_engine(
         profile=profile,
         team_a_id=team_a_id,
@@ -757,6 +858,7 @@ def run_autonomous_game(
         final_active_b=active_b,
         ticks=ticks,
         replay_state=replay_state,
+        moment_events=tuple(moments),
     )
 
 
@@ -767,6 +869,7 @@ class AutonomousMatchResult:
     events: Tuple[OfficialEvent, ...]
     ticks: int
     replay_state: OfficialReplayState
+    moment_events: Tuple[MomentEvent, ...] = ()
 
 
 def run_autonomous_match(
@@ -799,6 +902,7 @@ def run_autonomous_match(
     game_number = 1
     games_list: List[OfficialGameScore] = []
     all_events: List[OfficialEvent] = []
+    all_moments: List[MomentEvent] = []
     total_ticks = 0
 
     team_a_game_points = 0
@@ -856,6 +960,7 @@ def run_autonomous_match(
         )
 
         last_game_res = game_res
+        all_moments.extend(game_res.moment_events)
         game_elapsed = game_res.replay_state.game_clock.elapsed_seconds
         elapsed_match_seconds += game_elapsed
         total_ticks += game_res.ticks
@@ -985,4 +1090,51 @@ def run_autonomous_match(
         events=tuple(all_events),
         ticks=total_ticks,
         replay_state=replay_state,
+        moment_events=tuple(all_moments),
     )
+
+
+class OfficialMatchEngineDriver:
+    """`EngineDriver` over the shipping multi-set official match engine.
+
+    This is the engine real official-ruleset careers play through
+    (``OfficialEngineAdapter.run_generic`` -> ``run_autonomous_match``). Both the
+    tier health probe and the OVR-sensitivity gate drive THIS, not the
+    single-game ``official_driver.OfficialDriver`` stub (which hardcodes
+    ``moment_events=()`` and only ever resolves one game). Phase 4a wires the
+    probe + gate onto this driver so the measured OVR curve and moment coverage
+    reflect what new careers actually play.
+    """
+
+    tier_id = "official_match"
+
+    def __init__(self, profile: "RulesetProfile | None" = None, ruleset: str = "official_foam") -> None:
+        if profile is None:
+            from .rulesets import RulesetSelection
+            profile = RulesetSelection(ruleset).to_profile()
+        self.profile = profile
+
+    def run(self, match_input):  # type: ignore[no-untyped-def]
+        from .engine_driver import DriverMatchOutput
+
+        res = run_autonomous_match(
+            profile=self.profile,
+            match_id=match_input.match_id,
+            team_a_id=match_input.team_a_id,
+            team_b_id=match_input.team_b_id,
+            starters_a=match_input.starters_a,
+            starters_b=match_input.starters_b,
+            player_lookup=match_input.player_lookup,
+            policy_a=match_input.policy_a,
+            policy_b=match_input.policy_b,
+            seed=match_input.seed,
+        )
+        score = res.official_match_score
+        return DriverMatchOutput(
+            events=res.events,
+            winner_team_id=res.winner_team_id,
+            final_active_a=getattr(score, "team_a_game_points", 0),
+            final_active_b=getattr(score, "team_b_game_points", 0),
+            moment_events=res.moment_events,
+            replay_state=res.replay_state,
+        )

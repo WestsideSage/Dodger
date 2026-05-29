@@ -28,6 +28,22 @@ def _sigmoid(x: float) -> float:
     return 1.0 / (1.0 + math.exp(-x))
 
 
+# --- Catch-balance tuning (Phase 4a) -----------------------------------------
+# The original even-ratings catch rate (~0.65 when attempted, with everyone
+# always attempting) made a throw ~2.3x likelier to out the thrower (caught +
+# resurrect) than to score a hit. Throwing was net-negative EV, so games rarely
+# reached full elimination -> clock expiry -> 0-0 no_point draws -> ~22% draws,
+# and OVR could not express in the win curve (measured slope +3.3pp vs a +10pp
+# gate, top floor 43.7% vs 60%). These constants pull the catch rate down and
+# sharpen its rating sensitivity so the favorite's superior catch/accuracy/power
+# compounds into elimination differential instead of being swamped by a
+# coin-flip catch. The catch-outs-thrower-and-resurrects rule itself is
+# unchanged (faithful to USA Dodgeball).
+_CATCH_SLOPE = 4.0
+_CATCH_POWER_WEIGHT = 0.6
+_CATCH_BIAS = 0.9
+
+
 @dataclass(frozen=True)
 class ThrowProbabilities:
     p_on_target: float
@@ -51,8 +67,12 @@ def compute_throw_probabilities(
 
     # On-target: accuracy beats dodge; power slightly helps.
     p_on_target = _sigmoid(3.0 * (accuracy_eff - dodge_eff) + 0.5 * power_eff)
-    # Catch given attempt: catch rating vs power.
-    p_catch_given_attempt = _sigmoid(3.0 * (catch_eff - 0.6 * power_eff))
+    # Catch given attempt: catch rating vs power, biased down so a catch is no
+    # longer the default outcome of an on-target throw (Phase 4a). The steeper
+    # slope makes a strong catcher's edge over a weak one express more.
+    p_catch_given_attempt = _sigmoid(
+        _CATCH_SLOPE * (catch_eff - _CATCH_POWER_WEIGHT * power_eff) - _CATCH_BIAS
+    )
     return ThrowProbabilities(
         p_on_target=p_on_target,
         p_catch_given_attempt=p_catch_given_attempt,
