@@ -9,6 +9,12 @@ from .rng import DeterministicRNG
 from .stats import PlayerMatchStats
 
 
+# Fraction of a player's remaining headroom (potential - current OVR) converted
+# toward their ceiling each offseason, before the dev-trait rate scaling. Tuned
+# so an elite-potential young player gains several OVR a season and approaches
+# their potential over a multi-season arc rather than in one jump.
+_HEADROOM_CLOSE_RATE = 0.9
+
 _TRAJECTORY_GROWTH_MULTIPLIER = {
     None: 1.00,
     "NORMAL": 1.00,
@@ -104,18 +110,33 @@ def apply_season_development(
     peak_start, peak_end = _peak_window(growth_curve)
     facility_modifiers = apply_facility_effects(player, season_stats, facility_set)
 
-    # 1. Base Growth based on Reps
-    # If the player didn't play but is young, give them a baseline of "practice reps" (equivalent to 200 minutes)
-    reps = max(season_stats.minutes_played, 200 if player.age < peak_start else 0)
-    base_growth = (reps / 1000.0) * 15.0
+    # 1. Base Growth: headroom-proportional.
+    # Growth is a fraction of the gap between the player's current OVR and their
+    # potential ("dev trait"). High-ceiling players develop the most — even from
+    # a low current OVR — and growth tapers smoothly to zero as they approach
+    # their potential, so it can never overshoot the ceiling. A player already
+    # at or above their potential has no headroom and barely moves, which also
+    # means low-potential players grow ~0 by construction (no special-casing).
+    headroom = max(0.0, potential - float(player.overall_skill()))
 
-    # 2. Potential Modifier
-    # Scale aggressively so Elite players grow much faster
-    potential_diff = potential - 50.0
-    if potential_diff > 0:
-        potential_modifier = 1.0 + (potential_diff / 40.0) ** 1.5
-    else:
-        potential_modifier = max(0.2, 1.0 + (potential_diff / 50.0))
+    # Reps gate: young players develop through practice even without match
+    # minutes; older players need real playing time to keep improving. The
+    # engine's recorded minutes are a weak signal, so youth get a full practice
+    # season rather than being starved of development.
+    practice_reps = 1000.0 if player.age < peak_start else 0.0
+    reps = max(float(season_stats.minutes_played), practice_reps)
+    reps_factor = min(1.0, reps / 1000.0)
+
+    # The dev trait also sets the *rate* the gap is closed, so a higher-ceiling
+    # player climbs toward their potential faster than a modest one at the same
+    # headroom. Tuned so an elite-potential young player gains several OVR a
+    # season and reaches their ceiling over a multi-season arc.
+    gap_close_rate = _HEADROOM_CLOSE_RATE * (potential / 100.0)
+    base_growth = headroom * gap_close_rate * reps_factor
+
+    # Potential is fully expressed through headroom + gap_close_rate above, so
+    # the pool no longer needs a separate potential multiplier.
+    potential_modifier = 1.0
 
     # 3. Focus Multipliers
     multipliers = {
@@ -201,7 +222,7 @@ def apply_season_development(
         performance = _performance_signal(season_stats)
         upgrade_chance = (performance * 0.5) + (effective_staff_modifier * 0.5)
         if upgrade_chance > 0.6 and rng.unit() < upgrade_chance:
-            new_potential = min(100, new_potential + rng.randint(2, 6))
+            new_potential = min(100, new_potential + rng.choice((2, 3, 4, 5, 6)))
             
     next_traits = replace(player.traits, potential=new_potential)
     
