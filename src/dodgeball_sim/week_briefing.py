@@ -104,8 +104,8 @@ def _build_readiness(plan: dict[str, Any]) -> dict[str, Any]:
             "id": "scout",
             "label": "Scout the opponent",
             "short_label": "Scout",
-            "detail": "Opponent lineup reviewed.",
-            "ready": bool(_opponents(plan)),
+            "detail": "No opponent to scout." if plan.get("is_bye") else "Opponent lineup reviewed.",
+            "ready": bool(_opponents(plan)) or bool(plan.get("is_bye")),
         },
         {
             "id": "gameplan",
