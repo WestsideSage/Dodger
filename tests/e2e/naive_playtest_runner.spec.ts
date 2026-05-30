@@ -287,6 +287,14 @@ test.describe('Dodger Naive Playtester Playthrough', () => {
         // Capture pre-sim screenshot
         await page.screenshot({ path: path.join(outputDir, `s${seasonCount}_w${weekCount}_presim.png`) });
 
+        // Clear the Phase 3 scout + confirm-lineup readiness gates before locking.
+        if (await page.getByTestId('scout-opponent').isVisible().catch(() => false)) {
+          await page.getByTestId('scout-opponent').click();
+        }
+        if (await page.getByTestId('confirm-lineup').isVisible().catch(() => false)) {
+          await page.getByTestId('confirm-lineup').click();
+        }
+
         // Lock weekly plan
         const lockBtn = page.getByTestId('lock-weekly-plan');
         if (await lockBtn.isVisible() && await lockBtn.isEnabled()) {

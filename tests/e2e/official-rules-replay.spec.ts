@@ -21,6 +21,12 @@ test('official rules replay surfaces rules state and explanation panels', async 
   }
   await expect(page.getByTestId('weekly-command-center')).toBeVisible();
 
+  if (await page.getByTestId('scout-opponent').isVisible().catch(() => false)) {
+    await page.getByTestId('scout-opponent').click();
+  }
+  if (await page.getByTestId('confirm-lineup').isVisible().catch(() => false)) {
+    await page.getByTestId('confirm-lineup').click();
+  }
   await page.getByTestId('lock-weekly-plan').click();
   await expect(page.getByTestId('simulate-command-week')).toBeEnabled();
   await page.getByTestId('simulate-command-week').click();

@@ -34,6 +34,12 @@ test('V14 legibility: tactical diff + staff impact pre-sim, primary factor post-
   await expect(staffImpact.getByTestId('staff-impact-row').first()).toBeVisible();
 
   // Existing flow must remain intact: lock -> simulate -> aftermath.
+  if (await page.getByTestId('scout-opponent').isVisible().catch(() => false)) {
+    await page.getByTestId('scout-opponent').click();
+  }
+  if (await page.getByTestId('confirm-lineup').isVisible().catch(() => false)) {
+    await page.getByTestId('confirm-lineup').click();
+  }
   await page.getByTestId('lock-weekly-plan').click();
   await expect(page.getByTestId('simulate-command-week')).toBeEnabled();
   await page.getByTestId('simulate-command-week').click();

@@ -16,6 +16,13 @@ test('Command Center aftermath presents score, replay identity, fallout, and nex
   }
   await expect(page.getByTestId('weekly-command-center')).toBeVisible();
 
+  // Clear the Phase 3 scout + confirm-lineup readiness gates before locking.
+  if (await page.getByTestId('scout-opponent').isVisible().catch(() => false)) {
+    await page.getByTestId('scout-opponent').click();
+  }
+  if (await page.getByTestId('confirm-lineup').isVisible().catch(() => false)) {
+    await page.getByTestId('confirm-lineup').click();
+  }
   await page.getByTestId('lock-weekly-plan').click();
   await expect(page.getByTestId('simulate-command-week')).toBeEnabled();
   await page.getByTestId('simulate-command-week').click();
@@ -49,6 +56,13 @@ test('KeyPlayersPanel shows Your Club Best standout when no user player in top 3
   }
   await expect(page.getByTestId('weekly-command-center')).toBeVisible();
 
+  // Clear the Phase 3 scout + confirm-lineup readiness gates before locking.
+  if (await page.getByTestId('scout-opponent').isVisible().catch(() => false)) {
+    await page.getByTestId('scout-opponent').click();
+  }
+  if (await page.getByTestId('confirm-lineup').isVisible().catch(() => false)) {
+    await page.getByTestId('confirm-lineup').click();
+  }
   await page.getByTestId('lock-weekly-plan').click();
   await expect(page.getByTestId('simulate-command-week')).toBeEnabled();
   await page.getByTestId('simulate-command-week').click();

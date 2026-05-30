@@ -23,6 +23,12 @@ test('replay header keeps the final survivor score visible from the first frame'
   }
   await expect(page.getByTestId('weekly-command-center')).toBeVisible();
 
+  if (await page.getByTestId('scout-opponent').isVisible().catch(() => false)) {
+    await page.getByTestId('scout-opponent').click();
+  }
+  if (await page.getByTestId('confirm-lineup').isVisible().catch(() => false)) {
+    await page.getByTestId('confirm-lineup').click();
+  }
   await page.getByTestId('lock-weekly-plan').click();
   await expect(page.getByTestId('simulate-command-week')).toBeEnabled();
   await page.getByTestId('simulate-command-week').click();
