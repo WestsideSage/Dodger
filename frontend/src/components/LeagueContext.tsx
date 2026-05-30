@@ -284,16 +284,27 @@ export function Standings() {
   const playoffLine = data.playoff_spots;
   const cutoffTeam = standings.find((standing) => standing.rank === playoffLine + 1) ?? standings[standings.length - 1];
   const isOffseason = data.is_offseason === true;
+  // During the playoff phase the bracket above is canon; the regular-season
+  // race/need copy is stale and misleading, so it's replaced (Brief 4.6, #4).
+  const playoffsActive = bracket?.active === true && !isOffseason;
   const raceSummary = isOffseason
     ? { left: 'SEASON CONCLUDED', right: 'PREPARING FOR NEXT SEASON' }
-    : buildRaceSummary(us, leader, cutoffTeam, playoffLine);
+    : playoffsActive
+      ? { left: 'REG. SEASON DONE', right: 'PLAYOFFS LIVE' }
+      : buildRaceSummary(us, leader, cutoffTeam, playoffLine);
   const needCopy = isOffseason
     ? {
         action: 'Season Concluded',
         outcome: 'Preparing for Next Season',
         helper: `Final standing: #${us.rank} of ${standings.length}. ${us.wins}-${us.losses}-${us.draws} on the season.`,
       }
-    : buildNeedCopy(us, leader, cutoffTeam, playoffLine, data.user_games_remaining ?? Math.max(0, data.total_weeks - data.current_week));
+    : playoffsActive
+      ? {
+          action: 'Playoffs',
+          outcome: 'Bracket Decides',
+          helper: `Regular season finished #${us.rank} of ${standings.length}. The bracket above now decides the title.`,
+        }
+      : buildNeedCopy(us, leader, cutoffTeam, playoffLine, data.user_games_remaining ?? Math.max(0, data.total_weeks - data.current_week));
   const wireRows = buildWireRows(data.recent_matches, us.club_name, data.current_week);
   const tiebreakRows = standings.slice(0, Math.min(standings.length, playoffLine + 2));
 
@@ -317,9 +328,11 @@ export function Standings() {
               <span className="arrow">{us.rank <= playoffLine ? '^' : 'v'}</span>
               {isOffseason
                 ? `FINAL · SEASON CONCLUDED`
-                : us.rank <= playoffLine
-                  ? `ABOVE LINE THROUGH W${String(data.current_week).padStart(2, '0')}`
-                  : `CHASE MODE THROUGH W${String(data.current_week).padStart(2, '0')}`}
+                : playoffsActive
+                  ? `REG. SEASON FINAL · #${us.rank} SEED`
+                  : us.rank <= playoffLine
+                    ? `ABOVE LINE THROUGH W${String(data.current_week).padStart(2, '0')}`
+                    : `CHASE MODE THROUGH W${String(data.current_week).padStart(2, '0')}`}
             </div>
           </div>
 
@@ -367,8 +380,8 @@ export function Standings() {
             <div>
               <span className="dm-kicker">League Office</span>
               <h2 className="ls-table-title">
-                Season Standings{' '}
-                <span className="ls-subtle">Live season table</span>
+                {playoffsActive ? 'Final Regular-Season Table' : 'Season Standings'}{' '}
+                <span className="ls-subtle">{playoffsActive ? 'Playoffs live above' : 'Live season table'}</span>
               </h2>
             </div>
             <div className="ls-table-meta">
