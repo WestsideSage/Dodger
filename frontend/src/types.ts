@@ -419,6 +419,11 @@ export interface PlayoffBracketMatch {
     away_survivors: number | null;
     winner_club_id: string | null;
     status: string;
+    // Foam/official matches score by game points, not survivors; present so the
+    // bracket can render the meaningful scoreline instead of a survivors 0-0.
+    scoring_model?: string | null;
+    home_game_points?: number | null;
+    away_game_points?: number | null;
     // Task 1 (2026-05-27 playtest-fixes): tiebreaker surfacing. NULL on
     // regulation wins / unplayed matches; "overtime" or "seed_tiebreaker"
     // when the resolver had to step in.
