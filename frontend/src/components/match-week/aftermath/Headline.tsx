@@ -3,20 +3,30 @@ export function Headline({
   week,
   contextLine,
   stage,
+  kicker = 'War Room',
+  subLabel,
+  accent = '#f97316',
 }: {
   text: string;
   week?: number;
   subtitle?: string;
   contextLine?: string;
   stage?: string;
+  /** Override the mono kicker (e.g. "Bye Week" instead of "War Room"). */
+  kicker?: string;
+  /** Override the "· Wk N Debrief" sub-label (e.g. "· Rest Report"). */
+  subLabel?: string;
+  /** Override the orange accent (border / gradient / kicker color). */
+  accent?: string;
 }) {
   const isPlayoff = Boolean(stage && stage !== 'Regular Season');
+  const accentRgb = accent === '#f97316' ? '249,115,22' : accent === '#22d3ee' ? '34,211,238' : '249,115,22';
   return (
     <div
       style={{
-        borderLeft: '3px solid #f97316',
-        background: 'linear-gradient(90deg, rgba(249,115,22,0.10) 0%, rgba(249,115,22,0.03) 50%, transparent 100%)',
-        borderBottom: '1px solid rgba(249,115,22,0.18)',
+        borderLeft: `3px solid ${accent}`,
+        background: `linear-gradient(90deg, rgba(${accentRgb},0.10) 0%, rgba(${accentRgb},0.03) 50%, transparent 100%)`,
+        borderBottom: `1px solid rgba(${accentRgb},0.18)`,
         padding: '5px 16px',
         display: 'flex',
         flexDirection: 'column',
@@ -29,14 +39,14 @@ export function Headline({
             fontFamily: 'JetBrains Mono, monospace',
             fontSize: '0.55rem',
             letterSpacing: '2.5px',
-            color: '#f97316',
+            color: accent,
             textTransform: 'uppercase' as const,
             opacity: 0.9,
           }}
         >
-          War Room
+          {kicker}
         </span>
-        {(week !== undefined || isPlayoff) && (
+        {(week !== undefined || isPlayoff || subLabel) && (
           <span
             style={{
               fontFamily: 'JetBrains Mono, monospace',
@@ -46,7 +56,7 @@ export function Headline({
               fontWeight: isPlayoff ? 700 : 400,
             }}
           >
-            {isPlayoff ? `· ${stage} Debrief` : `· Wk ${week} Debrief`}
+            {subLabel ? `· ${subLabel}` : isPlayoff ? `· ${stage} Debrief` : `· Wk ${week} Debrief`}
           </span>
         )}
       </div>
