@@ -81,7 +81,7 @@ export function FalloutGrid({
               </ul>
             </>
           ) : (
-            <p className="command-empty-copy">No standings changes this week.</p>
+            <p className="command-empty-copy">Records updated — no rank changes this week.</p>
           )}
         </FalloutCard>
 

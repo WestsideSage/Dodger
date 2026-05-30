@@ -216,10 +216,16 @@ function App() {
                 setPostSimResult(null);
                 setPostSimThisSession(false);
                 careerApi.status().then(status => {
+                  // Trust the live career state as the authoritative router.
+                  // postSimResult.next_state only exists after a manual sim; a
+                  // Fast-forward advances straight to the offseason beat without
+                  // populating it, so relying on nextState alone strands the
+                  // player on the stale "Season complete" command-center shell.
+                  const liveState = status?.state?.state ?? '';
                   setSeasonYear(status?.context?.season_year ?? null);
                   setSeasonNumber(status?.state?.season_number ?? null);
                   setCurrentWeek(status?.state?.week ?? null);
-                  if (OFFSEASON_STATES.has(nextState)) {
+                  if (OFFSEASON_STATES.has(nextState) || OFFSEASON_STATES.has(liveState)) {
                     setScreen('offseason');
                   }
                 }).catch(() => {});

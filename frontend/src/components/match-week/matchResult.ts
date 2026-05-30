@@ -45,7 +45,14 @@ export function formatScoreline(card: ScorelineFields): MatchScoreline {
   };
 }
 
-// Supporting detail under each team's number, e.g. "3 survivors (Final)".
+// Supporting detail under each team's number.
+//
+// For official matches the headline number is game points (set wins). The
+// legacy survivor count is not the result and, on a multi-game match, can
+// contradict it — a 0-0 foam draw can carry a box-score survivor tally like
+// 0-3 that reads as a win the player never got. So we label the unit ("game
+// points") rather than print an unreliable survivor count. Legacy matches keep
+// the literal survivor count.
 export function survivorDetail(survivors: number, isOfficial: boolean): string {
-  return isOfficial ? `${survivors} survivors (Final)` : `${survivors} survivors`;
+  return isOfficial ? 'game points' : `${survivors} survivors`;
 }
