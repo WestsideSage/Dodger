@@ -118,18 +118,23 @@ export function RecordsRatified({
     hasMyClubRecords ? 'my_club' : 'league'
   );
 
+  const myClubCount = allRecords.filter(r => r.is_my_club).length;
+  const leagueCount = allRecords.length;
+
   const records = scope === 'my_club'
     ? allRecords.filter(r => r.is_my_club)
     : allRecords;
 
-  // Decide which empty-state to show when the filtered list is empty.
+  // When My Club is empty but the league has records, the empty-state offers a
+  // one-tap path to League scope (Brief 4.8, criterion #4) rather than dead-ending.
+  const myClubEmptyButLeagueHas =
+    scope === 'my_club' && !recordsBookEmpty && allRecords.length > 0 && !hasMyClubRecords;
+
   function emptyMessage(): string {
     if (recordsBookEmpty) {
-      // Honest empty-state: no seasons have been ratified yet.
       return 'The record book is empty — records will be set as seasons are played.';
     }
-    if (scope === 'my_club' && allRecords.length > 0 && !hasMyClubRecords) {
-      // My Club scoped but no records held by this club.
+    if (myClubEmptyButLeagueHas) {
       return 'Your club holds no league records yet.';
     }
     return 'No new records were set this season.';
@@ -144,83 +149,177 @@ export function RecordsRatified({
       acting={acting}
     >
       <article className="dm-panel command-offseason-feature">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <p className="dm-kicker" style={{ margin: 0 }}>Records Ratified</p>
-          {!recordsBookEmpty && (
-            <div style={{ display: 'flex', gap: '0.4rem' }} role="group" aria-label="Records scope filter">
-              <button
-                onClick={() => setScope('my_club')}
-                style={{
-                  padding: '0.25rem 0.6rem',
-                  fontSize: '0.72rem',
-                  borderRadius: '3px',
-                  border: '1px solid #334155',
-                  background: scope === 'my_club' ? '#1e40af' : '#0f172a',
-                  color: scope === 'my_club' ? '#e2e8f0' : '#64748b',
-                  cursor: 'pointer',
-                }}
-                aria-pressed={scope === 'my_club'}
-              >
-                My Club
-              </button>
+        <p className="dm-kicker" style={{ margin: 0 }}>Records Ratified</p>
+
+        {/* Scope filter — elevated to a full-width segmented control so it
+            reads as the primary navigation choice for the screen, not a
+            top-right afterthought (Brief 4.8, criterion #1). */}
+        {!recordsBookEmpty && (
+          <div
+            role="group"
+            aria-label="Records scope filter"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '0.3rem',
+              marginTop: '0.6rem',
+              padding: '0.25rem',
+              background: '#0a1220',
+              border: '1px solid #1e293b',
+              borderRadius: '8px',
+            }}
+          >
+            {([
+              { id: 'my_club', label: 'My Club', count: myClubCount, accent: '#fbbf24' },
+              { id: 'league', label: 'League', count: leagueCount, accent: '#38bdf8' },
+            ] as const).map(opt => {
+              const active = scope === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => setScope(opt.id)}
+                  aria-pressed={active}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.45rem',
+                    padding: '0.5rem 0.5rem',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: active ? '#162033' : 'transparent',
+                    boxShadow: active ? `inset 0 0 0 1px ${opt.accent}66` : 'none',
+                    color: active ? '#f1f5f9' : '#64748b',
+                    cursor: 'pointer',
+                    transition: 'background 120ms, color 120ms',
+                  }}
+                >
+                  <span>{opt.label}</span>
+                  <span
+                    style={{
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
+                      minWidth: '1.3rem',
+                      padding: '0.05rem 0.35rem',
+                      borderRadius: '999px',
+                      background: active ? opt.accent : '#1e293b',
+                      color: active ? '#04111f' : '#94a3b8',
+                    }}
+                  >
+                    {opt.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {records.length === 0 ? (
+          <div style={{ marginTop: '0.85rem', textAlign: myClubEmptyButLeagueHas ? 'center' : 'left' }}>
+            <p className="command-offseason-copy" style={{ margin: 0 }}>{emptyMessage()}</p>
+            {myClubEmptyButLeagueHas && (
               <button
                 onClick={() => setScope('league')}
                 style={{
-                  padding: '0.25rem 0.6rem',
-                  fontSize: '0.72rem',
-                  borderRadius: '3px',
-                  border: '1px solid #334155',
-                  background: scope === 'league' ? '#1e40af' : '#0f172a',
-                  color: scope === 'league' ? '#e2e8f0' : '#64748b',
+                  marginTop: '0.7rem',
+                  padding: '0.5rem 1rem',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  borderRadius: '6px',
+                  border: '1px solid #38bdf8',
+                  background: 'rgba(56,189,248,0.12)',
+                  color: '#7dd3fc',
                   cursor: 'pointer',
                 }}
-                aria-pressed={scope === 'league'}
               >
-                League
+                Switch to League view ({leagueCount}) →
               </button>
-            </div>
-          )}
-        </div>
-        {records.length === 0 ? (
-          <p className="command-offseason-copy">{emptyMessage()}</p>
+            )}
+          </div>
         ) : (
-          <div style={{ display: 'grid', gap: '0.6rem', marginTop: '0.5rem' }}>
-            {records.map(record => (
-              <div
-                key={record.record_id ?? record.record_type}
-                data-broadcast-proof-source={record.proof_source ?? `record:${record.record_type}`}
-                style={{
-                  padding: '0.7rem 0.9rem',
-                  background: '#0a1220',
-                  border: '1px solid #1e293b',
-                  borderLeft: '3px solid #f97316',
-                  borderRadius: '4px',
-                }}
-              >
-                <p className="dm-kicker" style={{ margin: 0, color: '#f97316', fontSize: '0.62rem' }}>
-                  {titleize(record.record_type)}
-                </p>
-                <p style={{ margin: '0.2rem 0', color: '#f1f5f9', fontWeight: 700 }}>
-                  {record.holder_name}
-                </p>
-                <p
+          <div style={{ display: 'grid', gap: '0.6rem', marginTop: '0.85rem' }}>
+            {records.map(record => {
+              const mine = record.is_my_club === true;
+              const delta = record.new_value - record.previous_value;
+              const accent = mine ? '#fbbf24' : '#475569';
+              return (
+                <div
+                  key={record.record_id ?? record.record_type}
+                  data-broadcast-proof-source={record.proof_source ?? `record:${record.record_type}`}
+                  data-my-club={mine ? 'true' : 'false'}
                   style={{
-                    margin: 0,
-                    fontFamily: 'JetBrains Mono, monospace',
-                    fontSize: '0.8rem',
-                    color: '#10b981',
+                    padding: '0.75rem 0.9rem',
+                    background: mine
+                      ? 'linear-gradient(90deg, rgba(251,191,36,0.07), rgba(10,18,32,0) 60%)'
+                      : '#0a1220',
+                    border: '1px solid #1e293b',
+                    borderLeft: `3px solid ${accent}`,
+                    borderRadius: '4px',
                   }}
                 >
-                  {formatValue(record.previous_value)}{' -> '}{formatValue(record.new_value)}
-                </p>
-                {record.detail && (
-                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.76rem', color: '#94a3b8' }}>
-                    {record.detail}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                    <p className="dm-kicker" style={{ margin: 0, color: accent, fontSize: '0.62rem' }}>
+                      {titleize(record.record_type)}
+                    </p>
+                    {mine && (
+                      <span
+                        style={{
+                          fontSize: '0.56rem',
+                          fontWeight: 900,
+                          letterSpacing: '0.08em',
+                          textTransform: 'uppercase',
+                          padding: '0.12rem 0.4rem',
+                          borderRadius: '999px',
+                          background: 'rgba(251,191,36,0.16)',
+                          color: '#fbbf24',
+                        }}
+                      >
+                        Your Club
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ margin: '0.25rem 0 0.3rem', color: '#f1f5f9', fontWeight: 700 }}>
+                    {record.holder_name}
                   </p>
-                )}
-                <ProofDetails source={record.proof_source ?? `record:${record.record_type}`} />
-              </div>
-            ))}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span
+                      style={{
+                        fontFamily: 'JetBrains Mono, monospace',
+                        fontSize: '0.8rem',
+                        color: '#cbd5e1',
+                      }}
+                    >
+                      {formatValue(record.previous_value)}{' → '}
+                      <strong style={{ color: '#10b981' }}>{formatValue(record.new_value)}</strong>
+                    </span>
+                    {delta > 0 && (
+                      <span
+                        style={{
+                          fontFamily: 'JetBrains Mono, monospace',
+                          fontSize: '0.68rem',
+                          fontWeight: 800,
+                          padding: '0.08rem 0.4rem',
+                          borderRadius: '999px',
+                          background: 'rgba(16,185,129,0.14)',
+                          color: '#34d399',
+                        }}
+                      >
+                        +{formatValue(delta)}
+                      </span>
+                    )}
+                  </div>
+                  {record.detail && (
+                    <p style={{ margin: '0.3rem 0 0', fontSize: '0.76rem', color: '#94a3b8' }}>
+                      {record.detail}
+                    </p>
+                  )}
+                  <ProofDetails source={record.proof_source ?? `record:${record.record_type}`} />
+                </div>
+              );
+            })}
           </div>
         )}
       </article>
