@@ -48,6 +48,12 @@ test('Plan C tier-1 recognition: PolicyEditor → sim → aftermath surfaces mom
   await page.getByRole('button', { name: /close policy editor/i }).click();
 
   // Lock + simulate.
+  if (await page.getByTestId('scout-opponent').isVisible().catch(() => false)) {
+    await page.getByTestId('scout-opponent').click();
+  }
+  if (await page.getByTestId('confirm-lineup').isVisible().catch(() => false)) {
+    await page.getByTestId('confirm-lineup').click();
+  }
   await page.getByTestId('lock-weekly-plan').click();
   await expect(page.getByTestId('simulate-command-week')).toBeEnabled();
   await page.getByTestId('simulate-command-week').click();

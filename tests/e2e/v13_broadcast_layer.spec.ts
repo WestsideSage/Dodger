@@ -3,6 +3,13 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 const baseUrl = 'http://127.0.0.1:8000';
 
 async function lockAndSimCurrentWeek(page: Page) {
+  // Clear the Phase 3 scout + confirm-lineup readiness gates before locking.
+  if (await page.getByTestId('scout-opponent').isVisible().catch(() => false)) {
+    await page.getByTestId('scout-opponent').click();
+  }
+  if (await page.getByTestId('confirm-lineup').isVisible().catch(() => false)) {
+    await page.getByTestId('confirm-lineup').click();
+  }
   await page.getByTestId('lock-weekly-plan').click();
   await expect(page.getByTestId('simulate-command-week')).toBeEnabled();
   await page.getByTestId('simulate-command-week').click();
