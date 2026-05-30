@@ -273,60 +273,124 @@ export function Graduation({ beat, onComplete, acting }: { beat: RetirementsBeat
 
 
 type SigningFilter = 'my' | 'rival' | 'surprise';
+type SigningKind = SigningCard['outcome_kind'];
 
+// Plain-English tab labels (no internal enum vocabulary). Brief 4.1 §5.3.
 const FILTER_LABELS: Record<SigningFilter, string> = {
-  my: 'My signings',
-  rival: 'Rival signings',
+  my: 'Your Picks',
+  rival: 'Rival Picks',
   surprise: 'Surprises',
 };
 
 const FILTER_EMPTY: Record<SigningFilter, string> = {
-  my: 'No signings for your club yet.',
+  my: "You didn't sign anyone this class.",
   rival: 'No rival signings on the board.',
   surprise: 'No surprises this signing day.',
 };
 
-function matchesFilter(card: SigningCard, filter: SigningFilter): boolean {
-  if (filter === 'my') return card.outcome_kind === 'my_signing';
-  if (filter === 'rival') return card.outcome_kind === 'rival_signing';
-  return card.outcome_kind === 'surprise';
+const FILTER_TO_KIND: Record<SigningFilter, SigningKind> = {
+  my: 'my_signing',
+  rival: 'rival_signing',
+  surprise: 'surprise',
+};
+
+// Per-kind visual treatment: your picks = cyan/primary, rivals = orange/competitive,
+// surprises = violet/distinct-but-lower-urgency. Brief 4.1 design vision.
+const KIND_META: Record<SigningKind, { accent: string; bg: string; badge: string }> = {
+  my_signing: { accent: '#22d3ee', bg: '#083344', badge: 'My Signing' },
+  rival_signing: { accent: '#f97316', bg: '#1f1305', badge: 'Rival Signing' },
+  surprise: { accent: '#8b5cf6', bg: '#1e1b3a', badge: 'Surprise' },
+};
+
+function countSigningsByKind(signings: SigningCard[]): Record<SigningFilter, number> {
+  return {
+    my: signings.filter((c) => c.outcome_kind === 'my_signing').length,
+    rival: signings.filter((c) => c.outcome_kind === 'rival_signing').length,
+    surprise: signings.filter((c) => c.outcome_kind === 'surprise').length,
+  };
 }
 
-function InteractionFooter({ interaction }: { interaction: SigningCard['user_interaction'] }) {
-  const chips: { label: string; on: boolean }[] = [
-    { label: 'Scouted', on: interaction.scouted },
-    { label: 'Contacted', on: interaction.contacted },
-    { label: 'Visited', on: interaction.visited },
-  ];
+function filterSignings(signings: SigningCard[], filter: SigningFilter): SigningCard[] {
+  return signings
+    .filter((c) => c.outcome_kind === FILTER_TO_KIND[filter])
+    .sort((a, b) => b.ovr - a.ovr);
+}
+
+// Top OVR over a list, guarding the empty case (Math.max() === -Infinity).
+function topOvr(cards: { ovr: number }[]): number | null {
+  return cards.length ? cards.reduce((max, c) => (c.ovr > max ? c.ovr : max), cards[0].ovr) : null;
+}
+
+function topCard<T extends { ovr: number }>(cards: T[]): T | null {
+  return cards.length ? cards.reduce((best, c) => (c.ovr > best.ovr ? c : best), cards[0]) : null;
+}
+
+function MetricTile({ label, value, accent = '#e2e8f0' }: { label: string; value: React.ReactNode; accent?: string }) {
   return (
-    <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.6rem', flexWrap: 'wrap' }}>
-      {chips.map((c) => (
-        <span
-          key={c.label}
-          style={{
-            fontSize: '0.6rem',
-            letterSpacing: '0.06em',
-            padding: '0.15rem 0.5rem',
-            borderRadius: '999px',
-            border: `1px solid ${c.on ? '#22d3ee' : '#334155'}`,
-            color: c.on ? '#22d3ee' : '#475569',
-            background: c.on ? 'rgba(34,211,238,0.08)' : 'transparent',
-            fontWeight: 600,
-            textTransform: 'uppercase',
-          }}
-        >
-          {c.label}
-        </span>
-      ))}
+    <div
+      style={{
+        flex: '1 1 120px',
+        minWidth: 0,
+        border: '1px solid #1e293b',
+        borderRadius: '8px',
+        background: '#0f172a',
+        padding: '0.6rem 0.75rem',
+      }}
+    >
+      <div style={{ fontSize: '1.4rem', fontWeight: 900, color: accent, lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', marginTop: '0.2rem' }}>
+        {label}
+      </div>
     </div>
   );
 }
 
+function GlanceRow({ label, value, accent = '#cbd5e1' }: { label: string; value: React.ReactNode; accent?: string }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        gap: '0.75rem',
+        padding: '0.5rem 0',
+        borderTop: '1px solid #1e293b',
+        minWidth: 0,
+      }}
+    >
+      <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b', minWidth: 0 }}>
+        {label}
+      </span>
+      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: accent, textAlign: 'right', minWidth: 0 }}>{value}</span>
+    </div>
+  );
+}
+
+function GlancePanel({ children }: { children: React.ReactNode }) {
+  return (
+    <section
+      aria-labelledby="class-glance-heading"
+      style={{
+        flex: '1 1 240px',
+        minWidth: 0,
+        border: '1px solid #1e293b',
+        borderRadius: '10px',
+        background: 'linear-gradient(160deg, #0b1f2b 0%, #0f172a 70%)',
+        padding: '1.1rem 1.15rem',
+      }}
+    >
+      <h3
+        id="class-glance-heading"
+        style={{ fontSize: '0.65rem', color: '#22d3ee', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}
+      >
+        Your Class at a Glance
+      </h3>
+      {children}
+    </section>
+  );
+}
+
 function SigningCardView({ card }: { card: SigningCard }) {
-  const isMine = card.outcome_kind === 'my_signing';
-  const isSurprise = card.outcome_kind === 'surprise';
-  const accent = isMine ? '#22d3ee' : isSurprise ? '#f59e0b' : '#334155';
-  const bg = isMine ? '#083344' : isSurprise ? '#1f1305' : '#0f172a';
+  const { accent, bg, badge } = KIND_META[card.outcome_kind];
   return (
     <div
       className="fade-in"
@@ -335,6 +399,7 @@ function SigningCardView({ card }: { card: SigningCard }) {
         borderRadius: '8px',
         padding: '1rem 1.1rem',
         background: bg,
+        boxShadow: `0 0 18px ${accent}1f`,
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
@@ -347,23 +412,169 @@ function SigningCardView({ card }: { card: SigningCard }) {
         </div>
         <div
           style={{
-            fontSize: '0.7rem',
-            fontWeight: 800,
+            fontSize: '0.75rem',
+            fontWeight: 900,
             color: accent,
             border: `1px solid ${accent}`,
             borderRadius: '6px',
-            padding: '0.2rem 0.5rem',
-            letterSpacing: '0.05em',
+            padding: '0.25rem 0.55rem',
+            letterSpacing: '0.04em',
             whiteSpace: 'nowrap',
           }}
         >
           OVR {card.ovr}
         </div>
       </div>
-      <div style={{ fontSize: '0.8rem', color: '#cbd5e1', marginTop: '0.6rem', lineHeight: 1.4 }}>
+      <div style={{ marginTop: '0.5rem' }}>
+        <span
+          style={{
+            fontSize: '0.55rem',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            fontWeight: 700,
+            color: accent,
+            border: `1px solid ${accent}66`,
+            background: `${accent}14`,
+            borderRadius: '999px',
+            padding: '0.15rem 0.5rem',
+          }}
+        >
+          {badge}
+        </span>
+      </div>
+      <div style={{ fontSize: '0.8rem', color: '#cbd5e1', marginTop: '0.55rem', lineHeight: 1.4 }}>
         {card.reason}
       </div>
-      <InteractionFooter interaction={card.user_interaction} />
+    </div>
+  );
+}
+
+// Legacy fallback (older saves without the `signings` card array): rebuild the same
+// primary/secondary hierarchy from player_signing + other_signings, not a text blob.
+function LegacyClassReport({
+  playerSigning,
+  otherSignings,
+  signedCount,
+  signingLimit,
+  body,
+}: {
+  playerSigning: OffseasonSigning | null;
+  otherSignings: OffseasonSigning[];
+  signedCount: number;
+  signingLimit: number;
+  body: unknown;
+}) {
+  const otherCount = otherSignings.length;
+  const totalClass = (playerSigning ? 1 : 0) + otherCount;
+  const prose = typeof body === 'string' && body.trim() ? body.trim() : '';
+  // Right column shows the structured league list when we have one; otherwise it
+  // surfaces the engine's prose as a readable brief (never crammed into the glance).
+  const showBrief = otherCount === 0 && prose.length > 0;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', maxWidth: '1040px', margin: '0 auto' }}>
+      <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+        <MetricTile label="Your Signings" value={`${signedCount}/${signingLimit}`} accent="#22d3ee" />
+        <MetricTile label="Others Joined" value={otherCount} accent="#f97316" />
+        <MetricTile label="Total Rookies" value={totalClass} />
+      </div>
+
+      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'stretch' }}>
+        <GlancePanel>
+          <div style={{ fontSize: '1.7rem', fontWeight: 900, color: '#e2e8f0', marginTop: '0.6rem', lineHeight: 1.1 }}>
+            {playerSigning ? 'You signed 1.' : "You didn't sign anyone."}
+          </div>
+          <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '0.3rem', lineHeight: 1.4 }}>
+            {playerSigning
+              ? `${otherCount} other${otherCount !== 1 ? 's' : ''} joined the league.`
+              : otherCount > 0
+                ? `${otherCount} rookie${otherCount !== 1 ? 's' : ''} joined the league.`
+                : 'No prospects committed to your program this offseason.'}
+          </div>
+          <div style={{ fontSize: '0.7rem', color: '#22d3ee', fontWeight: 700, marginTop: '0.6rem' }}>
+            {signedCount}/{signingLimit} slots used
+          </div>
+          {playerSigning && (
+            <div style={{ marginTop: '0.85rem' }}>
+              <GlanceRow
+                label="Your signing"
+                value={`${playerSigning.name} · OVR ${playerSigning.ovr}`}
+                accent="#22d3ee"
+              />
+              {playerSigning.role ? <GlanceRow label="Role" value={playerSigning.role} /> : null}
+              {playerSigning.age ? <GlanceRow label="Age" value={playerSigning.age} /> : null}
+            </div>
+          )}
+        </GlancePanel>
+
+        <div style={{ flex: '2 1 360px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          <div style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>
+            {showBrief ? 'Class Brief' : 'Around the League'}
+          </div>
+          {showBrief ? (
+            <div
+              style={{
+                flex: 1,
+                border: '1px solid #1e293b',
+                borderLeft: '3px solid #22d3ee',
+                borderRadius: '8px',
+                padding: '1.1rem 1.25rem',
+                background: '#0f172a',
+                color: '#cbd5e1',
+                fontSize: '0.9rem',
+                lineHeight: 1.65,
+                minWidth: 0,
+              }}
+            >
+              {prose}
+            </div>
+          ) : otherCount === 0 ? (
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px dashed #334155',
+                borderRadius: '8px',
+                padding: '1.5rem',
+                color: '#64748b',
+                textAlign: 'center',
+                fontSize: '0.85rem',
+              }}
+            >
+              No other signings to report.
+            </div>
+          ) : (
+            <ul role="list" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              {otherSignings.map((s: OffseasonSigning, i: number) => (
+                <li
+                  key={i}
+                  className="fade-in"
+                  style={{
+                    border: '1px solid #334155',
+                    borderRadius: '6px',
+                    padding: '0.6rem 0.85rem',
+                    background: '#0f172a',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                  }}
+                >
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{s.name}</span>
+                    {s.club_name ? (
+                      <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '0.5rem' }}>to {s.club_name}</span>
+                    ) : null}
+                  </span>
+                  <span style={{ color: '#94a3b8', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>OVR {s.ovr}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -378,129 +589,134 @@ export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat
   const [filter, setFilter] = useState<SigningFilter>('my');
 
   const hasCards = signings.length > 0;
-  const counts: Record<SigningFilter, number> = {
-    my: signings.filter((c) => matchesFilter(c, 'my')).length,
-    rival: signings.filter((c) => matchesFilter(c, 'rival')).length,
-    surprise: signings.filter((c) => matchesFilter(c, 'surprise')).length,
-  };
-  const visible = signings
-    .filter((c) => matchesFilter(c, filter))
-    .sort((a, b) => b.ovr - a.ovr);
+  const counts = countSigningsByKind(signings);
+  const visible = filterSignings(signings, filter);
 
-  // Legacy fallback (no card-grid data on payload): keep the old summary card
-  // so older saves don't render as an empty screen.
-  const summaryLabel = playerSigning ? 'YOUR CLASS' : 'SIGNING DAY UPDATE';
-  const summaryTitle = playerSigning ? playerSigning.name : 'Class report';
-  const summaryDetail = playerSigning
-    ? `OVR ${playerSigning.ovr}${playerSigning.age ? ` | Age ${playerSigning.age}` : ''}${playerSigning.role ? ` | ${playerSigning.role}` : ''} | ${signedCount}/${signingLimit} signed`
-    : (typeof beat.body === 'string' && beat.body.trim()) || 'The board is complete. Continue when you are ready for the next offseason update.';
+  // League + own-class derivations (all from existing payload arrays).
+  const classSize = signings.length;
+  const myCount = counts.my;
+  const rivalCount = counts.rival;
+  const othersJoined = classSize - myCount;
+  const mySignings = signings.filter((c) => c.outcome_kind === 'my_signing');
+  const topMine = topCard(mySignings);
+  const topClass = topCard(signings);
+  const classTopOvr = topOvr(signings);
+  const scoutedCount = signings.filter((c) => c.user_interaction.scouted).length;
+  const deepCount = signings.filter((c) => c.ovr >= 68).length;
 
   return (
     <CeremonyShell
-      title={beat.title}
-      eyebrow="Signing Day"
-      description="The nation's top prospects have made their commitments."
+      title="Class Report"
+      eyebrow="Signing Day Update"
+      description="Here's how the rookie class shook out."
       stages={0}
       renderStage={() =>
         hasCards ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '520px', margin: '0 auto' }}>
-            <div
-              role="tablist"
-              aria-label="Filter signings"
-              style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'center' }}
-            >
-              {(['my', 'rival', 'surprise'] as SigningFilter[]).map((f) => {
-                const active = filter === f;
-                return (
-                  <button
-                    key={f}
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => setFilter(f)}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', maxWidth: '1040px', margin: '0 auto' }}>
+            {/* Hero metric strip — league + own-class summary visible without switching tabs */}
+            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <MetricTile label="Your Signings" value={`${signedCount}/${signingLimit}`} accent="#22d3ee" />
+              <MetricTile label="Rival Signings" value={rivalCount} accent="#f97316" />
+              <MetricTile label="Total Rookies" value={classSize} />
+              {classTopOvr != null && <MetricTile label="Top OVR in Class" value={classTopOvr} accent="#8b5cf6" />}
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              {/* Primary: the player's own outcome */}
+              <GlancePanel>
+                <div style={{ fontSize: '1.7rem', fontWeight: 900, color: '#e2e8f0', marginTop: '0.6rem', lineHeight: 1.1 }}>
+                  {myCount > 0 ? `You signed ${myCount}.` : "You didn't sign anyone."}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '0.25rem' }}>
+                  {othersJoined} other{othersJoined !== 1 ? 's' : ''} joined the league.
+                </div>
+                <div style={{ fontSize: '0.7rem', color: '#22d3ee', fontWeight: 700, marginTop: '0.5rem' }}>
+                  {signedCount}/{signingLimit} slots used
+                </div>
+
+                <div style={{ marginTop: '0.75rem' }}>
+                  {topMine ? (
+                    <GlanceRow label="Top signing" value={`${topMine.name} · OVR ${topMine.ovr}`} accent="#22d3ee" />
+                  ) : topClass ? (
+                    <GlanceRow label="Top OVR in class" value={`${topClass.name} (${topClass.ovr})`} />
+                  ) : null}
+                  {deepCount > 0 && <GlanceRow label="Deep class" value={`${deepCount} rated 68+ OVR`} />}
+                  {scoutedCount > 0 && (
+                    <GlanceRow label="You scouted" value={`${scoutedCount} prospect${scoutedCount !== 1 ? 's' : ''}`} />
+                  )}
+                </div>
+              </GlancePanel>
+
+              {/* Secondary: tab-filtered signing cards */}
+              <div style={{ flex: '2 1 320px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div role="tablist" aria-label="Filter signings" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  {(['my', 'rival', 'surprise'] as SigningFilter[]).map((f) => {
+                    const active = filter === f;
+                    return (
+                      <button
+                        key={f}
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => setFilter(f)}
+                        style={{
+                          background: active ? '#22d3ee' : 'transparent',
+                          color: active ? '#0f172a' : '#94a3b8',
+                          border: `1px solid ${active ? '#22d3ee' : '#334155'}`,
+                          borderRadius: '999px',
+                          padding: '0.3rem 0.75rem',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          letterSpacing: '0.04em',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {FILTER_LABELS[f]} <span style={{ opacity: 0.7 }}>({counts[f]})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                  {FILTER_LABELS[filter]} &middot; sorted by OVR
+                </div>
+
+                {visible.length === 0 ? (
+                  <div
                     style={{
-                      background: active ? '#22d3ee' : 'transparent',
-                      color: active ? '#0f172a' : '#94a3b8',
-                      border: `1px solid ${active ? '#22d3ee' : '#334155'}`,
-                      borderRadius: '999px',
-                      padding: '0.3rem 0.75rem',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      letterSpacing: '0.04em',
-                      cursor: 'pointer',
+                      border: '1px dashed #334155',
+                      borderRadius: '8px',
+                      padding: '1.5rem',
+                      color: '#64748b',
+                      textAlign: 'center',
+                      fontSize: '0.85rem',
                     }}
                   >
-                    {FILTER_LABELS[f]} <span style={{ opacity: 0.7 }}>({counts[f]})</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div style={{ fontSize: '0.7rem', color: '#64748b', textAlign: 'center' }}>
-              {signedCount}/{signingLimit} of your slots used &middot; sorted by OVR
-            </div>
-
-            {visible.length === 0 ? (
-              <div
-                style={{
-                  border: '1px dashed #334155',
-                  borderRadius: '8px',
-                  padding: '1.5rem',
-                  color: '#64748b',
-                  textAlign: 'center',
-                  fontSize: '0.85rem',
-                }}
-              >
-                {FILTER_EMPTY[filter]}
+                    {FILTER_EMPTY[filter]}
+                  </div>
+                ) : (
+                  <ul role="list" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                    {visible.map((card) => (
+                      <li key={card.player_id}>
+                        <SigningCardView card={card} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-            ) : (
-              visible.map((card) => <SigningCardView key={card.player_id} card={card} />)
-            )}
+            </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '480px', margin: '0 auto' }}>
-            <div
-              className="fade-in"
-              style={{
-                border: `2px solid ${playerSigning ? '#22d3ee' : '#334155'}`,
-                borderRadius: '8px',
-                padding: '1.25rem',
-                background: playerSigning ? '#083344' : '#0f172a',
-              }}
-            >
-              <div style={{ fontSize: '0.65rem', color: playerSigning ? '#22d3ee' : '#94a3b8', fontWeight: 700, letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
-                {summaryLabel}
-              </div>
-              <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#e2e8f0', marginBottom: '0.25rem' }}>
-                {summaryTitle}
-              </div>
-              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{summaryDetail}</div>
-            </div>
-            {otherSignings.map((s: OffseasonSigning, i: number) => (
-              <div
-                key={i}
-                className="fade-in"
-                style={{
-                  border: '1px solid #334155',
-                  borderRadius: '6px',
-                  padding: '0.75rem 1rem',
-                  background: '#0f172a',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div>
-                  <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{s.name}</span>
-                  <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '0.5rem' }}>to {s.club_name}</span>
-                </div>
-                <span style={{ color: '#64748b', fontSize: '0.75rem' }}>OVR {s.ovr}</span>
-              </div>
-            ))}
-          </div>
+          <LegacyClassReport
+            playerSigning={playerSigning}
+            otherSignings={otherSignings}
+            signedCount={signedCount}
+            signingLimit={signingLimit}
+            body={beat.body}
+          />
         )
       }
       onComplete={onComplete}
-      actionDescription="Review the commitments, then continue the offseason sequence."
+      actionDescription="Class Report complete — continue the offseason sequence."
       isActing={acting}
     />
   );
