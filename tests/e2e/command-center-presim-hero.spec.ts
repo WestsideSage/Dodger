@@ -31,6 +31,13 @@ test('Command Center pre-sim keeps the core dashboard surfaces visible', async (
 
   await expect(page.getByTestId('plan-readout')).toBeVisible();
 
+  // D3: scout is a deliberate-action gate that starts UNMET on a fresh save and
+  // is cleared only by a real scout action — so clear it before asserting the
+  // reviewed title (mirrors command-center-aftermath / official-rules-replay).
+  if (await page.getByTestId('scout-opponent').isVisible().catch(() => false)) {
+    await page.getByTestId('scout-opponent').click();
+  }
+
   const scoutChip = page.getByTestId('readiness-panel').locator('.command-readiness-chips .cc-gate').first();
   await expect(scoutChip).toHaveAttribute(
     'title',
