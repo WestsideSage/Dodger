@@ -13,6 +13,7 @@ import { TacticalSummaryCard } from './match-week/aftermath/TacticalSummaryCard'
 import { PrimaryFactorCard } from './match-week/aftermath/PrimaryFactorCard';
 import { PreSimDashboard } from './match-week/command-center/PreSimDashboard';
 import { SeasonPreview } from './match-week/command-center/SeasonPreview';
+import { formatScoreline } from './match-week/matchResult';
 import { useState, useEffect } from 'react';
 import type { Aftermath, CommandCenterResponse, CommandCenterSimResponse, MatchReplayResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
@@ -47,22 +48,98 @@ function buildContextLine(
   playerClubId: string | undefined,
 ): string | undefined {
   if (!matchCard) return undefined;
+  // Official matches score on game points (set wins). The legacy survivor count
+  // is not the result and, on a multi-game official match, can contradict it
+  // (e.g. a 0-0 foam draw whose box-score reads 0-3 survivors). Always phrase
+  // the line in the scoring model's own scale via the shared scoreline.
+  const scoreline = formatScoreline(matchCard);
+  const isOfficial = scoreline.isOfficial;
+  const homeScore = scoreline.home.value;
+  const awayScore = scoreline.away.value;
+  const sweepNoun = isOfficial ? 'sweep' : 'shutout';
   if (!matchCard.winner_club_id) {
-    return `A drawn result: ${matchCard.home_survivors}–${matchCard.away_survivors}.`;
+    return isOfficial
+      ? `A drawn result: ${homeScore}–${awayScore} on game points.`
+      : `A drawn result: ${homeScore}–${awayScore}.`;
   }
   const homeWins = matchCard.winner_club_id === matchCard.home_club_id;
-  const winnerSurvs = homeWins ? matchCard.home_survivors : matchCard.away_survivors;
-  const loserSurvs = homeWins ? matchCard.away_survivors : matchCard.home_survivors;
+  const winnerScore = homeWins ? homeScore : awayScore;
+  const loserScore = homeWins ? awayScore : homeScore;
   const playerWon = playerClubId != null && matchCard.winner_club_id === playerClubId;
   if (playerWon) {
-    if (loserSurvs === 0) return `A ${winnerSurvs}–0 shutout that leaves no room for excuses.`;
-    if (winnerSurvs >= loserSurvs * 2) return `A dominant ${winnerSurvs}–${loserSurvs} win.`;
-    return `A hard-fought ${winnerSurvs}–${loserSurvs} win.`;
+    if (loserScore === 0) return `A ${winnerScore}–0 ${sweepNoun} that leaves no room for excuses.`;
+    if (winnerScore >= loserScore * 2) return `A dominant ${winnerScore}–${loserScore} win.`;
+    return `A hard-fought ${winnerScore}–${loserScore} win.`;
   }
-  // Player perspective on a loss: their survivors first.
-  if (loserSurvs === 0) return `A ${loserSurvs}–${winnerSurvs} shutout loss with nowhere to hide.`;
-  if (winnerSurvs >= loserSurvs * 2) return `A chastening ${loserSurvs}–${winnerSurvs} defeat.`;
-  return `A narrow ${loserSurvs}–${winnerSurvs} defeat.`;
+  // Player perspective on a loss: their score first.
+  if (loserScore === 0) return `A ${loserScore}–${winnerScore} ${sweepNoun} loss with nowhere to hide.`;
+  if (winnerScore >= loserScore * 2) return `A chastening ${loserScore}–${winnerScore} defeat.`;
+  return `A narrow ${loserScore}–${winnerScore} defeat.`;
+}
+
+type AftermathParagraph = Aftermath['body'][number];
+
+// Groups the audience-tagged body paragraphs (YOU / THEM / RESULT) into
+// distinct lanes instead of one undifferentiated flat list, so the tactical
+// narrative reads as "your story / their story / the result" (Brief 4.4,
+// criterion #4).
+function AftermathBody({ body }: { body: AftermathParagraph[] }) {
+  const groups = [
+    { audience: 'you' as const, label: 'YOUR SIDE', color: '#22d3ee', rgb: '34,211,238' },
+    { audience: 'them' as const, label: 'THEIR SIDE', color: '#f59e0b', rgb: '245,158,11' },
+    { audience: 'result' as const, label: 'THE RESULT', color: '#10b981', rgb: '16,185,129' },
+  ];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginBottom: '1.5rem' }}>
+      {groups.map((group) => {
+        const items = body.filter((p) => p.audience === group.audience);
+        if (items.length === 0) return null;
+        return (
+          <section
+            key={group.audience}
+            aria-label={group.label}
+            style={{
+              borderLeft: `3px solid ${group.color}`,
+              background: `linear-gradient(90deg, rgba(${group.rgb},0.06), rgba(8,16,31,0) 70%)`,
+              border: '1px solid #1e293b',
+              borderLeftWidth: '3px',
+              borderRadius: '6px',
+              padding: '0.6rem 0.85rem',
+            }}
+          >
+            <p
+              style={{
+                margin: '0 0 0.4rem',
+                fontSize: '0.6rem',
+                fontFamily: 'var(--font-mono-data)',
+                fontWeight: 900,
+                letterSpacing: '0.1em',
+                color: group.color,
+              }}
+            >
+              {group.label}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+              {items.map((paragraph, index) => (
+                <p
+                  key={`${group.audience}-${index}-${paragraph.text.slice(0, 12)}`}
+                  data-testid="aftermath-body-paragraph"
+                  style={{
+                    margin: 0,
+                    color: '#cbd5e1',
+                    lineHeight: 1.5,
+                    fontSize: '0.82rem',
+                  }}
+                >
+                  {paragraph.text}
+                </p>
+              ))}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
 }
 
 export function MatchWeek({
@@ -326,6 +403,7 @@ export function MatchWeek({
     }
 
     const { aftermath } = activeResult;
+    const isBye = Boolean(aftermath.bye_recovery);
     const matchId = activeResult.dashboard.match_id;
     const replayForMatch = replayData?.match_id === matchId ? replayData : null;
     const matchCardNames = aftermath.match_card
@@ -344,11 +422,71 @@ export function MatchWeek({
               text={aftermath.headline}
               week={activeResult.dashboard.week}
               stage={activeResult.dashboard.stage}
-              contextLine={buildContextLine(
-                aftermath.match_card,
-                data?.player_club_id ?? activeResult.plan.player_club_id,
-              )}
+              kicker={isBye ? 'Bye Week' : undefined}
+              subLabel={isBye ? 'Rest Report' : undefined}
+              accent={isBye ? '#22d3ee' : undefined}
+              contextLine={
+                isBye
+                  ? undefined
+                  : buildContextLine(
+                      aftermath.match_card,
+                      data?.player_club_id ?? activeResult.plan.player_club_id,
+                    )
+              }
             />
+          </div>
+        )}
+
+        {/* Bye week: lead with the rest/recovery story — which players got
+            fresher legs — instead of a match the squad never played
+            (Brief 4.3, primary hierarchy + criterion #2). */}
+        {revealStage >= 1 && isBye && aftermath.bye_recovery && (
+          <div className="command-reveal">
+            <section
+              aria-labelledby="bye-recovery-heading"
+              style={{
+                border: '1px solid #1e293b',
+                borderLeft: '3px solid #22d3ee',
+                borderRadius: '8px',
+                background: 'linear-gradient(90deg, rgba(34,211,238,0.06), rgba(8,16,31,0) 60%)',
+                padding: '1rem 1.1rem',
+                marginBottom: '1.25rem',
+              }}
+            >
+              <p className="dm-kicker" style={{ margin: 0, color: '#22d3ee' }}>Squad Rested</p>
+              <h3 id="bye-recovery-heading" style={{ margin: '0.25rem 0 0', color: '#f1f5f9', fontSize: '1.15rem', fontWeight: 800 }}>
+                {aftermath.bye_recovery.summary}
+              </h3>
+              {aftermath.bye_recovery.players.length > 0 && (
+                <>
+                  <p style={{ margin: '0.7rem 0 0.4rem', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#64748b' }}>
+                    Recovered this week
+                  </p>
+                  <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    {aftermath.bye_recovery.players.map((name) => (
+                      <li
+                        key={name}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          padding: '0.3rem 0.6rem',
+                          borderRadius: '999px',
+                          border: '1px solid rgba(34,211,238,0.35)',
+                          background: 'rgba(34,211,238,0.08)',
+                          color: '#cbd5e1',
+                          fontSize: '0.78rem',
+                          fontWeight: 600,
+                        }}
+                      >
+                        <span aria-hidden="true" style={{ color: '#22d3ee' }}>✦</span>
+                        {name}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </section>
           </div>
         )}
 
@@ -365,7 +503,10 @@ export function MatchWeek({
               homeGamePoints={aftermath.match_card.home_game_points}
               awayGamePoints={aftermath.match_card.away_game_points}
             />
-            {aftermath.verdict && (
+            {/* The verdict is a fallback explanation only — when primary_factor
+                is present it is the canonical "why", so the verdict is not
+                rendered at full weight alongside it (Brief 4.4, criterion #6). */}
+            {!aftermath.primary_factor && aftermath.verdict && (
               <p
                 data-testid="match-verdict"
                 style={{
@@ -392,59 +533,12 @@ export function MatchWeek({
             )}
             {aftermath.primary_factor && <PrimaryFactorCard factor={aftermath.primary_factor} />}
             {aftermath.body.length > 0 && (
-              <div style={{ display: 'grid', gap: '0.65rem', marginBottom: '1.5rem' }}>
-                {aftermath.body.map((paragraph, index) => {
-                  const label = paragraph.audience === 'you' ? 'YOU' : paragraph.audience === 'them' ? 'THEM' : 'RESULT';
-                  const tone = paragraph.audience === 'you' ? 'accent' : paragraph.audience === 'them' ? 'warning' : 'success';
-
-                  const badgeColor = tone === 'accent' ? '#22d3ee' : tone === 'warning' ? '#f59e0b' : '#10b981';
-                  const badgeBg = tone === 'accent' ? 'rgba(34,211,238,0.1)' : tone === 'warning' ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)';
-                  const badgeBorder = tone === 'accent' ? 'rgba(34,211,238,0.3)' : tone === 'warning' ? 'rgba(245,158,11,0.3)' : 'rgba(16,185,129,0.3)';
-
-                  return (
-                    <p
-                      key={`${index}-${paragraph.text.slice(0, 12)}`}
-                      data-testid="aftermath-body-paragraph"
-                      style={{
-                        margin: 0,
-                        padding: '0.7rem 0.85rem',
-                        background: '#08101f',
-                        border: '1px solid #1e293b',
-                        borderRadius: '4px',
-                        color: '#cbd5e1',
-                        lineHeight: 1.5,
-                        fontSize: '0.82rem',
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '0.75rem',
-                      }}
-                    >
-                      <span style={{
-                        fontSize: '0.625rem',
-                        fontFamily: 'var(--font-mono-data)',
-                        fontWeight: 900,
-                        letterSpacing: '0.05em',
-                        color: badgeColor,
-                        background: badgeBg,
-                        border: `1px solid ${badgeBorder}`,
-                        padding: '0.1rem 0.35rem',
-                        borderRadius: '3px',
-                        flexShrink: 0,
-                        marginTop: '0.1rem',
-                        userSelect: 'none',
-                      }}>
-                        {label}
-                      </span>
-                      <span style={{ flex: 1 }}>{paragraph.text}</span>
-                    </p>
-                  );
-                })}
-              </div>
+              <AftermathBody body={aftermath.body} />
             )}
           </div>
         )}
 
-        {revealStage >= 2 && (
+        {revealStage >= 2 && !isBye && (
           <div className="command-reveal">
             <div className="command-analysis-row">
               <TacticalSummaryCard
@@ -468,12 +562,17 @@ export function MatchWeek({
               standingsShift={aftermath.standings_shift}
               recruitReactions={aftermath.recruit_reactions}
             />
-            <ReplayTimeline
-              replay={replayForMatch}
-              lanes={activeResult.dashboard.lanes}
-              narrativeBeats={aftermath.narrative_beats}
-              isBye={Boolean(aftermath.bye_recovery)}
-            />
+            {/* The replay timeline is a match-engine drill-down; a bye has no
+                beats or moments, so it's skipped rather than rendered as an
+                empty collapsed shell (Brief 4.3, criterion #1). */}
+            {!isBye && (
+              <ReplayTimeline
+                replay={replayForMatch}
+                lanes={activeResult.dashboard.lanes}
+                narrativeBeats={aftermath.narrative_beats}
+                isBye={false}
+              />
+            )}
             {aftermath.improvement_panel && aftermath.improvement_panel.length > 0 && (
               <NextBestImprovementPanel panel={aftermath.improvement_panel} />
             )}
