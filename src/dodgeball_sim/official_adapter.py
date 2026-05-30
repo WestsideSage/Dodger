@@ -14,6 +14,7 @@ from typing import Any, Dict, Tuple
 
 from .engine import MatchResult
 from .models import MatchSetup
+from .moment_events import MomentEvent
 from .official_engine import run_autonomous_match
 from .official_events import OfficialEvent
 from .official_persistence import replay_state_to_dict
@@ -39,6 +40,13 @@ class OfficialMatchResult:
     ruleset_selection: str
     official_metadata: Dict[str, Any]
     replay_state: OfficialReplayState
+    moment_events: Tuple[MomentEvent, ...] = ()
+
+
+def _moment_to_dict(moment: MomentEvent) -> Dict[str, Any]:
+    payload = asdict(moment)
+    payload["kind"] = moment.kind.value
+    return payload
 
 
 class OfficialEngineAdapter:
@@ -94,6 +102,7 @@ class OfficialEngineAdapter:
             ruleset_selection=self.selection.value,
             official_metadata=asdict(match_result.official_match_score),
             replay_state=match_result.replay_state,
+            moment_events=match_result.moment_events,
         )
 
     def run(self, setup: MatchSetup, *, seed: int, match_id: str | None = None) -> OfficialMatchResult:
@@ -117,6 +126,19 @@ class OfficialEngineAdapter:
                 match_events[0],
                 context={**match_events[0].context, "official_state": official_state},
             )
+            # Phase 4b: carry the engine's recognition moments on the match_end
+            # event context (same shape the rec adapter uses) so the Tier-1
+            # moment beats, tier1 voice, and V13 highlights keep working once
+            # new careers default to the foam-official engine. Without this the
+            # set-scoring default would silently strip the moment layer.
+            moment_payload = [_moment_to_dict(moment) for moment in raw.moment_events]
+            for index in range(len(match_events) - 1, -1, -1):
+                if match_events[index].event_type == "match_end":
+                    match_events[index] = replace(
+                        match_events[index],
+                        context={**match_events[index].context, "moment_events": moment_payload},
+                    )
+                    break
         return MatchResult(
             events=tuple(match_events),
             winner_team_id=raw.winner_team_id,

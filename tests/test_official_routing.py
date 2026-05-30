@@ -60,6 +60,29 @@ def test_official_adapter_run_generic_returns_match_result():
     assert "teams" in mr.box_score
 
 
+def test_official_run_generic_carries_moments_to_aftermath_payload():
+    """Phase 4b coupling guard: the official engine's recognition moments must
+    survive run_generic onto the match_end event context in the shape the
+    aftermath reader expects — otherwise the foam-official default would strip
+    the Tier-1 moment/voice/highlight layer."""
+    from dodgeball_sim.aftermath_context import moment_events_from_payload
+
+    adapter = OfficialEngineAdapter(RulesetSelection.OFFICIAL_FOAM)
+    setup = MatchSetup(team_a=_team("A"), team_b=_team("B"))
+
+    seen_kinds: set[str] = set()
+    for seed in range(8):
+        mr = adapter.run_generic(setup, seed=seed)
+        end_ctx = mr.events[-1].context
+        assert "moment_events" in end_ctx
+        parsed = moment_events_from_payload(end_ctx["moment_events"])
+        for moment in parsed:
+            seen_kinds.add(moment.kind.value)
+    # Catches that return a teammate are common, so at least DRAMATIC_CATCH must
+    # reach the aftermath payload across a handful of matches.
+    assert "dramatic_catch" in seen_kinds, seen_kinds
+
+
 def test_official_adapter_deterministic_for_same_seed():
     adapter = OfficialEngineAdapter(RulesetSelection.OFFICIAL_FOAM)
     setup = MatchSetup(team_a=_team("A"), team_b=_team("B"))
