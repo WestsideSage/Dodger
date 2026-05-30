@@ -17,20 +17,21 @@ export function SeasonPreview({
   onContinue: () => void;
   onSkipChange: (skipped: boolean) => void;
 }) {
-  const stat = (label: string, value: string) => (
+  const stat = (label: string, value: string, accent: string) => (
     <div
       style={{
         flex: '1 1 0',
-        minWidth: '8rem',
+        minWidth: '6.5rem',
         background: '#0b1220',
         border: '1px solid #1e293b',
+        borderTop: `2px solid ${accent}`,
         borderRadius: '6px',
-        padding: '0.75rem 0.85rem',
+        padding: '0.7rem 0.8rem',
       }}
     >
-      <div
+      <dt
         style={{
-          fontSize: '0.6rem',
+          fontSize: '0.58rem',
           fontWeight: 800,
           letterSpacing: '0.08em',
           color: '#64748b',
@@ -38,18 +39,25 @@ export function SeasonPreview({
         }}
       >
         {label}
-      </div>
-      <div style={{ color: '#f1f5f9', fontSize: '1.1rem', fontWeight: 800, marginTop: '0.25rem' }}>{value}</div>
+      </dt>
+      <dd style={{ color: '#f1f5f9', fontSize: '1.1rem', fontWeight: 800, margin: '0.25rem 0 0' }}>{value}</dd>
     </div>
   );
+
+  // Season-shape timeline: ticks for each regular-season week, the bye marked
+  // amber, then the playoff cut flag — turns three isolated numbers into a
+  // shape the player can internalize (Brief 4.2, criterion #1, #7).
+  const weeks = Array.from({ length: preview.regular_season_weeks }, (_, i) => i + 1);
+  const byeWeek = preview.bye_week;
 
   return (
     <section
       data-testid="season-preview"
+      aria-labelledby="season-preview-heading"
       style={{
         border: '1px solid #1e293b',
-        background: '#08101f',
-        borderRadius: '8px',
+        background: 'linear-gradient(180deg, #0a1426 0%, #08101f 45%)',
+        borderRadius: '10px',
         padding: '1.25rem',
         margin: '1rem 0',
         display: 'flex',
@@ -62,23 +70,89 @@ export function SeasonPreview({
           style={{
             fontSize: '0.65rem',
             fontWeight: 900,
-            letterSpacing: '0.1em',
+            letterSpacing: '0.14em',
             color: '#38bdf8',
             textTransform: 'uppercase',
           }}
         >
           Season Preview
         </div>
-        <div style={{ color: '#f1f5f9', fontSize: '1.25rem', fontWeight: 800, marginTop: '0.3rem' }}>
-          {preview.top_goal}
+        <h2 id="season-preview-heading" style={{ color: '#f8fafc', fontSize: '1.4rem', fontWeight: 900, margin: '0.3rem 0 0' }}>
+          Your season ahead
+        </h2>
+      </div>
+
+      {/* Season-shape strip */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: '2.2rem' }} aria-hidden="true">
+          {weeks.map((w) => {
+            const isBye = byeWeek === w;
+            return (
+              <div
+                key={w}
+                style={{
+                  flex: '1 1 0',
+                  minWidth: 0,
+                  height: isBye ? '100%' : '55%',
+                  borderRadius: '2px',
+                  background: isBye ? '#f59e0b' : '#1e293b',
+                  alignSelf: 'flex-end',
+                }}
+                title={isBye ? `Bye — Week ${w}` : `Week ${w}`}
+              />
+            );
+          })}
+          <div
+            style={{
+              flex: '0 0 auto',
+              marginLeft: '4px',
+              alignSelf: 'stretch',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '0 0.5rem',
+              borderRadius: '3px',
+              background: 'rgba(56,189,248,0.14)',
+              border: '1px solid rgba(56,189,248,0.4)',
+              color: '#7dd3fc',
+              fontSize: '0.6rem',
+              fontWeight: 800,
+              letterSpacing: '0.04em',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            CUT
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.3rem', fontSize: '0.62rem', color: '#64748b' }}>
+          <span>Week 1</span>
+          <span style={{ color: '#f59e0b', fontWeight: 700 }}>{preview.bye_text}</span>
+          <span>Playoffs</span>
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.65rem' }}>
-        {stat('Regular Season', `${preview.regular_season_weeks} weeks`)}
-        {stat('Your Bye', preview.bye_text)}
-        {stat('Playoff Cut', `Top ${preview.playoff_cut} of ${preview.total_clubs}`)}
-      </div>
+      <dl style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', margin: 0 }}>
+        {stat('Regular Season', `${preview.regular_season_weeks} weeks`, '#38bdf8')}
+        {stat('Your Bye', preview.bye_text, '#f59e0b')}
+        {stat('Playoff Cut', `Top ${preview.playoff_cut} of ${preview.total_clubs}`, '#22c55e')}
+      </dl>
+
+      {/* Orientation line — the goal reframed as guidance under the facts, not a
+          headline that duplicates the cut tile (Brief 4.2, hierarchy). */}
+      <p
+        style={{
+          margin: 0,
+          padding: '0.6rem 0.75rem',
+          borderRadius: '6px',
+          background: 'rgba(34,197,94,0.08)',
+          borderLeft: '3px solid #22c55e',
+          color: '#d1fae5',
+          fontSize: '0.85rem',
+          fontWeight: 600,
+          lineHeight: 1.45,
+        }}
+      >
+        {preview.top_goal}
+      </p>
 
       {(preview.strength || preview.weakness) && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.65rem' }}>
@@ -125,15 +199,10 @@ export function SeasonPreview({
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#94a3b8', fontSize: '0.8rem' }}>
-          <input
-            type="checkbox"
-            checked={preview.skipped}
-            onChange={(event) => onSkipChange(event.target.checked)}
-          />
-          Skip this preview in future seasons
-        </label>
+      {/* Primary CTA gets its own full-width row; the skip preference is
+          demoted to a quiet line below a divider so it can't be mistaken for
+          the continue action (Brief 4.2, criterion #5). */}
+      <div style={{ borderTop: '1px solid #1e293b', paddingTop: '0.9rem', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
         <button
           type="button"
           onClick={onContinue}
@@ -141,14 +210,24 @@ export function SeasonPreview({
             background: '#38bdf8',
             color: '#04111f',
             border: 'none',
-            borderRadius: '6px',
-            padding: '0.55rem 1.4rem',
-            fontWeight: 800,
+            borderRadius: '8px',
+            padding: '0.7rem 1.4rem',
+            fontWeight: 900,
+            fontSize: '0.92rem',
             cursor: 'pointer',
+            width: '100%',
           }}
         >
-          To the Command Center
+          To the Command Center →
         </button>
+        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem', color: '#64748b', fontSize: '0.74rem', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={preview.skipped}
+            onChange={(event) => onSkipChange(event.target.checked)}
+          />
+          Skip this preview in future seasons
+        </label>
       </div>
     </section>
   );
