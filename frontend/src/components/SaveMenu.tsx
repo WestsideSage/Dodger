@@ -90,7 +90,10 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
   const [newName, setNewName] = useState('');
   const [newClubId, setNewClubId] = useState('aurora');
   // V11: official-ruleset opt-in at career creation only.
-  const [rulesetSelection, setRulesetSelection] = useState<string>('generic');
+  // Phase 4b (D4): new careers default to the foam-official ruleset (real
+  // set-based scoring + the retuned, OVR-rewarding official engine). Generic
+  // stays selectable; existing legacy saves are unaffected.
+  const [rulesetSelection, setRulesetSelection] = useState<string>('official_foam');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   

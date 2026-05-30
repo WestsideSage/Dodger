@@ -172,6 +172,67 @@ def test_no_evidence_falls_back_to_variance():
     assert exp.primary_factor.code == UPSET_VARIANCE
 
 
+def test_decisive_set_loss_with_no_factor_is_not_inconclusive():
+    # 4.4: a 0-4 set loss with a small survivor margin and no standout tactical
+    # factor must NOT read as "stayed close / no one thing to fix"; the set
+    # margin makes it decisive, so the copy says the result wasn't close.
+    exp = _base(
+        result="Loss",
+        player_survivors=3,
+        opponent_survivors=4,
+        player_catches=0,
+        opponent_catches=0,
+        point_margin=4,
+    )
+    assert exp.primary_factor.code == UPSET_VARIANCE
+    sentence = exp.primary_factor.sentence.lower()
+    assert "stayed close" not in sentence
+    assert "wasn't close" in sentence or "outclassed" in exp.primary_factor.title.lower()
+
+
+def test_decisive_set_loss_with_a_weak_factor_surfaces_it():
+    # A decisive result must not bury a real (if weak) cause under "variance":
+    # a catch edge in a 0-4 loss is surfaced rather than shrugged off.
+    exp = _base(
+        result="Loss",
+        player_survivors=3,
+        opponent_survivors=4,
+        player_catches=0,
+        opponent_catches=1,
+        point_margin=4,
+    )
+    assert exp.primary_factor.code != UPSET_VARIANCE
+
+
+def test_decisive_set_win_is_not_a_coin_flip():
+    exp = _base(
+        result="Win",
+        player_survivors=4,
+        opponent_survivors=3,
+        player_catches=0,
+        opponent_catches=0,
+        point_margin=6,
+    )
+    assert exp.primary_factor.code == UPSET_VARIANCE
+    sentence = exp.primary_factor.sentence.lower()
+    assert "came down to the margins" not in sentence
+    assert "held the edge" in sentence or "controlled" in exp.primary_factor.title.lower()
+
+
+def test_generic_match_without_point_margin_unchanged():
+    # No official metadata -> point_margin 0 -> the close-match soft fallback
+    # is preserved for the survivor-scored generic engine.
+    exp = _base(
+        result="Loss",
+        player_survivors=3,
+        opponent_survivors=4,
+        player_catches=0,
+        opponent_catches=1,
+    )
+    assert exp.primary_factor.code == UPSET_VARIANCE
+    assert "stayed close" in exp.primary_factor.sentence.lower()
+
+
 def test_deterministic_repeated_calls():
     gassed = _Gassed(tick=90, player_id="p1", team_id=PLAYER, fatigue_pct=0.95)
     a = _base(result="Loss", opponent_catches=4, moment_events=(gassed,))

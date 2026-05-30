@@ -815,6 +815,15 @@ def _build_aftermath(
                     if meta.get("is_liability")
                     and pid in {str(p.get("id", "")) for p in snapshots.get(player_club_id, [])}
                 ]
+                # 4.4: for official set-based matches, the game-point gap is the
+                # decisive scoreline — feed it so a 0-4 / 6-0 result is never
+                # explained as "inconclusive / stayed close". Generic matches
+                # carry no official_metadata, so point_margin stays 0.
+                official_meta = getattr(record.result, "official_metadata", None) or {}
+                point_margin = abs(
+                    int(official_meta.get("team_a_game_points", 0))
+                    - int(official_meta.get("team_b_game_points", 0))
+                )
                 explanation = derive_match_explanation(
                     result=result_pf,
                     player_survivors=int(box[player_club_id]["totals"]["living"]),
@@ -829,6 +838,7 @@ def _build_aftermath(
                     final_tick=int(getattr(record.result, "final_tick", 0) or 0),
                     name_map=name_map_pf,
                     liabilities=liabilities,
+                    point_margin=point_margin,
                 )
                 aftermath["primary_factor"] = explanation.primary_factor.as_dict()
         except Exception:

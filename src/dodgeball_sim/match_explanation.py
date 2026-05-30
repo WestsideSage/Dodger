@@ -201,6 +201,7 @@ def derive_match_explanation(
     final_tick: int = 0,
     name_map: Mapping[str, str] | None = None,
     liabilities: Sequence[Mapping[str, Any]] = (),
+    point_margin: int = 0,
 ) -> MatchExplanation:
     """Rank supported factors and return the dominant one (or a soft fallback).
 
@@ -273,13 +274,21 @@ def derive_match_explanation(
     # one survivor). A weak-but-real factor in a non-close result still beats a
     # blank "variance" shrug, and its low confidence already softens the copy.
     margin = abs(player_survivors - opponent_survivors)
+    # 4.4 fix: for set-based official matches the survivor margin can be small
+    # even when the match was a decisive 0-4 / 6-0 on game points. Treat a 2+
+    # game-point gap as decisive so a blowout never falls into the "stayed
+    # close / variance / inconclusive" copy. point_margin defaults to 0, so
+    # generic (survivor-scored) matches are unaffected.
+    decisive = margin > 1 or point_margin >= 2
     top = candidates[0] if candidates else None
-    use_fallback = top is None or (top.weight < _MIN_DOMINANT_WEIGHT and margin <= 1)
+    use_fallback = top is None or (top.weight < _MIN_DOMINANT_WEIGHT and not decisive)
     if use_fallback:
         primary = _upset_variance_factor(
             result=result,
             player_survivors=player_survivors,
             opponent_survivors=opponent_survivors,
+            decisive=decisive,
+            point_margin=point_margin,
         )
         considered = tuple([c.factor for c in candidates[:3]])
         return MatchExplanation(primary_factor=primary, considered=considered)
@@ -578,9 +587,45 @@ def _upset_variance_factor(
     result: str,
     player_survivors: int,
     opponent_survivors: int,
+    decisive: bool = False,
+    point_margin: int = 0,
 ) -> PrimaryFactor:
     margin = abs(player_survivors - opponent_survivors)
-    chips = (f"Survivors {player_survivors}-{opponent_survivors}", f"Margin {margin}")
+    chips: tuple[str, ...] = (
+        f"Survivors {player_survivors}-{opponent_survivors}",
+        f"Margin {margin}",
+    )
+    if decisive:
+        # 4.4 fix: a 0-4 / 6-0 set result is NOT "inconclusive". When the
+        # scoreline was decisive but no single tactical factor stood out, say
+        # so honestly instead of claiming the match "stayed close".
+        if point_margin > 0:
+            chips = chips + (f"Set margin {point_margin}",)
+        if result == "Win":
+            title = "Controlled across the sets"
+            sentence = (
+                "No single moment decided it — your side simply held the edge "
+                "across the sets and closed out a clear result."
+            )
+        elif result == "Loss":
+            title = "Outclassed across the sets"
+            sentence = (
+                "No single moment decided it — you were edged in set after set. "
+                "The result wasn't close, so the fix is squad strength, not luck."
+            )
+        else:
+            title = "No dominant factor"
+            sentence = (
+                "Honors even with no dominant factor — the two sides traded "
+                "sets and neither pulled clear."
+            )
+        return PrimaryFactor(
+            code=UPSET_VARIANCE,
+            title=title,
+            sentence=sentence,
+            confidence=CONFIDENCE_MEDIUM,
+            evidence_chips=chips,
+        )
     if result == "Win":
         sentence = (
             "No single factor dominated — this one came down to the margins, "
