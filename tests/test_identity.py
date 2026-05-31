@@ -29,7 +29,7 @@ def test_classify_archetype_detects_accuracy_driven_clutch_player():
         traits=PlayerTraits(potential=85, growth_curve="steady", consistency=0.61, pressure=0.91),
     )
 
-    assert classify_archetype(player) == "Thrower"
+    assert classify_archetype(player) == "Sharpshooter"
 
 
 def test_classify_archetype_detects_catch_specialist():
@@ -47,7 +47,7 @@ def test_classify_archetype_detects_catch_specialist():
         traits=PlayerTraits(potential=80, growth_curve="steady", consistency=0.88, pressure=0.42),
     )
 
-    assert classify_archetype(player) == "Catcher"
+    assert classify_archetype(player) == "Net Specialist"
 
 
 def test_generate_nickname_is_seeded_by_caller_rng():
@@ -84,8 +84,8 @@ def test_build_identity_profile_returns_title_nickname_and_top_attributes():
 
     assert profile.player_id == "anchor"
     assert profile.full_name == "Tess Calder"
-    assert profile.archetype == "Catcher / Ball Hawk"
-    assert profile.title == "Catcher / Ball Hawk"
+    assert profile.archetype == "Possession Specialist"
+    assert profile.title == "Possession Specialist"
     assert profile.strongest_attribute == "Stamina"
     assert profile.secondary_attribute == "Catch"
     assert profile.nickname

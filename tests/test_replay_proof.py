@@ -106,7 +106,7 @@ def test_replay_proof_uses_narrative_pack_language_for_saved_context():
     assert any("synchronized attack triggered" in item.lower() for item in event["tactic_context"]["items"])
     assert any("High fatigue" in item for item in event["fatigue"]["items"])
     assert event["liability_context"]["items"] == [
-        "Thrower suffered a liability penalty as a mismatched Captain (Thrower archetype)."
+        "Thrower suffered a liability penalty as a mismatched Captain (Sharpshooter archetype)."
     ]
 
 

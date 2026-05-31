@@ -32,14 +32,14 @@ def test_v6_values_are_gone():
 
 def test_display_name_per_member():
     expected = {
-        PlayerArchetype.THROWER: "Thrower",
-        PlayerArchetype.CATCHER: "Catcher",
+        PlayerArchetype.THROWER: "Sharpshooter",
+        PlayerArchetype.CATCHER: "Net Specialist",
         PlayerArchetype.BALL_HAWK: "Ball Hawk",
-        PlayerArchetype.DODGER_ANCHOR: "Dodger Anchor",
-        PlayerArchetype.THROWER_CATCHER: "Thrower / Catcher",
-        PlayerArchetype.THROWER_DODGER: "Thrower / Dodger",
-        PlayerArchetype.CATCHER_HAWK: "Catcher / Ball Hawk",
-        PlayerArchetype.HAWK_DODGER: "Ball Hawk / Dodger",
+        PlayerArchetype.DODGER_ANCHOR: "Iron Anchor",
+        PlayerArchetype.THROWER_CATCHER: "Two-Way Threat",
+        PlayerArchetype.THROWER_DODGER: "Skirmisher",
+        PlayerArchetype.CATCHER_HAWK: "Possession Specialist",
+        PlayerArchetype.HAWK_DODGER: "Hit-and-Run",
     }
 
     for member, name in expected.items():

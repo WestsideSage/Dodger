@@ -278,15 +278,20 @@ class Team:
         object.__setattr__(self, "players", tuple(self.players))
 
 
+# Single source of truth for player-archetype display names. These are the
+# recruitment "flavor" names, unified across every surface (Recruit Board,
+# Roster, Player Detail, Season Preview, matchup details, offseason, CLI) so an
+# archetype reads the same everywhere. See
+# docs/specs/2026-05-31-archetype-naming-unification-design.md.
 _ARCHETYPE_DISPLAY_NAMES: dict[PlayerArchetype, str] = {
-    PlayerArchetype.THROWER: "Thrower",
-    PlayerArchetype.CATCHER: "Catcher",
+    PlayerArchetype.THROWER: "Sharpshooter",
+    PlayerArchetype.CATCHER: "Net Specialist",
     PlayerArchetype.BALL_HAWK: "Ball Hawk",
-    PlayerArchetype.DODGER_ANCHOR: "Dodger Anchor",
-    PlayerArchetype.THROWER_CATCHER: "Thrower / Catcher",
-    PlayerArchetype.THROWER_DODGER: "Thrower / Dodger",
-    PlayerArchetype.CATCHER_HAWK: "Catcher / Ball Hawk",
-    PlayerArchetype.HAWK_DODGER: "Ball Hawk / Dodger",
+    PlayerArchetype.DODGER_ANCHOR: "Iron Anchor",
+    PlayerArchetype.THROWER_CATCHER: "Two-Way Threat",
+    PlayerArchetype.THROWER_DODGER: "Skirmisher",
+    PlayerArchetype.CATCHER_HAWK: "Possession Specialist",
+    PlayerArchetype.HAWK_DODGER: "Hit-and-Run",
 }
 
 
