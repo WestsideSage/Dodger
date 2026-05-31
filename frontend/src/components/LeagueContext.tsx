@@ -4,18 +4,7 @@ import { useApiResource } from '../hooks/useApiResource';
 import { StatusMessage } from './ui';
 import { PlayoffBracket } from './standings/PlayoffBracket';
 import { ProgramModal } from './dynasty/history/ProgramModal';
-import { TermTip, EmptyState } from '../legibility';
-import type { TermId } from '../legibility';
-
-// Maps classify_club_archetype() output to a TermId. Closed set matches persistence.py.
-const ARCHETYPE_TERM_MAP: Record<string, TermId> = {
-  'Balanced Rebuild': 'program.archetype.balanced_rebuild',
-  'Contender': 'program.archetype.contender',
-  'Development Factory': 'program.archetype.development_factory',
-  'Defensive Specialist': 'program.archetype.defensive_specialist',
-  'Power Throwers': 'program.archetype.power_throwers',
-  'Aging Veterans': 'program.archetype.aging_veterans',
-};
+import { TermTip, EmptyState, CLUB_ARCHETYPE_TERM } from '../legibility';
 
 type RankedStanding = StandingRow & {
   rank: number;
@@ -399,7 +388,7 @@ export function Standings() {
                                 const raw = standing.program_trajectory_label ?? standing.program_archetype ?? '';
                                 const archetype = raw.includes(' · ') ? raw.split(' · ').slice(1).join(' · ') : raw;
                                 if (!archetype) return null;
-                                const termId = ARCHETYPE_TERM_MAP[archetype];
+                                const termId = CLUB_ARCHETYPE_TERM[archetype];
                                 return termId
                                   ? <TermTip term={termId}>{archetype}</TermTip>
                                   : <span>{archetype}</span>;
