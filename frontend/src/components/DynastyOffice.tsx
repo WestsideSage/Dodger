@@ -535,7 +535,16 @@ function StaffTab({
           <div key={`${member.department}-${member.name}`} className="do-staff-card">
             <div className="do-staff-card-head">
               <div>
-                <span className="dm-kicker">{titleizeDepartment(member.department)}</span>
+                {(['staff.training', 'staff.tactics', 'staff.conditioning',
+                   'staff.medical', 'staff.scouting', 'staff.culture'] as const).includes(
+                    `staff.${member.department}` as 'staff.training'
+                  ) ? (
+                  <TermTip term={`staff.${member.department}` as import('../legibility').TermId}>
+                    <span className="dm-kicker">{titleizeDepartment(member.department)}</span>
+                  </TermTip>
+                ) : (
+                  <span className="dm-kicker">{titleizeDepartment(member.department)}</span>
+                )}
                 <p className="name">{member.name}</p>
               </div>
               <div className="rating">
@@ -554,9 +563,21 @@ function StaffTab({
               <div><dt>Facility Sync</dt><dd>{data.staff_market.active_facilities.length > 0 ? data.staff_market.active_facilities[0] : 'None tracked'}</dd></div>
               <div><dt>Recent Moves</dt><dd>{data.staff_market.recent_actions.length}</dd></div>
             </dl>
-            <div className="impact">
-              <span className="lbl">Season Impact</span>
-              <span className="val">{member.effect_summary}</span>
+            <div className="impact" style={{ marginTop: '0.5rem' }}>
+              <span className="lbl" style={{ fontSize: '0.6rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {member.department === 'training' ? 'Development Impact' : 'Program Role'}
+              </span>
+              <span className="val" style={{ fontSize: '0.72rem', color: '#cbd5e1', lineHeight: 1.4 }}>
+                {member.effect_summary}
+              </span>
+              {member.department === 'training' && (member as { training_modifier_pct?: number }).training_modifier_pct !== undefined && (
+                <div style={{ marginTop: '0.35rem' }}>
+                  <ProofChip
+                    label={`+${(member as { training_modifier_pct?: number }).training_modifier_pct}% offseason growth`}
+                    source={`Training OVR ${member.rating_primary} feeds the offseason development formula: modifier = (OVR − 50) / 50 × 15%, clamped at 0. Applied to every player on your roster each offseason.`}
+                  />
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -581,9 +602,10 @@ function StaffTab({
                 </div>
               </div>
             )) : (
-              <div style={{ padding: '1rem 1.2rem', color: '#94a3b8', fontSize: '0.84rem' }}>
-                All tracked departments are staffed right now.
-              </div>
+              <EmptyState
+                title="All roles are filled"
+                body="All tracked department heads are currently hired. Vacancies appear here when a position opens."
+              />
             )}
           </div>
         </div>
@@ -593,16 +615,28 @@ function StaffTab({
             <span className="dm-kicker">Pipeline</span>
             <h3>Candidates</h3>
           </div>
+          <p style={{ fontSize: '0.68rem', color: '#94a3b8', margin: '0 0 0.5rem 0', padding: '0 1.2rem' }}>
+            Candidates are generated each offseason. Hiring immediately replaces the current department head.
+          </p>
           <div className="do-pipe-list">
             {candidates.length > 0 ? candidates.map((candidate) => {
               const isHiring = hiringCandidateId === candidate.candidate_id;
-              const normalizedStage = isHiring ? 'scheduled' : 'available';
+              const normalizedStage = isHiring ? 'hiring' : 'available';
               return (
                 <div key={candidate.candidate_id} className="do-pipe-row">
                   <div className="do-pipe-id">
                     <span className="name">{candidate.name}</span>
-                    <span className="dept">{titleizeDepartment(candidate.department)}</span>
-                    <span className="note">{candidate.effect_lanes.join(' · ') || candidate.voice}</span>
+                    {(['staff.training', 'staff.tactics', 'staff.conditioning',
+                       'staff.medical', 'staff.scouting', 'staff.culture'] as const).includes(
+                        `staff.${candidate.department}` as 'staff.training'
+                      ) ? (
+                      <TermTip term={`staff.${candidate.department}` as import('../legibility').TermId}>
+                        <span className="dept">{titleizeDepartment(candidate.department)}</span>
+                      </TermTip>
+                    ) : (
+                      <span className="dept">{titleizeDepartment(candidate.department)}</span>
+                    )}
+                    <span className="note">{candidate.effect_lanes[0] || candidate.voice}</span>
                   </div>
                   <div className="do-pipe-meta">
                     <span className="rating">{candidate.rating_primary}<small> OVR</small></span>
@@ -613,14 +647,14 @@ function StaffTab({
                       disabled={hiringCandidateId !== null}
                       onClick={() => handleInterview(candidate.candidate_id)}
                     >
-                      {isHiring ? 'Scheduling...' : 'Interview'}
+                      {isHiring ? 'Hiring...' : 'Hire'}
                     </button>
                   </div>
                 </div>
               );
             }) : (
               <div style={{ padding: '1rem 1.2rem', color: '#94a3b8', fontSize: '0.84rem' }}>
-                No live staff candidates are on the board this week. Completed interviews appear in recent staff moves.
+                No live staff candidates are on the board this week. Completed hires appear in recent staff moves.
               </div>
             )}
           </div>
