@@ -1,4 +1,27 @@
+import type { TermId } from '../../../legibility';
+import { TermTip } from '../../../legibility';
 import type { SeasonPreview as SeasonPreviewData } from '../../../types';
+
+// Maps every PlayerArchetype raw key (from models.py) to its legibility TermId.
+// This is a compile-time-complete map: any archetype_key not listed here is a tsc error.
+// If the engine adds a new archetype, add its 'archetype.*' entry to terms.ts first,
+// then add it here.
+const ARCHETYPE_TERM_MAP: Record<string, TermId> = {
+  thrower: 'archetype.thrower',
+  catcher: 'archetype.catcher',
+  ball_hawk: 'archetype.ball_hawk',
+  dodger_anchor: 'archetype.dodger_anchor',
+  thrower_catcher: 'archetype.thrower_catcher',
+  thrower_dodger: 'archetype.thrower_dodger',
+  catcher_hawk: 'archetype.catcher_hawk',
+  hawk_dodger: 'archetype.hawk_dodger',
+} as const;
+
+// Returns a TermId for an archetype_key, or undefined if the key is unmapped
+// (e.g. a future archetype added before terms.ts is updated).
+function archetypeTermId(key: string): TermId | undefined {
+  return ARCHETYPE_TERM_MAP[key] as TermId | undefined;
+}
 
 /**
  * Week 1 orientation screen. Explains season length, bye-week placement,
@@ -17,7 +40,7 @@ export function SeasonPreview({
   onContinue: () => void;
   onSkipChange: (skipped: boolean) => void;
 }) {
-  const stat = (label: string, value: string, accent: string) => (
+  const stat = (label: string, value: string, accent: string, termId?: TermId) => (
     <div
       style={{
         flex: '1 1 0',
@@ -38,11 +61,20 @@ export function SeasonPreview({
           textTransform: 'uppercase',
         }}
       >
-        {label}
+        {termId ? <TermTip term={termId}>{label}</TermTip> : label}
       </dt>
       <dd style={{ color: '#f1f5f9', fontSize: '1.1rem', fontWeight: 800, margin: '0.25rem 0 0' }}>{value}</dd>
     </div>
   );
+
+  const archetypeTip = (key: string, display: string, ovr: number) => {
+    const termId = archetypeTermId(key);
+    return termId ? (
+      <><TermTip term={termId}>{display}</TermTip>{' — '}{ovr} avg OVR</>
+    ) : (
+      <>{display} — {ovr} avg OVR</>
+    );
+  };
 
   // Season-shape timeline: ticks for each regular-season week, the bye marked
   // amber, then the playoff cut flag — turns three isolated numbers into a
@@ -137,7 +169,7 @@ export function SeasonPreview({
       <dl style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', margin: 0 }}>
         {stat('Regular Season', `${preview.regular_season_weeks} weeks`, '#38bdf8')}
         {stat('Your Bye', preview.bye_text, '#f59e0b')}
-        {stat('Playoff Cut', `Top ${preview.playoff_cut} of ${preview.total_clubs}`, '#22c55e')}
+        {stat('Playoff Cut', `Top ${preview.playoff_cut} of ${preview.total_clubs}`, '#22c55e', 'standings.playoff_line')}
       </dl>
 
       {/* Orientation line — the goal reframed as guidance under the facts, not a
@@ -176,7 +208,7 @@ export function SeasonPreview({
                 Roster strength
               </div>
               <div style={{ color: '#f1f5f9', fontSize: '0.9rem', fontWeight: 700, marginTop: '0.2rem' }}>
-                {preview.strength.archetype} — {preview.strength.avg_overall} avg OVR
+                {archetypeTip(preview.strength.archetype_key, preview.strength.archetype, preview.strength.avg_overall)}
               </div>
             </div>
           )}
@@ -196,7 +228,7 @@ export function SeasonPreview({
                 Watch area
               </div>
               <div style={{ color: '#f1f5f9', fontSize: '0.9rem', fontWeight: 700, marginTop: '0.2rem' }}>
-                {preview.weakness.archetype} — {preview.weakness.avg_overall} avg OVR
+                {archetypeTip(preview.weakness.archetype_key, preview.weakness.archetype, preview.weakness.avg_overall)}
               </div>
             </div>
           )}
