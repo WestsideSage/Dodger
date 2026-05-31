@@ -39,6 +39,8 @@ def test_roster_endpoint_payload_structure():
         assert "potential_tier" in player
         assert "scouting_confidence" in player
         assert "weekly_ovr_history" in player
+        assert "bio_strongest_attr" in player
+        assert "bio_secondary_attr" in player
         # Verify potential (float) is omitted
         if "traits" in player:
              assert "potential" not in player["traits"]

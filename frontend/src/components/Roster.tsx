@@ -5,6 +5,21 @@ import { StatusMessage } from './ui';
 import { PlayerDetailModal } from './PlayerDetailModal';
 import { LineupEditor } from './lineup/LineupEditor';
 import { Sparkline } from './roster/Sparkline';
+import { TermTip } from '../legibility';
+import type { TermId } from '../legibility';
+
+// Maps player.role strings to their TermId. Exhaustive over all 8 archetypes
+// that archetype_for_player() can emit (see recruitment._RECRUITMENT_DISPLAY_NAMES).
+const ROLE_TERM_ID: Record<string, TermId> = {
+  'Sharpshooter':         'archetype.sharpshooter',
+  'Net Specialist':       'archetype.net_specialist',
+  'Ball Hawk':            'archetype.ball_hawk',
+  'Iron Anchor':          'archetype.iron_anchor',
+  'Two-Way Threat':       'archetype.two_way_threat',
+  'Skirmisher':           'archetype.skirmisher',
+  'Possession Specialist':'archetype.possession_specialist',
+  'Hit-and-Run':          'archetype.hit_and_run',
+};
 
 type RosterEntry = {
   player: Player;
@@ -256,11 +271,41 @@ export function Roster() {
             <button className={`rl-seg-btn ${view === 'compact' ? 'is-active' : ''}`} onClick={() => setView('compact')}>Compact</button>
           </div>
           <select className="rl-sort" value={sortKey} onChange={(event) => setSortKey(event.target.value as typeof sortKey)}>
-            <option value="lineup">Sort · Lineup → OVR</option>
-            <option value="potential">Sort · Potential</option>
-            <option value="overall">Sort · OVR</option>
-            <option value="age">Sort · Age</option>
+            <option value="lineup">Lineup order (starters first, then OVR ↓)</option>
+            <option value="potential">Potential tier (Elite → Low)</option>
+            <option value="overall">OVR highest first ↓</option>
+            <option value="age">Age youngest first ↑</option>
           </select>
+          {(() => {
+            const indicators: Record<string, { label: string; dir: string }> = {
+              lineup:   { label: 'Lineup',    dir: '→ OVR ↓' },
+              potential:{ label: 'Potential', dir: 'Elite first' },
+              overall:  { label: 'OVR',      dir: '↓ highest' },
+              age:      { label: 'Age',      dir: '↑ youngest' },
+            };
+            const ind = indicators[sortKey];
+            return (
+              <span
+                aria-label={`Sorted by ${ind.label}, ${ind.dir}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.04em',
+                  color: '#22d3ee',
+                  background: 'rgba(34,211,238,0.08)',
+                  border: '1px solid rgba(34,211,238,0.25)',
+                  borderRadius: '3px',
+                  padding: '0.15rem 0.4rem',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {ind.label} {ind.dir}
+              </span>
+            );
+          })()}
           <button
             className="dm-btn"
             type="button"
@@ -323,8 +368,6 @@ export function Roster() {
                         <span className="rl-player-name">{player.name}</span>
                         <div className="rl-player-meta">
                           <span>Age {player.age}</span>
-                          <span className="dot">·</span>
-                          {archetypeBadge(player.role)}
                           {starter && <span className="rl-pin">●</span>}
                         </div>
                       </div>
@@ -391,7 +434,19 @@ export function Roster() {
                         </div>
                       </td>
                     )}
-                    <td>{archetypeBadge(player.role)}</td>
+                    <td
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ cursor: 'default' }}
+                    >
+                      {ROLE_TERM_ID[player.role]
+                        ? (
+                          <TermTip term={ROLE_TERM_ID[player.role] as TermId}>
+                            {archetypeBadge(player.role)}
+                          </TermTip>
+                        )
+                        : archetypeBadge(player.role)
+                      }
+                    </td>
                   </tr>
                 );
               })}

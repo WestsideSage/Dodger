@@ -45,6 +45,10 @@ export interface Player {
     projected_growth: 'growing' | 'plateauing' | 'declining';
     /** null = no season-over-season history yet (honest empty-state) */
     ovr_season_trend: number[] | null;
+    /** Strongest base attribute (e.g. "Accuracy"), derived from ratings. */
+    bio_strongest_attr: string;
+    /** Second-strongest base attribute (e.g. "Power"), derived from ratings. */
+    bio_secondary_attr: string;
 }
 
 export interface RosterResponse {

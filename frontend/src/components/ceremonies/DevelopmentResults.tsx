@@ -1,5 +1,6 @@
 import type { OffseasonBeat } from '../../types';
 import { ActionButton } from '../ui';
+import { TermTip } from '../../legibility';
 
 type DevelopmentBeat = Extract<OffseasonBeat, { key: 'development' }>;
 
@@ -73,7 +74,7 @@ export function DevelopmentResults({
                                         </span>
                                         {player.potential_ceiling != null && (
                                             <span style={{ color: '#64748b', fontSize: '0.7rem' }}>
-                                                Ceiling {player.potential_ceiling}
+                                                <TermTip term="growth.ceiling">Ceiling</TermTip>{' '}{player.potential_ceiling}
                                             </span>
                                         )}
                                         {player.notes && player.notes.length > 0 && (
@@ -113,6 +114,10 @@ export function DevelopmentResults({
                                         {movedAttrs.map(([attr, val]) => {
                                             const attrColor = val > 0 ? '#10b981' : '#ef4444';
                                             const label = _ATTR_LABEL[attr] ?? attr;
+                                            const termId =
+                                                attr === 'throw_selection_iq' ? 'attr.throw_selection_iq' as const
+                                                : attr === 'catch_courage' ? 'attr.catch_courage' as const
+                                                : null;
                                             return (
                                                 <span
                                                     key={attr}
@@ -122,7 +127,11 @@ export function DevelopmentResults({
                                                         fontVariantNumeric: 'tabular-nums',
                                                     }}
                                                 >
-                                                    {label}{' '}
+                                                    {termId ? (
+                                                        <TermTip term={termId}>{label}</TermTip>
+                                                    ) : (
+                                                        label
+                                                    )}{' '}
                                                     <span style={{ color: attrColor, fontWeight: 600 }}>
                                                         {val > 0 ? `+${val}` : `${val}`}
                                                     </span>

@@ -33,13 +33,13 @@ const ARCHETYPE_MAP: Array<{
   tone: string;
   termId: TermId;
 }> = [
-  { match: ['sharpshooter'],         tone: 'dm-badge-orange',  termId: 'archetype.thrower' },
+  { match: ['sharpshooter'],         tone: 'dm-badge-orange',  termId: 'archetype.sharpshooter' },
   { match: ['skirmisher'],           tone: 'dm-badge-orange',  termId: 'archetype.skirmisher' },
   { match: ['two-way threat'],       tone: 'dm-badge-orange',  termId: 'archetype.two_way_threat' },
   { match: ['net specialist'],       tone: 'dm-badge-violet',  termId: 'archetype.net_specialist' },
-  { match: ['possession specialist'],tone: 'dm-badge-violet',  termId: 'archetype.net_specialist' },
+  { match: ['possession specialist'],tone: 'dm-badge-violet',  termId: 'archetype.possession_specialist' },
   { match: ['ball hawk'],            tone: 'dm-badge-cyan',    termId: 'archetype.ball_hawk' },
-  { match: ['hit-and-run'],          tone: 'dm-badge-cyan',    termId: 'archetype.hawk_dodger' },
+  { match: ['hit-and-run'],          tone: 'dm-badge-cyan',    termId: 'archetype.hit_and_run' },
   { match: ['iron anchor'],          tone: 'dm-badge-slate',   termId: 'archetype.iron_anchor' },
 ];
 
@@ -47,7 +47,7 @@ const archetypeBadge = (label: string) => {
   const n = label.toLowerCase();
   const entry = ARCHETYPE_MAP.find((m) => m.match.some((s) => n.includes(s)));
   const tone = entry?.tone ?? 'dm-badge-cyan';
-  const termId: TermId = entry?.termId ?? 'archetype.thrower';
+  const termId: TermId = entry?.termId ?? 'archetype.sharpshooter';
   return (
     <TermTip term={termId}>
       <span className={`dm-badge ${tone}`}>{label.toUpperCase()}</span>

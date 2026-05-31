@@ -8,52 +8,52 @@ export interface TermDef {
 }
 
 export const TERMS = {
-  'archetype.thrower': {
+  'archetype.sharpshooter': {
     label: 'Sharpshooter',
-    plain: 'Aggressive attacker who looks to eliminate opponents with throws.',
-    why: 'Higher throw volume and accuracy — a primary source of eliminations.',
+    plain: 'Aggressive attacker who prioritizes high-accuracy throws to eliminate opponents.',
+    why: 'Higher throw volume and accuracy — your primary source of eliminations.',
     kind: 'mechanical',
   },
   'archetype.net_specialist': {
     label: 'Net Specialist',
     plain: 'Catch-focused defender who turns incoming throws into resurrections.',
-    why: 'A catch outs the thrower AND brings a teammate back — high swing.',
+    why: 'Catches out the thrower AND brings a teammate back — high swing on each attempt.',
     kind: 'mechanical',
   },
   'archetype.ball_hawk': {
     label: 'Ball Hawk',
-    plain: 'Aggressive catcher who hunts risky catches off live throws.',
-    why: 'Generates catches (resurrections) but can over-commit and get out.',
+    plain: 'Court-control player who hunts loose balls and accumulates possession.',
+    why: 'Keeps your team armed and limits opponent ammo — compounds over a long match.',
     kind: 'mechanical',
   },
   'archetype.iron_anchor': {
     label: 'Iron Anchor',
-    plain: 'Evasive survivor who anchors the floor and avoids elimination.',
-    why: 'Stays alive late, when survivor counts decide foam games.',
+    plain: 'Evasive survivor who is hard to eliminate and stays alive deep into rallies.',
+    why: 'Late-rally staying power; buys time for teammates to catch or reset.',
     kind: 'mechanical',
   },
   'archetype.two_way_threat': {
     label: 'Two-Way Threat',
-    plain: 'Balanced hybrid who both throws to eliminate and catches to resurrect.',
-    why: 'Flexible lineup glue with no glaring liability to target.',
+    plain: 'Hybrid who throws with authority and attempts catches on incoming balls.',
+    why: 'No single defensive answer — opponents cannot key on one vulnerability.',
     kind: 'mechanical',
   },
   'archetype.skirmisher': {
     label: 'Skirmisher',
-    plain: 'Mobile attacker who throws and evades rather than catching.',
-    why: 'Pressures opponents while staying hard to eliminate.',
+    plain: 'Mobile attacker who throws quickly and retreats to avoid return fire.',
+    why: 'Generates elimination attempts without committing to a long throw exchange.',
     kind: 'mechanical',
   },
-  'archetype.catcher_hawk': {
+  'archetype.possession_specialist': {
     label: 'Possession Specialist',
-    plain: 'Catch-first player who controls tempo and wins the catch battle.',
-    why: 'Tilts the catch swing — often the deciding factor at large OVR gaps.',
+    plain: 'Catch-and-control player who prioritizes holding the ball over throwing.',
+    why: 'Starves the opponent of ammo; forces them to take lower-percentage risks.',
     kind: 'mechanical',
   },
-  'archetype.hawk_dodger': {
+  'archetype.hit_and_run': {
     label: 'Hit-and-Run',
-    plain: 'Evasive opportunist who picks catches and slips elimination.',
-    why: 'Survives and steals swing catches without holding ground.',
+    plain: 'Fast attacker who strikes and repositions before opponents can respond.',
+    why: 'Disrupts defensive positioning without exposing themselves to counterattacks.',
     kind: 'mechanical',
   },
   'coach.balanced': {
