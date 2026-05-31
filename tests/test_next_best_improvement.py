@@ -96,5 +96,5 @@ def test_position_group_title_prettifies_raw_archetype_key() -> None:
         recruits=[],
     )
     titles = " ".join(c["title"] for c in cards)
-    assert "Ball Hawk / Dodger" in titles
+    assert "Hit-and-Run" in titles
     assert "hawk_dodger" not in titles

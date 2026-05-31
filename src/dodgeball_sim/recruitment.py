@@ -90,20 +90,10 @@ _LAST_NAMES = (
 )
 _GROWTH_CURVES = ("early", "steady", "late")
 
-_RECRUITMENT_DISPLAY_NAMES: dict[PlayerArchetype, str] = {
-    PlayerArchetype.THROWER: "Sharpshooter",
-    PlayerArchetype.CATCHER: "Net Specialist",
-    PlayerArchetype.BALL_HAWK: "Ball Hawk",
-    PlayerArchetype.DODGER_ANCHOR: "Iron Anchor",
-    PlayerArchetype.THROWER_CATCHER: "Two-Way Threat",
-    PlayerArchetype.THROWER_DODGER: "Skirmisher",
-    PlayerArchetype.CATCHER_HAWK: "Possession Specialist",
-    PlayerArchetype.HAWK_DODGER: "Hit-and-Run",
-}
-
-
 def _display_name_for_archetype(archetype: PlayerArchetype, ratings: PlayerRatings) -> str:
-    return _RECRUITMENT_DISPLAY_NAMES[archetype]
+    # Archetype display names are unified on PlayerArchetype.display_name (the
+    # single source of truth). ``ratings`` is retained for signature stability.
+    return archetype.display_name
 
 
 def archetype_for_player(player: Player) -> str:
@@ -203,7 +193,9 @@ def generate_prospect_pool(
     prospects: list[Prospect] = []
     used_names: set[str] = set()
     used_last_names: set[str] = set()
-    archetype_pool = tuple(_RECRUITMENT_DISPLAY_NAMES.values())
+    # Display-name pool in PlayerArchetype declaration order (identical order to
+    # the former _RECRUITMENT_DISPLAY_NAMES dict — preserves RNG determinism).
+    archetype_pool = tuple(a.display_name for a in PlayerArchetype)
     trait_pool = ("IRONWALL", "CLUTCH", "QUICK_RELEASE", "GLOVES", "READ_AND_REACT")
 
     for index in range(config.prospect_class_size):

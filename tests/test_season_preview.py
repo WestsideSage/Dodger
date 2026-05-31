@@ -81,8 +81,8 @@ def test_build_season_preview_prettifies_raw_archetype_keys() -> None:
     preview = build_season_preview(
         regular_season_weeks=12, bye_week=6, playoff_cut=8, total_clubs=16, roster=roster,
     )
-    assert preview["strength"]["archetype"] == "Thrower"
-    assert preview["weakness"]["archetype"] == "Ball Hawk / Dodger"
+    assert preview["strength"]["archetype"] == "Sharpshooter"
+    assert preview["weakness"]["archetype"] == "Hit-and-Run"
     assert "hawk_dodger" not in preview["weakness"]["archetype"]
 
 
@@ -100,7 +100,7 @@ class TestSeasonPreviewArchetypeKey:
             total_clubs=8,
             roster=roster,
         )
-        assert payload["strength"]["archetype"] == "Ball Hawk / Dodger"
+        assert payload["strength"]["archetype"] == "Hit-and-Run"
         assert payload["strength"]["archetype_key"] == "hawk_dodger"
 
     def test_weakness_carries_raw_key(self):

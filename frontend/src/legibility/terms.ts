@@ -252,52 +252,10 @@ export const TERMS = {
     why: 'Advisory only — surfaces promise-risk framing in the office; no hidden morale stat.',
     kind: 'flavor',
   },
-  'archetype.thrower': {
-    label: 'Thrower',
-    plain: 'Aggressive eliminator via throws.',
-    why: 'Primary source of offensive eliminations; high throw volume.',
-    kind: 'mechanical',
-  },
-  'archetype.hawk_dodger': {
-    label: 'Ball Hawk / Dodger',
-    plain: 'Hybrid evasion: catches and dodges.',
-    why: 'Stays alive and gathers balls without being easily eliminated.',
-    kind: 'mechanical',
-  },
-  'archetype.catcher': {
-    label: 'Catcher',
-    plain: 'Catch-focused player who converts incoming throws into teammate resurrections.',
-    why: 'Every successful catch eliminates the thrower AND brings a teammate back — the highest swing play in dodgeball.',
-    kind: 'mechanical',
-  },
   'archetype.ball_hawk': {
     label: 'Ball Hawk',
     plain: 'Evasive survivor who collects loose balls and attempts opportunistic catches.',
     why: 'Stays alive to accumulate throw chances; successful catches can shift momentum late in a round.',
-    kind: 'mechanical',
-  },
-  'archetype.dodger_anchor': {
-    label: 'Dodger Anchor',
-    plain: 'Evasion-first specialist designed to be the last player standing.',
-    why: 'Hard to eliminate — opponents waste throws chasing this player; forces late-round panic decisions.',
-    kind: 'mechanical',
-  },
-  'archetype.thrower_catcher': {
-    label: 'Thrower / Catcher',
-    plain: 'Hybrid who attacks with throws and is willing to attempt catches on incoming throws.',
-    why: 'Doubles threat: eliminates via throws AND can swing a round with a catch; higher variance than a pure specialist.',
-    kind: 'mechanical',
-  },
-  'archetype.thrower_dodger': {
-    label: 'Thrower / Dodger',
-    plain: 'Hybrid who attacks with throws and uses mobility to survive.',
-    why: 'Throw volume with lower exposure than a pure Thrower — stays in the game longer to keep throwing.',
-    kind: 'mechanical',
-  },
-  'archetype.catcher_hawk': {
-    label: 'Catcher / Ball Hawk',
-    plain: 'Hybrid focused on catching incoming throws and collecting loose balls.',
-    why: 'Resurrection machine: turns defensive play into offensive momentum through repeated catch attempts.',
     kind: 'mechanical',
   },
 } as const satisfies Record<string, TermDef>;

@@ -26,16 +26,6 @@ _ATTRIBUTE_LABELS: tuple[tuple[str, str], ...] = (
     ("stamina", "Stamina"),
 )
 
-_ARCHETYPE_TITLES = {
-    PlayerArchetype.THROWER: "Thrower",
-    PlayerArchetype.CATCHER: "Catcher",
-    PlayerArchetype.BALL_HAWK: "Ball Hawk",
-    PlayerArchetype.DODGER_ANCHOR: "Dodger Anchor",
-    PlayerArchetype.THROWER_CATCHER: "Thrower / Catcher",
-    PlayerArchetype.THROWER_DODGER: "Thrower / Dodger",
-    PlayerArchetype.CATCHER_HAWK: "Catcher / Ball Hawk",
-    PlayerArchetype.HAWK_DODGER: "Ball Hawk / Dodger",
-}
 
 _ARCHETYPE_PREFIXES = {
     PlayerArchetype.THROWER: ("Laser", "Scope", "Needle", "Bullseye", "Crosshair", "Pinpoint", "Zero", "Tracer"),
@@ -93,7 +83,7 @@ def build_identity_profile(player: Player, rng: DeterministicRNG) -> IdentityPro
         player_id=player.id,
         full_name=player.name,
         archetype=archetype,
-        title=_ARCHETYPE_TITLES[player.archetype],
+        title=archetype,
         nickname=generate_nickname(player, rng),
         strongest_attribute=strongest,
         secondary_attribute=secondary,
