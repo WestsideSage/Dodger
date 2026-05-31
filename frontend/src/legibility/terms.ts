@@ -220,6 +220,43 @@ export const TERMS = {
     why: 'Culture orders influence morale and long-term player identity. Mechanical.',
     kind: 'mechanical',
   },
+  // --- Staff roles (Phase 3b) ---
+  'staff.training': {
+    label: 'Training Staff',
+    plain: 'Runs offseason player-development sessions and tracks rep quality.',
+    why: 'Higher rating boosts each player\'s offseason OVR growth by up to 15% — the only staff role with a live mechanical hook.',
+    kind: 'mechanical',
+  },
+  'staff.tactics': {
+    label: 'Tactics Staff',
+    plain: 'Prepares matchup-specific game plans and reviews replay evidence.',
+    why: 'Advisory only — surfaces tactical recommendations in the command center; no hidden stat effect.',
+    kind: 'flavor',
+  },
+  'staff.conditioning': {
+    label: 'Conditioning Staff',
+    plain: 'Monitors fatigue risk and designs recovery schedules.',
+    why: 'Advisory only — flags overuse and recovery recommendations; no hidden stat effect.',
+    kind: 'flavor',
+  },
+  'staff.medical': {
+    label: 'Medical Staff',
+    plain: 'Tracks player availability and warns on overuse risk.',
+    why: 'Advisory only — availability warnings; no hidden stat effect.',
+    kind: 'flavor',
+  },
+  'staff.scouting': {
+    label: 'Scouting Staff',
+    plain: 'Explains fit scores and clarifies the prospect board.',
+    why: 'Advisory only — improves recruit board readability; no hidden fit-score modifier.',
+    kind: 'flavor',
+  },
+  'staff.culture': {
+    label: 'Culture Staff',
+    plain: 'Frames promise risk and monitors command-plan stability.',
+    why: 'Advisory only — surfaces promise-risk framing in the office; no hidden morale stat.',
+    kind: 'flavor',
+  },
 } as const satisfies Record<string, TermDef>;
 
 export type TermId = keyof typeof TERMS;
