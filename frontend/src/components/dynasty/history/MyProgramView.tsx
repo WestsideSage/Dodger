@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApiResource } from '../../../hooks/useApiResource';
 import { StatusMessage } from '../../ui';
+import { EmptyState, ProofChip, TermTip } from '../../../legibility';
 import { AlumniLineage } from './AlumniLineage';
 import { BannerShelf } from './BannerShelf';
 import { formatSeasonLabel, formatTimelineLabel, humanizeHistoryToken } from './formatters';
@@ -20,6 +21,8 @@ interface TimelineEvent {
   event_type: string;
   label: string;
   weight: string;
+  holder_name?: string | null;
+  proof_stat?: string | null;
 }
 
 interface AlumnusEntry {
@@ -75,6 +78,8 @@ type DisplayEntry = {
   title: string;
   tone: 'amber' | 'cyan' | 'emerald' | 'rose' | 'violet';
   typeLabel: string;
+  holderName?: string | null;
+  proofStat?: string | null;
 };
 
 const FILTERS: Array<{ id: ProgramFilter; label: string }> = [
@@ -111,12 +116,7 @@ function seasonTick(season: string, week: number | null) {
   return 'ARC';
 }
 
-function trajectoryGradeTone(value: string) {
-  if (value === 'A') return 'dm-badge-emerald';
-  if (value === 'B') return 'dm-badge-cyan';
-  if (value === 'C') return 'dm-badge-amber';
-  return 'dm-badge-slate';
-}
+
 
 function buildEntry(event: TimelineEvent): DisplayEntry {
   const seasonLabel = formatSeasonLabel(event.season);
@@ -138,14 +138,18 @@ function buildEntry(event: TimelineEvent): DisplayEntry {
     case 'award':
       return {
         bucket: 'awards',
-        copy: `${title} was claimed by a player from this program in ${seasonLabel}.`,
+        copy: event.holder_name
+          ? `${event.holder_name} won ${title} in ${seasonLabel}.`
+          : `${title} was claimed by a player from this program in ${seasonLabel}.`,
         id: `${event.season}-${event.event_type}-${event.label}`,
         kicker: seasonLabel,
-        tag: 'Award season',
+        tag: 'Award',
         tick: seasonTick(event.season, event.week),
         title,
         tone: 'emerald',
         typeLabel: 'Award',
+        holderName: event.holder_name,
+        proofStat: event.proof_stat,
       };
     case 'record':
       return {
@@ -212,8 +216,9 @@ function HeroCard({ data, highlight, label }: { data: HeroSeason; highlight?: bo
         {data.wins}-{data.losses}-{data.draws}
       </span>
       <div className="do-hist-hero-meta">
-        <span>{data.avg_ovr !== undefined ? `Avg OVR ${data.avg_ovr}` : 'Season archive'}</span>
-        {data.championships ? <span>{data.championships} title{data.championships === 1 ? '' : 's'}</span> : null}
+        {data.championships ? (
+          <span>{data.championships} title{data.championships === 1 ? '' : 's'}</span>
+        ) : null}
       </div>
     </div>
   );
@@ -222,6 +227,7 @@ function HeroCard({ data, highlight, label }: { data: HeroSeason; highlight?: bo
 export function MyProgramView({ clubId, isSelf = true }: { clubId: string; isSelf?: boolean }) {
   const { data, error, loading } = useApiResource<ProgramData>(`/api/history/my-program?club_id=${encodeURIComponent(clubId)}`);
   const [filter, setFilter] = useState<ProgramFilter>('all');
+  const [shelfTab, setShelfTab] = useState<'banners' | 'alumni'>('banners');
 
   if (error) {
     return (
@@ -244,60 +250,70 @@ export function MyProgramView({ clubId, isSelf = true }: { clubId: string; isSel
   const entries = data.timeline.length > 0 ? data.timeline.map(buildEntry) : [fallbackEntry(data.program_archetype)];
   const visibleEntries = filter === 'all' ? entries : entries.filter((entry) => entry.bucket === filter);
   const identityLabel = humanizeHistoryToken(latestTrajectory?.archetype ?? data.program_archetype ?? 'Balanced Rebuild');
-  const identityTrend = latestTrajectory
-    ? `Intent ${humanizeHistoryToken(latestTrajectory.dominant_intent)}`
-    : 'Program identity is still forming';
 
   return (
     <div className="do-tab-content">
+      {/* Glance strip — de-jargoned copy */}
       <div className="do-hist-glance">
         <div className="cell">
-          <span className="lbl">Archive Through</span>
-          <span className="val">{currentHero ? formatSeasonLabel(currentHero.season_label) : 'Season 1'}</span>
-          <span className="trend">{entries.length} tracked archive moments</span>
-        </div>
-        <div className="cell">
-          <span className="lbl">Current Record</span>
+          <span className="lbl">Season Range</span>
           <span className="val">
-            {currentHero ? `${currentHero.wins}-${currentHero.losses}-${currentHero.draws}` : 'No Log'}
+            {currentHero ? formatSeasonLabel(currentHero.season_label) : 'Season 1'}
           </span>
-          <span className={`trend ${currentHero && currentHero.avg_ovr !== undefined ? 'ok' : ''}`}>
-            {currentHero && currentHero.avg_ovr !== undefined ? `Avg OVR ${currentHero.avg_ovr}` : 'First completed season will appear here'}
+          <span className="trend">
+            {entries.length === 1 && entries[0].id === 'history-baseline'
+              ? 'Archive is live — no milestones logged yet'
+              : `${entries.length} milestone${entries.length === 1 ? '' : 's'} logged`}
           </span>
         </div>
         <div className="cell">
-          <span className="lbl">Program Identity</span>
+          <span className="lbl">All-Time Record</span>
+          <span className="val">
+            {currentHero ? `${currentHero.wins}-${currentHero.losses}-${currentHero.draws}` : '—'}
+          </span>
+          <span className="trend">
+            {currentHero ? 'Across completed seasons' : 'First completed season will appear here'}
+          </span>
+        </div>
+        <div className="cell">
+          <span className="lbl">
+            <TermTip term="identity.intent">Program Identity</TermTip>
+          </span>
           <span className="val">{identityLabel}</span>
-          <span className="trend">{identityTrend}</span>
+          <span className="trend">
+            {latestTrajectory
+              ? `Lean: ${humanizeHistoryToken(latestTrajectory.dominant_intent)} — shaped by your season tactics`
+              : 'Set at club creation · evolves from your season-by-season choices'}
+          </span>
         </div>
         <div className="cell">
           <span className="lbl">Championship Banners</span>
-          <span className="val">
-            {championshipCount}
-            <span>{Math.max(0, data.banners.length - championshipCount)} awards logged</span>
-          </span>
+          <span className="val">{championshipCount}</span>
           <span className={`trend ${championshipCount > 0 ? 'ok' : ''}`}>
-            {championshipCount > 0 ? 'Championship standard established' : 'First banner still ahead'}
+            {championshipCount > 0
+              ? `${championshipCount} title${championshipCount === 1 ? '' : 's'} in the archive`
+              : 'First banner still ahead'}
           </span>
         </div>
         <div className="cell">
-          <span className="lbl">Alumni Lineage</span>
-          <span className="val">
-            {data.alumni.length}
-            <span>{data.program_trajectories?.length ?? 0} arcs logged</span>
-          </span>
+          <span className="lbl">Alumni</span>
+          <span className="val">{data.alumni.length}</span>
           <span className="trend">
-            {isSelf ? 'Your program archive' : 'Scouted program archive'}
+            {data.alumni.length > 0
+              ? `${data.alumni.length} player${data.alumni.length === 1 ? '' : 's'} who shaped this program`
+              : isSelf ? 'Your first alumni season is ahead' : 'No departed players yet'}
           </span>
         </div>
       </div>
 
+      {/* Timeline filter + list */}
       <div className="do-hist-filters">
         <div className="filters">
           {FILTERS.map((item) => {
-            const count = item.id === 'all'
-              ? entries.length
-              : entries.filter((entry) => entry.bucket === item.id).length;
+            const count =
+              item.id === 'all'
+                ? entries.length
+                : entries.filter((entry) => entry.bucket === item.id).length;
             return (
               <button
                 key={item.id}
@@ -312,7 +328,7 @@ export function MyProgramView({ clubId, isSelf = true }: { clubId: string; isSel
           })}
         </div>
         <span className="do-board-meta">
-          {isSelf ? 'Program archive view' : `Program archive - ${clubId.toUpperCase()}`}
+          {isSelf ? 'Program archive' : `${clubId.toUpperCase()} archive`}
         </span>
       </div>
 
@@ -333,6 +349,17 @@ export function MyProgramView({ clubId, isSelf = true }: { clubId: string; isSel
                 </header>
                 <h4 className="title">{entry.title}</h4>
                 <p className="copy">{entry.copy}</p>
+                {entry.proofStat && entry.holderName ? (
+                  <ProofChip
+                    label={entry.holderName}
+                    source={entry.proofStat}
+                  />
+                ) : entry.proofStat ? (
+                  <ProofChip
+                    label="View proof"
+                    source={entry.proofStat}
+                  />
+                ) : null}
               </div>
             </article>
           ))
@@ -348,13 +375,14 @@ export function MyProgramView({ clubId, isSelf = true }: { clubId: string; isSel
                 <span className="kicker">No matching entries</span>
                 <span className="tag">Clear filter</span>
               </header>
-              <h4 className="title">No archive items match this lane</h4>
+              <h4 className="title">No archive items in this lane</h4>
               <p className="copy">Switch back to All to see the full program archive.</p>
             </div>
           </article>
         )}
       </div>
 
+      {/* Program Arc — kept, Avg OVR removed from HeroCard */}
       <div className="do-hist-grid">
         <section className="dm-panel do-hist-card">
           <div className="do-hist-card-head">
@@ -367,55 +395,46 @@ export function MyProgramView({ clubId, isSelf = true }: { clubId: string; isSel
               {currentHero ? <HeroCard data={currentHero} label="Current snapshot" highlight /> : null}
             </div>
           ) : (
-            <p className="do-hist-card-note">No completed season is archived yet.</p>
+            <EmptyState
+              title="No completed season archived yet"
+              body="Your first full season record will appear here after the offseason ceremony."
+            />
           )}
         </section>
 
+        {/* Trajectory Log section REMOVED. Its data (dominant_intent) is still
+            used in the glance strip above. MilestoneTree.tsx is untouched —
+            it is the deferred archive-tree spec's territory. */}
+
+        {/* Banner Shelf + Alumni Lineage folded into tabs (interim).
+            The future archive-tree spec will re-home these into the dynamic tree. */}
         <section className="dm-panel do-hist-card">
           <div className="do-hist-card-head">
-            <span className="dm-kicker">Trajectory Log</span>
-            <h3>Multi-season identity shifts</h3>
-          </div>
-          {data.program_trajectories && data.program_trajectories.length > 0 ? (
-            <div className="do-hist-list">
-              {data.program_trajectories.map((trajectory) => (
-                <div key={trajectory.season_id} className="do-hist-list-row">
-                  <div className="main">
-                    <strong>{formatSeasonLabel(trajectory.season_id)}</strong>
-                    <span className="meta">
-                      {trajectory.record_w}-{trajectory.record_l}-{trajectory.record_d} - {humanizeHistoryToken(trajectory.archetype)}
-                    </span>
-                  </div>
-                  <div className="side">
-                    <span className={`dm-badge ${trajectoryGradeTone(trajectory.recruiting_class_strength)}`}>
-                      Class {trajectory.recruiting_class_strength}
-                    </span>
-                    <span className="note">
-                      {humanizeHistoryToken(trajectory.dominant_intent)} - Top focus {humanizeHistoryToken(trajectory.top_dev_archetype)}
-                    </span>
-                  </div>
-                </div>
-              ))}
+            <span className="dm-kicker">
+              {shelfTab === 'banners' ? 'Banner Shelf' : 'Alumni Lineage'}
+            </span>
+            <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <button
+                type="button"
+                className={`do-board-filter${shelfTab === 'banners' ? ' is-active' : ''}`}
+                onClick={() => setShelfTab('banners')}
+              >
+                Banners
+              </button>
+              <button
+                type="button"
+                className={`do-board-filter${shelfTab === 'alumni' ? ' is-active' : ''}`}
+                onClick={() => setShelfTab('alumni')}
+              >
+                Alumni
+              </button>
             </div>
+          </div>
+          {shelfTab === 'banners' ? (
+            <BannerShelf banners={data.banners} showNextPlaceholder={isSelf} />
           ) : (
-            <p className="do-hist-card-note">Trajectory shifts will appear once multiple seasons are logged.</p>
+            <AlumniLineage alumni={data.alumni} />
           )}
-        </section>
-
-        <section className="dm-panel do-hist-card">
-          <div className="do-hist-card-head">
-            <span className="dm-kicker">Alumni Lineage</span>
-            <h3>Who this program produced</h3>
-          </div>
-          <AlumniLineage alumni={data.alumni} />
-        </section>
-
-        <section className="dm-panel do-hist-card">
-          <div className="do-hist-card-head">
-            <span className="dm-kicker">Banner Shelf</span>
-            <h3>Trophies and signatures</h3>
-          </div>
-          <BannerShelf banners={data.banners} showNextPlaceholder={isSelf} />
         </section>
       </div>
     </div>
