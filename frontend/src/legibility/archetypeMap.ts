@@ -2,11 +2,11 @@ import type { TermId } from './terms';
 
 export const PLAYER_ARCHETYPE_TERM: Record<string, TermId> = {
   thrower: 'archetype.thrower',
-  catcher: 'archetype.catcher',
+  catcher: 'archetype.net_specialist',
   ball_hawk: 'archetype.ball_hawk',
-  dodger_anchor: 'archetype.dodger_anchor',
-  thrower_catcher: 'archetype.thrower_catcher',
-  thrower_dodger: 'archetype.thrower_dodger',
+  dodger_anchor: 'archetype.iron_anchor',
+  thrower_catcher: 'archetype.two_way_threat',
+  thrower_dodger: 'archetype.skirmisher',
   catcher_hawk: 'archetype.catcher_hawk',
   hawk_dodger: 'archetype.hawk_dodger',
 };
