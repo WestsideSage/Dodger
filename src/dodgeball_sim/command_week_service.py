@@ -401,10 +401,17 @@ def run_simulation_command(conn: sqlite3.Connection, command: dict[str, Any]) ->
     season = load_season(conn, season_id)
     cursor = load_career_state_cursor(conn)
     if cursor.state != CareerState.SEASON_ACTIVE_PRE_MATCH:
-        raise CommandWeekError(
-            "Simulation requires career state season_active_pre_match.",
-            status_code=409,
-        )
+        # Player-facing reason only — never leak the raw lifecycle enum token.
+        offseason_states = {
+            CareerState.SEASON_COMPLETE_OFFSEASON_BEAT,
+            CareerState.SEASON_COMPLETE_RECRUITMENT_PENDING,
+            CareerState.NEXT_SEASON_READY,
+        }
+        if cursor.state in offseason_states:
+            reason = "The regular season is complete — continue in the offseason to start the next season."
+        else:
+            reason = "There's no match ready to simulate right now."
+        raise CommandWeekError(reason, status_code=409)
     clubs = load_clubs(conn)
     week = cursor.week or current_week(conn, season) or 1
     if mode == "user_match":
