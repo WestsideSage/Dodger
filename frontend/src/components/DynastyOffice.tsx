@@ -6,7 +6,7 @@ import { CredibilityStrip } from './dynasty/CredibilityStrip';
 import { ProspectCard } from './dynasty/ProspectCard';
 import { HistorySubTab } from './dynasty/HistorySubTab';
 import { commandApi, dynastyApi } from '../api/client';
-import { EmptyState } from '../legibility';
+import { EmptyState, TermTip } from '../legibility';
 
 const dynastySubtabFromUrl = (): 'recruit' | 'history' | 'staff' => {
   const subtab = new URLSearchParams(window.location.search).get('subtab');
@@ -67,6 +67,54 @@ function SettingsModal({
 }) {
   const departmentEntries = Object.entries(plan.department_orders).filter(([key]) => key !== 'dev_focus');
 
+  const DEPARTMENT_DESCRIPTIONS: Record<string, Record<string, string>> = {
+    tactics: {
+      'opponent prep': 'Study this week\'s opponent. Gives your team a read on their tendencies.',
+      'star containment': 'Focus defensive attention on the opponent\'s best player.',
+      'possession control': 'Emphasize ball discipline — fewer rushed throws.',
+      'pressure tempo': 'Push an aggressive pace to force opponent mistakes.',
+    },
+    training: {
+      fundamentals: 'Balanced development across all skill areas.',
+      'throw accuracy': 'Extra reps on throw precision this week.',
+      'catch security': 'Focus on reducing missed-catch errors.',
+      'scrimmage reps': 'Live game reps — development from match simulation.',
+    },
+    conditioning: {
+      'balanced maintenance': 'Keep everyone fresh without pushing hard.',
+      'recovery emphasis': 'Prioritize rest — good after a tough stretch.',
+      'stamina push': 'Push physical limits. Short-term edge, long-term cost.',
+      'fresh legs': 'Rotate minutes to keep everyone game-ready.',
+    },
+    medical: {
+      'injury prevention': 'Cautious with everyone — reduces injury chance.',
+      'minutes restriction': 'Actively limit at-risk players\' exposure.',
+      'recovery monitoring': 'Watch and react to player health signals.',
+      'play through': 'Play healthy players at full minutes. Higher risk.',
+    },
+    scouting: {
+      'next opponent': 'Scouts focus on this week\'s matchup.',
+      'prospect board': 'Scouting time goes to the recruit pool.',
+      'playoff threats': 'Watch teams fighting for postseason position.',
+      'rival tendencies': 'Build a detailed read on a key rival.',
+    },
+    culture: {
+      'pressure management': 'Help the team handle high-stakes moments.',
+      'youth confidence': 'Extra attention on younger players\' development confidence.',
+      'veteran leadership': 'Lean on experienced players to set the tone.',
+      accountability: 'Hold everyone to standards — sets a focused culture.',
+    },
+  };
+
+  const DEPT_TERM_IDS: Record<string, import('../legibility').TermId> = {
+    tactics: 'dept.tactics',
+    training: 'dept.training',
+    conditioning: 'dept.conditioning',
+    medical: 'dept.medical',
+    scouting: 'dept.scouting',
+    culture: 'dept.culture',
+  };
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 101, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
       <div className="dm-panel" style={{ width: 'min(92vw, 34rem)', maxHeight: '88vh', overflowY: 'auto' }}>
@@ -91,7 +139,13 @@ function SettingsModal({
             const options = knownOptions.includes(String(value)) ? knownOptions : [String(value), ...knownOptions];
             return (
               <label key={key} style={{ display: 'block' }}>
-                <span className="dm-kicker">{DEPARTMENT_LABELS[key] ?? key}</span>
+                <span className="dm-kicker">
+                  {DEPT_TERM_IDS[key] ? (
+                    <TermTip term={DEPT_TERM_IDS[key]}>{DEPARTMENT_LABELS[key] ?? key}</TermTip>
+                  ) : (
+                    DEPARTMENT_LABELS[key] ?? key
+                  )}
+                </span>
                 <select
                   value={String(value)}
                   onChange={(event) => onUpdate(key, event.target.value)}
@@ -101,6 +155,11 @@ function SettingsModal({
                     <option key={`${key}-${option}`} value={option}>{option.replaceAll('_', ' ')}</option>
                   ))}
                 </select>
+                {DEPARTMENT_DESCRIPTIONS[key]?.[String(value)] && (
+                  <p style={{ margin: '0.3rem 0 0', color: '#64748b', fontSize: '0.68rem', lineHeight: 1.4 }}>
+                    {DEPARTMENT_DESCRIPTIONS[key][String(value)]}
+                  </p>
+                )}
               </label>
             );
           })}
@@ -154,6 +213,9 @@ function SlotMeter({ slots }: { slots: DynastyOfficeResponse['recruiting']['budg
       <div className="do-panel-head">
         <span className="dm-kicker">Weekly Recruiting</span>
         <h3>Action Slots</h3>
+        <p style={{ margin: '0.2rem 0 0', color: '#94a3b8', fontSize: '0.72rem', lineHeight: 1.4 }}>
+          Each slot is one action you can take this week. Remaining slots reset next week.
+        </p>
       </div>
       <div className="do-slot-body">
         {items.map((item) => {
@@ -201,6 +263,56 @@ function StaffBrief({ staff }: { staff: DynastyOfficeResponse['staff_market']['c
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function RecruitingContext({
+  budget,
+  prospectCount,
+  week,
+}: {
+  budget: DynastyOfficeResponse['recruiting']['budget'];
+  prospectCount: number;
+  week: number;
+}) {
+  const scoutRemaining = Math.max(0, budget.scout[1] - budget.scout[0]);
+  const contactRemaining = Math.max(0, budget.contact[1] - budget.contact[0]);
+  const visitRemaining = Math.max(0, budget.visit[1] - budget.visit[0]);
+
+  return (
+    <div
+      className="do-recruit-context"
+      role="group"
+      aria-label="This week's recruiting summary"
+      style={{
+        display: 'flex',
+        gap: '0.75rem',
+        flexWrap: 'wrap',
+        padding: '0.6rem 0.9rem',
+        background: 'rgba(15,23,42,0.55)',
+        border: '1px solid #1e293b',
+        borderRadius: '6px',
+        marginBottom: '0.75rem',
+      }}
+    >
+      <div className="do-cred-rank" style={{ flex: '1 1 8rem', minWidth: '8rem' }}>
+        <span className="lbl">Board</span>
+        <div className="val"><b>{prospectCount}</b> <span>prospects</span></div>
+        <span className="trend dim">Week {String(week).padStart(2, '0')} board</span>
+      </div>
+      <div className="do-cred-rank" style={{ flex: '1 1 9rem', minWidth: '9rem' }}>
+        <span className="lbl">Reach Remaining</span>
+        <div className="val"><b>{scoutRemaining + contactRemaining}</b> <span>scout + contact</span></div>
+        <span className="trend dim">{scoutRemaining} scout · {contactRemaining} contact</span>
+      </div>
+      <div className={`do-cred-rank ${visitRemaining === 0 ? 'danger' : ''}`} style={{ flex: '1 1 8rem', minWidth: '8rem' }}>
+        <span className="lbl">Visit Slots</span>
+        <div className="val"><b>{visitRemaining}</b> <span>remaining</span></div>
+        <span className={`trend ${visitRemaining > 0 ? 'dim' : 'warn'}`}>
+          {visitRemaining > 0 ? 'Use on best-fit closes' : 'Budget exhausted this week'}
+        </span>
       </div>
     </div>
   );
@@ -325,7 +437,11 @@ function RecruitBoard({
         {filtered.length === 0 && (
           <EmptyState
             title="No prospects match this filter"
-            body="Try 'All' to see the full board, or adjust your filter. Prospects are generated each season."
+            body={
+              filter === 'all'
+                ? 'The recruit board is empty this week. It refreshes each week as the season progresses.'
+                : `Switch to "All" to see every prospect, or try a different filter.`
+            }
           />
         )}
       </div>
@@ -542,6 +658,8 @@ export function DynastyOffice() {
           <div className="do-tab-content">
             <CredibilityStrip
               credibility={data.recruiting.credibility}
+            />
+            <RecruitingContext
               budget={data.recruiting.budget}
               prospectCount={sortedProspects.length}
               week={data.week}

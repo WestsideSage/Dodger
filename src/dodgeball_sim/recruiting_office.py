@@ -108,12 +108,12 @@ def _credibility(
     )
     score = max(0, min(100, 50 + prestige * 2 + wins * 4 - losses * 3 + youth_weeks * 2))
     evidence = [
-        f"{wins} career command-history wins and {losses} losses.",
-        f"{youth_weeks} youth-development command weeks across your career.",
-        f"Club prestige score {prestige}.",
+        f"{wins} wins and {losses} losses across your career.",
+        f"{youth_weeks} week{'' if youth_weeks == 1 else 's'} spent prioritizing youth development.",
+        f"Club prestige: {prestige} (a long-term score earned from titles and facilities).",
     ]
     if not history:
-        evidence.append("No command history yet, so credibility starts from program baseline.")
+        evidence.append("No match history yet — credibility starts from the program baseline.")
     return {"score": score, "grade": _grade(score), "evidence": evidence}
 
 
