@@ -1142,6 +1142,7 @@ export interface DynastyOfficeResponse {
             rating_secondary: number;
             voice: string;
             effect_summary: string;
+            training_modifier_pct?: number;
         }>;
         active_facilities: string[];
         candidates: Array<{
