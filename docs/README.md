@@ -26,6 +26,7 @@ what you need. If two docs disagree, follow the authority order below.
   pre-implementation checklist, and worktree/remote notes.
 - `docs/agents/` — optional skill, issue-tracker, and domain notes. Subordinate
   to root `AGENTS.md`.
+- `docs/sources/` — active external reference material (e.g., USA Dodgeball Rulebook PDF).
 - `docs/archive/` — the full historical record: shipped-milestone specs,
   retrospectives, learnings, QA reviews, Phase 0 research, execution plans, and
   closed audits. Evidence and decision history, never current marching orders.
