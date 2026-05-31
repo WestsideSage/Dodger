@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { dynastyApi } from '../../api/client';
 import type { DynastyOfficeResponse, RecruitingStatus } from '../../types';
 import { RecruitingBadge } from './RecruitingBadge';
+import { TermTip, PipelineEmblem, KnownValue } from '../../legibility';
+import type { PipelineTier, TermId } from '../../legibility';
 
 type RecruitingProspect = DynastyOfficeResponse['recruiting']['prospects'][number];
 type RecruitingBudget = DynastyOfficeResponse['recruiting']['budget'];
@@ -23,17 +25,34 @@ function promoteStatus(current: RecruitingStatus, next: RecruitingStatus): Recru
   return ni > ci ? next : current;
 }
 
+// Maps the eight recruitment display names (recruitment.py _RECRUITMENT_DISPLAY_NAMES)
+// to their badge tone and TermId. Tone groups: orange = aggressive throwers / hybrids;
+// violet = catch/possession specialists; cyan = evasion/hawk; slate = anchor.
+const ARCHETYPE_MAP: Array<{
+  match: string[];
+  tone: string;
+  termId: TermId;
+}> = [
+  { match: ['sharpshooter'],         tone: 'dm-badge-orange',  termId: 'archetype.thrower' },
+  { match: ['skirmisher'],           tone: 'dm-badge-orange',  termId: 'archetype.skirmisher' },
+  { match: ['two-way threat'],       tone: 'dm-badge-orange',  termId: 'archetype.two_way_threat' },
+  { match: ['net specialist'],       tone: 'dm-badge-violet',  termId: 'archetype.net_specialist' },
+  { match: ['possession specialist'],tone: 'dm-badge-violet',  termId: 'archetype.net_specialist' },
+  { match: ['ball hawk'],            tone: 'dm-badge-cyan',    termId: 'archetype.ball_hawk' },
+  { match: ['hit-and-run'],          tone: 'dm-badge-cyan',    termId: 'archetype.hawk_dodger' },
+  { match: ['iron anchor'],          tone: 'dm-badge-slate',   termId: 'archetype.iron_anchor' },
+];
+
 const archetypeBadge = (label: string) => {
-  const normalized = label.toLowerCase();
-  const tone =
-    normalized.includes('sharpshooter') || normalized.includes('skirmisher')
-      ? 'dm-badge-orange'
-      : normalized.includes('net specialist')
-        || normalized.includes('possession specialist')
-        || normalized.includes('hit-and-run')
-      ? 'dm-badge-violet'
-      : 'dm-badge-cyan';
-  return <span className={`dm-badge ${tone}`}>{label.toUpperCase()}</span>;
+  const n = label.toLowerCase();
+  const entry = ARCHETYPE_MAP.find((m) => m.match.some((s) => n.includes(s)));
+  const tone = entry?.tone ?? 'dm-badge-cyan';
+  const termId: TermId = entry?.termId ?? 'archetype.thrower';
+  return (
+    <TermTip term={termId}>
+      <span className={`dm-badge ${tone}`}>{label.toUpperCase()}</span>
+    </TermTip>
+  );
 };
 
 export function ProspectCard({
@@ -99,7 +118,15 @@ export function ProspectCard({
   const high = prospect.public_ovr_band?.[1] ?? '?';
   const fitTier = prospect.fit_score >= 80 ? 'strong' : prospect.fit_score >= 65 ? 'neutral' : 'risk';
   const fitLabel = prospect.fit_score >= 80 ? 'Strong Fit' : prospect.fit_score >= 65 ? 'Fair Fit' : 'At Risk';
-  const evidence = prospect.interest_evidence.filter(Boolean).slice(0, 2);
+  // Filter the "Public range …" line — it repeats the OVR band already shown
+  // in the meter. Display at most 2 of the remaining evidence strings.
+  const evidence = prospect.interest_evidence
+    .filter(Boolean)
+    .filter((s) => !s.toLowerCase().startsWith('public range'))
+    .slice(0, 2);
+  const safePipelineTier = (
+    Math.min(5, Math.max(1, Math.round(prospect.pipeline_tier ?? 1)))
+  ) as PipelineTier;
 
   return (
     <div className={`do-recruit fit-${fitTier}`} style={{ position: 'relative' }}>
@@ -130,19 +157,76 @@ export function ProspectCard({
           <span className="do-recruit-name" title={prospect.name}>
             {prospect.name}
           </span>
-          <div className="do-recruit-sub">
-            <span>#{String(priority).padStart(2, '0')}</span>
+          <div className="do-recruit-sub" style={{ flexWrap: 'wrap' }}>
+            <span
+              aria-label={`Board rank ${priority}`}
+              title="Your board rank for this prospect — sorted by fit by default"
+              style={{ fontSize: '0.6rem', color: '#64748b', letterSpacing: '0.04em' }}
+            >
+              #{String(priority).padStart(2, '0')}
+            </span>
             <span className="dot">·</span>
-            <span>{prospect.hometown}</span>
+            <span aria-label={`Hometown: ${prospect.hometown}`}>
+              <span
+                style={{
+                  fontSize: '0.55rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  color: '#64748b',
+                  marginRight: '0.2rem',
+                }}
+              >
+                From
+              </span>
+              <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{prospect.hometown}</span>
+            </span>
             <span className="dot">·</span>
             {archetypeBadge(prospect.public_archetype || 'Balanced')}
             <span className="dot">·</span>
             <RecruitingBadge status={displayStatus} pending={pending} />
+            <span className="dot">·</span>
+            <span
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+            >
+              <TermTip term="recruit.pipeline">
+                <span
+                  style={{
+                    fontSize: '0.55rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: '#64748b',
+                  }}
+                >
+                  Pipeline
+                </span>
+              </TermTip>
+              <PipelineEmblem tier={safePipelineTier} size="sm" />
+            </span>
           </div>
         </div>
-        <div className="do-recruit-fit">
-          <span className="lbl">FIT</span>
-          <span className="val mono">{prospect.fit_score}</span>
+        <div className="do-recruit-fit" aria-label={`Fit score: ${prospect.fit_score} out of 100`}>
+          <TermTip term="recruit.fit">
+            <span className="lbl">FIT</span>
+          </TermTip>
+          <span
+            className="val mono"
+            style={{
+              fontSize: '1.1rem',
+              color:
+                prospect.fit_score >= 80
+                  ? '#34d399'
+                  : prospect.fit_score >= 65
+                    ? '#f59e0b'
+                    : '#f87171',
+            }}
+          >
+            {prospect.fit_score}
+            <span
+              style={{ fontSize: '0.55rem', color: '#64748b', fontWeight: 400, marginLeft: '0.15rem' }}
+            >
+              /100
+            </span>
+          </span>
         </div>
       </div>
 
@@ -151,11 +235,41 @@ export function ProspectCard({
           <div className="do-recruit-meter-fill" style={{ width: `${prospect.fit_score}%` }} />
         </div>
         <div className="do-recruit-meter-labels">
-          <span>{fitLabel.toUpperCase()}</span>
+          <span>
+            <TermTip term="recruit.fit">
+              <span>{fitLabel.toUpperCase()}</span>
+            </TermTip>
+          </span>
           {typeof prospect.interest === 'number' && (
-            <span className="mono">INT {prospect.interest}%</span>
+            <span className="mono">
+              <TermTip term="recruit.interest">
+                <span>Interest</span>
+              </TermTip>
+              {' '}{prospect.interest}%
+            </span>
           )}
-          <span className="ovr mono">OVR {low}-{high}</span>
+          <KnownValue
+            state={prospect.scouted ? 'known' : 'estimated'}
+            label="OVR"
+            value={`${low}–${high}`}
+            hint={prospect.scouted ? undefined : 'Scout to narrow'}
+          />
+        </div>
+        <div
+          aria-label="Card color key: green = Strong Fit, amber = Fair Fit, red = At Risk"
+          style={{
+            display: 'flex',
+            gap: '0.75rem',
+            marginTop: '0.3rem',
+            fontSize: '0.55rem',
+            color: '#64748b',
+            letterSpacing: '0.04em',
+            flexWrap: 'wrap',
+          }}
+        >
+          <span style={{ color: '#34d399' }}>● Strong Fit ≥80</span>
+          <span style={{ color: '#f59e0b' }}>● Fair Fit 65–79</span>
+          <span style={{ color: '#f87171' }}>● At Risk &lt;65</span>
         </div>
       </div>
 
@@ -164,6 +278,18 @@ export function ProspectCard({
           <span className="bar" />
           <span className="copy">{evidence.join(' · ')}</span>
         </div>
+      )}
+      {!prospect.scouted && (
+        <p
+          style={{
+            margin: '0.25rem 0 0',
+            fontSize: '0.6rem',
+            color: '#64748b',
+            lineHeight: 1.4,
+          }}
+        >
+          Scout to narrow the OVR range and sharpen fit precision. Contact and visits build interest.
+        </p>
       )}
 
       <div className="do-recruit-actions">
@@ -189,7 +315,11 @@ export function ProspectCard({
           className="do-recruit-btn primary"
           disabled={loading || !canVisit}
           onClick={() => runAction('visitProspect', 'Visit booked.', 'VISITED')}
-          title={canVisit ? 'Spend a visit slot' : 'No Visit slots remain this week'}
+          title={
+            canVisit
+              ? 'Spend a visit slot — your highest-commitment weekly signal to this prospect'
+              : 'No Visit slots remain this week'
+          }
           type="button"
         >
           Visit

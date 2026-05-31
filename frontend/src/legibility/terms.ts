@@ -14,7 +14,7 @@ export const TERMS = {
     why: 'Higher throw volume and accuracy — a primary source of eliminations.',
     kind: 'mechanical',
   },
-  'archetype.catcher': {
+  'archetype.net_specialist': {
     label: 'Net Specialist',
     plain: 'Catch-focused defender who turns incoming throws into resurrections.',
     why: 'A catch outs the thrower AND brings a teammate back — high swing.',
@@ -26,19 +26,19 @@ export const TERMS = {
     why: 'Generates catches (resurrections) but can over-commit and get out.',
     kind: 'mechanical',
   },
-  'archetype.dodger_anchor': {
+  'archetype.iron_anchor': {
     label: 'Iron Anchor',
     plain: 'Evasive survivor who anchors the floor and avoids elimination.',
     why: 'Stays alive late, when survivor counts decide foam games.',
     kind: 'mechanical',
   },
-  'archetype.thrower_catcher': {
+  'archetype.two_way_threat': {
     label: 'Two-Way Threat',
     plain: 'Balanced hybrid who both throws to eliminate and catches to resurrect.',
     why: 'Flexible lineup glue with no glaring liability to target.',
     kind: 'mechanical',
   },
-  'archetype.thrower_dodger': {
+  'archetype.skirmisher': {
     label: 'Skirmisher',
     plain: 'Mobile attacker who throws and evades rather than catching.',
     why: 'Pressures opponents while staying hard to eliminate.',

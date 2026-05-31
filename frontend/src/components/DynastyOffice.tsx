@@ -6,6 +6,7 @@ import { CredibilityStrip } from './dynasty/CredibilityStrip';
 import { ProspectCard } from './dynasty/ProspectCard';
 import { HistorySubTab } from './dynasty/HistorySubTab';
 import { commandApi, dynastyApi } from '../api/client';
+import { EmptyState } from '../legibility';
 
 const dynastySubtabFromUrl = (): 'recruit' | 'history' | 'staff' => {
   const subtab = new URLSearchParams(window.location.search).get('subtab');
@@ -215,12 +216,32 @@ function RecruitBoard({
   reload: () => void;
 }) {
   const [filter, setFilter] = useState<'all' | 'strong' | 'fair' | 'risk'>('all');
-  const filtered = prospects.filter((prospect) => {
-    if (filter === 'strong') return prospect.fit_score >= 80;
-    if (filter === 'fair') return prospect.fit_score >= 65 && prospect.fit_score < 80;
-    if (filter === 'risk') return prospect.fit_score < 65;
-    return true;
-  });
+  const [sort, setSort] = useState<'fit' | 'interest' | 'pipeline'>('fit');
+  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
+
+  const filtered = useMemo(() => {
+    const base = prospects.filter((prospect) => {
+      if (filter === 'strong') return prospect.fit_score >= 80;
+      if (filter === 'fair') return prospect.fit_score >= 65 && prospect.fit_score < 80;
+      if (filter === 'risk') return prospect.fit_score < 65;
+      return true;
+    });
+    return [...base].sort((a, b) => {
+      let av: number;
+      let bv: number;
+      if (sort === 'interest') {
+        av = a.interest ?? 0;
+        bv = b.interest ?? 0;
+      } else if (sort === 'pipeline') {
+        av = a.pipeline_tier ?? 1;
+        bv = b.pipeline_tier ?? 1;
+      } else {
+        av = a.fit_score;
+        bv = b.fit_score;
+      }
+      return sortDir === 'desc' ? bv - av : av - bv;
+    });
+  }, [prospects, filter, sort, sortDir]);
 
   return (
     <div className="do-board">
@@ -243,7 +264,58 @@ function RecruitBoard({
             At Risk <span className="n">{prospects.filter((prospect) => prospect.fit_score < 65).length}</span>
           </button>
           <span className="do-board-sep" />
-          <span className="do-board-meta">Sorted by Fit - Desc</span>
+          <div
+            role="group"
+            aria-label="Sort prospects"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.3rem',
+              flexWrap: 'wrap',
+            }}
+          >
+            <span
+              style={{
+                fontSize: '0.6rem',
+                color: '#64748b',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}
+            >
+              Sort
+            </span>
+            {(['fit', 'interest', 'pipeline'] as const).map((key) => (
+              <button
+                key={key}
+                className={`do-board-filter ${sort === key ? 'is-active' : ''}`}
+                onClick={() => {
+                  if (sort === key) {
+                    setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
+                  } else {
+                    setSort(key);
+                    setSortDir('desc');
+                  }
+                }}
+                type="button"
+                aria-pressed={sort === key}
+                aria-label={`Sort by ${key === 'fit' ? 'Fit' : key === 'interest' ? 'Interest' : 'Pipeline'}`}
+                title={
+                  key === 'fit'
+                    ? 'Sort by Fit score (how well this prospect matches your program)'
+                    : key === 'interest'
+                      ? 'Sort by Interest % (how interested the prospect is in your program)'
+                      : 'Sort by Pipeline Tier (1–5; higher tiers close more easily)'
+                }
+              >
+                {key === 'fit' ? 'Fit' : key === 'interest' ? 'Interest' : 'Pipeline'}
+                {sort === key && (
+                  <span aria-hidden="true" style={{ marginLeft: '0.2rem' }}>
+                    {sortDir === 'desc' ? '↓' : '↑'}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
       <div className="do-board-grid">
@@ -251,9 +323,10 @@ function RecruitBoard({
           <ProspectCard key={prospect.player_id} prospect={prospect} budget={budget} onAction={reload} priority={index + 1} />
         ))}
         {filtered.length === 0 && (
-          <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>
-            No prospects match the current filter.
-          </div>
+          <EmptyState
+            title="No prospects match this filter"
+            body="Try 'All' to see the full board, or adjust your filter. Prospects are generated each season."
+          />
         )}
       </div>
     </div>
