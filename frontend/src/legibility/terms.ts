@@ -176,6 +176,13 @@ export const TERMS = {
     why: 'A flavor summary of how you’ve managed — not a hidden stat bonus.',
     kind: 'flavor',
   },
+  // --- Lineup (mechanical: slot order drives role-label assignment) ---
+  'lineup.slot_order': {
+    label: 'Slot Order',
+    plain: 'The sequence of your six starters from Captain (slot 1) through Utility (slot 6).',
+    why: 'Each slot carries a role label that summarizes the position. Reorder to put the right archetype in the right slot — swap a bench player in by clicking a slot, then a bench card.',
+    kind: 'mechanical',
+  },
 } as const satisfies Record<string, TermDef>;
 
 export type TermId = keyof typeof TERMS;
