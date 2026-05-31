@@ -34,7 +34,12 @@ def build_staff_market_state(
     root_seed: int,
 ) -> dict[str, Any]:
     current_staff = [
-        {**head, "effect_summary": staff_effect_summary(head["department"])}
+        {
+            **head,
+            "rating_primary": round(float(head["rating_primary"])),
+            "rating_secondary": round(float(head["rating_secondary"])),
+            "effect_summary": staff_effect_summary(head["department"]),
+        }
         for head in load_department_heads(conn)
     ]
     facilities = load_club_facilities(conn, player_club_id, season_id)
@@ -61,8 +66,8 @@ def _candidate_for_head(head: dict[str, Any], root_seed: int, season_id: str) ->
     rng = DeterministicRNG(derive_seed(root_seed, "staff_market", season_id, department))
     primary_gain = round(rng.roll(3.0, 9.0), 1)
     secondary_gain = round(rng.roll(1.0, 7.0), 1)
-    primary = round(min(99.0, float(head["rating_primary"]) + primary_gain), 1)
-    secondary = round(min(99.0, float(head["rating_secondary"]) + secondary_gain), 1)
+    primary = round(min(99.0, float(head["rating_primary"]) + primary_gain))
+    secondary = round(min(99.0, float(head["rating_secondary"]) + secondary_gain))
     name = f"{_staff_first_name(rng)} {_staff_last_name(rng)}"
     return {
         "candidate_id": f"{season_id}_{department}_candidate",
@@ -75,10 +80,10 @@ def _candidate_for_head(head: dict[str, Any], root_seed: int, season_id: str) ->
     }
 
 
-def _staff_effect_lanes(department: str, primary: float, secondary: float) -> list[str]:
+def _staff_effect_lanes(department: str, primary: int, secondary: int) -> list[str]:
     return [
         staff_effect_summary(department),
-        f"Visible staff ratings would become {primary:.1f}/{secondary:.1f}.",
+        f"Visible staff ratings would become {primary}/{secondary}.",
     ]
 
 
