@@ -129,7 +129,7 @@ export function ProspectCard({
   ) as PipelineTier;
 
   return (
-    <div className={`do-recruit fit-${fitTier}`} style={{ position: 'relative' }}>
+    <div className={`do-recruit fit-${fitTier}`} style={{ position: 'relative' }} data-testid="prospect-card">
       {feedbackMessage && (
         <div
           style={{

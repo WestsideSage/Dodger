@@ -1,4 +1,5 @@
 import { formatSeasonLabel } from './formatters';
+import { EmptyState } from '../../../legibility/EmptyState';
 
 interface BannerEntry {
   type: string;
@@ -14,7 +15,7 @@ export function BannerShelf({
   showNextPlaceholder?: boolean;
 }) {
   if (banners.length === 0 && !showNextPlaceholder) {
-    return <p className="do-hist-card-note">No banners are hanging in this archive yet.</p>;
+    return <EmptyState title="No Banners Yet" body="No banners are hanging in this archive yet." />;
   }
 
   return (
