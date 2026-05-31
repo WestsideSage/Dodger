@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Player } from '../../types';
 import { commandApi } from '../../api/client';
 import { ApiError } from '../../api/client';
+import { TermTip } from '../../legibility';
 import { ActionButton } from '../ui';
 
 const STARTERS_COUNT = 6;
@@ -199,8 +200,9 @@ export function LineupEditor({ roster, defaultLineup, onClose, onSaved }: Props)
             >
               Manual Lineup Editor
             </h2>
-            <div style={{ marginTop: '0.25rem', color: '#94a3b8', fontSize: '0.875rem' }}>
-              Click a starter slot, then click a bench player to swap.
+            <div style={{ marginTop: '0.25rem', color: '#94a3b8', fontSize: '0.8rem', lineHeight: 1.5 }}>
+              Click a starter slot, then a bench player to swap.{' '}
+              <TermTip term="lineup.slot_order">Slot order</TermTip> sets role labels (Captain → Utility).
             </div>
           </div>
           <button
@@ -228,9 +230,60 @@ export function LineupEditor({ roster, defaultLineup, onClose, onSaved }: Props)
             flex: 1,
           }}
         >
-          <div>
-            <div className="dm-kicker" style={{ marginBottom: '0.5rem' }}>
-              Starters ({STARTERS_COUNT})
+          <div role="group" aria-label="Active starters — fielded six">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                marginBottom: '0.5rem',
+                paddingBottom: '0.35rem',
+                borderBottom: '2px solid #22d3ee',
+              }}
+            >
+              <span className="dm-kicker" style={{ color: '#22d3ee' }}>Active</span>
+              <span
+                style={{
+                  background: '#22d3ee',
+                  color: '#0b1220',
+                  borderRadius: '3px',
+                  fontWeight: 800,
+                  fontSize: '0.6rem',
+                  padding: '0.05rem 0.35rem',
+                  letterSpacing: '0.04em',
+                }}
+                aria-label="Fielded six — exactly 6 starters"
+              >
+                {STARTERS_COUNT} fielded
+              </span>
+            </div>
+            <div
+              aria-label="Slot role order: Captain, Striker, Anchor, Runner, Rookie, Utility"
+              style={{
+                display: 'flex',
+                gap: '0.3rem',
+                flexWrap: 'wrap',
+                marginBottom: '0.5rem',
+              }}
+            >
+              {ROLE_LABELS.map((label, i) => (
+                <span
+                  key={label}
+                  style={{
+                    fontSize: '0.55rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.04em',
+                    color: i === 0 ? '#22d3ee' : '#64748b',
+                    background: '#0f172a',
+                    border: '1px solid #1e293b',
+                    borderRadius: '3px',
+                    padding: '0.05rem 0.3rem',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {i + 1}. {label}
+                </span>
+              ))}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {starters.map((id, idx) => {
@@ -254,6 +307,11 @@ export function LineupEditor({ roster, defaultLineup, onClose, onSaved }: Props)
                         : isSelected
                         ? '1px solid #22d3ee'
                         : '1px solid #1e293b',
+                      borderLeft: hasError
+                        ? '3px solid #ef4444'
+                        : isSelected
+                        ? '3px solid #22d3ee'
+                        : '3px solid rgba(34,211,238,0.4)',
                       color: '#fff',
                       cursor: saving ? 'wait' : 'pointer',
                       fontFamily: 'inherit',
@@ -272,9 +330,32 @@ export function LineupEditor({ roster, defaultLineup, onClose, onSaved }: Props)
             </div>
           </div>
 
-          <div>
-            <div className="dm-kicker" style={{ marginBottom: '0.5rem' }}>
-              Bench ({benchPlayers.length})
+          <div role="group" aria-label="Bench players — not fielded">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                marginBottom: '0.5rem',
+                paddingBottom: '0.35rem',
+                borderBottom: '1px solid #1e293b',
+              }}
+            >
+              <span className="dm-kicker" style={{ color: '#64748b' }}>Bench</span>
+              <span
+                style={{
+                  background: '#1e293b',
+                  color: '#94a3b8',
+                  borderRadius: '3px',
+                  fontWeight: 700,
+                  fontSize: '0.6rem',
+                  padding: '0.05rem 0.35rem',
+                  letterSpacing: '0.04em',
+                }}
+                aria-label={`${benchPlayers.length} bench players — not fielded`}
+              >
+                {benchPlayers.length} not fielded
+              </span>
             </div>
             <div
               style={{
@@ -340,12 +421,39 @@ export function LineupEditor({ roster, defaultLineup, onClose, onSaved }: Props)
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
-              className="dm-btn"
               type="button"
               onClick={handleReset}
               disabled={saving}
+              title="Let the lineup resolver pick the best six automatically. You can manually adjust after."
+              aria-label="Auto-Pick: let lineup resolver choose the starting six"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.4rem 0.75rem',
+                borderRadius: '4px',
+                background: 'transparent',
+                border: '1px solid #334155',
+                color: '#94a3b8',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                fontFamily: 'inherit',
+                cursor: saving ? 'wait' : 'pointer',
+                opacity: saving ? 0.6 : 1,
+                transition: 'border-color 0.15s, color 0.15s',
+              }}
+              onMouseEnter={(e) => {
+                if (!saving) {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = '#22d3ee';
+                  (e.currentTarget as HTMLButtonElement).style.color = '#22d3ee';
+                }
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.borderColor = '#334155';
+                (e.currentTarget as HTMLButtonElement).style.color = '#94a3b8';
+              }}
             >
-              Reset to Auto
+              ⚙ Auto-Pick
             </button>
             <ActionButton onClick={onClose}>Done</ActionButton>
           </div>
