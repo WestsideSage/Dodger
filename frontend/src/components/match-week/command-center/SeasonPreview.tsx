@@ -123,11 +123,15 @@ export function SeasonPreview({
             CUT
           </div>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.3rem', fontSize: '0.62rem', color: '#64748b' }}>
+        {/* Axis endpoints only — the bye is called out in the caption below,
+            not implied by horizontal position (which previously misread). */}
+        <div className="season-preview-axis" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.3rem', fontSize: '0.62rem', color: '#64748b' }}>
           <span>Week 1</span>
-          <span style={{ color: '#f59e0b', fontWeight: 700 }}>{preview.bye_text}</span>
-          <span>Playoffs</span>
+          <span>Week {preview.regular_season_weeks}</span>
         </div>
+        <p className="season-preview-bye-note" style={{ color: '#f59e0b', fontWeight: 700, margin: '0.35rem 0 0', fontSize: '0.62rem' }}>
+          {preview.bye_text}
+        </p>
       </div>
 
       <dl style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', margin: 0 }}>
