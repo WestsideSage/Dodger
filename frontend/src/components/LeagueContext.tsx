@@ -3,6 +3,19 @@ import type { PlayoffBracketResponse, RecentMatchSummary, StandingRow, Standings
 import { useApiResource } from '../hooks/useApiResource';
 import { StatusMessage } from './ui';
 import { PlayoffBracket } from './standings/PlayoffBracket';
+import { ProgramModal } from './dynasty/history/ProgramModal';
+import { TermTip, EmptyState } from '../legibility';
+import type { TermId } from '../legibility';
+
+// Maps classify_club_archetype() output to a TermId. Closed set matches persistence.py.
+const ARCHETYPE_TERM_MAP: Record<string, TermId> = {
+  'Balanced Rebuild': 'program.archetype.balanced_rebuild',
+  'Contender': 'program.archetype.contender',
+  'Development Factory': 'program.archetype.development_factory',
+  'Defensive Specialist': 'program.archetype.defensive_specialist',
+  'Power Throwers': 'program.archetype.power_throwers',
+  'Aging Veterans': 'program.archetype.aging_veterans',
+};
 
 type RankedStanding = StandingRow & {
   rank: number;
@@ -157,113 +170,42 @@ const buildRaceSummary = (us: RankedStanding, leader: RankedStanding, cutoffTeam
 const buildWireRows = (
   recentMatches: RecentMatchSummary[] | undefined,
   userClubName: string,
-  currentWeek: number,
-) => {
+): React.ReactNode[] | null => {
   if (!recentMatches || recentMatches.length === 0) {
-    return [
-      <div key="empty" className="ls-wire-row">
-        <span className="ls-wire-week">W{String(currentWeek).padStart(2, '0')}</span>
-        <div className="ls-wire-fixture">
-          <span className="ls-wire-team home">Season</span>
-          <span className="ls-wire-score"><b>OPEN</b></span>
-          <span className="ls-wire-team away">Awaiting first result</span>
-        </div>
-        <span className="ls-wire-tag tag-draw">LIVE</span>
-      </div>,
-    ];
+    return null; // caller renders EmptyState
   }
 
   return recentMatches.map((match) => {
     const parsed = parseMatchSummary(match.summary);
     if (!parsed) {
       return (
-        <div key={match.match_id} className="ls-wire-row">
-          <span className="ls-wire-week">W{String(match.week).padStart(2, '0')}</span>
-          <div className="ls-wire-fixture">
-            <span className="ls-wire-team home">League</span>
-            <span className="ls-wire-score"><b>UPDATE</b></span>
-            <span className="ls-wire-team away">{match.summary}</span>
-          </div>
-          <span className="ls-wire-tag tag-draw">NOTE</span>
-        </div>
+        <span key={match.match_id} className="ls-wire-item">
+          <b>W{String(match.week).padStart(2, '0')}</b> {match.summary}
+        </span>
       );
     }
 
     const involvesUser = parsed.homeClubName === userClubName || parsed.awayClubName === userClubName;
-    const tagClass = match.winner_name === 'Draw' ? 'tag-draw' : 'tag-win';
+    const resultTag = match.winner_name === 'Draw' ? 'Draw' : `${parsed.homeClubName} ${parsed.homeScore}-${parsed.awayScore} ${parsed.awayClubName}`;
 
     return (
-      <div key={match.match_id} className={`ls-wire-row ${involvesUser ? 'is-us' : ''}`}>
-        <span className="ls-wire-week">W{String(match.week).padStart(2, '0')}</span>
-        <div className="ls-wire-fixture">
-          <span className="ls-wire-team home">{parsed.homeClubName}</span>
-          <span className="ls-wire-score">
-            <b>{parsed.homeScore}</b>-<b>{parsed.awayScore}</b>
-          </span>
-          <span className="ls-wire-team away">{parsed.awayClubName}</span>
-        </div>
-        <span className={`ls-wire-tag ${tagClass}`}>{match.winner_name === 'Draw' ? 'DRAW' : 'WIN'}</span>
-      </div>
+      <span
+        key={match.match_id}
+        className={`ls-wire-item${involvesUser ? ' is-us' : ''}`}
+        aria-label={`Week ${match.week}: ${resultTag}`}
+      >
+        <span className="ls-wire-item-wk">W{String(match.week).padStart(2, '0')}</span>
+        <span className="ls-wire-item-score">{resultTag}</span>
+        {involvesUser && <span className="ls-wire-item-you" aria-label="your match">★</span>}
+      </span>
     );
   });
-};
-
-const recentMatchesForClub = (
-  recentMatches: RecentMatchSummary[] | undefined,
-  clubName: string,
-) => (recentMatches ?? []).filter((match) => {
-  const parsed = parseMatchSummary(match.summary);
-  if (!parsed) return match.summary.includes(clubName);
-  return parsed.homeClubName === clubName || parsed.awayClubName === clubName;
-}).slice(0, 5);
-
-const ClubHistoryLane = ({
-  currentWeek,
-  recentMatches,
-  standing,
-}: {
-  currentWeek: number;
-  recentMatches: RecentMatchSummary[] | undefined;
-  standing: RankedStanding;
-}) => {
-  const clubMatches = recentMatchesForClub(recentMatches, standing.club_name);
-  return (
-    <tr id={`club-history-${standing.club_id}`} className="ls-history-row">
-      <td colSpan={9}>
-        <div className="ls-history-lane">
-          <div className="ls-history-summary">
-            <span className="dm-kicker">Club History</span>
-            <strong>{standing.club_name}</strong>
-            <span>{standing.wins}-{standing.losses}-{standing.draws} season record</span>
-            <span>{standing.points} points - {formatDiff(standing.elimination_differential)} survivor diff</span>
-            <span>Current plan: {normalizeApproach(standing.latest_approach)}</span>
-          </div>
-          <div className="ls-history-results">
-            <span className="ls-history-label">Last results</span>
-            {clubMatches.length > 0 ? (
-              clubMatches.map((match) => (
-                <div key={match.match_id} className="ls-history-match">
-                  <span>W{String(match.week).padStart(2, '0')}</span>
-                  <strong>{match.summary}</strong>
-                  <span>{match.winner_name === 'Draw' ? 'Draw' : `${match.winner_name} won`}</span>
-                </div>
-              ))
-            ) : (
-              <div className="ls-history-empty">
-                No completed {standing.club_name} matches in the latest week {currentWeek} feed.
-              </div>
-            )}
-          </div>
-        </div>
-      </td>
-    </tr>
-  );
 };
 
 export function Standings() {
   const { data, error, loading } = useApiResource<StandingsResponse>('/api/standings');
   const { data: bracket } = useApiResource<PlayoffBracketResponse>('/api/playoffs/bracket');
-  const [expandedClubId, setExpandedClubId] = useState<string | null>(null);
+  const [modalClub, setModalClub] = useState<{ id: string; name: string } | null>(null);
 
   const standings = useMemo<RankedStanding[]>(
     () => (data?.standings ?? []).map((standing, index) => ({ ...standing, rank: index + 1 })),
@@ -305,11 +247,19 @@ export function Standings() {
           helper: `Regular season finished #${us.rank} of ${standings.length}. The bracket above now decides the title.`,
         }
       : buildNeedCopy(us, leader, cutoffTeam, playoffLine, data.user_games_remaining ?? Math.max(0, data.total_weeks - data.current_week));
-  const wireRows = buildWireRows(data.recent_matches, us.club_name, data.current_week);
+  const wireRows = buildWireRows(data.recent_matches, us.club_name);
   const tiebreakRows = standings.slice(0, Math.min(standings.length, playoffLine + 2));
 
-  const handleClubOpen = (clubId: string) => {
-    setExpandedClubId((current) => (current === clubId ? null : clubId));
+  const allZeroPoints = standings.every((s) => s.points === 0);
+  const tiebreakerState: 'hidden' | 'soft' | 'live' =
+    isOffseason || playoffsActive
+      ? 'hidden'
+      : data.current_week <= 1 || allZeroPoints
+        ? 'soft'
+        : 'live';
+
+  const handleClubModal = (clubId: string, clubName: string) => {
+    setModalClub({ id: clubId, name: clubName });
   };
 
   return (
@@ -331,13 +281,13 @@ export function Standings() {
                 : playoffsActive
                   ? `REG. SEASON FINAL · #${us.rank} SEED`
                   : us.rank <= playoffLine
-                    ? `ABOVE LINE THROUGH W${String(data.current_week).padStart(2, '0')}`
-                    : `CHASE MODE THROUGH W${String(data.current_week).padStart(2, '0')}`}
+                    ? `IN PLAYOFF POSITION — WEEK ${String(data.current_week).padStart(2, '0')}`
+                    : `OUTSIDE PLAYOFF LINE — WEEK ${String(data.current_week).padStart(2, '0')}`}
             </div>
           </div>
 
           <div className="ls-glance-cell ls-glance-record">
-            <span className="lbl">Record - Diff</span>
+            <span className="lbl">Season Record</span>
             <div className="record-row">
               <span className="rec">{us.wins}-{us.losses}-{us.draws}</span>
               <span
@@ -351,7 +301,7 @@ export function Standings() {
           </div>
 
           <div className="ls-glance-cell ls-glance-race">
-            <span className="lbl">Playoff Line - Top {playoffLine}</span>
+            <span className="lbl">Playoff Race</span>
             <div className="race">
               {standings.slice(0, Math.min(standings.length, playoffLine + 1)).map((standing) => (
                 <span
@@ -370,7 +320,7 @@ export function Standings() {
           </div>
 
           <div className="ls-glance-cell ls-glance-next">
-            <span className="lbl">Next Result Needs</span>
+            <span className="lbl">This Week's Target</span>
             <NeedState action={needCopy.action} outcome={needCopy.outcome} helper={needCopy.helper} />
           </div>
         </div>
@@ -381,7 +331,7 @@ export function Standings() {
               <span className="dm-kicker">League Office</span>
               <h2 className="ls-table-title">
                 {playoffsActive ? 'Final Regular-Season Table' : 'Season Standings'}{' '}
-                <span className="ls-subtle">{playoffsActive ? 'Playoffs live above' : 'Live season table'}</span>
+                <span className="ls-subtle">{playoffsActive ? 'Playoffs live above' : 'Regular season'}</span>
               </h2>
             </div>
             <div className="ls-table-meta">
@@ -402,19 +352,19 @@ export function Standings() {
                   <th className="num">D</th>
                   <th className="num">PTS</th>
                   <th>Plan</th>
-                  <th>Survivor Diff</th>
-                  <th className="ls-nav-th" aria-label="Navigate"></th>
+                  <th>
+                    <TermTip term="standings.diff">Survivor Diff</TermTip>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {standings.map((standing, index) => {
                   const isCutLine = index === playoffLine;
-                  const expanded = expandedClubId === standing.club_id;
                   return (
                     <React.Fragment key={standing.club_id}>
                       {isCutLine && (
                         <tr className="ls-playoff-line">
-                          <td colSpan={9}>
+                          <td colSpan={8}>
                             <div className="cut-row">
                               <span className="line-bar" />
                               <span className="line-label">Playoff Cut</span>
@@ -424,18 +374,17 @@ export function Standings() {
                         </tr>
                       )}
                       <tr
-                        className={`${standing.is_user_club ? 'ls-user' : ''} ${expanded ? 'ls-row-expanded' : ''}`.trim()}
-                        onClick={() => handleClubOpen(standing.club_id)}
+                        className={standing.is_user_club ? 'ls-user' : ''}
+                        onClick={() => handleClubModal(standing.club_id, standing.club_name)}
                         style={{ cursor: 'pointer' }}
                         role="button"
                         tabIndex={0}
-                        aria-expanded={expanded}
-                        aria-controls={`club-history-${standing.club_id}`}
-                        aria-label={`${expanded ? 'Hide' : 'View'} ${standing.club_name} history`}
+                        aria-haspopup="dialog"
+                        aria-label={`Open ${standing.club_name} program history`}
                         onKeyDown={(event) => {
                           if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault();
-                            handleClubOpen(standing.club_id);
+                            handleClubModal(standing.club_id, standing.club_name);
                           }
                         }}
                       >
@@ -446,7 +395,15 @@ export function Standings() {
                           <div className="ls-club">
                             <span className="club-name">{standing.club_name}</span>
                             <div className="ls-subtle" style={{ display: 'block', marginLeft: 0 }}>
-                              {standing.program_trajectory_label ?? standing.program_archetype ?? 'Program track live'}
+                              {(() => {
+                                const raw = standing.program_trajectory_label ?? standing.program_archetype ?? '';
+                                const archetype = raw.includes(' · ') ? raw.split(' · ').slice(1).join(' · ') : raw;
+                                if (!archetype) return null;
+                                const termId = ARCHETYPE_TERM_MAP[archetype];
+                                return termId
+                                  ? <TermTip term={termId}>{archetype}</TermTip>
+                                  : <span>{archetype}</span>;
+                              })()}
                             </div>
                           </div>
                         </td>
@@ -460,15 +417,7 @@ export function Standings() {
                           </span>
                         </td>
                         <td><DiffBar diff={standing.elimination_differential} max={maxDiff} /></td>
-                        <td className="ls-nav-cell"><span className="ls-nav-chevron" aria-hidden="true">{expanded ? 'v' : '>'}</span></td>
                       </tr>
-                      {expanded && (
-                        <ClubHistoryLane
-                          currentWeek={data.current_week}
-                          recentMatches={data.recent_matches}
-                          standing={standing}
-                        />
-                      )}
                     </React.Fragment>
                   );
                 })}
@@ -481,7 +430,12 @@ export function Standings() {
             <span className="ls-legend-sep">-</span>
             <span className="ls-legend-item"><span className="dm-badge dm-badge-amber">CUT</span> Playoff line</span>
             <span className="ls-legend-sep">-</span>
-            <span className="ls-legend-note">Click any row <span className="ls-nav-chevron-inline" aria-hidden="true">&gt;</span> to open that club's history.</span>
+            <span className="ls-legend-item">
+              <TermTip term="standings.playoff_line">Playoff Line</TermTip>
+              {' '}— top {playoffLine} advance
+            </span>
+            <span className="ls-legend-sep">-</span>
+            <span className="ls-legend-note">Click any row to open that club's program history.</span>
           </div>
         </div>
 
@@ -491,50 +445,102 @@ export function Standings() {
               <span className="dm-kicker">League Wire</span>
               <h3>Recent Results</h3>
             </div>
-            <div className="ls-wire-list">{wireRows}</div>
+            {wireRows === null ? (
+              <EmptyState
+                title="No results yet"
+                body="League Wire updates here after the first week of matches is complete."
+                icon="📡"
+              />
+            ) : (
+              <div
+                className="ls-wire-ticker"
+                role="list"
+                aria-label="Recent league results"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  gap: '0.75rem',
+                  overflowX: 'auto',
+                  padding: '0.5rem 0.75rem',
+                  WebkitOverflowScrolling: 'touch',
+                }}
+              >
+                {wireRows}
+              </div>
+            )}
           </div>
 
           <div className="ls-panel">
             <div className="ls-panel-head">
               <span className="dm-kicker">Tiebreaker Read</span>
-              <h3>Top {playoffLine} Race</h3>
+              <h3>
+                {tiebreakerState === 'hidden'
+                  ? 'Race Concluded'
+                  : tiebreakerState === 'soft'
+                    ? 'Race Developing'
+                    : `Top ${playoffLine} Race`}
+              </h3>
             </div>
-            <div className="ls-tb-list">
-              {tiebreakRows.map((standing) => {
-                const isSafe = standing.rank <= playoffLine;
-                return (
-                  <div
-                    key={`tb-${standing.club_id}`}
-                    className="ls-tb-row"
-                    onClick={() => handleClubOpen(standing.club_id)}
-                    style={{ cursor: 'pointer' }}
-                    role="button"
-                    tabIndex={0}
-                    aria-expanded={expandedClubId === standing.club_id}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        handleClubOpen(standing.club_id);
-                      }
-                    }}
-                  >
-                    <span className="ls-tb-from">#{standing.rank}</span>
-                    <div className="ls-tb-body">
-                      <span className="ls-tb-who">{standing.club_name}</span>
-                      <span className="ls-tb-note">
-                        {standing.points} pts - {formatDiff(standing.elimination_differential)} diff - {normalizeApproach(standing.latest_approach)}
+            {tiebreakerState === 'hidden' ? (
+              <EmptyState
+                title={isOffseason ? 'Season concluded' : 'Bracket is live'}
+                body={
+                  isOffseason
+                    ? 'The regular season is over. See the offseason recap for final standings.'
+                    : 'The playoff bracket above is now the deciding surface.'
+                }
+              />
+            ) : tiebreakerState === 'soft' ? (
+              <EmptyState
+                title="Race not yet meaningful"
+                body="No matches have been played. The tiebreaker read will update after Week 1 results are in."
+              />
+            ) : (
+              <div className="ls-tb-list">
+                {tiebreakRows.map((standing) => {
+                  const isSafe = standing.rank <= playoffLine;
+                  return (
+                    <div
+                      key={`tb-${standing.club_id}`}
+                      className="ls-tb-row"
+                      onClick={() => handleClubModal(standing.club_id, standing.club_name)}
+                      style={{ cursor: 'pointer' }}
+                      role="button"
+                      tabIndex={0}
+                      aria-haspopup="dialog"
+                      aria-label={`Open ${standing.club_name} program history`}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          handleClubModal(standing.club_id, standing.club_name);
+                        }
+                      }}
+                    >
+                      <span className="ls-tb-from">#{standing.rank}</span>
+                      <div className="ls-tb-body">
+                        <span className="ls-tb-who">{standing.club_name}</span>
+                        <span className="ls-tb-note">
+                          {standing.points} pts · {formatDiff(standing.elimination_differential)} diff
+                        </span>
+                      </div>
+                      <span className={`ls-tb-risk ${isSafe ? 'risk-low' : 'risk-high'}`}>
+                        {isSafe ? 'IN' : 'BUBBLE'}
                       </span>
                     </div>
-                    <span className={`ls-tb-risk ${isSafe ? 'risk-low' : 'risk-high'}`}>
-                      {isSafe ? 'IN' : 'BUBBLE'}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
+      {modalClub && (
+        <ProgramModal
+          clubId={modalClub.id}
+          clubName={modalClub.name}
+          onClose={() => setModalClub(null)}
+        />
+      )}
     </>
   );
 }

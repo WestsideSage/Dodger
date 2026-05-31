@@ -6659,6 +6659,40 @@ textarea:focus-visible {
 .ls-wire-tag.tag-win  { color: var(--dm-emerald-bright); border-color: rgba(16,185,129,0.45); background: rgba(16,185,129,0.10); }
 .ls-wire-tag.tag-draw { color: var(--dm-text-muted); border-color: rgba(148,163,184,0.45); background: rgba(148,163,184,0.08); }
 
+.ls-wire-ticker {
+  scrollbar-width: thin;
+  scrollbar-color: #1e293b #0b1220;
+}
+.ls-wire-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+  font-size: 0.7rem;
+  color: #94a3b8;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid #1e293b;
+  border-radius: 3px;
+  background: rgba(15, 23, 42, 0.5);
+  list-style: none;
+}
+.ls-wire-item.is-us {
+  border-color: rgba(34, 211, 238, 0.4);
+  background: rgba(34, 211, 238, 0.07);
+}
+.ls-wire-item-wk {
+  color: #475569;
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+}
+.ls-wire-item-score {
+  font-weight: 600;
+}
+.ls-wire-item-you {
+  color: #22d3ee;
+  font-size: 0.65rem;
+}
+
 /* Tiebreaker panel */
 .ls-tb-list { display: grid; }
 .ls-tb-row {
