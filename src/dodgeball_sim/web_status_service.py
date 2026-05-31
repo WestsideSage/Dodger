@@ -139,6 +139,16 @@ def build_roster_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         player_dict["potential_ceiling"] = ceiling
         player_dict["headroom"] = headroom
         player_dict["projected_growth"] = projected_growth
+        
+        core_skills = [
+            ("Accuracy", player.ratings.accuracy),
+            ("Power", player.ratings.power),
+            ("Dodge", player.ratings.dodge),
+            ("Catch", player.ratings.catch),
+        ]
+        core_skills.sort(key=lambda x: x[1], reverse=True)
+        player_dict["bio_strongest_attr"] = core_skills[0][0]
+        player_dict["bio_secondary_attr"] = core_skills[1][0]
 
         # Season-over-season OVR trend: no per-season ratings history is stored in
         # the database (player_season_stats only holds match stats, not ratings).

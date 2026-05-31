@@ -1,14 +1,14 @@
 import type { TermId } from './terms';
 
 export const PLAYER_ARCHETYPE_TERM: Record<string, TermId> = {
-  thrower: 'archetype.thrower',
+  thrower: 'archetype.sharpshooter',
   catcher: 'archetype.net_specialist',
   ball_hawk: 'archetype.ball_hawk',
   dodger_anchor: 'archetype.iron_anchor',
   thrower_catcher: 'archetype.two_way_threat',
   thrower_dodger: 'archetype.skirmisher',
-  catcher_hawk: 'archetype.catcher_hawk',
-  hawk_dodger: 'archetype.hawk_dodger',
+  catcher_hawk: 'archetype.possession_specialist',
+  hawk_dodger: 'archetype.hit_and_run',
 };
 
 export const CLUB_ARCHETYPE_TERM: Record<string, TermId> = {
