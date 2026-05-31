@@ -3,6 +3,7 @@ import { useApiResource } from '../../../hooks/useApiResource';
 import { StatusMessage } from '../../ui';
 import { ProgramModal } from './ProgramModal';
 import { formatRecordLabel, formatSeasonLabel, humanizeHistoryToken } from './formatters';
+import { EmptyState } from '../../../legibility/EmptyState';
 
 interface LeagueData {
   directory: Array<{ club_id: string; name: string }>;
@@ -67,18 +68,26 @@ export function LeagueView() {
           <span className="lbl">Dynasty Leader</span>
           <span className="val">{topDynasty ? topDynasty.club_name : 'None Yet'}</span>
           <span className={`trend ${topDynasty && topDynasty.championships > 0 ? 'ok' : ''}`}>
-            {topDynasty ? `${topDynasty.championships} titles - streak ${topDynasty.longest_win_streak}` : 'No championship archive yet'}
+            {topDynasty
+              ? `${topDynasty.championships} title${topDynasty.championships === 1 ? '' : 's'} · longest streak ${topDynasty.longest_win_streak}`
+              : 'First champion has not been crowned yet'}
           </span>
         </div>
         <div className="cell">
           <span className="lbl">Records Logged</span>
           <span className="val">{data.records.length}</span>
-          <span className="trend">{data.records.length > 0 ? 'League marks are being tracked' : 'First records still pending'}</span>
+          <span className="trend">
+            {data.records.length > 0
+              ? 'League marks are being tracked'
+              : 'Records will appear after the first stat milestones'}
+          </span>
         </div>
         <div className="cell">
           <span className="lbl">Hall of Fame</span>
           <span className="val">{data.hof.length}</span>
-          <span className="trend">{data.hof.length > 0 ? 'Legacy lane is active' : 'No inductees yet'}</span>
+          <span className="trend">
+            {data.hof.length > 0 ? 'Legacy lane is active' : 'First inductee class is still being earned'}
+          </span>
         </div>
         <div className="cell">
           <span className="lbl">Top Rivalry</span>
@@ -130,7 +139,10 @@ export function LeagueView() {
               ))}
             </div>
           ) : (
-            <p className="do-hist-card-note">No dynasty ranking data has been logged yet.</p>
+            <EmptyState
+              title="No dynasty rankings yet"
+              body="Rankings appear after the first championship is claimed. Win the league to start the board."
+            />
           )}
         </section>
 
@@ -155,7 +167,10 @@ export function LeagueView() {
               ))}
             </div>
           ) : (
-            <p className="do-hist-card-note">No league records have been set yet.</p>
+            <EmptyState
+              title="No league records set"
+              body="Individual season-stat records are logged here once the league has enough history to establish a mark."
+            />
           )}
         </section>
 
@@ -182,7 +197,11 @@ export function LeagueView() {
               ))}
             </div>
           ) : (
-            <p className="do-hist-card-note">The Hall of Fame is still empty.</p>
+            <EmptyState
+              title="Hall of Fame is empty"
+              body="Players inducted after distinguished careers will appear here. The first class is still being earned."
+              icon="🏛️"
+            />
           )}
         </section>
 
@@ -211,7 +230,10 @@ export function LeagueView() {
               ))}
             </div>
           ) : (
-            <p className="do-hist-card-note">Rivalries will appear after repeated meetings.</p>
+            <EmptyState
+              title="No rivalries tracked yet"
+              body="Club pairings that meet repeatedly rise to the top. A few more seasons will surface the heat maps."
+            />
           )}
         </section>
       </div>
