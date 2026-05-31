@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
+from .config import DEFAULT_CONFIG
 from .persistence import load_club_facilities, load_department_heads, load_json_state
 from .rng import DeterministicRNG, derive_seed
 
@@ -26,6 +27,16 @@ def staff_effect_summary(department: str) -> str:
     return _STAFF_EFFECT_LABELS.get(department, "Program recommendations.")
 
 
+_MAX_STAFF_DEV_MOD: float = DEFAULT_CONFIG.max_staff_development_modifier
+
+
+def _training_modifier_pct(rating_primary: float | int) -> int:
+    """Return the rounded-percentage offseason dev modifier for a training head.
+    Formula mirrors offseason_ceremony.py:493-494. Clamps at 0 (no penalty exposed)."""
+    raw = max(0.0, (float(rating_primary) - 50.0) / 50.0 * _MAX_STAFF_DEV_MOD)
+    return round(raw * 100)
+
+
 def build_staff_market_state(
     conn: sqlite3.Connection,
     *,
@@ -39,6 +50,11 @@ def build_staff_market_state(
             "rating_primary": round(float(head["rating_primary"])),
             "rating_secondary": round(float(head["rating_secondary"])),
             "effect_summary": staff_effect_summary(head["department"]),
+            **(
+                {"training_modifier_pct": _training_modifier_pct(head["rating_primary"])}
+                if head["department"] == "training"
+                else {}
+            ),
         }
         for head in load_department_heads(conn)
     ]
