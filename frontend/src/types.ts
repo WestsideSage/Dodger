@@ -726,8 +726,8 @@ export interface SeasonPreview {
     playoff_cut: number;
     total_clubs: number;
     top_goal: string;
-    strength: { archetype: string; avg_overall: number } | null;
-    weakness: { archetype: string; avg_overall: number } | null;
+    strength: { archetype: string; archetype_key: string; avg_overall: number } | null;
+    weakness: { archetype: string; archetype_key: string; avg_overall: number } | null;
     skipped: boolean;
 }
 

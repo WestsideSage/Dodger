@@ -84,3 +84,47 @@ def test_build_season_preview_prettifies_raw_archetype_keys() -> None:
     assert preview["strength"]["archetype"] == "Thrower"
     assert preview["weakness"]["archetype"] == "Ball Hawk / Dodger"
     assert "hawk_dodger" not in preview["weakness"]["archetype"]
+
+
+class TestSeasonPreviewArchetypeKey:
+    """strength and weakness expose the raw archetype_key alongside the display name."""
+
+    def test_strength_carries_raw_key(self):
+        roster = [
+            {"archetype": "hawk_dodger", "overall": 72}
+        ]
+        payload = build_season_preview(
+            regular_season_weeks=12,
+            bye_week=6,
+            playoff_cut=4,
+            total_clubs=8,
+            roster=roster,
+        )
+        assert payload["strength"]["archetype"] == "Ball Hawk / Dodger"
+        assert payload["strength"]["archetype_key"] == "hawk_dodger"
+
+    def test_weakness_carries_raw_key(self):
+        roster = [
+            {"archetype": "thrower", "overall": 80},
+            {"archetype": "catcher", "overall": 55},
+        ]
+        payload = build_season_preview(
+            regular_season_weeks=12,
+            bye_week=6,
+            playoff_cut=4,
+            total_clubs=8,
+            roster=roster,
+        )
+        assert payload["weakness"]["archetype_key"] == "catcher"
+
+    def test_null_strength_when_roster_empty(self):
+        payload = build_season_preview(
+            regular_season_weeks=12,
+            bye_week=6,
+            playoff_cut=4,
+            total_clubs=8,
+            roster=[],
+        )
+        assert payload["strength"] is None
+        assert payload["weakness"] is None
+

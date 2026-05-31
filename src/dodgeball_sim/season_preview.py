@@ -62,6 +62,7 @@ def build_season_preview(
         "strength": (
             {
                 "archetype": archetype_display_name(strength["archetype"]),
+                "archetype_key": strength["archetype"],
                 "avg_overall": strength["avg_overall"],
             }
             if strength is not None
@@ -70,6 +71,7 @@ def build_season_preview(
         "weakness": (
             {
                 "archetype": archetype_display_name(weakness["archetype"]),
+                "archetype_key": weakness["archetype"],
                 "avg_overall": weakness["avg_overall"],
             }
             if weakness is not None
