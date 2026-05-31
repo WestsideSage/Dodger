@@ -1,26 +1,13 @@
 import type { TermId } from '../../../legibility';
-import { TermTip } from '../../../legibility';
+import { TermTip, PLAYER_ARCHETYPE_TERM } from '../../../legibility';
 import type { SeasonPreview as SeasonPreviewData } from '../../../types';
 
-// Maps every PlayerArchetype raw key (from models.py) to its legibility TermId.
-// This is a compile-time-complete map: any archetype_key not listed here is a tsc error.
-// If the engine adds a new archetype, add its 'archetype.*' entry to terms.ts first,
-// then add it here.
-const ARCHETYPE_TERM_MAP: Record<string, TermId> = {
-  thrower: 'archetype.thrower',
-  catcher: 'archetype.catcher',
-  ball_hawk: 'archetype.ball_hawk',
-  dodger_anchor: 'archetype.dodger_anchor',
-  thrower_catcher: 'archetype.thrower_catcher',
-  thrower_dodger: 'archetype.thrower_dodger',
-  catcher_hawk: 'archetype.catcher_hawk',
-  hawk_dodger: 'archetype.hawk_dodger',
-} as const;
-
-// Returns a TermId for an archetype_key, or undefined if the key is unmapped
-// (e.g. a future archetype added before terms.ts is updated).
+// Resolves a raw PlayerArchetype `archetype_key` (from models.py) to its
+// legibility TermId via the shared archetype map (V15 index decision #2 —
+// screens consume the shared map, never a local reverse-map). Returns undefined
+// for an unmapped key (e.g. a future archetype added before terms.ts is updated).
 function archetypeTermId(key: string): TermId | undefined {
-  return ARCHETYPE_TERM_MAP[key] as TermId | undefined;
+  return PLAYER_ARCHETYPE_TERM[key];
 }
 
 /**
