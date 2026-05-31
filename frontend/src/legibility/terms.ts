@@ -183,6 +183,43 @@ export const TERMS = {
     why: 'Each slot carries a role label that summarizes the position. Reorder to put the right archetype in the right slot — swap a bench player in by clicking a slot, then a bench card.',
     kind: 'mechanical',
   },
+  // --- Department orders (mechanical: each drives a weekly staff focus) ---
+  'dept.tactics': {
+    label: 'Tactics',
+    plain: 'Your staff\'s game-planning focus this week — opponent prep, containment, or tempo.',
+    why: 'Tactical orders bias how your team approaches the next match. Mechanical.',
+    kind: 'mechanical',
+  },
+  'dept.training': {
+    label: 'Training',
+    plain: 'What your training staff emphasizes in practice — fundamentals, throws, or catches.',
+    why: 'Training focus shapes which attributes your players develop toward. Mechanical.',
+    kind: 'mechanical',
+  },
+  'dept.conditioning': {
+    label: 'Conditioning',
+    plain: 'How hard you push the squad physically — recovery emphasis vs. stamina push.',
+    why: 'Conditioning order trades short-term edge for long-term freshness. Mechanical.',
+    kind: 'mechanical',
+  },
+  'dept.medical': {
+    label: 'Medical',
+    plain: 'How aggressively your medical staff manages player minutes and injury risk.',
+    why: 'Affects whether injured or tired players are rested or pushed. Mechanical.',
+    kind: 'mechanical',
+  },
+  'dept.scouting': {
+    label: 'Scouting',
+    plain: 'What your scouts focus on — next opponent, the prospect board, or playoff rivals.',
+    why: 'Scouting focus narrows which information you get each week. Mechanical.',
+    kind: 'mechanical',
+  },
+  'dept.culture': {
+    label: 'Culture',
+    plain: 'The locker-room emphasis this week — youth confidence, veteran leadership, accountability.',
+    why: 'Culture orders influence morale and long-term player identity. Mechanical.',
+    kind: 'mechanical',
+  },
 } as const satisfies Record<string, TermDef>;
 
 export type TermId = keyof typeof TERMS;

@@ -51,6 +51,36 @@ def test_credibility_counts_career_wins_across_seasons():
     recruiting = state["recruiting"]
 
     evidence = " ".join(recruiting["credibility"]["evidence"])
-    assert "2 career command-history wins and 0 losses." in evidence
-    assert "0 youth-development command weeks across your career." in evidence
+    assert "2 wins and 0 losses across your career." in evidence
+    assert "0 weeks spent prioritizing youth development." in evidence
     assert recruiting["credibility"]["score"] > 50
+
+def _minimal_conn(tmp_path):
+    import sqlite3
+    from dodgeball_sim.persistence import create_schema
+    from dodgeball_sim.career_setup import initialize_curated_manager_career
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_curated_manager_career(conn, "aurora", root_seed=42)
+    conn.commit()
+    return conn
+
+def test_credibility_evidence_plain_language(tmp_path):
+    """Evidence strings use plain language — no internal jargon like 'command week'."""
+    conn = _minimal_conn(tmp_path)
+    # Pass an empty history so the no-history edge case is also exercised.
+    state = build_recruiting_state(
+        conn,
+        season_id="season_1",
+        player_club_id="club_user",
+        root_seed=42,
+        history=[],
+    )
+    evidence = state["credibility"]["evidence"]
+    # At least one item describes wins/losses in plain terms.
+    assert any("wins" in e and "losses" in e for e in evidence)
+    # No item leaks the internal "command" jargon.
+    assert not any("command" in e.lower() for e in evidence)
+    # Prestige item is present and uses the plain label.
+    assert any("prestige" in e.lower() for e in evidence)

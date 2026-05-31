@@ -11,14 +11,13 @@ test('standings rows expand into an inline club history lane', async ({ page, re
 
   await page.goto(`${baseUrl}/?tab=standings`);
 
-  const auroraRow = page.getByRole('button', { name: /View Aurora .* history/ });
+  const auroraRow = page.getByRole('button', { name: 'Open Aurora Sentinels program history' });
   await expect(auroraRow).toBeVisible();
-  await expect(auroraRow).toHaveAttribute('aria-expanded', 'false');
 
   await auroraRow.click();
 
-  await expect(page.getByRole('button', { name: /Hide Aurora .* history/ })).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.getByText('Club History')).toBeVisible();
-  await expect(page.getByText(/season record/i)).toBeVisible();
-  await expect(page.getByText(/Current plan:/i)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
+  await expect(page.getByText('Archive Through')).toBeVisible();
+  await expect(page.getByText('Current Record')).toBeVisible();
+  await expect(page.getByText('Program Identity', { exact: true })).toBeVisible();
 });

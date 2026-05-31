@@ -1,94 +1,93 @@
+import { TermTip } from '../../legibility';
 import type { DynastyOfficeResponse } from '../../types';
 
 type RecruitingCredibility = DynastyOfficeResponse['recruiting']['credibility'];
-type RecruitingBudget = DynastyOfficeResponse['recruiting']['budget'];
 
-function remaining([used, total]: [number, number]) {
-  return Math.max(0, total - used);
+// Tick positions aligned to the real _grade() breakpoints in recruiting_office.py:
+// F=0–39, D=40–54, C=55–69, B=70–84, A=85+.
+// Each tick marks where a NEW grade begins. Track width = 100pts so % = breakpoint value.
+const TIER_TICKS: Array<{ label: string; pct: number }> = [
+  { label: 'F', pct: 0 },
+  { label: 'D', pct: 40 },
+  { label: 'C', pct: 55 },
+  { label: 'B', pct: 70 },
+  { label: 'A', pct: 85 },
+];
+
+// Which tier bracket does the score currently sit in?
+// Grade breakpoints (recruiting_office.py _grade): F=0-39, D=40-54, C=55-69, B=70-84, A=85+.
+function tierBracket(score: number): { label: string; prev: number; next: number } {
+  if (score >= 85) return { label: 'Tier A · Max reach', prev: 85, next: 100 };
+  if (score >= 70) return { label: 'Tier B · Toward A', prev: 70, next: 85 };
+  if (score >= 55) return { label: 'Tier C · Toward B', prev: 55, next: 70 };
+  if (score >= 40) return { label: 'Tier D · Toward C', prev: 40, next: 55 };
+  return { label: 'Tier F · Toward D', prev: 0, next: 40 };
 }
 
 export function CredibilityStrip({
   credibility,
-  budget,
-  prospectCount,
-  week,
 }: {
   credibility: RecruitingCredibility;
-  budget: RecruitingBudget;
-  prospectCount: number;
-  week: number;
 }) {
   const score = credibility.score;
-  const tier = (() => {
-    if (score >= 85) return { label: 'Tier A · Max', prev: 85, target: 100 };
-    if (score >= 70) return { label: 'Toward Tier A', prev: 70, target: 85 };
-    if (score >= 55) return { label: 'Toward Tier B', prev: 55, target: 70 };
-    if (score >= 40) return { label: 'Toward Tier C', prev: 40, target: 55 };
-    return { label: 'Toward Tier D', prev: 0, target: 40 };
-  })();
-  const progress = Math.min(
-    100,
-    Math.max(0, ((score - tier.prev) / Math.max(1, tier.target - tier.prev)) * 100),
-  );
-  const scoutRemaining = remaining(budget.scout);
-  const contactRemaining = remaining(budget.contact);
-  const visitRemaining = remaining(budget.visit);
+  // Grade always read from the payload — no independent re-derivation that could drift.
+  const grade = credibility.grade;
+  const bracket = tierBracket(score);
+  // Fill % is the score's position within the 0-100 track (one-to-one).
+  const fillPct = Math.min(100, Math.max(0, score));
 
   return (
     <div className="do-cred">
-      <div className="do-cred-letter">
-        <span className="tier">{credibility.grade}</span>
+      <div className="do-cred-letter" aria-hidden="true">
+        <span className="tier">{grade}</span>
         <div className="halo" />
       </div>
 
-      <div className="do-cred-main" title="Program credibility dictates the tier of prospects that are interested in your program. Win matches, increase your credibility, and sign better recruits.">
-        <span className="dm-kicker">Program Credibility</span>
-        <h2 className="do-cred-title">Tier {credibility.grade} · Regional</h2>
-        <p className="do-cred-blurb">Recruit quality rises with the program. This board reflects your live week, current score, and open recruiting pressure.</p>
+      <div className="do-cred-main">
+        <span className="dm-kicker">
+          <TermTip term="program.credibility">Program Credibility</TermTip>
+        </span>
+        <h2 className="do-cred-title">
+          Tier {grade} · Regional
+        </h2>
+        <p className="do-cred-blurb">
+          Your recruiting reputation. Higher credibility draws better prospects
+          and makes closes easier. It rises with wins, youth development, and
+          your club's long-term{' '}
+          <TermTip term="program.prestige">prestige</TermTip>.
+        </p>
 
-        <div className="do-cred-progress">
+        <div className="do-cred-progress" role="group" aria-label={`Program credibility score ${score} of 100`}>
           <div className="do-cred-progress-head">
-            <span className="lbl">{tier.label}</span>
-            <span className="val mono"><b>{score}</b> <span className="dim">/ {tier.target}</span></span>
+            <span className="lbl">{bracket.label}</span>
+            <span className="val mono">
+              <b>{score}</b> <span className="dim">/ 100</span>
+            </span>
           </div>
-          <div className="do-cred-track">
-            <div className="do-cred-fill" style={{ width: `${progress}%` }}>
+          <div className="do-cred-track" style={{ position: 'relative' }}>
+            <div className="do-cred-fill" style={{ width: `${fillPct}%` }}>
               <span className="do-cred-marker" />
             </div>
-            <span className="do-cred-tick" style={{ left: '0%' }}><span className="lbl">D</span></span>
-            <span className="do-cred-tick" style={{ left: '33%' }}><span className="lbl">C</span></span>
-            <span className="do-cred-tick" style={{ left: '66%' }}><span className="lbl">B</span></span>
-            <span className="do-cred-tick" style={{ left: '100%' }}><span className="lbl">A</span></span>
+            {TIER_TICKS.map(({ label, pct }) => (
+              <span
+                key={label}
+                className="do-cred-tick"
+                style={{ left: `${pct}%` }}
+                aria-label={`Tier ${label} threshold`}
+              >
+                <span className="lbl">{label}</span>
+              </span>
+            ))}
           </div>
         </div>
 
-        <div className="do-cred-evidence">
+        <div className="do-cred-evidence" aria-label="Credibility factors">
           {credibility.evidence.map((item, index) => (
             <div key={`${index}-${item}`} className="item">
-              <span className="ix">{String(index + 1).padStart(2, '0')}.{' '}</span>
+              <span className="ix" aria-hidden="true">{String(index + 1).padStart(2, '0')}.{' '}</span>
               <span className="copy">{item}</span>
             </div>
           ))}
-        </div>
-      </div>
-
-      <div className="do-cred-side">
-        <div className="do-cred-rank">
-          <span className="lbl">Board Size</span>
-          <div className="val"><b>{prospectCount}</b> <span>live targets</span></div>
-          <span className="trend dim">Week {String(week).padStart(2, '0')} recruiting board</span>
-        </div>
-        <div className="do-cred-rank">
-          <span className="lbl">Reach Remaining</span>
-          <div className="val"><b>{scoutRemaining + contactRemaining}</b> <span>scout + contact</span></div>
-          <span className="trend dim">{scoutRemaining} scout / {contactRemaining} contact still open</span>
-        </div>
-        <div className="do-cred-rank danger">
-          <span className="lbl">Visit Window</span>
-          <div className="val"><b>{visitRemaining}</b> <span>visit slots</span></div>
-          <span className={`trend ${visitRemaining > 0 ? 'dim' : 'warn'}`}>
-            {visitRemaining > 0 ? 'Use visits on top-fit closes' : 'Visit budget exhausted this week'}
-          </span>
         </div>
       </div>
     </div>
