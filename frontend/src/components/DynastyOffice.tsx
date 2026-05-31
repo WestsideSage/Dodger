@@ -289,10 +289,10 @@ function StaffBrief({ staff }: { staff: DynastyOfficeResponse['staff_market']['c
               <div className="do-staff-rating" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
                 <span className="num">{member.rating_primary}</span>
                 <span className="lbl">OVR</span>
-                {member.department === 'training' && (member as { training_modifier_pct?: number }).training_modifier_pct !== undefined && (
+                {member.department === 'training' && member.training_modifier_pct !== undefined && (
                   <ProofChip
-                    label={`+${(member as { training_modifier_pct?: number }).training_modifier_pct}% dev`}
-                    source={`Training OVR ${member.rating_primary} → offseason growth modifier ${(member as { training_modifier_pct?: number }).training_modifier_pct}% (formula: (OVR − 50) / 50 × 15%, clamped at 0).`}
+                    label={`+${member.training_modifier_pct}% dev`}
+                    source={`Training OVR ${member.rating_primary} → offseason growth modifier ${member.training_modifier_pct}% (formula: (OVR − 50) / 50 × 15%, clamped at 0).`}
                   />
                 )}
               </div>
@@ -570,10 +570,10 @@ function StaffTab({
               <span className="val" style={{ fontSize: '0.72rem', color: '#cbd5e1', lineHeight: 1.4 }}>
                 {member.effect_summary}
               </span>
-              {member.department === 'training' && (member as { training_modifier_pct?: number }).training_modifier_pct !== undefined && (
+              {member.department === 'training' && member.training_modifier_pct !== undefined && (
                 <div style={{ marginTop: '0.35rem' }}>
                   <ProofChip
-                    label={`+${(member as { training_modifier_pct?: number }).training_modifier_pct}% offseason growth`}
+                    label={`+${member.training_modifier_pct}% offseason growth`}
                     source={`Training OVR ${member.rating_primary} feeds the offseason development formula: modifier = (OVR − 50) / 50 × 15%, clamped at 0. Applied to every player on your roster each offseason.`}
                   />
                 </div>
