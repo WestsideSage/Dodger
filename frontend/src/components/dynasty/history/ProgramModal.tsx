@@ -23,6 +23,9 @@ export function ProgramModal({ clubId, clubName, onClose }: ProgramModalProps) {
       <div
         className="command-policy-overlay-body do-hist-modal-body"
         onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-label={`${clubName} — Program Archive`}
+        aria-modal="true"
       >
         <button className="command-policy-overlay-close" onClick={onClose} type="button">
           Close
@@ -30,7 +33,9 @@ export function ProgramModal({ clubId, clubName, onClose }: ProgramModalProps) {
         <div className="do-hist-modal-header">
           <span className="dm-kicker">League Archive</span>
           <h2 className="do-hist-modal-title">{clubName}</h2>
-          <p className="do-hist-card-note">Cross-program archive view from the league history board.</p>
+          <p className="do-hist-card-note">
+            Viewing {clubName}'s program archive — titles, alumni, and milestones logged across their history.
+          </p>
         </div>
         <MyProgramView clubId={clubId} isSelf={false} />
       </div>
