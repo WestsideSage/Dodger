@@ -98,7 +98,7 @@ export function ProspectCard({
   const low = prospect.public_ovr_band?.[0] ?? '?';
   const high = prospect.public_ovr_band?.[1] ?? '?';
   const fitTier = prospect.fit_score >= 80 ? 'strong' : prospect.fit_score >= 65 ? 'neutral' : 'risk';
-  const fitLabel = prospect.fit_score >= 80 ? 'Strong Fit' : prospect.fit_score >= 65 ? 'Neutral' : 'At Risk';
+  const fitLabel = prospect.fit_score >= 80 ? 'Strong Fit' : prospect.fit_score >= 65 ? 'Fair Fit' : 'At Risk';
   const evidence = prospect.interest_evidence.filter(Boolean).slice(0, 2);
 
   return (

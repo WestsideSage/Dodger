@@ -214,10 +214,11 @@ function RecruitBoard({
   prospects: DynastyOfficeResponse['recruiting']['prospects'];
   reload: () => void;
 }) {
-  const [filter, setFilter] = useState<'all' | 'strong' | 'visit'>('all');
+  const [filter, setFilter] = useState<'all' | 'strong' | 'fair' | 'risk'>('all');
   const filtered = prospects.filter((prospect) => {
     if (filter === 'strong') return prospect.fit_score >= 80;
-    if (filter === 'visit') return prospect.fit_score >= 65;
+    if (filter === 'fair') return prospect.fit_score >= 65 && prospect.fit_score < 80;
+    if (filter === 'risk') return prospect.fit_score < 65;
     return true;
   });
 
@@ -235,8 +236,11 @@ function RecruitBoard({
           <button className={`do-board-filter ${filter === 'strong' ? 'is-active' : ''}`} onClick={() => setFilter('strong')} type="button">
             Strong Fit <span className="n">{prospects.filter((prospect) => prospect.fit_score >= 80).length}</span>
           </button>
-          <button className={`do-board-filter ${filter === 'visit' ? 'is-active' : ''}`} onClick={() => setFilter('visit')} type="button">
-            Visit-Ready <span className="n">{prospects.filter((prospect) => prospect.fit_score >= 65).length}</span>
+          <button className={`do-board-filter ${filter === 'fair' ? 'is-active' : ''}`} onClick={() => setFilter('fair')} type="button">
+            Fair Fit <span className="n">{prospects.filter((prospect) => prospect.fit_score >= 65 && prospect.fit_score < 80).length}</span>
+          </button>
+          <button className={`do-board-filter ${filter === 'risk' ? 'is-active' : ''}`} onClick={() => setFilter('risk')} type="button">
+            At Risk <span className="n">{prospects.filter((prospect) => prospect.fit_score < 65).length}</span>
           </button>
           <span className="do-board-sep" />
           <span className="do-board-meta">Sorted by Fit - Desc</span>
