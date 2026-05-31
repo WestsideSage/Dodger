@@ -322,6 +322,28 @@ def _lineup_warnings(roster: list[Player], player_ids: list[str], intent: str, t
     return warnings
 
 
+def _result_scoreline(result: Any, home_club_id: str, away_club_id: str) -> tuple[str, str]:
+    """Return ``(score, unit)`` for a finished match in the scoring model's own scale.
+
+    Official (foam/cloth) matches score on game points (set wins). The legacy
+    box-score ``living`` survivor count is NOT the official result and, on a
+    multi-game official match, can contradict it — e.g. the 2026-05-29 playtest
+    surfaced a 0-0 foam draw (two no-point games) whose representative box-score
+    read 0-3 "survivors", which reads as a 3-0 win the player never got. So we
+    surface game points for official matches and only fall back to survivors for
+    legacy matches.
+    """
+    meta = getattr(result, "official_metadata", None)
+    if meta:
+        home_gp = int(meta.get("team_a_game_points", 0))
+        away_gp = int(meta.get("team_b_game_points", 0))
+        return f"{home_gp}-{away_gp}", "game points"
+    box = result.box_score["teams"]
+    home_survivors = int(box[home_club_id]["totals"]["living"])
+    away_survivors = int(box[away_club_id]["totals"]["living"])
+    return f"{home_survivors}-{away_survivors}", "survivors"
+
+
 def build_post_week_dashboard(conn: sqlite3.Connection, plan: Mapping[str, Any], record: MatchRecord) -> dict[str, Any]:
     from dodgeball_sim.voice_verdict import approach_label_for_intent
 
@@ -336,10 +358,9 @@ def build_post_week_dashboard(conn: sqlite3.Connection, plan: Mapping[str, Any],
     opponent_id = record.away_club_id if record.home_club_id == player_club_id else record.home_club_id
     won = record.result.winner_team_id == player_club_id
     draw = record.result.winner_team_id is None
-    box = record.result.box_score["teams"]
-    home_survivors = int(box[record.home_club_id]["totals"]["living"])
-    away_survivors = int(box[record.away_club_id]["totals"]["living"])
-    score = f"{home_survivors}-{away_survivors}"
+    score, score_unit = _result_scoreline(
+        record.result, record.home_club_id, record.away_club_id
+    )
     stats = _match_stats(conn, record.match_id)
     target_note = _target_note(stats, player_club_id, player_names)
     result = "Draw" if draw else ("Win" if won else "Loss")
@@ -356,7 +377,7 @@ def build_post_week_dashboard(conn: sqlite3.Connection, plan: Mapping[str, Any],
         "lanes": [
             {
                 "title": "Result",
-                "summary": f"{'Drew' if draw else ('Beat' if won else 'Lost to')} {clubs[opponent_id].name if opponent_id in clubs else opponent_id}, survivors {score}.",
+                "summary": f"{'Drew' if draw else ('Beat' if won else 'Lost to')} {clubs[opponent_id].name if opponent_id in clubs else opponent_id}, {score_unit} {score}.",
                 "items": [f"Approach: {approach_label}", f"Week {record.week} command record saved."],
             },
             {

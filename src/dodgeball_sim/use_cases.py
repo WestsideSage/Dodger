@@ -925,6 +925,26 @@ def _build_aftermath(
     return aftermath
 
 
+_OFFSEASON_SIM_STATES = frozenset(
+    {
+        CareerState.SEASON_COMPLETE_OFFSEASON_BEAT,
+        CareerState.SEASON_COMPLETE_RECRUITMENT_PENDING,
+        CareerState.NEXT_SEASON_READY,
+    }
+)
+
+
+def _off_phase_sim_message(state: CareerState) -> str:
+    """Player-facing reason a match cannot be simulated in ``state``.
+
+    Never surfaces raw lifecycle enum tokens to the UI; the offseason beats get
+    a "head to the offseason" nudge, anything else a generic not-ready note.
+    """
+    if state in _OFFSEASON_SIM_STATES:
+        return "The regular season is complete — continue in the offseason to start the next season."
+    return "There's no match ready to simulate right now."
+
+
 def simulate_week(
     conn: sqlite3.Connection,
     *,
@@ -957,9 +977,7 @@ def simulate_week(
 
     cursor = load_career_state_cursor(conn)
     if cursor.state != CareerState.SEASON_ACTIVE_PRE_MATCH:
-        raise SimulateWeekError(
-            "Command center simulation requires season_active_pre_match."
-        )
+        raise SimulateWeekError(_off_phase_sim_message(cursor.state))
 
     state = build_command_center_state(conn)
     existing = load_weekly_command_plan(conn, state["season_id"], state["week"], state["player_club_id"])
@@ -1207,9 +1225,7 @@ def auto_pilot_weeks(
                 "final_dashboard": None,
                 "final_aftermath": None,
             }
-        raise SimulateWeekError(
-            "Auto-pilot requires season_active_pre_match."
-        )
+        raise SimulateWeekError(_off_phase_sim_message(cursor.state))
 
     if max_weeks is not None and max_weeks < 1:
         return {

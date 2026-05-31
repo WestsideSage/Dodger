@@ -414,7 +414,8 @@ def build_playoff_bracket_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     for row in conn.execute(
         """
         SELECT match_id, home_club_id, away_club_id, winner_club_id,
-               home_survivors, away_survivors, decided_by, narrative_note
+               home_survivors, away_survivors, decided_by, narrative_note,
+               scoring_model, home_game_points, away_game_points
         FROM match_records
         WHERE season_id = ?
         """,
@@ -461,6 +462,12 @@ def build_playoff_bracket_payload(conn: sqlite3.Connection) -> dict[str, Any]:
                     "status": "played" if result else "scheduled",
                     "decided_by": (result.get("decided_by") if result else None),
                     "narrative_note": (result.get("narrative_note") if result else None),
+                    # Foam matches score by game points, not survivors; expose
+                    # both so the bracket can show the meaningful scoreline
+                    # instead of a survivors 0-0 that reads as "no game played".
+                    "scoring_model": (result.get("scoring_model") if result else None),
+                    "home_game_points": (result.get("home_game_points") if result else None),
+                    "away_game_points": (result.get("away_game_points") if result else None),
                 }
             )
         rounds.append({"round": round_info.get("round"), "matches": matches})

@@ -575,7 +575,10 @@ def test_sim_command_rejects_non_active_lifecycle_states():
         server.app.dependency_overrides.clear()
 
     assert response.status_code == 409
-    assert "season_active_pre_match" in response.json()["detail"]
+    detail = response.json()["detail"]
+    # The reason must be player-facing — never leak the raw lifecycle enum token.
+    assert "season_active_pre_match" not in detail
+    assert "offseason" in detail.lower()
 
 
 def test_tactics_endpoint_rejects_legacy_and_unknown_policy_values():

@@ -4,6 +4,7 @@ import sqlite3
 
 from dodgeball_sim.career_setup import initialize_curated_manager_career
 from dodgeball_sim.command_center import (
+    _result_scoreline,
     build_command_center_state,
     build_default_weekly_plan,
     build_post_week_dashboard,
@@ -157,6 +158,47 @@ def test_post_week_dashboard_copy_is_player_facing_not_raw_tuning_output():
     assert not any(has_unresolved_token(text) for text in visible_copy)
     assert not any("setting:" in text.lower() for text in visible_copy)
     assert not any("target-stars" in text.lower() for text in visible_copy)
+
+
+def test_result_scoreline_official_uses_game_points_not_contradictory_survivors():
+    """Regression for the 2026-05-29 multi-week playtest: a foam no-point draw
+    (game points 0-0, two clock-expiry games) carried a box-score "living"
+    survivor tally of 0-3 that reads as a 3-0 win the player never got. The
+    post-week scoreline must follow the official game points, not survivors."""
+    from types import SimpleNamespace
+
+    foam_no_point_draw = SimpleNamespace(
+        winner_team_id=None,
+        config_version="foam-2026.1",
+        official_metadata={
+            "team_a_game_points": 0,
+            "team_b_game_points": 0,
+            "no_point_games": 2,
+        },
+        box_score={
+            "teams": {
+                "home": {"totals": {"living": 0}},
+                "away": {"totals": {"living": 3}},
+            }
+        },
+    )
+    score, unit = _result_scoreline(foam_no_point_draw, "home", "away")
+    assert unit == "game points"
+    assert score == "0-0"
+
+    # Legacy (non-official) matches still report the survivor count.
+    legacy_win = SimpleNamespace(
+        winner_team_id="home",
+        config_version="legacy",
+        official_metadata=None,
+        box_score={
+            "teams": {
+                "home": {"totals": {"living": 4}},
+                "away": {"totals": {"living": 1}},
+            }
+        },
+    )
+    assert _result_scoreline(legacy_win, "home", "away") == ("4-1", "survivors")
 
 
 def test_build_matchup_details_is_importable():
