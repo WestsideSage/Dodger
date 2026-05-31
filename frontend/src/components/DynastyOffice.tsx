@@ -6,7 +6,7 @@ import { CredibilityStrip } from './dynasty/CredibilityStrip';
 import { ProspectCard } from './dynasty/ProspectCard';
 import { HistorySubTab } from './dynasty/HistorySubTab';
 import { commandApi, dynastyApi } from '../api/client';
-import { EmptyState, TermTip } from '../legibility';
+import { EmptyState, TermTip, ProofChip } from '../legibility';
 
 const dynastySubtabFromUrl = (): 'recruit' | 'history' | 'staff' => {
   const subtab = new URLSearchParams(window.location.search).get('subtab');
@@ -243,6 +243,20 @@ function SlotMeter({ slots }: { slots: DynastyOfficeResponse['recruiting']['budg
 }
 
 function StaffBrief({ staff }: { staff: DynastyOfficeResponse['staff_market']['current_staff'] }) {
+  if (staff.length === 0) {
+    return (
+      <div className="do-staff">
+        <div className="do-panel-head">
+          <span className="dm-kicker">Staff Room</span>
+          <h3>Department Heads</h3>
+        </div>
+        <EmptyState
+          title="No department heads hired"
+          body="Use the Staff tab to browse pipeline candidates and hire your first department heads."
+        />
+      </div>
+    );
+  }
   return (
     <div className="do-staff">
       <div className="do-panel-head">
@@ -250,19 +264,41 @@ function StaffBrief({ staff }: { staff: DynastyOfficeResponse['staff_market']['c
         <h3>Department Heads</h3>
       </div>
       <div className="do-staff-list">
-        {staff.map((member) => (
-          <div key={`${member.department}-${member.name}`} className="do-staff-row">
-            <div className="do-staff-id">
-              <span className="dept">{titleizeDepartment(member.department)}</span>
-              <span className="name">{member.name}</span>
-              <span className="voice">"{member.voice || member.effect_summary}"</span>
+        {staff.map((member) => {
+          const termId = `staff.${member.department}` as const;
+          // Safe cast: the six departments match the pre-seeded staff.* term ids.
+          // If a novel department appears with no term, fall back to plain copy.
+          const hasTerm = [
+            'staff.training', 'staff.tactics', 'staff.conditioning',
+            'staff.medical', 'staff.scouting', 'staff.culture',
+          ].includes(termId);
+          const deptLabel = titleizeDepartment(member.department);
+          return (
+            <div key={`${member.department}-${member.name}`} className="do-staff-row">
+              <div className="do-staff-id">
+                {hasTerm ? (
+                  <TermTip term={termId as import('../legibility').TermId}>
+                    <span className="dept">{deptLabel}</span>
+                  </TermTip>
+                ) : (
+                  <span className="dept">{deptLabel}</span>
+                )}
+                <span className="name">{member.name}</span>
+                <span className="voice">"{member.voice || member.effect_summary}"</span>
+              </div>
+              <div className="do-staff-rating" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
+                <span className="num">{member.rating_primary}</span>
+                <span className="lbl">OVR</span>
+                {member.department === 'training' && (member as { training_modifier_pct?: number }).training_modifier_pct !== undefined && (
+                  <ProofChip
+                    label={`+${(member as { training_modifier_pct?: number }).training_modifier_pct}% dev`}
+                    source={`Training OVR ${member.rating_primary} → offseason growth modifier ${(member as { training_modifier_pct?: number }).training_modifier_pct}% (formula: (OVR − 50) / 50 × 15%, clamped at 0).`}
+                  />
+                )}
+              </div>
             </div>
-            <div className="do-staff-rating">
-              <span className="num">{member.rating_primary}</span>
-              <span className="lbl">OVR</span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
