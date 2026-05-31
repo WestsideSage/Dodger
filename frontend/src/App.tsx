@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MatchWeek } from './components/MatchWeek';
 import { DynastyOffice } from './components/DynastyOffice';
 import { Standings } from './components/LeagueContext';
@@ -31,6 +31,10 @@ const tabKickers: Record<string, string> = {
   standings: 'LEAGUE OFFICE',
 };
 
+// Owner decision (planning-report.md §6 #1): hide Settings until it has real purpose.
+// Flip to `true` to re-enable the nav item with zero further changes.
+const SHOW_SETTINGS_NAV = false;
+
 function tabFromUrl(): Tab {
   const tab = new URLSearchParams(window.location.search).get('tab');
   return tabs.some(item => item.id === tab) ? tab as Tab : 'command';
@@ -47,6 +51,8 @@ function App() {
   const [seasonNumber, setSeasonNumber] = useState<number | null>(null);
   const [currentWeek, setCurrentWeek] = useState<number | null>(null);
   const [offseasonBeatName, setOffseasonBeatName] = useState<string | null>(null);
+  const [navCollapsed, setNavCollapsed] = useState(false);
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const refreshCareerContext = () => {
@@ -97,6 +103,7 @@ function App() {
     <button
       className="nav-item"
       aria-label="Back to save menu"
+      tabIndex={navCollapsed ? -1 : 0}
       onClick={() => {
         careerApi.unloadSave()
           .finally(() => window.location.reload());
@@ -120,12 +127,64 @@ function App() {
   return (
     <div className="app-shell flex" style={{ minHeight: '100vh' }}>
       {/* Left Navigation Rail */}
-      <aside className="left-nav">
-        <div className="left-nav-logo">
+      <aside
+        className="left-nav"
+        style={{ width: navCollapsed ? '3rem' : undefined, overflow: navCollapsed ? 'hidden' : undefined, transition: 'width 0.18s ease' }}
+      >
+        {/* Hamburger toggle — always visible and keyboard-focusable */}
+        <button
+          ref={hamburgerRef}
+          type="button"
+          aria-expanded={!navCollapsed}
+          aria-controls="primary-nav"
+          aria-label="Toggle navigation"
+          onClick={() => {
+            setNavCollapsed((v) => !v);
+            // Return focus to the hamburger after toggle so keyboard users stay oriented.
+            requestAnimationFrame(() => hamburgerRef.current?.focus());
+          }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '2.25rem',
+            height: '2.25rem',
+            background: 'none',
+            border: '1px solid #1e293b',
+            borderRadius: '4px',
+            color: '#94a3b8',
+            cursor: 'pointer',
+            margin: '0.5rem auto 0',
+            flexShrink: 0,
+          }}
+          title={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+        >
+          {/* Three-line hamburger icon drawn with box-shadow — no SVG dep */}
+          <span
+            aria-hidden="true"
+            style={{
+              display: 'block',
+              width: '1rem',
+              height: '2px',
+              background: '#94a3b8',
+              boxShadow: '0 4px 0 #94a3b8, 0 -4px 0 #94a3b8',
+              borderRadius: '1px',
+            }}
+          />
+        </button>
+        <div
+          className="left-nav-logo"
+          style={{ display: navCollapsed ? 'none' : undefined }}
+        >
           <p className="dm-kicker" style={{ fontSize: '0.62rem' }}>Dodgeball Manager</p>
           <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', margin: '2px 0 0' }}>{seasonYear ?? ''}</p>
         </div>
-        <nav className="left-nav-items" aria-label="Primary">
+        <nav
+          id="primary-nav"
+          className="left-nav-items"
+          aria-label="Primary"
+          style={{ display: navCollapsed ? 'none' : undefined }}
+        >
           {tabs.map(tab => {
             // During offseason ceremonies let the player peek at read-only
             // tabs (Roster, Standings, Dynasty Office) before committing to
@@ -139,6 +198,7 @@ function App() {
                 className={`nav-item ${isActive ? 'active' : ''}`}
                 aria-label={tab.label}
                 aria-disabled={!isAvailable}
+                tabIndex={navCollapsed ? -1 : 0}
                 title={isAvailable ? tab.label : `${tab.label} — locked during offseason`}
                 onClick={() => {
                   if (isAvailable) {
@@ -155,17 +215,19 @@ function App() {
           })}
         </nav>
         <div className="left-nav-footer">
-          <button
-            className="nav-item"
-            disabled
-            title="Settings are coming soon"
-            style={{ opacity: 0.35, cursor: 'not-allowed' }}
-            onClick={() => {}}
-          >
-            <span className="dot" />
-            Settings
-          </button>
-          {menuButton}
+          {!navCollapsed && SHOW_SETTINGS_NAV && (
+            <button
+              className="nav-item"
+              disabled
+              title="Settings are coming soon"
+              style={{ opacity: 0.35, cursor: 'not-allowed' }}
+              onClick={() => {}}
+            >
+              <span className="dot" />
+              Settings
+            </button>
+          )}
+          {!navCollapsed && menuButton}
         </div>
       </aside>
 
