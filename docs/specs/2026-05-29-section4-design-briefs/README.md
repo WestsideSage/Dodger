@@ -23,7 +23,7 @@ and honest empty-states, Policy Editor de-duplication is done, and growth deltas
 
 ## Constraints shared by all screens
 
-- Mobile viewport: 390×844, no horizontal overflow.
+- Frontend/UI work is desktop-first/desktop-only for now. Supported design targets: 1440x900 primary, 1366x768 desktop stress, 1280x720 minimum desktop. Mobile optimization is a non-goal.
 - AI-friendly / semantic markup (`role`, `aria-*`, landmark elements).
 - No new dependencies.
 - No routing or auth changes.

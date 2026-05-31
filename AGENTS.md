@@ -82,6 +82,8 @@ Do not store fast-moving implementation facts, API field lists, shipped-mileston
 - Run verification appropriate to the change. Full tests are expected for broad behavior, persistence, or engine changes; focused docs-only edits do not need the full integrity harness.
 - If match outcomes intentionally change, update golden logs and document why.
 - If a reported bug/gap is already fixed, report the evidence and do not force a code change just to produce a diff.
+- **Frontend / UI Matrix:** Frontend/UI work is desktop-first for now. The supported design targets are 1440x900 primary, 1366x768 desktop stress, 1280x720 minimum desktop, and 1920x1080 large-desktop polish. Mobile layouts are not a product goal unless Maurice explicitly reopens mobile support. Agents may note catastrophic mobile breakage, but should not spend implementation budget optimizing for mobile.
+
 
 ## Coding Style
 
