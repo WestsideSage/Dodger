@@ -1,3 +1,5 @@
+import { EmptyState } from '../../../legibility/EmptyState';
+
 interface AlumnusEntry {
   id: string;
   name: string;
@@ -18,7 +20,7 @@ const TIER_TONE: Record<string, string> = {
 
 export function AlumniLineage({ alumni }: { alumni: AlumnusEntry[] }) {
   if (alumni.length === 0) {
-    return <p className="do-hist-card-note">No departed players have reached the archive yet.</p>;
+    return <EmptyState title="No Alumni Yet" body="No departed players have reached the archive yet." />;
   }
 
   return (

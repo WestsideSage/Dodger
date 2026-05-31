@@ -1078,27 +1078,62 @@ def get_history_my_program(club_id: str, conn = Depends(get_db)):
             })
 
     # Awards won by this club's players
+    current_ids = {p.id for p in current_roster}
+    retired_rows = load_retired_players(conn)
+
     award_rows = conn.execute(
-        "SELECT season_id, award_type, player_id FROM season_awards WHERE club_id = ?",
+        "SELECT season_id, award_type, player_id, club_id, award_score FROM season_awards WHERE club_id = ?",
         (club_id,),
     ).fetchall()
+
+    def _player_display_name(player_id: str) -> str | None:
+        for p in current_roster:
+            if p.id == player_id:
+                return p.name
+        for r in retired_rows:
+            if r["player_id"] == player_id and r.get("player"):
+                return r["player"].name
+        return None
+
+    def _award_proof_stat(player_id: str, season_id: str, award_type: str) -> str | None:
+        row = conn.execute(
+            """
+            SELECT total_eliminations, total_catches_made, matches
+            FROM player_season_stats
+            WHERE player_id = ? AND season_id = ?
+            """,
+            (player_id, season_id),
+        ).fetchone()
+        if row is None:
+            return None
+        elims = row["total_eliminations"]
+        catches = row["total_catches_made"]
+        games = row["matches"]
+        if award_type in ("best_newcomer", "mvp", "best_thrower"):
+            return f"{elims} elims across {games} match{'es' if games != 1 else ''} that season."
+        if award_type == "best_catcher":
+            return f"{catches} catches across {games} match{'es' if games != 1 else ''} that season."
+        return f"{elims} elims across {games} match{'es' if games != 1 else ''} that season."
+
+    award_label_map = {
+        "mvp": "MVP Award",
+        "best_thrower": "Best Thrower",
+        "best_catcher": "Best Catcher",
+        "best_newcomer": "Best Newcomer",
+    }
+
     for row in award_rows:
-        label_map = {
-            "mvp": "MVP Award",
-            "best_thrower": "Best Thrower",
-            "best_catcher": "Best Catcher",
-            "best_newcomer": "Best Newcomer",
-        }
+        holder_name = _player_display_name(row["player_id"])
+        proof_stat = _award_proof_stat(row["player_id"], row["season_id"], row["award_type"])
         timeline.append({
             "season": row["season_id"],
             "week": None,
             "event_type": "award",
-            "label": label_map.get(row["award_type"], row["award_type"]),
+            "label": award_label_map.get(row["award_type"], row["award_type"]),
             "weight": "award",
+            "holder_name": holder_name,
+            "proof_stat": proof_stat,
         })
-
-    current_ids = {p.id for p in current_roster}
-    retired_rows = load_retired_players(conn)
 
     # Build last_club_map: player_id -> last club_id they played for
     last_club_rows = conn.execute(
