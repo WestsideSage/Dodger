@@ -683,7 +683,12 @@ def run_autonomous_game(
             thrower_state=thrower_state,
             target_state=target_state,
             player_lookup=player_lookup,
-            policy=policies[offense_team],
+            # WT-6: the catch decision inside resolve_throw is the TARGET's
+            # (defender's) decision, so it must use the DEFENDER's catch posture,
+            # not the thrower's. Passing the offense policy inverted tactics —
+            # choosing "go for catches" made the *opponent* catch your throws.
+            # Target selection above correctly stays on the offense policy.
+            policy=policies[target_state.team_id],
             rng=rng,
         )
         ruling = ledger.close_sequence(seq.sequence_id)
