@@ -81,7 +81,7 @@ def test_build_replay_proof_uses_saved_throw_context_without_engine_rerun():
     assert event["resolution"] == "hit"
     assert event["odds"] == {"p_on_target": 0.74, "p_catch": 0.31}
     assert event["rolls"] == {"on_target": 0.3, "catch": 0.6}
-    assert "rush arrived" in event["tactic_context"]["items"][0]
+    assert "opening-rush commitment" in event["tactic_context"]["items"][0]
     assert "synchronized attack" in event["tactic_context"]["items"][1]
     assert event["fatigue"]["thrower_fatigue"] == 1.25
     assert event["score_state"]["away_living"] == 1
@@ -102,7 +102,7 @@ def test_replay_proof_uses_narrative_pack_language_for_saved_context():
     assert event["proof_tags"] == ["HIT", "RUSH", "SYNC", "EXHAUSTED", "LIABILITY"]
     assert "Away Target" in event["summary"] and "Power Captain" in event["summary"]
     assert "Target selection leaned toward Away Target" in event["decision_context"]["items"][0]
-    assert any("rush arrived" in item for item in event["tactic_context"]["items"])
+    assert any("opening-rush commitment" in item for item in event["tactic_context"]["items"])
     assert any("synchronized attack triggered" in item.lower() for item in event["tactic_context"]["items"])
     assert any("High fatigue" in item for item in event["fatigue"]["items"])
     assert event["liability_context"]["items"] == [
@@ -126,6 +126,36 @@ def test_replay_proof_does_not_invent_missing_evidence():
     assert lanes["Tactics proof"]["items"] == ["No saved tactic context was present on throw events."]
     assert lanes["Liability proof"]["items"] == ["No lineup liability appeared in the saved throw evidence."]
     assert lanes["Command plan"]["items"] == ["Neutral or direct simulations do not claim department-order effects."]
+
+
+def test_tactic_context_does_not_claim_inert_proximity_throw_effect():
+    """WT-8 interim: the rush ``proximity_modifier`` is inert in rec_engine resolution
+    (computed/recorded/shown but never multiplied into a throw/connect/accuracy
+    outcome), so the tactic proof must not assert it crowded the throw or affected
+    release difficulty. A high modifier (0.1, the value that previously fired the
+    'made the release harder' claim) must NOT surface any mechanical throw effect.
+    The real opening-rush framing (active vs. patient) stays, with no empty bullet.
+    """
+    event = _throw_event("hit", player_out={"team": "away", "player_id": "away_1"})
+    event["context"]["rush_context"] = {"active": True, "proximity_modifier": 0.1}
+    proof = build_replay_proof(
+        [event],
+        name_map={"home_1": "Power Captain", "away_1": "Away Target", "away_2": "Away Two"},
+        roster_snapshots=_snapshots(),
+        home_club_id="home",
+        away_club_id="away",
+    )
+
+    items = proof["proof_events"][0]["tactic_context"]["items"]
+    rendered = " ".join(items).lower()
+    # No false mechanical proof: nothing claims the rush changed the throw.
+    assert "crowded the throw" not in rendered
+    assert "release harder" not in rendered
+    assert "room to release" not in rendered
+    assert "release cleanly" not in rendered
+    # Real framing survives and the active branch still emits a non-empty bullet.
+    assert all(item.strip() for item in items)
+    assert any("opening-rush commitment" in item for item in items)
 
 
 def test_proof_copy_is_player_facing():
