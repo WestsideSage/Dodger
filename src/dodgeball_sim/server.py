@@ -642,11 +642,18 @@ def update_lineup(payload: dict[str, Any], conn = Depends(get_db)) -> dict[str, 
 
 @app.post("/api/command-center/simulate", response_model=CommandCenterSimResponse)
 def simulate_command_center_week(update: WeeklyCommandPlanUpdate | None = None, conn = Depends(get_db)) -> CommandCenterSimResponse:
+    from dodgeball_sim.lineup import LineupViolation
+
     try:
         return _simulate_week(
             conn,
             update=update.model_dump(exclude_none=True) if update else None,
         )
+    except LineupViolation as exc:
+        # WT-10: an invalid inline lineup override (non-roster / duplicate /
+        # wrong-count ids) must reject with 400 and persist nothing, mirroring
+        # the /api/lineup precedent — not surface as an uncaught 500.
+        raise HTTPException(status_code=400, detail=exc.reason) from exc
     except SimulateWeekError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
 

@@ -1020,7 +1020,50 @@ def simulate_week(
             plan["tactics"] = CoachPolicy.from_dict(policy_values).as_dict()
         lineup_player_ids = update.get("lineup_player_ids")
         if lineup_player_ids:
-            plan["lineup"]["player_ids"] = lineup_player_ids
+            # WT-10: the inline override previously wrote straight into the plan
+            # with NO validation, so a non-roster / duplicate / wrong-count set
+            # could be persisted and later become a match_lineup_override —
+            # making the saved plan and history lie about the fielded six. Route
+            # it through the SAME validator the Roster Lineup Editor uses
+            # (apply_manual_lineup). It runs BEFORE the first persistence
+            # (save_weekly_command_plan below), so a rejection exits having
+            # written nothing: no plan mutation, no match override, no history
+            # row. The route maps the raised LineupViolation to HTTP 400 (see
+            # the /api/lineup precedent in server.py).
+            from types import SimpleNamespace
+            from dodgeball_sim.command_center import _player_summary, _lineup_warnings
+            from dodgeball_sim.lineup import apply_manual_lineup
+
+            # Reuse the in-memory roster from the command-center state — same
+            # club roster the editor validates against, no extra DB read.
+            bundle = SimpleNamespace(
+                club_id=player_club_id, roster=list(state["roster"])
+            )
+            # apply_manual_lineup enforces exactly STARTERS_COUNT starters, no
+            # duplicates, and roster membership — wrong-count / duplicate /
+            # not-on-roster all raise LineupViolation here.
+            result = apply_manual_lineup(bundle, starters=lineup_player_ids)
+            # Valid path: replace the WHOLE lineup dict so player_ids / players /
+            # summary stay mutually consistent (a half-updated dict would itself
+            # be an ADR-0002 lie). Use the validated starters directly — not the
+            # recommendation builder, whose Develop-Youth swap would silently
+            # override the player's explicit six. _player_summary keeps the
+            # players shape identical to the WT-9 build/refresh path.
+            plan["lineup"] = {
+                "player_ids": [s.player_id for s in result.starters],
+                "players": [_player_summary(s.player) for s in result.starters],
+                "summary": "User-adjusted lineup saved for the command plan.",
+            }
+            # Recompute the sibling readiness warnings against the override six
+            # (refresh_weekly_plan_context computed them for the default six), so
+            # the saved plan and the history row never describe a six other than
+            # the one actually fielded.
+            plan["warnings"] = _lineup_warnings(
+                list(state["roster"]),
+                plan["lineup"]["player_ids"],
+                plan.get("intent") or "Balanced",
+                plan.get("tactics") or {},
+            )
 
     save_weekly_command_plan(conn, plan)
 
