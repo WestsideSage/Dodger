@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 import sqlite3
+from collections import Counter
 from typing import Any, Iterable, Mapping
 
 from .game_loop import current_week
 from .lineup import LineupResolver, optimize_ai_lineup
-from .models import CoachPolicy, Player
+from .models import CoachPolicy, Player, PlayerArchetype
 from .persistence import (
     load_all_rosters,
     load_clubs,
@@ -42,6 +44,158 @@ def _player_summary(player: Player) -> dict[str, Any]:
         "age": player.age,
         "potential": player.traits.potential,
         "stamina": player.ratings.stamina,
+    }
+
+
+# Axes the historical tape can speak to — the same five CoachPolicy axes the
+# Tactical Diff renders. Tape supplies an *observed tendency* per axis.
+_TAPE_AXES = ("approach", "target_focus", "catch_posture", "rush_commit", "rush_target")
+
+# Archetype families used for the cold-start roster-shape read. These mirror the
+# throwing- vs defense-oriented split the lineup court slots already encode
+# (lineup.COURT_SLOT_PREFERENCES); we reuse the same enum, not a new scheme.
+_THROW_ARCHETYPES = frozenset(
+    {
+        PlayerArchetype.THROWER,
+        PlayerArchetype.THROWER_CATCHER,
+        PlayerArchetype.THROWER_DODGER,
+    }
+)
+_DEFENSE_ARCHETYPES = frozenset(
+    {
+        PlayerArchetype.DODGER_ANCHOR,
+        PlayerArchetype.CATCHER,
+        PlayerArchetype.BALL_HAWK,
+        PlayerArchetype.CATCHER_HAWK,
+        PlayerArchetype.HAWK_DODGER,
+    }
+)
+
+
+def aggregate_opponent_tape(
+    conn: sqlite3.Connection,
+    opponent_id: str | None,
+) -> dict[str, dict[str, Any]]:
+    """Aggregate the opponent's *historical* coach policy from recorded matches.
+
+    This is the WT-30 "observed-from-tape" signal: it reads ONLY the persisted
+    ``matches.setup_json`` rows — completed games the opponent has already played
+    and thereby publicly revealed. It must NEVER read the opponent's live
+    ``club.coach_policy`` (that is the hidden plan for the *upcoming* match; see
+    the ``tactical_diff`` module docstring). The upcoming match is not recorded
+    in ``matches`` until it is simulated, so by construction only past tape is
+    visible here.
+
+    Returns a mapping ``axis -> {value, sample, confidence}`` for each axis the
+    tape can speak to, where ``value`` is the opponent's *most frequent*
+    historical choice on that axis, ``sample`` is the number of recorded games,
+    and ``confidence`` is the share of games matching ``value`` (0..1). Axes are
+    omitted when there is no tape. The shares are tendencies, not guarantees.
+    """
+    if not opponent_id:
+        return {}
+
+    rows = conn.execute(
+        "SELECT team_a_id, team_b_id, setup_json FROM matches"
+    ).fetchall()
+
+    axis_counts: dict[str, Counter] = {axis: Counter() for axis in _TAPE_AXES}
+    games = 0
+    for row in rows:
+        if opponent_id not in (row["team_a_id"], row["team_b_id"]):
+            continue
+        try:
+            setup = json.loads(row["setup_json"])
+        except (TypeError, ValueError):
+            continue
+        side = "team_a" if row["team_a_id"] == opponent_id else "team_b"
+        team = setup.get(side) or {}
+        # Defend against a match where the same club id appears on both sides of
+        # the stored setup (should not happen, but the read must not double-count
+        # or pick the wrong side).
+        if team.get("id") != opponent_id:
+            team = next(
+                (
+                    setup.get(s)
+                    for s in ("team_a", "team_b")
+                    if isinstance(setup.get(s), dict)
+                    and setup.get(s, {}).get("id") == opponent_id
+                ),
+                None,
+            )
+            if team is None:
+                continue
+        policy = team.get("coach_policy") or {}
+        if not policy:
+            continue
+        games += 1
+        for axis in _TAPE_AXES:
+            value = policy.get(axis)
+            if value:
+                axis_counts[axis][str(value)] += 1
+
+    if games == 0:
+        return {}
+
+    tape: dict[str, dict[str, Any]] = {}
+    for axis in _TAPE_AXES:
+        counter = axis_counts[axis]
+        if not counter:
+            continue
+        value, count = counter.most_common(1)[0]
+        tape[axis] = {
+            "value": value,
+            "sample": games,
+            "confidence": round(count / games, 2),
+        }
+    return tape
+
+
+def _roster_shape(opponent_roster: list[Player]) -> dict[str, int] | None:
+    """Derivable roster-shape fact: throwing- vs defense-oriented archetypes.
+
+    Always-available (it reads the opponent roster the player can already see on
+    the broadcast / standings), so it anchors the cold-start scout when no tape
+    exists. Returns ``None`` for an empty roster.
+    """
+    if not opponent_roster:
+        return None
+    throwers = sum(1 for p in opponent_roster if p.archetype in _THROW_ARCHETYPES)
+    defenders = sum(1 for p in opponent_roster if p.archetype in _DEFENSE_ARCHETYPES)
+    return {
+        "throwers": throwers,
+        "defenders": defenders,
+        "total": len(opponent_roster),
+    }
+
+
+def build_cold_start_intel(
+    opponent: Any,
+    opponent_roster: list[Player],
+    key_threat: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Always-derivable, already-player-facing opponent facts for the scout.
+
+    These do NOT depend on tape, so the scout is never empty exactly when WT-30's
+    bug bites (week 1 / first meeting / fresh league). Every fact here is already
+    shown elsewhere, surfaced together under the scout action — and read from the
+    SAME source those surfaces use, so the scout never contradicts them:
+
+    * ``program_archetype`` — the club's STORED ``program_archetype`` (what
+      standings/status and the broadcast already display: web_status_service and
+      server's club payload read ``club.program_archetype``). We deliberately do
+      NOT recompute it via ``classify_club_archetype`` (that helper only seeds the
+      stored value at career setup); recomputing risks showing the same fact two
+      different ways if the roster drifted since setup.
+    * ``threat`` — the key threat already derived by ``build_matchup_details``.
+    """
+    program_archetype = getattr(opponent, "program_archetype", None) or "Balanced Rebuild"
+    return {
+        "program_archetype": program_archetype,
+        "roster_shape": _roster_shape(opponent_roster),
+        # Reuse the threat already derived by build_matchup_details (read-only);
+        # the scout does not recompute or expose anything new about it.
+        "threat": dict(key_threat) if key_threat else None,
     }
 
 
@@ -157,6 +311,19 @@ def build_command_center_state(conn: sqlite3.Connection) -> dict[str, Any]:
 
     department_heads = load_department_heads(conn)
 
+    matchup_details = build_matchup_details(
+        conn,
+        season_id=season_id,
+        player_club_id=player_club_id,
+        opponent_id=opponent_id,
+        rosters=rosters,
+        match_id=upcoming.match_id if upcoming is not None else None,
+        week=upcoming.week if upcoming is not None else week,
+        is_bye=is_bye,
+        department_heads=department_heads,
+    )
+    opponent_roster = list(rosters.get(opponent_id, [])) if opponent_id else []
+
     return {
         "season_id": season_id,
         "week": week,
@@ -164,25 +331,66 @@ def build_command_center_state(conn: sqlite3.Connection) -> dict[str, Any]:
         "player_club_id": player_club_id,
         "player_club": clubs[player_club_id],
         "opponent": clubs.get(opponent_id) if opponent_id else None,
+        "opponent_id": opponent_id,
         "upcoming_match": upcoming,
         "is_bye": is_bye,
-        "matchup_details": build_matchup_details(
-            conn,
-            season_id=season_id,
-            player_club_id=player_club_id,
-            opponent_id=opponent_id,
-            rosters=rosters,
-            match_id=upcoming.match_id if upcoming is not None else None,
-            week=upcoming.week if upcoming is not None else week,
-            is_bye=is_bye,
-            department_heads=department_heads,
-        ),
+        "matchup_details": matchup_details,
         "roster": list(rosters.get(player_club_id, [])),
-        "opponent_roster": list(rosters.get(opponent_id, [])) if opponent_id else [],
+        "opponent_roster": opponent_roster,
+        # WT-30 scout intel, computed from data the player is already allowed to
+        # see. ``opponent_tape`` aggregates the opponent's PAST coach policy from
+        # recorded matches (never the live/upcoming hidden plan); cold-start
+        # facts (roster shape, program archetype, key threat) are always
+        # derivable so the scout reveals something even before any tape exists.
+        "opponent_tape": aggregate_opponent_tape(conn, opponent_id),
+        "cold_start_intel": build_cold_start_intel(
+            clubs.get(opponent_id) if opponent_id else None,
+            opponent_roster,
+            matchup_details.get("key_threat"),
+        ),
         "default_lineup": load_lineup_default(conn, player_club_id),
         "department_heads": department_heads,
         "history": load_command_history(conn, season_id),
     }
+
+
+def _attach_tactical_diff(
+    *,
+    matchup_details: dict[str, Any],
+    tactics: Mapping[str, Any],
+    state: Mapping[str, Any],
+    is_bye: bool,
+    opponent_present: bool,
+    scouted: bool,
+) -> None:
+    """Build (or rebuild) the Tactical Diff in-place on ``matchup_details``.
+
+    Single choke point so the default-plan build and the per-load
+    ``refresh_weekly_plan_context`` produce an identical diff. When the player
+    has scouted (``scouted=True``), the diff is layered with the observed tape
+    tendencies and the always-derivable cold-start facts gathered in
+    ``build_command_center_state``. Crucially, only the PAST-derived
+    ``opponent_tape`` and the already-player-facing cold-start facts are passed;
+    the opponent's live/upcoming ``coach_policy`` never reaches this call.
+    """
+    if is_bye or not opponent_present:
+        matchup_details.pop("tactical_diff", None)
+        return
+    from .tactical_diff import build_tactical_diff
+
+    last_meeting = matchup_details.get("last_meeting")
+    has_prior_meeting = bool(
+        last_meeting and not str(last_meeting).lower().startswith("first meeting")
+    )
+    matchup_details["tactical_diff"] = build_tactical_diff(
+        player_policy=tactics,
+        adaptation_summary=matchup_details.get("adaptation_summary"),
+        has_prior_meeting=has_prior_meeting,
+        last_meeting=last_meeting if has_prior_meeting else None,
+        scouted=scouted,
+        observed_tendencies=dict(state.get("opponent_tape") or {}) if scouted else None,
+        cold_start_intel=dict(state.get("cold_start_intel") or {}) if scouted else None,
+    )
 
 
 def build_default_weekly_plan(state: Mapping[str, Any], intent: str = "Balanced") -> dict[str, Any]:
@@ -211,18 +419,17 @@ def build_default_weekly_plan(state: Mapping[str, Any], intent: str = "Balanced"
     }
     matchup_details.setdefault("framing_line", render_policy_line(policy))
 
-    if not is_bye and opponent is not None:
-        from .tactical_diff import build_tactical_diff
-        last_meeting = matchup_details.get("last_meeting")
-        has_prior_meeting = bool(
-            last_meeting and not str(last_meeting).lower().startswith("first meeting")
-        )
-        matchup_details["tactical_diff"] = build_tactical_diff(
-            player_policy=tactics,
-            adaptation_summary=matchup_details.get("adaptation_summary"),
-            has_prior_meeting=has_prior_meeting,
-            last_meeting=last_meeting if has_prior_meeting else None,
-        )
+    # A fresh default plan is unscouted, so the diff starts as fully unscouted
+    # (every axis "Unscouted"); the scout action flips it on the next reload via
+    # refresh_weekly_plan_context, which reads the persisted opponent_scouted.
+    _attach_tactical_diff(
+        matchup_details=matchup_details,
+        tactics=tactics,
+        state=state,
+        is_bye=is_bye,
+        opponent_present=opponent is not None,
+        scouted=False,
+    )
 
     return {
         "season_id": state["season_id"],
@@ -265,6 +472,22 @@ def refresh_weekly_plan_context(plan: Mapping[str, Any], state: Mapping[str, Any
         "club_id": opponent.club_id if opponent else None,
         "name": "Bye Week" if is_bye else (opponent.name if opponent else "Season complete"),
     }
+
+    # WT-30: rebuild the Tactical Diff on every reload reading the PERSISTED
+    # opponent_scouted flag. The merge above keeps whatever tactical_diff the
+    # saved plan held — and build_matchup_details never emits that key — so a
+    # scout action (which persists opponent_scouted=True, then this payload
+    # reloads the plan) would otherwise keep the stale "Unscouted" diff. Rebuild
+    # here so scouting genuinely FLIPS the diff to the observed-from-tape and
+    # cold-start reveal. Source stays past-tape + already-visible facts only.
+    _attach_tactical_diff(
+        matchup_details=refreshed["matchup_details"],
+        tactics=refreshed.get("tactics") or {},
+        state=state,
+        is_bye=is_bye,
+        opponent_present=opponent is not None,
+        scouted=bool(refreshed.get("opponent_scouted")),
+    )
     opponent_roster = list(state.get("opponent_roster", []))
     opp_top_six = sorted(opponent_roster, key=lambda p: (-p.overall_skill(), p.id))[:6]
     refreshed["opponent_lineup"] = {

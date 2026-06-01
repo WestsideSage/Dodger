@@ -95,6 +95,7 @@ from dodgeball_sim.match_orchestration import _choose_next_user_match_after_auto
 from dodgeball_sim.use_cases import (
     SimulateWeekError,
     auto_pilot_weeks as _auto_pilot_weeks,
+    resolve_fast_forward_cap as _resolve_fast_forward_cap,
     simulate_week as _simulate_week,
 )
 from dodgeball_sim.command_week_service import (
@@ -445,6 +446,11 @@ class CommandCenterSimResponse(BaseModel):
 
 class FastForwardRequest(BaseModel):
     max_weeks: int | None = None
+    # WT-29: the player-chosen stop point ('next_bye' | 'pre_playoffs' |
+    # 'offseason'). When supplied it is mapped server-side to a max_weeks cap and
+    # takes precedence over an explicit max_weeks. Absent/None preserves the
+    # legacy "run to the end" behaviour.
+    stop_point: str | None = None
 
 
 class FastForwardResponse(BaseModel):
@@ -456,6 +462,11 @@ class FastForwardResponse(BaseModel):
     week_summaries: list[dict[str, Any]]
     final_dashboard: dict[str, Any] | None = None
     final_aftermath: dict[str, Any] | None = None
+    # WT-29: echo what the player asked for and what it resolved to (e.g. a
+    # requested "next_bye" with no bye left resolves to "pre_playoffs"), so the
+    # UI can confirm honestly what was skipped.
+    requested_stop_point: str | None = None
+    resolved_stop_point: str | None = None
 
 
 class RecruitingPromiseRequest(BaseModel):
@@ -662,14 +673,25 @@ def simulate_command_center_week(update: WeeklyCommandPlanUpdate | None = None, 
 def fast_forward_command_center(
     request: FastForwardRequest | None = None, conn = Depends(get_db)
 ) -> FastForwardResponse:
-    """Auto-pilot the remaining season (or ``max_weeks`` weeks) using the
-    persisted weekly plan and canonical fielded-6. Additive convenience over
-    the per-week ``/api/command-center/simulate`` path."""
+    """Auto-pilot toward a player-chosen stop point using the persisted weekly
+    plan and canonical fielded-6. Additive convenience over the per-week
+    ``/api/command-center/simulate`` path.
+
+    WT-29: when ``stop_point`` is supplied it is mapped server-side (from the
+    schedule the player can already see) to a ``max_weeks`` cap and wins over an
+    explicit ``max_weeks``. The response echoes the requested and resolved stop
+    points so the UI can disclose exactly what was auto-decided."""
+    requested_stop_point = request.stop_point if request else None
     try:
-        return _auto_pilot_weeks(
-            conn,
-            max_weeks=request.max_weeks if request else None,
-        )
+        if requested_stop_point is not None:
+            cap, resolved_stop_point = _resolve_fast_forward_cap(conn, requested_stop_point)
+        else:
+            cap = request.max_weeks if request else None
+            resolved_stop_point = None
+        result = _auto_pilot_weeks(conn, max_weeks=cap)
+        result["requested_stop_point"] = requested_stop_point
+        result["resolved_stop_point"] = resolved_stop_point
+        return result
     except SimulateWeekError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
 

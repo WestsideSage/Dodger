@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type {
   CoachPolicy,
   CommandCenterResponse,
+  FastForwardStopPoint,
   LineupPlayer,
   WeekBriefing,
 } from '../../../types';
@@ -137,6 +138,168 @@ function MiniCourt({
   );
 }
 
+const STOP_POINT_OPTIONS: { id: FastForwardStopPoint; label: string; desc: string }[] = [
+  {
+    id: 'next_bye',
+    label: 'To my next bye',
+    desc: 'Stop at your next scheduled bye week. If no bye remains this season, this stops just before the playoffs instead.',
+  },
+  {
+    id: 'pre_playoffs',
+    label: 'To pre-playoffs',
+    desc: 'Play out the rest of the regular season and stop before the playoffs begin, so you can set your bracket plan.',
+  },
+  {
+    id: 'offseason',
+    label: 'To the offseason',
+    desc: 'Run all the way through the playoffs to the offseason. This is an explicit acceptance of your current defaults through every remaining match, including the playoffs.',
+  },
+];
+
+/**
+ * WT-29: one disclosure dialog shown before fast-forward. It (a) truthfully
+ * enumerates what will be auto-decided (the weekly decision loop is skipped and
+ * each skipped week reuses your persisted plan and the canonical best-six
+ * lineup) and (b) lets the player choose a stop point aligned to a real
+ * decision boundary. Focus-trapped, Escape-dismissable, focus-restoring — a
+ * self-contained accessible dialog until Phase 6 introduces shared primitives.
+ */
+function FastForwardDialog({
+  onConfirm,
+  onCancel,
+  saving,
+}: {
+  onConfirm: (stopPoint: FastForwardStopPoint) => void;
+  onCancel: () => void;
+  saving: boolean;
+}) {
+  const [stopPoint, setStopPoint] = useState<FastForwardStopPoint>('pre_playoffs');
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocused = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    previouslyFocused.current = document.activeElement as HTMLElement | null;
+    // Move focus into the dialog on open.
+    confirmRef.current?.focus();
+    return () => {
+      // Restore focus to the trigger when the dialog closes.
+      previouslyFocused.current?.focus?.();
+    };
+  }, []);
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      onCancel();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    if (!focusable || focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (event.shiftKey && active === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
+  return (
+    <div
+      className="command-policy-overlay"
+      role="presentation"
+      onClick={onCancel}
+      data-testid="fast-forward-overlay"
+    >
+      <div
+        ref={dialogRef}
+        className="command-policy-overlay-body"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="fast-forward-title"
+        aria-describedby="fast-forward-desc"
+        data-testid="fast-forward-dialog"
+        onClick={event => event.stopPropagation()}
+        onKeyDown={handleKeyDown}
+      >
+        <h2 id="fast-forward-title" style={{ marginTop: 0 }}>Fast-forward the season?</h2>
+        <p id="fast-forward-desc" style={{ color: 'var(--dm-text-secondary)', fontSize: '0.85rem', lineHeight: 1.5 }}>
+          Fast-forward skips the weekly decision loop. For every week you skip, the
+          game auto-decides using <b>your last saved weekly plan</b> (intent,
+          tactics, and department orders) and fields the <b>canonical best-six
+          lineup</b>. The pre-match desk and weekly ceremony are not shown for the
+          skipped weeks.
+        </p>
+
+        <fieldset style={{ border: 'none', padding: 0, margin: '0.5rem 0' }}>
+          <legend className="lbl" style={{ fontSize: '0.7rem', marginBottom: '0.35rem' }}>Stop point</legend>
+          <div role="radiogroup" aria-label="Fast-forward stop point" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+            {STOP_POINT_OPTIONS.map(option => (
+              <label
+                key={option.id}
+                data-testid={`stop-point-${option.id}`}
+                style={{
+                  display: 'flex',
+                  gap: '0.5rem',
+                  alignItems: 'flex-start',
+                  padding: '0.5rem 0.6rem',
+                  border: `1px solid ${stopPoint === option.id ? 'var(--dm-cyan)' : 'rgba(30,41,59,0.9)'}`,
+                  borderRadius: '5px',
+                  background: stopPoint === option.id ? 'rgba(34,211,238,0.06)' : 'rgba(15,23,42,0.6)',
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="radio"
+                  name="fast-forward-stop-point"
+                  value={option.id}
+                  checked={stopPoint === option.id}
+                  onChange={() => setStopPoint(option.id)}
+                  style={{ marginTop: '0.2rem' }}
+                />
+                <span style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                  <span style={{ fontWeight: 600, color: '#e2e8f0', fontSize: '0.82rem' }}>{option.label}</span>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8', lineHeight: 1.4 }}>{option.desc}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
+          <button
+            type="button"
+            className="command-secondary-button"
+            onClick={onCancel}
+            disabled={saving}
+            data-testid="fast-forward-cancel"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            ref={confirmRef}
+            className="cc-btn-sim"
+            onClick={() => onConfirm(stopPoint)}
+            disabled={saving}
+            data-testid="fast-forward-confirm"
+          >
+            <span>{saving ? 'Processing...' : 'Fast-forward'}</span>
+            <span className="arrow">▸</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PreSimDashboard({
   data,
   simulate,
@@ -160,11 +323,12 @@ export function PreSimDashboard({
   onIntentChange: (intent: string) => void;
   planConfirmed: boolean;
   saving?: boolean;
-  fastForward?: () => void;
+  fastForward?: (stopPoint?: FastForwardStopPoint) => void;
   onScout?: () => void;
   onConfirmLineup?: () => void;
 }) {
   const [policyEditorOpen, setPolicyEditorOpen] = useState(false);
+  const [fastForwardOpen, setFastForwardOpen] = useState(false);
 
   const plan = data.plan;
   const briefing = plan.briefing ?? FALLBACK_BRIEFING;
@@ -573,14 +737,25 @@ export function PreSimDashboard({
                 )}
 
                 {details.tactical_diff && (
-                  <div data-testid="tactical-diff" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
-                    <span className="lbl">Tactical Diff — Your Plan vs Their Tendencies</span>
+                  <div data-testid="tactical-diff" data-scouted={details.tactical_diff.scouted ? 'true' : 'false'} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem' }}>
+                      <span className="lbl">Tactical Diff — Your Plan vs Their Tendencies</span>
+                      {details.tactical_diff.intel_revealed && (
+                        <span
+                          data-testid="tactical-diff-revealed"
+                          style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#34d399', border: '1px solid rgba(52,211,153,0.4)', borderRadius: '3px', padding: '0.05rem 0.35rem' }}
+                        >
+                          New intel revealed
+                        </span>
+                      )}
+                    </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                       {details.tactical_diff.player_plan.map((row) => (
                         <div
                           key={row.axis}
                           data-testid="tactical-diff-row"
                           data-axis={row.axis}
+                          data-opponent-source={row.opponent_source ?? ''}
                           style={{
                             display: 'grid',
                             gridTemplateColumns: '8rem 1fr 1fr',
@@ -600,10 +775,46 @@ export function PreSimDashboard({
                             style={{ color: row.opponent_known ? '#e2e8f0' : '#64748b', fontStyle: row.opponent_known ? 'normal' : 'italic' }}
                           >
                             {row.opponent_known && row.opponent_value ? row.opponent_value : 'Unscouted'}
+                            {row.opponent_known && row.opponent_source === 'tape' && (
+                              <span
+                                data-testid="tactical-diff-tape-meta"
+                                title={`Observed on tape across ${row.sample ?? 0} game${row.sample === 1 ? '' : 's'} — a tendency, not their hidden plan.`}
+                                style={{ display: 'block', fontSize: '0.58rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '0.1rem' }}
+                              >
+                                Tape · {row.confidence_label ?? 'lean'}
+                                {typeof row.confidence === 'number' ? ` ${Math.round(row.confidence * 100)}%` : ''}
+                                {typeof row.sample === 'number' ? ` · n=${row.sample}` : ''}
+                              </span>
+                            )}
                           </span>
                         </div>
                       ))}
                     </div>
+
+                    {details.tactical_diff.cold_start && (
+                      <div
+                        data-testid="tactical-diff-cold-start"
+                        style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.15rem', padding: '0.35rem 0.55rem', background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(30,41,59,0.8)', borderRadius: '4px' }}
+                      >
+                        <span className="lbl" style={{ fontSize: '0.6rem' }}>Opponent File (no tape yet)</span>
+                        {details.tactical_diff.cold_start.program_archetype && (
+                          <span data-testid="cold-start-archetype" style={{ fontSize: '0.72rem', color: '#e2e8f0' }}>
+                            Program identity: <b>{details.tactical_diff.cold_start.program_archetype}</b>
+                          </span>
+                        )}
+                        {details.tactical_diff.cold_start.roster_shape && (
+                          <span data-testid="cold-start-roster-shape" style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                            Roster shape: {details.tactical_diff.cold_start.roster_shape.throwers} throwing-oriented · {details.tactical_diff.cold_start.roster_shape.defenders} defense-oriented
+                          </span>
+                        )}
+                        {details.tactical_diff.cold_start.threat && (
+                          <span data-testid="cold-start-threat" style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                            Top threat: <b style={{ color: '#e2e8f0' }}>{details.tactical_diff.cold_start.threat.name}</b> · {details.tactical_diff.cold_start.threat.archetype} · {details.tactical_diff.cold_start.threat.ovr} OVR
+                          </span>
+                        )}
+                      </div>
+                    )}
+
                     {details.tactical_diff.opponent_intel.length > 0 && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.15rem' }}>
                         {details.tactical_diff.opponent_intel.map((item, index) => (
@@ -829,9 +1040,9 @@ export function PreSimDashboard({
                   type="button"
                   data-testid="fast-forward-season"
                   disabled={saving}
-                  onClick={fastForward}
+                  onClick={() => setFastForwardOpen(true)}
                   className="command-secondary-button"
-                  title="Auto-pilot the rest of the season with the persisted plan and best lineup."
+                  title="Auto-pilot ahead with the persisted plan and best lineup. Pick a stop point first."
                 >
                   Fast-forward Season ⏭
                 </button>
@@ -899,6 +1110,18 @@ export function PreSimDashboard({
             <PolicyEditor policy={plan.tactics} disabled={planConfirmed} onChange={onSavePolicy} error={null} />
           </div>
         </div>
+      )}
+
+      {/* Fast-forward disclosure dialog (WT-29) */}
+      {fastForwardOpen && fastForward && (
+        <FastForwardDialog
+          saving={saving}
+          onCancel={() => setFastForwardOpen(false)}
+          onConfirm={(stopPoint) => {
+            setFastForwardOpen(false);
+            fastForward(stopPoint);
+          }}
+        />
       )}
     </div>
   );
