@@ -6,6 +6,8 @@
 // way. This module is the single place that decision lives, so the score hero
 // and the aftermath match card can never drift apart.
 
+import { rulesetDisplayName } from '../../legibility/rulesetNames';
+
 export interface ScorelineFields {
   scoring_model?: string;
   home_game_points?: number;
@@ -33,7 +35,7 @@ export function formatScoreline(card: ScorelineFields): MatchScoreline {
   const isOfficial = Boolean(card.scoring_model && card.scoring_model !== 'legacy');
   return {
     isOfficial,
-    centerLabel: isOfficial ? `Final (USAD ${card.scoring_model?.toUpperCase()})` : 'Final',
+    centerLabel: isOfficial ? `Final · ${rulesetDisplayName(card.scoring_model, 'short')}` : 'Final',
     home: {
       value: isOfficial ? card.home_game_points ?? 0 : card.home_survivors,
       survivors: card.home_survivors,

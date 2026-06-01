@@ -191,10 +191,7 @@ def load_last_meeting(
     opponent_club_id: str,
     exclude_match_id: str | None = None,
 ) -> dict[str, Any] | None:
-    rows = conn.execute(
-        """
-        SELECT match_id, week, home_club_id, away_club_id, winner_club_id,
-               home_survivors, away_survivors
+    where = """
         FROM match_records
         WHERE season_id = ?
           AND (
@@ -202,9 +199,22 @@ def load_last_meeting(
             OR (home_club_id = ? AND away_club_id = ?)
           )
         ORDER BY week DESC, match_id DESC
-        """,
-        (season_id, player_club_id, opponent_club_id, opponent_club_id, player_club_id),
-    ).fetchall()
+        """
+    params = (season_id, player_club_id, opponent_club_id, opponent_club_id, player_club_id)
+    base_cols = (
+        "match_id, week, home_club_id, away_club_id, winner_club_id, "
+        "home_survivors, away_survivors"
+    )
+    try:
+        # Official matches need the set-scoring columns so the last-meeting
+        # scoreline shows game points, not survivors (WT-3). A legacy DB that
+        # predates these columns falls back to the survivor-only projection.
+        rows = conn.execute(
+            f"SELECT {base_cols}, scoring_model, home_game_points, away_game_points {where}",
+            params,
+        ).fetchall()
+    except Exception:
+        rows = conn.execute(f"SELECT {base_cols} {where}", params).fetchall()
     for row in rows:
         if exclude_match_id and row["match_id"] == exclude_match_id:
             continue
@@ -313,12 +323,19 @@ def _historical_hook(
             )
     if last_meeting is not None:
         result = _meeting_result(player_club_id, opponent_club_id, last_meeting)
-        home_survivors = int(last_meeting.get("home_survivors", 0))
-        away_survivors = int(last_meeting.get("away_survivors", 0))
-        if last_meeting.get("home_club_id") == player_club_id:
-            player_score, opp_score = home_survivors, away_survivors
+        # Official matches are set-scored: the scoreline is game points, not
+        # survivors, so the history agrees with the official scoreboard (WT-3).
+        scoring_model = str(last_meeting.get("scoring_model", "legacy") or "legacy")
+        if scoring_model not in ("", "legacy"):
+            home_score = int(last_meeting.get("home_game_points", 0) or 0)
+            away_score = int(last_meeting.get("away_game_points", 0) or 0)
         else:
-            player_score, opp_score = away_survivors, home_survivors
+            home_score = int(last_meeting.get("home_survivors", 0) or 0)
+            away_score = int(last_meeting.get("away_survivors", 0) or 0)
+        if last_meeting.get("home_club_id") == player_club_id:
+            player_score, opp_score = home_score, away_score
+        else:
+            player_score, opp_score = away_score, home_score
         return BroadcastHook(
             text=(
                 f"Last time out: Week {int(last_meeting.get('week', 0))} "

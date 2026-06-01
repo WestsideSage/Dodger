@@ -108,6 +108,18 @@ def test_scout_gate_starts_unmet_and_clears_on_action():
     assert gate["ready"] is True
 
 
+def test_unmet_gate_detail_states_the_blocker_not_a_satisfied_assertion():
+    # WT-4 ADR-0002 guard: a pending (red) readiness gate's detail must describe
+    # the actual blocker -- never a satisfied-state assertion, which (shown on a
+    # red gate) is exactly the lie WT-4 removed. Closes the gate-detail coverage
+    # gap noted in docs/specs/2026-06-01-ultracode-test-drive-review.md.
+    out = _briefing(plan=_plan(opponent_scouted=False))
+    scout = next(g for g in out["readiness"]["gates"] if g["id"] == "scout")
+    assert scout["ready"] is False
+    assert scout["detail"] == "Review the opponent's projected six."
+    assert "reviewed" not in scout["detail"].lower()
+
+
 def test_confirm_lineup_gate_starts_unmet_and_clears_on_action():
     out = _briefing(plan=_plan(lineup_confirmed=False))
     gate = next(g for g in out["readiness"]["gates"] if g["id"] == "confirm_lineup")
@@ -258,6 +270,21 @@ def test_recommendation_never_claims_archetype_counter():
     out = _briefing(plan=_plan(intent="Win Now", key_threat=threat))
     assert out["recommendation"]["verdict"] == "aligned"
     assert out["recommendation"]["advised_intent"] is None
+
+
+def test_aligned_recommendation_reason_makes_no_opponent_claim():
+    # ADR-0002 faithfulness guard. On the aligned (keep-plan) path the staff
+    # recommendation is derived from recent form + squad health ALONE -- it
+    # never reads the opponent. Its ``reason`` is rendered verbatim in the
+    # pre-sim dashboard (PreSimDashboard.tsx scoutRead / planRead + the
+    # scouting-note callout), so it must not assert an opponent-profile
+    # comparison the staff never computed. Regression guard for the hardcoded
+    # "aligns with the opponent profile" copy removed 2026-06-01.
+    out = _briefing(plan=_plan(), recent_results=["Win"])
+    rec = out["recommendation"]
+    assert rec["verdict"] == "aligned"
+    reason = rec["reason"].lower()
+    assert "opponent" not in reason and "profile" not in reason, rec["reason"]
 
 
 # --- staff recommendation is selection-independent ------------------------
