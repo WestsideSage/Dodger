@@ -36,22 +36,6 @@ from .analysis import MatchAnalysis
 from .events import MatchEvent
 from .narration import Lookup, narrate_event
 from .dynasty_office import player_role, team_overall
-from typing import Any, Dict, Iterable
-from .models import MatchSetup, Team
-from .stats import PlayerMatchStats, extract_all_stats
-from .copy_quality import title_label
-from .analysis import MatchAnalysis
-from .events import MatchEvent
-from .narration import Lookup, narrate_event
-from .dynasty_office import player_role, team_overall
-from typing import Any, Dict, Iterable
-from .models import MatchSetup, Team
-from .stats import PlayerMatchStats, extract_all_stats
-from .copy_quality import title_label
-from .analysis import MatchAnalysis
-from .events import MatchEvent
-from .narration import Lookup, narrate_event
-from .dynasty_office import player_role, team_overall
 
 
 def _enrich_moment_display(
@@ -469,9 +453,26 @@ def replay_event_label(event, name_map: dict | None = None) -> str:
     if event.event_type != "throw":
         return title_label(event.event_type)
     resolution = str(event.outcome.get("resolution", "throw"))
-    thrower_id = event.actors.get("thrower", "-")
-    target_id = event.actors.get("target", "-")
-    thrower = _names.get(thrower_id, thrower_id)
+    thrower_id = event.actors.get("thrower")
+    target_id = event.actors.get("target")
+    thrower = _names.get(thrower_id, thrower_id) if thrower_id is not None else "The thrower"
+    if target_id is None:
+        # Target-less throw: a foul (thrower out) or a throw into space — never
+        # "misses -" / "misses None" (WT-1).
+        thrower_out = bool(event.outcome.get("thrower_out"))
+        if not thrower_out:
+            state_diff = getattr(event, "state_diff", None) or {}
+            player_out = state_diff.get("player_out") if isinstance(state_diff, dict) else None
+            thrower_out = (
+                isinstance(player_out, dict)
+                and thrower_id is not None
+                and str(player_out.get("player_id", "")) == str(thrower_id)
+            )
+        if thrower_out and resolution == "clock_violation":
+            return f"VIOLATION: {thrower} ruled out on a throw-clock/burden call"
+        if thrower_out:
+            return f"HEADSHOT: {thrower} ruled out for an illegal high throw"
+        return f"MISS: {thrower}'s throw doesn't connect"
     target = _names.get(target_id, target_id)
     if resolution == "hit":
         return f"HIT: {thrower} tags {target}"

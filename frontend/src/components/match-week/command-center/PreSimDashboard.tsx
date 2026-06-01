@@ -241,15 +241,9 @@ export function PreSimDashboard({
 
   const scoutRead = isBye
     ? 'This is a bye week. No opponent to scout. Use this time to rest players and plan training.'
-    : hasPlanConflict
-      ? `${scoutGapRead}${recommendation.reason}`
-      : `${scoutGapRead}Current approach aligns with the opponent profile.`;
+    : `${scoutGapRead}${recommendation.reason}`;
 
-  const planRead = isBye
-    ? 'Bye week.'
-    : hasPlanConflict
-      ? recommendation.reason
-      : 'Current approach aligns with the opponent profile.';
+  const planRead = isBye ? 'Bye week.' : recommendation.reason;
 
   const displayWeek = data.week;
   const stakes = stakesLine(leagueRank, gamesRemaining, recentResults, displayWeek, playoffStage);
@@ -676,7 +670,7 @@ export function PreSimDashboard({
                     <span style={hasPlanConflict ? { color: '#fde68a' } : { color: 'var(--dm-text-secondary)' }}>
                       {hasPlanConflict
                         ? `Switch to ${recommendationLabel.replace('Adjust to ', '')}.`
-                        : `${scoutGapRead || 'Current approach aligns with the opponent profile.'}`}
+                        : `${scoutGapRead || recommendation.reason}`}
                     </span>
                   </div>
                   <span className={`cc-pill${hasPlanConflict ? ' amber' : ' cyan'}`}>
@@ -719,9 +713,20 @@ export function PreSimDashboard({
                   key={check.id}
                   className={`cc-gate ${check.ready ? 'ok' : 'pend'}`}
                   title={check.detail}
+                  aria-label={check.detail ? `${check.short_label}: ${check.detail}` : check.short_label}
                 >
-                  <span className="tick">{check.ready ? '✓' : '!'}</span>
+                  <span className="tick" aria-hidden="true">{check.ready ? '✓' : '!'}</span>
                   <span className="lbl">{check.short_label}</span>
+                  {/* WT-4: blocking detail must be visible + accessible, not
+                      title-only. Show it inline for pending gates. */}
+                  {!check.ready && check.detail && (
+                    <span
+                      className="cc-gate-detail"
+                      style={{ display: 'block', fontSize: '0.75rem', opacity: 0.85, marginTop: '0.15rem' }}
+                    >
+                      {check.detail}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>

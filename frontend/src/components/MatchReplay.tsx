@@ -1,6 +1,7 @@
 import { memo, useMemo, useEffect, useRef, useState } from 'react';
 
 import type { MatchReplayResponse, ReplayProofEvent } from '../types';
+import { rulesetDisplayName } from '../legibility/rulesetNames';
 import { BroadcastFrameBlock } from './BroadcastFrameBlock';
 
 interface PlayerInfo {
@@ -244,7 +245,7 @@ const ReplayScoreboard = ({ data }: { data: MatchReplayResponse }) => {
   const scoreAway = isOfficial ? (data.away_game_points ?? 0) : awaySurv;
   const scoreDiff = Math.abs(scoreHome - scoreAway);
   const marginLabel = isOfficial ? `+${scoreDiff} GAME PTS` : `+${diff} SURVIVORS`;
-  const formatTag = isOfficial ? `USAD ${data.scoring_model?.toUpperCase()} · W${String(data.week).padStart(2, '0')}` : `FINAL · W${String(data.week).padStart(2, '0')}`;
+  const formatTag = isOfficial ? `${rulesetDisplayName(data.scoring_model, 'short')} · W${String(data.week).padStart(2, '0')}` : `FINAL · W${String(data.week).padStart(2, '0')}`;
 
   return (
     <div className="mr-scoreboard">
@@ -296,7 +297,7 @@ const OfficialRulesPanel = ({ data }: { data: MatchReplayResponse }) => {
     <section className="mr-official-panel" data-testid="official-ruleset-banner" aria-label="Official rules replay state">
       <div>
         <span>RULESET</span>
-        <strong>{official.ruleset.toUpperCase()}</strong>
+        <strong>{rulesetDisplayName(official.ruleset, 'short')}</strong>
       </div>
       <div>
         <span>MODE</span>

@@ -237,6 +237,11 @@ def _assert_postgame_copy_truthful(
     a shutout. This assertion is intentionally narrow: it doesn't try
     to validate every template, just the contradictions that have
     surfaced in playtest reports.
+
+    ``player_survivors`` / ``opponent_survivors`` carry the *displayed score
+    basis* the headline uses: official game points for set-scored matches,
+    survivor counts otherwise — so the narrow/"so close" check reasons about
+    the same numbers the headline shows (WT-2).
     """
     headline_lower = headline.lower()
     if result == "Loss":
@@ -654,12 +659,23 @@ def _build_aftermath(
             # Contract: postgame copy must never contradict the resolved
             # MatchResult. If it does, fail loudly rather than ship a
             # "Win" headline on a Loss.
+            # The guard must judge the headline against the same score basis
+            # the headline shows: official game points when set-scored, else
+            # survivor counts. Otherwise a narrow game-point loss (e.g. 2-3)
+            # would false-trip the survivor-margin "so close" check (WT-2).
+            _player_gp = voice_ctx.game_points_for(player_club_id)
+            _opp_gp = voice_ctx.game_points_for(opponent_club_id)
+            if _player_gp is not None and _opp_gp is not None:
+                _player_score, _opp_score = _player_gp, _opp_gp
+            else:
+                _player_score = int(box[player_club_id]["totals"]["living"])
+                _opp_score = int(box[opponent_club_id]["totals"]["living"])
             _assert_postgame_copy_truthful(
                 headline=headline,
                 verdict=verdict,
                 result=result,
-                player_survivors=int(box[player_club_id]["totals"]["living"]),
-                opponent_survivors=int(box[opponent_club_id]["totals"]["living"]),
+                player_survivors=_player_score,
+                opponent_survivors=_opp_score,
             )
         else:
             headline = dashboard["result"]

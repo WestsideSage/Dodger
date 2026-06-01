@@ -169,8 +169,19 @@ def _moment_headline(ctx: AftermathContext, moment: Any) -> str:
     )
 
 
-def _margin_tier(result: str, mine: int, theirs: int) -> str:
+def _margin_tier(result: str, mine: int, theirs: int, *, official: bool = False) -> str:
     if result == "Win":
+        if official:
+            # Game points are low integers; a 1-0 / 2-0 win (one elimination,
+            # the rest no-point draws) is NOT a "total control" shutout. Reserve
+            # the dominant/shutout flavor for a genuine multi-game sweep (WT-2).
+            if theirs == 0 and mine >= 4:
+                return "shutout"
+            if mine - theirs >= 3:
+                return "dominant"
+            if mine - theirs <= 1:
+                return "narrow"
+            return "solid"
         if theirs == 0:
             return "shutout"
         if mine >= theirs * 2:
@@ -179,6 +190,14 @@ def _margin_tier(result: str, mine: int, theirs: int) -> str:
             return "narrow"
         return "solid"
     if result == "Loss":
+        if official:
+            if mine == 0 and theirs >= 4:
+                return "shutout"
+            if theirs - mine >= 3:
+                return "heavy"
+            if theirs - mine <= 1:
+                return "narrow"
+            return "clear"
         if mine == 0:
             return "shutout"
         if theirs >= mine * 2:
@@ -209,21 +228,31 @@ def _margin_fallback(ctx: AftermathContext) -> str:
             theirs_id = next(tid for tid in team_ids if tid != mine_id)
         else:
             mine_id, theirs_id = team_ids[0], team_ids[1]
-        mine_living = ctx.survivors_for(mine_id)
-        theirs_living = ctx.survivors_for(theirs_id)
-        if mine_living is not None and theirs_living is not None:
+        # Prefer official game points (the real set score) over survivor
+        # counts. An official 0-0 game-point draw must never render the
+        # survivor count as the score (WT-2). Legacy/generic matches have no
+        # game points, so we fall back to survivors.
+        mine_score = ctx.game_points_for(mine_id)
+        theirs_score = ctx.game_points_for(theirs_id)
+        official = mine_score is not None and theirs_score is not None
+        if not official:
+            mine_score = ctx.survivors_for(mine_id)
+            theirs_score = ctx.survivors_for(theirs_id)
+        if mine_score is not None and theirs_score is not None:
             if winner_id is None:
                 result = "Draw"
             elif winner_id == mine_id:
                 result = "Win"
             else:
                 result = "Loss"
-            templates = _MARGIN_TEMPLATES.get((result, _margin_tier(result, mine_living, theirs_living)))
+            templates = _MARGIN_TEMPLATES.get(
+                (result, _margin_tier(result, mine_score, theirs_score, official=official))
+            )
             if templates:
                 return (
                     DeterministicRNG(result_obj.seed)
                     .choice(templates)
-                    .format(score=f"{mine_living}-{theirs_living}")
+                    .format(score=f"{mine_score}-{theirs_score}")
                 )
     # Score-less fallback: still honour the resolved winner relative to
     # the player perspective.

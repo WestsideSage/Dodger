@@ -173,6 +173,30 @@ def _player_name(player_id: Any, name_map: Mapping[str, str]) -> str:
     return name_map.get(str(player_id), str(player_id))
 
 
+def _thrower_went_out(event: Mapping[str, Any]) -> bool:
+    """True iff the saved evidence shows the thrower out on their own throw.
+
+    This is the faithful signal that distinguishes a target-less *foul* (a rec
+    illegal headshot, or an official throw-clock / burden violation — in both
+    the thrower is eliminated) from a throw that simply found no one. It is
+    read from the throw log (``outcome.thrower_out`` or a ``state_diff`` that
+    eliminates the thrower), never inferred from the mere absence of a target.
+    """
+    actors = event.get("actors") or {}
+    thrower_raw = actors.get("thrower")
+    if thrower_raw is None:
+        return False
+    outcome = event.get("outcome") or {}
+    if outcome.get("thrower_out"):
+        return True
+    state_diff = event.get("state_diff") or {}
+    player_out = state_diff.get("player_out") if isinstance(state_diff, Mapping) else None
+    return (
+        isinstance(player_out, Mapping)
+        and str(player_out.get("player_id", "")) == str(thrower_raw)
+    )
+
+
 def event_label(event: ThrowEvent, name_map: Mapping[str, str]) -> str:
     if event.get("event_type") == "match_end":
         winner = event.get("outcome", {}).get("winner")
@@ -183,12 +207,19 @@ def event_label(event: ThrowEvent, name_map: Mapping[str, str]) -> str:
     actors = event.get("actors", {})
     resolution = str(outcome.get("resolution", "throw"))
     thrower = _player_name(actors.get("thrower"), name_map)
-    target = _player_name(actors.get("target"), name_map)
-    
-    from dodgeball_sim.voice_playbyplay import render_play
+
+    from dodgeball_sim.voice_playbyplay import render_play, render_targetless_play
     from dodgeball_sim.rng import DeterministicRNG
+
+    if actors.get("target") is None:
+        # A target-less throw is a real foul or a throw into space — never a
+        # "miss against -". Narrate it from the saved evidence (WT-1).
+        rng = DeterministicRNG(hash(f"{thrower}_targetless_{resolution}_{event.get('tick', 0)}") % (2**63))
+        return render_targetless_play(resolution, thrower, rng, thrower_out=_thrower_went_out(event))
+
+    target = _player_name(actors.get("target"), name_map)
     rng = DeterministicRNG(hash(f"{thrower}_{target}_{resolution}_{event.get('tick', 0)}") % (2**63))
-    
+
     if resolution == "hit":
         return render_play("throw", thrower, target, rng)
     if resolution == "failed_catch":
@@ -210,9 +241,23 @@ def event_detail(event: ThrowEvent, name_map: Mapping[str, str]) -> str:
     probabilities = event.get("probabilities", {})
     rolls = event.get("rolls", {})
     thrower = _player_name(actors.get("thrower"), name_map)
-    target = _player_name(actors.get("target"), name_map)
-    resolution = str(outcome.get("resolution", "throw")).replace("_", " ")
-    parts = [f"{thrower} vs {target}: {resolution}."]
+    resolution_raw = str(outcome.get("resolution", "throw"))
+    resolution = resolution_raw.replace("_", " ")
+    if actors.get("target") is None:
+        # Faithful detail for a target-less event — no "vs -" (WT-1).
+        if _thrower_went_out(event):
+            if resolution_raw == "clock_violation":
+                parts = [f"{thrower}: throw-clock / burden violation — thrower ruled out."]
+            else:
+                parts = [f"{thrower}: illegal headshot — thrower ruled out."]
+        else:
+            # Official miss: a selected defender dodged or the throw was
+            # off-target; the defender's id is not on the event. Don't claim
+            # an empty lane (WT-1).
+            parts = [f"{thrower}: throw did not connect (no out)."]
+    else:
+        target = _player_name(actors.get("target"), name_map)
+        parts = [f"{thrower} vs {target}: {resolution}."]
     if "p_on_target" in probabilities and "on_target" in rolls:
         parts.append(f"On-target {float(probabilities['p_on_target']):.2f} (roll {float(rolls['on_target']):.2f}).")
     if "p_catch" in probabilities and "catch" in rolls:

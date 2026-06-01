@@ -84,6 +84,35 @@ class AftermathContext:
         living = totals.get("living")
         return int(living) if living is not None else None
 
+    def game_points_for(self, team_id: str | None) -> int | None:
+        """Official set-scoring game points for a club, or ``None``.
+
+        Returns ``None`` for legacy/generic matches (no official metadata) so
+        callers fall back to survivor counts. For official foam/cloth matches
+        this is the *real* score the scoreboard shows — never survivor counts,
+        which is the WT-2 lie (a 0-0 game-point draw must not headline as a
+        survivor "0-3"). The team_a↔club mapping mirrors
+        ``use_cases`` / ``game_loop._persist_match_result``.
+        """
+        if not team_id:
+            return None
+        meta = getattr(self.match_result, "official_metadata", None)
+        if not isinstance(meta, Mapping):
+            return None
+        team_a_gp = meta.get("team_a_game_points")
+        team_b_gp = meta.get("team_b_game_points")
+        if team_a_gp is None and team_b_gp is None:
+            return None
+        team_a_id = meta.get("team_a_id")
+        if team_a_id is None:
+            return None
+        try:
+            team_a_i = int(team_a_gp or 0)
+            team_b_i = int(team_b_gp or 0)
+        except (TypeError, ValueError):
+            return None
+        return team_a_i if str(team_id) == str(team_a_id) else team_b_i
+
 
 def moment_events_from_payload(payload: Any) -> tuple[MomentEvent, ...]:
     if not isinstance(payload, list):

@@ -46,5 +46,51 @@ def render_play(event_type: str, actor: str, target: str, rng: DeterministicRNG,
             "{actor} engages {target}.",
             "Action between {actor} and {target}."
         ]
-        
+
     return rng.choice(templates).format(actor=actor, target=target)
+
+
+def render_targetless_play(
+    resolution: str,
+    actor: str,
+    rng: DeterministicRNG,
+    *,
+    thrower_out: bool,
+) -> str:
+    """Faithful play-by-play for a throw event that has no target.
+
+    A target-less throw is never a "miss against ``-``". It is one of three
+    real outcomes, distinguished by whether the thrower was eliminated on
+    their own throw (``thrower_out``) and the event ``resolution``:
+
+    * ``thrower_out`` + ``clock_violation`` — an official throw-clock / burden
+      violation: the burdened thrower failed to relinquish and is ruled out.
+    * ``thrower_out`` (otherwise, rec ``miss``) — an illegal headshot: the
+      throw rode up over the shoulders and the *thrower* is out as the penalty.
+    * not ``thrower_out`` — the throw did not connect (an official ``miss``:
+      the selected defender dodged, or the throw was off-target). The official
+      translator drops the dodged defender's id, so we narrate a clean miss
+      WITHOUT asserting the ball went "into open space" — a target WAS
+      selected, so claiming an empty lane would be a new lie.
+
+    Never emits a ``-`` placeholder target. The thrower name is the only
+    actor named because the target id is genuinely unavailable on these plays.
+    """
+    if thrower_out:
+        if resolution == "clock_violation":
+            templates = [
+                "{actor} can't beat the throw clock — a burden violation, and {actor} is out.",
+                "The throw clock expires on {actor}; the stall is called and {actor} is out.",
+            ]
+        else:
+            templates = [
+                "{actor} sails one in high — an illegal headshot, and {actor} is out.",
+                "{actor}'s throw rides up over the shoulders; the headshot foul puts {actor} out.",
+            ]
+    else:
+        templates = [
+            "{actor}'s throw misses.",
+            "{actor}'s throw doesn't connect.",
+            "{actor} comes up empty on the throw.",
+        ]
+    return rng.choice(templates).format(actor=actor)

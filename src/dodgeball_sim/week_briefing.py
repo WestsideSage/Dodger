@@ -108,6 +108,12 @@ def _build_readiness(plan: dict[str, Any]) -> dict[str, Any]:
     # default-satisfied to preserve the Balanced-default convenience.
     scouted = is_bye or bool(plan.get("opponent_scouted"))
     lineup_confirmed = is_bye or bool(plan.get("lineup_confirmed"))
+    # State-aware gate details: WT-4 makes the detail VISIBLE on pending (red)
+    # gates, so the string must describe the actual blocker when unmet — a
+    # satisfied-state assertion shown on a red gate is a lie.
+    intent_set = bool(plan.get("intent"))
+    training_set = bool(orders.get("training"))
+    rotation_ok = len(starters) >= _MIN_ROTATION
 
     gates = [
         {
@@ -140,28 +146,36 @@ def _build_readiness(plan: dict[str, Any]) -> dict[str, Any]:
             "id": "gameplan",
             "label": "Set a game plan",
             "short_label": "Game plan",
-            "detail": "Match intent selected.",
-            "ready": bool(plan.get("intent")),
+            "detail": "Match intent selected." if intent_set else "Select a match intent to set the team's approach.",
+            "ready": intent_set,
         },
         {
             "id": "training",
             "label": "Assign a training order",
             "short_label": "Training",
-            "detail": "Weekly training focus assigned.",
-            "ready": bool(orders.get("training")),
+            "detail": "Weekly training focus assigned." if training_set else "Assign a weekly training focus.",
+            "ready": training_set,
         },
         {
             "id": "rotation",
             "label": "Field a full rotation",
             "short_label": "Rotation",
-            "detail": f"At least {_MIN_ROTATION} starters set.",
-            "ready": len(starters) >= _MIN_ROTATION,
+            "detail": (
+                f"At least {_MIN_ROTATION} starters set."
+                if rotation_ok
+                else f"Field at least {_MIN_ROTATION} starters (you have {len(starters)})."
+            ),
+            "ready": rotation_ok,
         },
         {
             "id": "health",
             "label": "Clear the health check",
             "short_label": "Health",
-            "detail": "No starter is critically fatigued.",
+            "detail": (
+                "No starter is critically fatigued."
+                if health_ok
+                else "A starter is critically fatigued — rest or rotate before you sim."
+            ),
             "ready": health_ok,
         },
     ]
