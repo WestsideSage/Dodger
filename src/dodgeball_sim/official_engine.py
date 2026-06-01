@@ -732,20 +732,36 @@ def run_autonomous_game(
                 # DRAMATIC_CATCH: a live-ball catch that returned a teammate.
                 catch_own = active_a if catch_team == team_a_id else active_b
                 catch_opp = active_b if catch_team == team_a_id else active_a
-                moments.append(
-                    DramaticCatch(
-                        match_id=match_id,
-                        tick=ticks,
-                        catcher_id=catcher_id,
-                        catcher_team_id=catch_team,
-                        thrower_id=seq.thrower_id,
-                        thrower_team_id=offense_team,
-                        returning_player_id=returning_pid,
-                        active_count_a=active_a,
-                        active_count_b=active_b,
+                # WT-7: a live-ball catch-and-return happens on most on-target
+                # throws (~24/match), so emitting a DRAMATIC_CATCH *moment* on
+                # every one turns recognition into replay noise. Gate the moment
+                # (presentation only) to genuinely clutch catches, deterministically:
+                #   * the catching side is even-or-behind in the active count
+                #     (catch_own <= catch_opp) — the same condition that feeds
+                #     COMEBACK below; or
+                #   * a side is down to its last live player
+                #     (min active count <= 1) — the lone-survivor endgame the
+                #     LATE_GAME_ESCAPE recognizer keys on (its survivor side is 1).
+                # This is rate-only: it never changes who is out, who returns, the
+                # active counts, or the COMEBACK bookkeeping below.
+                is_clutch_catch = catch_own <= catch_opp or min(active_a, active_b) <= 1
+                if is_clutch_catch:
+                    moments.append(
+                        DramaticCatch(
+                            match_id=match_id,
+                            tick=ticks,
+                            catcher_id=catcher_id,
+                            catcher_team_id=catch_team,
+                            thrower_id=seq.thrower_id,
+                            thrower_team_id=offense_team,
+                            returning_player_id=returning_pid,
+                            active_count_a=active_a,
+                            active_count_b=active_b,
+                        )
                     )
-                )
                 # A clutch catch made while still behind feeds COMEBACK detection.
+                # This bookkeeping is OUTCOME-relevant and must run on every
+                # qualifying catch regardless of the presentation gate above.
                 if catch_own <= catch_opp:
                     comeback_catches[catch_team] += 1
         else:

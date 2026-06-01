@@ -526,11 +526,7 @@ def _tactic_context(context: Mapping[str, Any]) -> dict[str, Any]:
     rush = context.get("rush_context")
     if isinstance(rush, Mapping):
         if rush.get("active"):
-            modifier = float(rush.get("proximity_modifier", 0.0) or 0.0)
-            if modifier >= 0.08:
-                items.append("The rush crowded the throw and made the release harder.")
-            else:
-                items.append("The rush arrived, but the thrower still had enough room to release cleanly.")
+            items.append("This throw came off an opening-rush commitment.")
         else:
             items.append("The possession developed patiently rather than through a hard rush.")
     sync = context.get("sync_context")

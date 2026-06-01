@@ -59,3 +59,107 @@ def test_official_driver_emits_recognition_moments():
 
     for required in ("dramatic_catch", "late_game_escape", "one_v_one_finale", "comeback"):
         assert kinds[required] > 0, f"official engine never emitted {required}: {dict(kinds)}"
+
+
+# --- WT-7: DRAMATIC_CATCH moment-rate cap (presentation only) -----------------
+#
+# A live-ball catch-and-return fires on most on-target throws, so the official
+# loop used to append a DRAMATIC_CATCH *moment* on every one (~24/match), turning
+# recognition into replay noise. WT-7 gates the moment append to clutch catches
+# (catching side even-or-behind, OR a side on its last live player) WITHOUT
+# touching any outcome or the COMEBACK bookkeeping.
+#
+# The constants below were captured from the engine *before* the gate landed,
+# driving OfficialMatchEngineDriver over seeds range(24) at 70 vs 63. They are
+# the immovable reference the gate is checked against.
+_WT7_SEEDS = range(24)
+_WT7_RATING_A = 70.0
+_WT7_RATING_B = 63.0
+# Pre-WT-7 mean DRAMATIC_CATCH moments per match over _WT7_SEEDS (uncapped ~24+).
+_WT7_BASELINE_DRAMATIC_MEAN = 27.75
+# Pre-WT-7 winner_team_id sequence over _WT7_SEEDS — must be byte-identical after
+# the gate, since the cap is presentation-only and changes no outcome.
+_WT7_BASELINE_WINNERS = [
+    "fav", None, "fav", None, None, "fav", "fav", "fav", "dog", "fav", "fav",
+    None, None, "fav", "fav", "fav", "fav", "fav", "dog", "fav", "fav", "fav",
+    "fav", None,
+]
+# Pre-WT-7 totals for the non-DRAMATIC moment kinds over _WT7_SEEDS. Gating only
+# the DramaticCatch append must leave these untouched; in particular `comeback`
+# is direct proof the comeback_catches increment still fires on every qualifying
+# catch (it is keyed off the same catch_own <= catch_opp guard the gate reuses).
+_WT7_BASELINE_OTHER_KINDS = {
+    "late_game_escape": 116,
+    "comeback": 45,
+    "one_v_one_finale": 1,
+}
+
+
+def _wt7_run_sweep():
+    """Drive the shipping official driver over the WT-7 seed sweep.
+
+    Returns (winners, per_match_dramatic_counts, kind_totals).
+    """
+    driver = OfficialMatchEngineDriver()
+    winners: list[str | None] = []
+    dramatic_per_match: list[int] = []
+    kind_totals: Counter[str] = Counter()
+    for seed in _WT7_SEEDS:
+        mi = make_match_input(seed=seed, rating_a=_WT7_RATING_A, rating_b=_WT7_RATING_B)
+        out = driver.run(mi)
+        winners.append(out.winner_team_id)
+        dramatic = 0
+        for moment in out.moment_events:
+            kind = moment.kind.value
+            kind_totals[kind] += 1
+            if kind == "dramatic_catch":
+                dramatic += 1
+        dramatic_per_match.append(dramatic)
+    return winners, dramatic_per_match, kind_totals
+
+
+def test_wt7_dramatic_catch_rate_is_capped_without_changing_outcomes():
+    """The DRAMATIC_CATCH moment rate must drop materially from the uncapped
+    baseline, every recognition kind must still surface, and no match outcome may
+    move — the cap is presentation-rate only."""
+    winners, dramatic_per_match, kind_totals = _wt7_run_sweep()
+
+    # (a) The per-match DRAMATIC_CATCH rate is materially reduced from ~24+.
+    post_mean = sum(dramatic_per_match) / len(dramatic_per_match)
+    assert post_mean <= 0.7 * _WT7_BASELINE_DRAMATIC_MEAN, (
+        f"WT-7 cap not material: post mean {post_mean:.2f} vs baseline "
+        f"{_WT7_BASELINE_DRAMATIC_MEAN:.2f} (require <= 70%)"
+    )
+    # Sanity: the gate must not silence DRAMATIC_CATCH entirely — clutch catches
+    # still flow through.
+    assert kind_totals["dramatic_catch"] > 0, "WT-7 gate silenced dramatic_catch entirely"
+
+    # (b) Match outcomes are byte-identical pre/post: the cap changed no result.
+    assert winners == _WT7_BASELINE_WINNERS, (
+        f"WT-7 cap changed outcomes: {winners} != {_WT7_BASELINE_WINNERS}"
+    )
+
+    # (c) Gating ONLY the DramaticCatch append leaves every other moment kind's
+    # total untouched. comeback == 45 unchanged proves the outcome-relevant
+    # comeback_catches increment still fires on every qualifying catch.
+    for kind, expected in _WT7_BASELINE_OTHER_KINDS.items():
+        assert kind_totals[kind] == expected, (
+            f"WT-7 cap perturbed non-dramatic kind {kind}: "
+            f"{kind_totals[kind]} != {expected} (gate must touch dramatic_catch only)"
+        )
+
+
+def test_wt7_all_recognition_kinds_survive_the_cap():
+    """The four detectable recognition kinds must all still emit after the cap.
+    Uses the same 150-trial config as test_official_driver_emits_recognition_moments
+    because one_v_one_finale / comeback are rare and would flake at small N."""
+    driver = OfficialMatchEngineDriver()
+    kinds: Counter[str] = Counter()
+    for trial in range(150):
+        mi = make_match_input(seed=trial, rating_a=70.0, rating_b=63.0)
+        out = driver.run(mi)
+        for moment in out.moment_events:
+            kinds[moment.kind.value] += 1
+
+    for required in ("dramatic_catch", "late_game_escape", "one_v_one_finale", "comeback"):
+        assert kinds[required] > 0, f"WT-7 cap starved {required}: {dict(kinds)}"
