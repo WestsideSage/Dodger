@@ -11,11 +11,12 @@ import { ReplayTimeline } from './match-week/aftermath/ReplayTimeline';
 import { KeyPlayersPanel } from './match-week/aftermath/KeyPlayersPanel';
 import { TacticalSummaryCard } from './match-week/aftermath/TacticalSummaryCard';
 import { PrimaryFactorCard } from './match-week/aftermath/PrimaryFactorCard';
+import { ManagerLessonCard } from './match-week/aftermath/ManagerLessonCard';
 import { PreSimDashboard } from './match-week/command-center/PreSimDashboard';
 import { SeasonPreview } from './match-week/command-center/SeasonPreview';
 import { formatScoreline } from './match-week/matchResult';
 import { useState, useEffect } from 'react';
-import type { Aftermath, CommandCenterResponse, CommandCenterSimResponse, MatchReplayResponse } from '../types';
+import type { Aftermath, CommandCenterResponse, CommandCenterSimResponse, FastForwardStopPoint, MatchReplayResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
 import { StatusMessage } from './ui';
 import { Offseason } from './Offseason';
@@ -276,11 +277,11 @@ export function MatchWeek({
       .finally(() => setSaving(false));
   };
 
-  const fastForward = () => {
+  const fastForward = (stopPoint?: FastForwardStopPoint) => {
     setError(null);
     setIsTransitioning(true);
     setSaving(true);
-    commandApi.fastForward({})
+    commandApi.fastForward(stopPoint ? { stop_point: stopPoint } : {})
       .then(() => {
         setIsTransitioning(false);
         return load();
@@ -532,6 +533,7 @@ export function MatchWeek({
               </p>
             )}
             {aftermath.primary_factor && <PrimaryFactorCard factor={aftermath.primary_factor} />}
+            {aftermath.manager_lesson && <ManagerLessonCard lesson={aftermath.manager_lesson} />}
             {aftermath.body.length > 0 && (
               <AftermathBody body={aftermath.body} />
             )}

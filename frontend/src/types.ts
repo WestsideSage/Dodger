@@ -568,6 +568,13 @@ export interface TacticalDiffRow {
   player_value: string;
   opponent_value: string | null;
   opponent_known: boolean;
+  // WT-30: present only on axes revealed from past tape after scouting. The
+  // opponent value is an observed tendency (frequency over completed games),
+  // never the hidden upcoming plan.
+  opponent_source?: 'tape';
+  confidence?: number;
+  confidence_label?: 'strong' | 'leans' | 'mixed';
+  sample?: number;
 }
 
 export interface TacticalDiffIntel {
@@ -575,10 +582,21 @@ export interface TacticalDiffIntel {
   text: string;
 }
 
+export interface TacticalDiffColdStart {
+  program_archetype?: string | null;
+  roster_shape?: { throwers: number; defenders: number; total: number } | null;
+  threat?: { name: string; archetype: string; ovr: number } | null;
+}
+
 export interface TacticalDiff {
   player_plan: TacticalDiffRow[];
   opponent_intel: TacticalDiffIntel[];
   opponent_unscouted: boolean;
+  // WT-30 scout state.
+  scouted?: boolean;
+  intel_revealed?: boolean;
+  tape_axes_revealed?: number;
+  cold_start?: TacticalDiffColdStart | null;
   note: string;
 }
 
@@ -792,6 +810,19 @@ export interface Aftermath {
         title: string;
         sentence: string;
         confidence: 'high' | 'medium' | 'low';
+        evidence_chips: string[];
+    };
+    // WT-32: an ADJACENT "Manager Lesson" surfaced ONLY when the Primary Factor
+    // is inconclusive (a genuine coin-flip loss). It answers "what could *I*
+    // have changed?" from controllable prep — or, when nothing controllable
+    // applied, honestly says so (`controllable: false`). It NEVER replaces or
+    // reranks the event-derived primary_factor. Absent on conclusive results,
+    // wins/draws, and bye weeks — components treat undefined as "render nothing".
+    manager_lesson?: {
+        code: string;
+        title: string;
+        sentence: string;
+        controllable: boolean;
         evidence_chips: string[];
     };
     // Task 3 (2026-05-28 playtest-fixes): derived narrative facts about
@@ -1065,6 +1096,8 @@ export interface CommandCenterSimResponse {
     aftermath?: Aftermath;
 }
 
+export type FastForwardStopPoint = 'next_bye' | 'pre_playoffs' | 'offseason';
+
 export interface FastForwardResponse {
     status: string;
     message: string;
@@ -1074,6 +1107,8 @@ export interface FastForwardResponse {
     week_summaries: Array<{ week: number | null; opponent_name: string | null; result: string | null }>;
     final_dashboard?: CommandDashboard | null;
     final_aftermath?: Aftermath | null;
+    requested_stop_point?: FastForwardStopPoint | null;
+    resolved_stop_point?: FastForwardStopPoint | null;
 }
 
 export interface DynastyOfficeResponse {

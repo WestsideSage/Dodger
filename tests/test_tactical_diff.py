@@ -98,3 +98,95 @@ def test_hidden_opponent_policy_values_never_leak():
         and value.replace("_", " ") in serialized
     }
     assert not leaking, f"hidden opponent policy leaked: {leaking}"
+
+
+# --- WT-30: scouted tape reveal + cold-start facts ----------------------------
+
+# Observed tendencies the caller derives from the opponent's PAST recorded
+# matches (command_center.aggregate_opponent_tape). axis -> {value,sample,conf}.
+OBSERVED_TENDENCIES = {
+    "approach": {"value": "patient", "sample": 6, "confidence": 0.83},
+    "target_focus": {"value": "ball_holders", "sample": 6, "confidence": 0.5},
+}
+
+
+def test_builder_param_names_never_mention_opponent_policy():
+    # Structural fog-of-war guarantee survives the new scout params: still no
+    # parameter through which the hidden opponent policy could be passed.
+    params = set(inspect.signature(build_tactical_diff).parameters)
+    assert all("opponent_policy" not in p for p in params)
+
+
+def test_unscouted_hides_tape_even_when_supplied():
+    # Tape supplied but not scouted: nothing per-axis is revealed, and the diff
+    # explicitly says so. Tape only surfaces after the scout action.
+    diff = build_tactical_diff(
+        player_policy=PLAYER_POLICY,
+        scouted=False,
+        observed_tendencies=OBSERVED_TENDENCIES,
+        cold_start_intel={"program_archetype": "Aging Veterans"},
+    )
+    assert diff["scouted"] is False
+    assert diff["intel_revealed"] is False
+    assert diff["tape_axes_revealed"] == 0
+    assert all(row["opponent_known"] is False for row in diff["player_plan"])
+    assert diff["cold_start"] is None
+    assert "unscouted" in diff["note"].lower()
+
+
+def test_scouted_tape_reveals_axes_labelled_as_observed():
+    diff = build_tactical_diff(
+        player_policy=PLAYER_POLICY,
+        scouted=True,
+        observed_tendencies=OBSERVED_TENDENCIES,
+    )
+    assert diff["scouted"] is True
+    assert diff["intel_revealed"] is True
+    assert diff["tape_axes_revealed"] == 2
+    by_axis = {row["axis"]: row for row in diff["player_plan"]}
+    approach = by_axis["approach"]
+    assert approach["opponent_known"] is True
+    assert approach["opponent_value"] == "Patient"
+    # Labelled as observed-from-tape with honest confidence/sample — a tendency.
+    assert approach["opponent_source"] == "tape"
+    assert approach["confidence"] == 0.83
+    assert approach["confidence_label"] == "strong"
+    assert approach["sample"] == 6
+    # A mixed (0.5) tendency is still revealed but flagged as a weaker lean.
+    assert by_axis["target_focus"]["confidence_label"] == "leans"
+    # Axes the tape cannot speak to stay unscouted.
+    assert by_axis["catch_posture"]["opponent_known"] is False
+    # The note frames the reads as observed tendencies, not a hidden plan.
+    assert "tendenc" in diff["note"].lower()
+    assert "hidden plan" in diff["note"].lower()
+
+
+def test_scouted_cold_start_surfaces_when_no_tape():
+    diff = build_tactical_diff(
+        player_policy=PLAYER_POLICY,
+        scouted=True,
+        observed_tendencies=None,
+        cold_start_intel={
+            "program_archetype": "Power Throwers",
+            "roster_shape": {"throwers": 4, "defenders": 2, "total": 6},
+            "threat": {"name": "Tyne Hassan", "archetype": "Net Specialist", "ovr": 69},
+        },
+    )
+    # No tape, but scouting still reveals derivable facts — never empty.
+    assert diff["tape_axes_revealed"] == 0
+    assert diff["intel_revealed"] is True
+    assert diff["cold_start"]["program_archetype"] == "Power Throwers"
+    assert diff["cold_start"]["roster_shape"]["throwers"] == 4
+    assert diff["cold_start"]["threat"]["name"] == "Tyne Hassan"
+
+
+def test_scouted_tape_value_is_humanized_not_raw():
+    # The reveal must never echo raw enum tokens (underscores) — those would be
+    # the same string shape the hidden policy uses; reads are humanized labels.
+    diff = build_tactical_diff(
+        player_policy=PLAYER_POLICY,
+        scouted=True,
+        observed_tendencies={"target_focus": {"value": "ball_holders", "sample": 4, "confidence": 1.0}},
+    )
+    by_axis = {row["axis"]: row for row in diff["player_plan"]}
+    assert by_axis["target_focus"]["opponent_value"] == "Ball holders"

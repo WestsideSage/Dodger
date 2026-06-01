@@ -4,6 +4,7 @@ import type {
   CommandCenterResponse,
   CommandCenterSimResponse,
   FastForwardResponse,
+  FastForwardStopPoint,
   DynastyOfficeResponse,
   MatchHighlightsResponse,
   MatchReplayResponse,
@@ -109,7 +110,7 @@ export const commandApi = {
     apiPost<CommandCenterResponse>('/api/command-center/confirm-lineup', {}),
   simulate: (body: { intent?: string }) =>
     apiPost<CommandCenterSimResponse>('/api/command-center/simulate', body),
-  fastForward: (body: { max_weeks?: number } = {}) =>
+  fastForward: (body: { max_weeks?: number; stop_point?: FastForwardStopPoint } = {}) =>
     apiPost<FastForwardResponse>('/api/command-center/fast-forward', body),
   replay: (matchId: string) =>
     apiGet<MatchReplayResponse>(`/api/matches/${encodeURIComponent(matchId)}/replay`),

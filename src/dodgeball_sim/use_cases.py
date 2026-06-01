@@ -516,6 +516,153 @@ def _load_championship(
     }
 
 
+# ---------------------------------------------------------------------------
+# WT-32 Manager Lesson — controllable-signal extractors.
+#
+# Each returns a primitive dict ONLY when the lever genuinely *applies*, else
+# None. "Applies" reuses the exact thresholds the pre-match week briefing shows
+# the player, so a lesson never claims a lever the briefing wouldn't have
+# flagged, and the honest "nothing you controlled" message stays reachable when
+# none apply. All read the saved pre-sim ``plan`` (and, for the weakest group,
+# the current roster) — already-resolved data the player can see.
+# ---------------------------------------------------------------------------
+
+
+def _aftermath_ignored_recommendation(
+    conn,
+    *,
+    season_id: str | None,
+    current_match_id: str | None,
+    plan: Mapping[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Reconstruct the pre-match advisory the player declined, if any.
+
+    Faithful by construction: ``compute_staff_recommendation`` is a pure
+    function of (recent results, at-risk starter count). We feed it the SAME
+    inputs the live week briefing did for the final locked plan —
+
+      * recent results with the just-played match EXCLUDED (the loss is already
+        persisted to command_history before the aftermath is built, so dropping
+        it by match_id recovers the genuine pre-match slice; including it would
+        fabricate "advice you ignored" the player never saw — ADR 0002);
+      * the at-risk starter count from the locked plan's lineup stamina.
+
+    Returns ``{advised_intent, selected_intent, reason}`` only when the staff
+    advised a DIFFERENT intent than the one the player ran (i.e. an advisory the
+    player declined). Otherwise None.
+    """
+    if not plan or season_id is None:
+        return None
+    selected = str(plan.get("intent") or "").strip()
+    if not selected:
+        return None
+    try:
+        from dodgeball_sim.persistence import load_command_history
+        from dodgeball_sim.week_briefing import (
+            _build_fatigue,
+            compute_staff_recommendation,
+        )
+
+        history = load_command_history(conn, season_id)
+        recent_results = [
+            result
+            for record in history
+            if record.get("match_id") != current_match_id
+            and (result := (record.get("dashboard") or {}).get("result"))
+        ][-5:]
+        at_risk = int(_build_fatigue(dict(plan)).get("at_risk_count", 0))
+        staff = compute_staff_recommendation(
+            recent_results=recent_results, at_risk_count=at_risk
+        )
+    except Exception:
+        return None
+
+    advised = str(staff.get("recommended_intent") or "").strip()
+    if not advised or advised == selected:
+        return None
+    return {
+        "advised_intent": advised,
+        "selected_intent": selected,
+        "reason": str(staff.get("reason") or "").strip(),
+    }
+
+
+def _aftermath_roster_edge(plan: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    """Net fielded-six OVR edge, only when the player was the clear underdog.
+
+    Mirrors ``week_briefing._build_edge`` (net = player starters − opponent
+    starters) and its ``_EVEN_BAND`` underdog threshold, so the lesson aligns
+    with the favourite/underdog band the player saw pre-match.
+    """
+    if not plan:
+        return None
+    from dodgeball_sim.week_briefing import _EVEN_BAND
+
+    def _sum(side_key: str) -> int:
+        players = ((plan.get(side_key) or {}).get("players")) or []
+        return sum(int(p.get("overall", 0)) for p in players)
+
+    starters = ((plan.get("lineup") or {}).get("players")) or []
+    opponents = ((plan.get("opponent_lineup") or {}).get("players")) or []
+    if not starters or not opponents:
+        return None
+    net = _sum("lineup") - _sum("opponent_lineup")
+    if net >= -_EVEN_BAND:
+        return None  # even or favoured — not a controllable shortfall
+    return {"net_ovr": net}
+
+
+def _aftermath_fatigue_signal(plan: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    """Most-depleted fielded starter, only when genuinely at-risk.
+
+    Reuses ``next_best_improvement.lowest_condition_starter`` and the briefing's
+    ``_AT_RISK_STAMINA`` bar so the lesson fires on the same fatigue the
+    pre-match briefing would have flagged.
+    """
+    if not plan:
+        return None
+    from dodgeball_sim.next_best_improvement import lowest_condition_starter
+    from dodgeball_sim.week_briefing import _AT_RISK_STAMINA
+
+    starters = ((plan.get("lineup") or {}).get("players")) or []
+    low = lowest_condition_starter(list(starters))
+    if low is None or int(low.get("stamina", 100)) >= _AT_RISK_STAMINA:
+        return None
+    return low
+
+
+def _aftermath_weakest_group(
+    conn, player_club_id: str | None
+) -> dict[str, Any] | None:
+    """Thinnest roster position group, only when notably below the rest.
+
+    Reuses ``next_best_improvement.weakest_position_group`` (which the post-loss
+    improvement panel also uses). Requires the group to sit a real margin below
+    the roster's overall average — otherwise "weakest" is meaningless on a flat
+    roster and would fabricate a lever, so we return None and let the honest
+    no-lever message stand.
+    """
+    if player_club_id is None:
+        return None
+    from dodgeball_sim.next_best_improvement import weakest_position_group
+
+    rows: list[dict[str, Any]] = []
+    overalls: list[int] = []
+    for player in load_all_rosters(conn).get(player_club_id, []):
+        arch = getattr(player, "archetype", None)
+        ovr = int(player.overall_skill())
+        rows.append({"archetype": getattr(arch, "value", str(arch or "")), "overall": ovr})
+        overalls.append(ovr)
+    group = weakest_position_group(rows)
+    if group is None or not overalls:
+        return None
+    roster_avg = sum(overalls) / len(overalls)
+    # 5-OVR margin below the roster average = a real depth hole, not noise.
+    if roster_avg - float(group["avg_overall"]) < 5.0:
+        return None
+    return group
+
+
 def _load_improvement_panel(
     conn,
     *,
@@ -857,6 +1004,48 @@ def _build_aftermath(
                     point_margin=point_margin,
                 )
                 aftermath["primary_factor"] = explanation.primary_factor.as_dict()
+
+                # WT-32: when the Primary Factor is INCONCLUSIVE (a genuine
+                # coin-flip loss — not a decisive blowout), the player still
+                # wants to know "what could *I* have changed?". Surface a
+                # SEPARATE, adjacent "Manager Lesson" drawn only from CONTROLLABLE
+                # prep. The Primary Factor stays strictly event-derived; this
+                # never folds into or reranks it. Faithfulness fences:
+                #   * Each lever is passed only when it GENUINELY applies (the
+                #     same thresholds the pre-match week briefing uses), so the
+                #     honest "nothing you controlled" message is reachable.
+                #   * The ignored recommendation (which ALWAYS wins) is the
+                #     pre-match advisory recomputed from PRE-match inputs: the
+                #     recent-results slice with the just-played match EXCLUDED,
+                #     plus the locked plan's fatigue. This reproduces exactly what
+                #     the week briefing showed for the final plan — a pure
+                #     function of pre-match data, never hindsight (ADR 0002).
+                from dodgeball_sim.manager_lesson import (
+                    derive_manager_lesson,
+                    is_inconclusive_factor,
+                )
+
+                if is_inconclusive_factor(
+                    code=explanation.primary_factor.code,
+                    confidence=explanation.primary_factor.confidence,
+                ):
+                    lesson = derive_manager_lesson(
+                        result=result_pf,
+                        factor_is_inconclusive=True,
+                        ignored_recommendation=_aftermath_ignored_recommendation(
+                            conn,
+                            season_id=season_id,
+                            current_match_id=record.match_id,
+                            plan=plan,
+                        ),
+                        roster_edge=_aftermath_roster_edge(plan),
+                        fatigue=_aftermath_fatigue_signal(plan),
+                        weakest_role_group=_aftermath_weakest_group(
+                            conn, player_club_id
+                        ),
+                    )
+                    if lesson is not None:
+                        aftermath["manager_lesson"] = lesson.as_dict()
         except Exception:
             pass
 
@@ -1228,6 +1417,83 @@ def simulate_week(
 
 # Safety cap so a malformed schedule can never spin the auto-pilot forever.
 _AUTO_PILOT_HARD_CAP = 120
+
+# WT-29: fast-forward stop points the player can choose. Each maps to a
+# ``max_weeks`` cap on auto_pilot_weeks; "offseason" is uncapped (run to the end
+# of playoffs, the historical behaviour). The caps align to genuine decision
+# boundaries, so the disclosure dialog can name exactly what is being skipped.
+FAST_FORWARD_STOP_POINTS = ("next_bye", "pre_playoffs", "offseason")
+
+
+def resolve_fast_forward_cap(
+    conn: sqlite3.Connection, stop_point: str | None
+) -> tuple[int | None, str]:
+    """Map a fast-forward ``stop_point`` to a ``max_weeks`` cap.
+
+    Returns ``(cap, resolved_stop_point)``. ``cap`` is ``None`` for "offseason"
+    (or an unrecognised value, which defaults to running to the end) and an
+    integer count of remaining user-relevant *weeks* (each user match OR bye is
+    one auto-pilot step) for the bounded stop points.
+
+    The caps are derived only from the schedule the player can already see:
+
+    * **pre_playoffs** — stop after the last REGULAR-SEASON user step. Playoff
+      matches are not pre-scheduled, so this is the count of the player's
+      remaining regular-season weeks (matches + byes) from the current week on.
+    * **next_bye** — stop at the player's next bye week (inclusive). If no bye
+      remains this season, it honestly falls back to ``pre_playoffs`` rather
+      than silently running on.
+    * **offseason** — uncapped (``None``); an explicit, disclosed acceptance of
+      the persisted defaults through playoffs.
+    """
+    if not stop_point or stop_point == "offseason" or stop_point not in FAST_FORWARD_STOP_POINTS:
+        return None, "offseason"
+
+    from dodgeball_sim.playoffs import is_playoff_match_id
+
+    season_id = get_state(conn, "active_season_id")
+    player_club_id = get_state(conn, "player_club_id")
+    if not season_id or not player_club_id:
+        return None, "offseason"
+
+    season = load_season(conn, season_id)
+    week = current_week(conn, season) or 0
+    completed = load_completed_match_ids(conn, season_id)
+
+    # Regular-season weeks from the current week onward (the window the player is
+    # about to fast-forward through). Playoff weeks are excluded — they are not
+    # pre-scheduled and "pre_playoffs"/"next_bye" both live in the regular season.
+    regular = [
+        match
+        for match in season.scheduled_matches
+        if not is_playoff_match_id(season_id, match.match_id)
+    ]
+    upcoming_regular_weeks = sorted(
+        {match.week for match in regular if match.week >= week and week > 0}
+    )
+    user_regular_weeks = {
+        match.week
+        for match in regular
+        if player_club_id in (match.home_club_id, match.away_club_id)
+    }
+
+    # Each remaining regular week is exactly one auto-pilot step for the player
+    # (a user match, or a bye that still advances one week).
+    pre_playoffs_cap = len(upcoming_regular_weeks)
+
+    if stop_point == "pre_playoffs":
+        return max(pre_playoffs_cap, 0), "pre_playoffs"
+
+    # next_bye: the first upcoming regular week in which the player has NO match.
+    next_bye_week = next(
+        (w for w in upcoming_regular_weeks if w not in user_regular_weeks),
+        None,
+    )
+    if next_bye_week is None:
+        # No bye left — fall back to stopping before the playoffs, disclosed.
+        return max(pre_playoffs_cap, 0), "pre_playoffs"
+    steps_to_bye = sum(1 for w in upcoming_regular_weeks if w <= next_bye_week)
+    return max(steps_to_bye, 0), "next_bye"
 
 
 def auto_pilot_weeks(
