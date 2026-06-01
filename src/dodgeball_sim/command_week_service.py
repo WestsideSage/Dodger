@@ -460,6 +460,14 @@ def run_simulation_command(conn: sqlite3.Connection, command: dict[str, Any]) ->
         save_plan=save_weekly_command_plan,
     )
 
+    # Reload clubs so the engine sees the coach policies just persisted by the
+    # AI plan applications above. ``prepare_ai_plans_for_matches`` writes updated
+    # ``coach_policy`` rows for AI clubs; the ``clubs`` dict loaded earlier is
+    # stale, and the engine builds each team's tactics from ``club.coach_policy``.
+    # Without this reload the persisted AI archetype tactic never reaches the
+    # simulated match — the rival looks adaptive in the data but plays the base
+    # policy on court. Mirrors the reload the primary simulate path already does.
+    clubs = load_clubs(conn)
     records = [
         simulate_scheduled_match(
             conn,

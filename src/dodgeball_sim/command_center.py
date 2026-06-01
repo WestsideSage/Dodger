@@ -270,6 +270,34 @@ def refresh_weekly_plan_context(plan: Mapping[str, Any], state: Mapping[str, Any
     refreshed["opponent_lineup"] = {
         "players": [_player_summary(p) for p in opp_top_six],
     }
+
+    # WT-9: re-resolve the fielded six from the CURRENT persisted lineup_default
+    # (what the Roster Lineup Editor last saved) on every plan reuse. A stale
+    # weekly plan embeds the six chosen when it was first built; without this the
+    # sim path (use_cases) writes that stale six as a match_lineup_override, which
+    # outranks lineup_default and silently shadows a newer editor edit — so the
+    # six the player SEES (briefing) and the six that PLAYS (sim) diverge from the
+    # lineup they just saved. Re-resolving here, the single choke point feeding
+    # both the pre-sim briefing and the sim, keeps lineup_default the one source
+    # of truth. An explicit in-week override (use_cases applies update[
+    # "lineup_player_ids"] AFTER this call; save_command_center_plan_payload
+    # re-applies its lineup edit AFTER this call) still wins by running last.
+    refreshed["lineup"] = _lineup_recommendation(
+        list(state.get("roster", [])),
+        state.get("default_lineup"),
+        refreshed.get("intent") or "Balanced",
+    )
+    # WT-9 follow-up: the fielded six was just re-resolved, so its sibling
+    # readiness `warnings` must be recomputed against the NEW six. Otherwise the
+    # briefing and the persisted command-history row keep advisory warnings that
+    # name players from the stale six (and omit the real mismatches in the six
+    # now starting) — a readiness lie about who is actually on court.
+    refreshed["warnings"] = _lineup_warnings(
+        list(state.get("roster", [])),
+        refreshed["lineup"]["player_ids"],
+        refreshed.get("intent") or "Balanced",
+        refreshed.get("tactics") or {},
+    )
     return refreshed
 
 
