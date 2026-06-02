@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { dynastyApi } from '../../api/client';
 import type { DynastyOfficeResponse, RecruitingStatus } from '../../types';
 import { RecruitingBadge } from './RecruitingBadge';
@@ -69,6 +69,15 @@ export function ProspectCard({
   const [loading, setLoading] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [feedbackTone, setFeedbackTone] = useState<'success' | 'error'>('success');
+  // WT-28 timer-cleanup: the feedback flash auto-dismisses via setTimeout. Hold
+  // the latest timer id so a card unmounting mid-flash (e.g. the board refetches
+  // and re-renders) clears it instead of firing setState on an unmounted node.
+  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (feedbackTimer.current !== null) clearTimeout(feedbackTimer.current);
+    };
+  }, []);
   const serverStatus: RecruitingStatus = prospect.recruiting_status ?? 'UNSCOUTED';
   const [optimisticStatus, setOptimisticStatus] = useState<RecruitingStatus | null>(null);
   const [pending, setPending] = useState(false);
@@ -95,7 +104,8 @@ export function ProspectCard({
         setFeedbackTone('success');
         // Show the concrete before/after delta, not just "Scouted."
         setFeedbackMessage(response?.result?.headline ?? label);
-        setTimeout(() => setFeedbackMessage(null), 3200);
+        if (feedbackTimer.current !== null) clearTimeout(feedbackTimer.current);
+        feedbackTimer.current = setTimeout(() => setFeedbackMessage(null), 3200);
         onAction();
       })
       .catch((error) => {
@@ -103,7 +113,8 @@ export function ProspectCard({
         setOptimisticStatus(previousOptimistic);
         setFeedbackTone('error');
         setFeedbackMessage(error instanceof Error ? error.message : 'Action failed.');
-        setTimeout(() => setFeedbackMessage(null), 3200);
+        if (feedbackTimer.current !== null) clearTimeout(feedbackTimer.current);
+        feedbackTimer.current = setTimeout(() => setFeedbackMessage(null), 3200);
       })
       .finally(() => {
         setLoading(false);

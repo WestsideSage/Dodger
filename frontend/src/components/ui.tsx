@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { HTMLAttributes, KeyboardEvent, ReactNode } from 'react';
 
 export type Tone = 'neutral' | 'accent' | 'success' | 'warning' | 'danger' | 'info';
@@ -188,18 +188,34 @@ export function StatusMessage({
   title,
   children,
   tone = 'info',
+  role,
 }: {
   title: string;
   children?: ReactNode;
   tone?: Tone;
+  // WT-21: announce status/errors to assistive tech. When omitted, the role is
+  // derived from tone so existing call sites get a sensible default without an
+  // API change — danger/warning blockers are asserted (role="alert"), and the
+  // calmer states (loading, info) are announced politely (role="status").
+  role?: 'status' | 'alert';
 }) {
+  const resolvedRole: 'status' | 'alert' =
+    role ?? (tone === 'danger' || tone === 'warning' ? 'alert' : 'status');
+  // role="alert" already implies aria-live="assertive"; role="status" implies
+  // "polite". We set aria-live explicitly so screen readers that don't map the
+  // role to a live region still announce the message.
+  const ariaLive: 'assertive' | 'polite' = resolvedRole === 'alert' ? 'assertive' : 'polite';
   return (
-    <div style={{
-      background: '#0f172a',
-      border: `1px solid ${toneBorderColor[tone]}`,
-      borderRadius: '4px',
-      padding: '1rem',
-    }}>
+    <div
+      role={resolvedRole}
+      aria-live={ariaLive}
+      style={{
+        background: '#0f172a',
+        border: `1px solid ${toneBorderColor[tone]}`,
+        borderRadius: '4px',
+        padding: '1rem',
+      }}
+    >
       <div className="dm-kicker" style={{ color: toneKickerColor[tone] }}>{title}</div>
       {children && (
         <div style={{ marginTop: '0.25rem', fontSize: '0.875rem', color: '#94a3b8', fontFamily: 'var(--font-body)' }}>
@@ -463,6 +479,276 @@ export function TendencySlider({
           <span>{rightLabel}</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+// WT-21 shared accessible primitives.
+// ---------------------------------------------------------------------------
+// Selector for the focusable descendants inside a Dialog. Kept module-local
+// (not exported) so this file's only exports remain components/types and the
+// react-refresh/only-export-components lint rule stays satisfied.
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Dialog — the shared modal primitive (WT-21).
+ *
+ * Behaviour, extracted from the proven FastForwardDialog implementation so
+ * every modal gets the same guarantees:
+ *   - role="dialog" + aria-modal="true"
+ *   - labelled by an existing heading id (`labelledBy`) or a fallback
+ *     aria-label (`label`)
+ *   - focus moves INTO the dialog on open (a provided `initialFocusRef`, else
+ *     the first focusable child, else the dialog container)
+ *   - Tab / Shift+Tab are TRAPPED within the dialog
+ *   - Escape closes it
+ *   - focus is RESTORED to the triggering element on close
+ *   - clicking the backdrop closes it (the panel stops propagation)
+ *
+ * Migrate by WRAPPING: pass the existing header/body/footer through as
+ * `children`. The primitive only owns the overlay shell + focus management;
+ * it does not restructure inner DOM, so existing testids/roles are preserved.
+ */
+export function Dialog({
+  onClose,
+  children,
+  label,
+  labelledBy,
+  describedBy,
+  initialFocusRef,
+  className,
+  panelClassName,
+  panelStyle,
+  overlayStyle,
+  'data-testid': dataTestId,
+}: {
+  onClose: () => void;
+  children: ReactNode;
+  /** aria-label fallback when there is no visible heading id to point at. */
+  label?: string;
+  /** id of the visible heading that titles the dialog (preferred). */
+  labelledBy?: string;
+  /** id of descriptive copy inside the dialog. */
+  describedBy?: string;
+  /** focusable element to receive focus on open; defaults to first focusable. */
+  initialFocusRef?: React.RefObject<HTMLElement | null>;
+  className?: string;
+  panelClassName?: string;
+  panelStyle?: React.CSSProperties;
+  overlayStyle?: React.CSSProperties;
+  'data-testid'?: string;
+}) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previouslyFocused = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    previouslyFocused.current = document.activeElement as HTMLElement | null;
+    // Move focus into the dialog on open: caller-specified target first, then
+    // the first focusable child, then the dialog container itself.
+    const target =
+      initialFocusRef?.current ??
+      dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR) ??
+      dialogRef.current;
+    target?.focus?.();
+    return () => {
+      // Restore focus to the trigger when the dialog unmounts/closes.
+      previouslyFocused.current?.focus?.();
+    };
+    // Intentionally run once on mount; the dialog instance owns one open/close
+    // lifecycle and re-running on ref identity would steal focus mid-session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      onClose();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+    if (!focusable || focusable.length === 0) {
+      // Nothing focusable inside — keep focus on the container.
+      event.preventDefault();
+      dialogRef.current?.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (event.shiftKey && active === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
+  return (
+    <div
+      className={className}
+      role="presentation"
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(2, 6, 23, 0.85)',
+        backdropFilter: 'blur(4px)',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '2rem',
+        ...overlayStyle,
+      }}
+      data-testid={dataTestId}
+    >
+      <div
+        ref={dialogRef}
+        className={panelClassName}
+        role="dialog"
+        aria-modal="true"
+        aria-label={labelledBy ? undefined : label}
+        aria-labelledby={labelledBy}
+        aria-describedby={describedBy}
+        tabIndex={-1}
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={handleKeyDown}
+        style={panelStyle}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export type RadioGroupOption<T extends string> = {
+  value: T;
+  /** What the screen reader announces for this option. */
+  label: string;
+  /** Visible content for the option control (defaults to `label`). */
+  children?: ReactNode;
+  disabled?: boolean;
+  'data-testid'?: string;
+};
+
+/**
+ * RadioGroup — the shared single-select primitive (WT-21).
+ *
+ * Mirrors the proven PolicyEditor radiogroup semantics:
+ *   - role="radiogroup" on the container, role="radio" + aria-checked on items
+ *   - roving tabindex (only the selected item is tabbable; if none selected,
+ *     the first item is tabbable)
+ *   - Arrow keys move selection and focus (wrapping); Home/End jump to ends
+ *
+ * Accepts arbitrary per-option `children` so rich rows (e.g. a club name +
+ * tagline) can be selected from the keyboard, not just plain labels. The
+ * caller owns rendering each option via `renderOption`, receiving the option
+ * plus its selected/focusable state and the props that MUST be spread onto the
+ * focusable element. This keeps styling in the consumer while the primitive
+ * owns the a11y contract.
+ */
+export function RadioGroup<T extends string>({
+  value,
+  onChange,
+  options,
+  label,
+  labelledBy,
+  orientation = 'vertical',
+  className,
+  style,
+  renderOption,
+}: {
+  value: T;
+  onChange: (next: T) => void;
+  options: ReadonlyArray<RadioGroupOption<T>>;
+  label?: string;
+  labelledBy?: string;
+  orientation?: 'vertical' | 'horizontal';
+  className?: string;
+  style?: React.CSSProperties;
+  renderOption: (args: {
+    option: RadioGroupOption<T>;
+    selected: boolean;
+    radioProps: {
+      role: 'radio';
+      'aria-checked': boolean;
+      tabIndex: number;
+      disabled?: boolean;
+      onClick: () => void;
+      'data-testid'?: string;
+    };
+  }) => ReactNode;
+}) {
+  // A single ref on the group container. Focus is moved by querying the
+  // semantic radio descendants in DOM order (which matches option order). The
+  // ref is only read inside moveTo — an event-handler path, never during
+  // render — so the react-hooks/refs rule is honoured without per-item refs.
+  const groupRef = useRef<HTMLDivElement>(null);
+  const selectedIndex = options.findIndex((o) => o.value === value);
+  // If nothing is selected yet, the first option is the tab stop so the group
+  // is still reachable by keyboard.
+  const tabbableIndex = selectedIndex >= 0 ? selectedIndex : 0;
+
+  // Selecting + focusing the option at an index. Lives inside handleKeyDown
+  // (a handler attached directly to the container) so the groupRef read is not
+  // inside a render-time closure — it runs only on a real key event.
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const count = options.length;
+    if (count === 0) return;
+    const forwardKeys =
+      orientation === 'horizontal' ? ['ArrowRight', 'ArrowDown'] : ['ArrowDown', 'ArrowRight'];
+    const backwardKeys =
+      orientation === 'horizontal' ? ['ArrowLeft', 'ArrowUp'] : ['ArrowUp', 'ArrowLeft'];
+    const current = selectedIndex >= 0 ? selectedIndex : 0;
+    let nextIndex: number | null = null;
+    if (forwardKeys.includes(event.key)) nextIndex = (current + 1) % count;
+    else if (backwardKeys.includes(event.key)) nextIndex = (current - 1 + count) % count;
+    else if (event.key === 'Home') nextIndex = 0;
+    else if (event.key === 'End') nextIndex = count - 1;
+    if (nextIndex === null) return;
+    const option = options[nextIndex];
+    if (!option || option.disabled) return;
+    event.preventDefault();
+    onChange(option.value);
+    const radios = groupRef.current?.querySelectorAll<HTMLElement>('[role="radio"]');
+    radios?.[nextIndex]?.focus();
+  };
+
+  return (
+    <div
+      ref={groupRef}
+      role="radiogroup"
+      aria-label={labelledBy ? undefined : label}
+      aria-labelledby={labelledBy}
+      className={className}
+      style={style}
+      onKeyDown={handleKeyDown}
+    >
+      {options.map((option, index) => {
+        const selected = option.value === value;
+        return (
+          <div key={option.value} style={{ display: 'contents' }}>
+            {renderOption({
+              option,
+              selected,
+              radioProps: {
+                role: 'radio',
+                'aria-checked': selected,
+                tabIndex: index === tabbableIndex ? 0 : -1,
+                disabled: option.disabled,
+                // Click selects only; the browser focuses the clicked element
+                // natively, so no ref access is needed in this render-time
+                // closure (keeps react-hooks/refs satisfied).
+                onClick: () => { if (!option.disabled) onChange(option.value); },
+                'data-testid': option['data-testid'],
+              },
+            })}
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react';
 import { ActionButton, PageHeader } from '../ui';
 
+// WT-21 wrap-not-rewrite assessment: CeremonyShell is a healthy surface and is
+// neither a dialog nor a radiogroup. Its only candidate for the shared
+// StatusMessage primitive is the transient skip-hint line below, but wrapping
+// it would restyle the healthy action bar (StatusMessage carries its own
+// panel chrome) and duplicate the existing "Ceremony Control" kicker — a
+// contrived wrap that buys no real a11y win. Per the STOP-CONDITION, the
+// skip / reduced-motion effects are left exactly as-is. The only change made
+// here is a non-visual role="status" on the existing hint <p> so the
+// animation-done -> action-available transition is announced politely.
 export function CeremonyShell({
   title,
   eyebrow,
@@ -55,7 +64,7 @@ export function CeremonyShell({
       <div className="dm-panel command-action-bar" style={{ position: 'sticky', bottom: '1rem', marginTop: 'auto' }}>
         <div>
           <p className="dm-kicker">Ceremony Control</p>
-          <p>{animating ? 'Press Space or click anywhere to skip animation.' : actionDescription}</p>
+          <p role="status">{animating ? 'Press Space or click anywhere to skip animation.' : actionDescription}</p>
         </div>
         <div className="command-action-buttons">
           <ActionButton

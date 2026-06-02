@@ -4,6 +4,7 @@ import { IdentityStep } from './new-game/IdentityStep';
 import { CoachStep } from './new-game/CoachStep';
 import { StartingRecruitmentStep } from './new-game/StartingRecruitmentStep';
 import { saveApi } from '../api/client';
+import { RadioGroup } from './ui';
 
 const DEBUG_PREFIXES = ['qa-playthrough-', 'debug-', 'playtest-', 'ux-teardown-', 'test_', 'e2e-', 'e2e_', 'codex', 'command-aftermath'];
 
@@ -727,7 +728,9 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                 style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
               >
                 <div>
-                  <label style={{
+                  <label
+                    htmlFor="new-save-name"
+                    style={{
                     display: 'block',
                     fontSize: '0.6875rem',
                     fontFamily: 'var(--font-display)',
@@ -739,6 +742,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                     Save Name
                   </label>
                   <input
+                    id="new-save-name"
                     type="text"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
@@ -759,7 +763,9 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                 </div>
 
                 <div>
-                  <label style={{
+                  <span
+                    id="new-save-club-label"
+                    style={{
                     display: 'block',
                     fontSize: '0.6875rem',
                     fontFamily: 'var(--font-display)',
@@ -769,46 +775,61 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                     marginBottom: '0.25rem',
                   }}>
                     Club
-                  </label>
+                  </span>
                   {clubs.length > 0 ? (
-                    <ul style={{
-                      listStyle: 'none',
-                      padding: 0,
-                      margin: 0,
-                      border: '1px solid #1e293b',
-                      borderRadius: '4px',
-                      overflow: 'hidden',
-                    }}>
-                      {clubs.map((club) => (
-                        <li
-                          key={club.club_id}
-                          onClick={() => setNewClubId(club.club_id)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.75rem',
-                            padding: '0.75rem',
-                            cursor: 'pointer',
-                            borderBottom: '1px solid #1e293b',
-                            borderLeft: newClubId === club.club_id ? '2px solid #f97316' : '2px solid transparent',
-                            background: newClubId === club.club_id ? 'rgba(249,115,22,0.08)' : 'transparent',
-                            transition: 'background 0.1s',
-                          }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#fff' }}>{club.name}</div>
-                            {club.tagline && (
-                              <div style={{ fontSize: '0.75rem', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{club.tagline}</div>
+                    <RadioGroup
+                      value={newClubId}
+                      onChange={setNewClubId}
+                      labelledBy="new-save-club-label"
+                      options={clubs.map((club) => ({
+                        value: club.club_id,
+                        label: club.tagline ? `${club.name} — ${club.tagline}` : club.name,
+                        'data-testid': `club-option-${club.club_id}`,
+                      }))}
+                      style={{
+                        listStyle: 'none',
+                        padding: 0,
+                        margin: 0,
+                        border: '1px solid #1e293b',
+                        borderRadius: '4px',
+                        overflow: 'hidden',
+                      }}
+                      renderOption={({ option, selected, radioProps }) => {
+                        const club = clubs.find((c) => c.club_id === option.value)!;
+                        return (
+                          <div
+                            {...radioProps}
+                            aria-label={option.label}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.75rem',
+                              padding: '0.75rem',
+                              cursor: 'pointer',
+                              outline: 'none',
+                              borderBottom: '1px solid #1e293b',
+                              borderLeft: selected ? '2px solid #f97316' : '2px solid transparent',
+                              background: selected ? 'rgba(249,115,22,0.08)' : 'transparent',
+                              boxShadow: radioProps.tabIndex === 0 ? 'inset 0 0 0 1px rgba(34,211,238,0.25)' : 'none',
+                              transition: 'background 0.1s',
+                            }}
+                          >
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#fff' }}>{club.name}</div>
+                              {club.tagline && (
+                                <div style={{ fontSize: '0.75rem', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{club.tagline}</div>
+                              )}
+                            </div>
+                            {selected && (
+                              <span aria-hidden="true" style={{ color: '#f97316', fontSize: '0.75rem' }}>✓</span>
                             )}
                           </div>
-                          {newClubId === club.club_id && (
-                            <span style={{ color: '#f97316', fontSize: '0.75rem' }}>✓</span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
+                        );
+                      }}
+                    />
                   ) : (
                     <select
+                      aria-labelledby="new-save-club-label"
                       value={newClubId}
                       onChange={(e) => setNewClubId(e.target.value)}
                       style={{
@@ -832,7 +853,9 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                 </div>
 
                 <div>
-                  <label style={{
+                  <label
+                    htmlFor="new-save-ruleset"
+                    style={{
                     display: 'block',
                     fontSize: '0.6875rem',
                     fontFamily: 'var(--font-display)',
@@ -844,6 +867,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                     Ruleset
                   </label>
                   <select
+                    id="new-save-ruleset"
                     value={rulesetSelection}
                     onChange={(e) => setRulesetSelection(e.target.value)}
                     data-testid="ruleset-select"

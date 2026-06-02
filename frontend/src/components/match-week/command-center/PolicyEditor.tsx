@@ -1,6 +1,7 @@
 import type { KeyboardEvent } from 'react';
 import type { CoachPolicy } from '../../../types';
 import { useVoiceRegister } from '../../../hooks/useVoiceRegister';
+import { StatusMessage } from '../../ui';
 
 type PolicyKey = keyof CoachPolicy;
 
@@ -162,22 +163,13 @@ export function PolicyEditor({
         </span>
       </div>
 
+      {/* WT-21: the inline alert is now the shared StatusMessage primitive
+          (tone="danger" -> role="alert" + aria-live="assertive"). Only the
+          error surface is wrapped; the radiogroup below is left intact. */}
       {error && (
-        <p
-          role="alert"
-          style={{
-            margin: 0,
-            padding: '0.55rem 0.75rem',
-            borderRadius: '4px',
-            border: '1px solid rgba(244,63,94,0.45)',
-            background: 'rgba(69,10,10,0.65)',
-            color: '#fecdd3',
-            fontSize: '0.8rem',
-            fontWeight: 600,
-          }}
-        >
+        <StatusMessage title="Plan not applied" tone="danger">
           {error}
-        </p>
+        </StatusMessage>
       )}
 
       {/* Section-level lock signal: a banner the player cannot miss, plus a

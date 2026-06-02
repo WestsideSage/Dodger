@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Player } from '../types';
-import { RatingBar, ActionButton } from './ui';
+import { RatingBar, ActionButton, Dialog } from './ui';
 import { TermTip, ProofChip } from '../legibility';
 import type { TermId } from '../legibility';
 
@@ -26,38 +26,26 @@ export function PlayerDetailModal({
   const [tab, setTab] = useState<'overview' | 'ratings' | 'more'>('overview');
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(2, 6, 23, 0.85)',
-        backdropFilter: 'blur(4px)',
-        zIndex: 1000,
+    <Dialog
+      label={`${player.name} — player card`}
+      labelledBy="player-detail-title"
+      onClose={onClose}
+      panelClassName="dm-panel"
+      panelStyle={{
+        width: '100%',
+        maxWidth: '32rem',
+        maxHeight: '90vh',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        borderRadius: '8px',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
       }}
-      onClick={onClose}
     >
-      <div
-        className="dm-panel"
-        style={{
-          width: '100%',
-          maxWidth: '32rem',
-          maxHeight: '90vh',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          borderRadius: '8px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
         <div style={{ padding: '1.25rem', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <span className="dm-kicker">Player Card</span>
-            <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', color: '#fff', fontSize: '1.5rem', textTransform: 'uppercase' }}>
+            <h2 id="player-detail-title" style={{ margin: 0, fontFamily: 'var(--font-display)', color: '#fff', fontSize: '1.5rem', textTransform: 'uppercase' }}>
               {player.name}
             </h2>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.25rem', color: '#94a3b8', fontSize: '0.875rem' }}>
@@ -226,7 +214,6 @@ export function PlayerDetailModal({
         <div style={{ padding: '1rem', borderTop: '1px solid #1e293b', background: '#0f172a', display: 'flex', justifyContent: 'flex-end' }}>
           <ActionButton onClick={onClose}>Close</ActionButton>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }
