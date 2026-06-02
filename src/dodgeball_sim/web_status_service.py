@@ -251,16 +251,6 @@ def update_tactics_payload(conn: sqlite3.Connection, policy_values: dict[str, An
     return {"status": "success"}
 
 
-_CLUB_IDENTITY_LABELS = {
-    "aurora": "Scouting Tradition",
-    "lunar": "Defensive System",
-    "northwood": "Power Throwers",
-    "harbor": "Catch Wall",
-    "granite": "Swarm Pressure",
-    "solstice": "Sniper Control",
-}
-
-
 def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     from .persistence import load_program_trajectories
     season_id = get_state(conn, "active_season_id")
@@ -284,10 +274,14 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         latest_plan = latest_visible_plan(conn, season_id, current_week, club_id)
         trajectories = load_program_trajectories(conn, club_id)
         year_num = len(trajectories) + 1
-        # Prefer the curated identity label per club so the standings table
-        # reads with distinctive flavor instead of every team converging on
-        # the same roster-derived archetype after a season or two.
-        identity = _CLUB_IDENTITY_LABELS.get(club_id, club.program_archetype)
+        # Faithfulness (ADR 0002 / WT-24): the standings identity label must name
+        # the rival's REAL archetype — the value the AI actually plays as — not a
+        # separate hand-maintained per-club flavor map that can drift from the
+        # mechanics. `program_archetype` (from `classify_club_archetype`) is
+        # already a human-friendly Title-Case string, so it is the display label
+        # verbatim. (`archetype_display_name` is the PlayerArchetype humanizer and
+        # is a no-op for program archetypes, so it is intentionally not used here.)
+        identity = club.program_archetype
         # Note: "Yr N" here is the franchise's tenure year, not the league
         # season number — abbreviated to reduce collision with the season label.
         traj_label = f"Yr {year_num} · {identity}"

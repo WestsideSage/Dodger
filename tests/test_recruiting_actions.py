@@ -70,10 +70,52 @@ def test_every_action_reports_a_non_trivial_delta():
         assert result.next_step
 
 
+# The displayed-strongest pipeline tier. The UI (PipelineEmblem.tsx TIER_STYLE)
+# labels tier 5 "Elite" and terms.ts `recruit.pipeline` teaches "stronger pipeline
+# tier means warmer prospects" — so 5 is the displayed strongest. There is no
+# frontend test runner (see docs/agents memory), so we pin the displayed-strongest
+# tier here as a source-of-truth constant the contract test reads.
+DISPLAYED_STRONGEST_TIER = 5
+PIPELINE_TIERS = range(1, DISPLAYED_STRONGEST_TIER + 1)  # recruitment.py rolls 1..5
+
+
 def test_base_interest_warmer_for_better_pipeline():
-    strong = base_interest(pipeline_tier=1, credibility_score=50)
-    weak = base_interest(pipeline_tier=4, credibility_score=50)
-    assert strong > weak
+    # WT-25: higher pipeline tier must start WARMER. The displayed-strongest tier
+    # (5 = Elite) must beat a weaker tier. Compare 5 vs 1 (never adjacent tiers like
+    # 1 vs 2, which both floor at the same base) so the inequality is strict.
+    strongest = base_interest(pipeline_tier=DISPLAYED_STRONGEST_TIER, credibility_score=50)
+    weaker = base_interest(pipeline_tier=1, credibility_score=50)
+    assert strongest > weaker
+
+
+def test_base_interest_is_monotonic_in_pipeline_tier():
+    # The flip must be a clean direction reversal: interest is non-decreasing as the
+    # tier rises, and strictly increasing somewhere (not a flat curve).
+    values = [base_interest(pipeline_tier=t, credibility_score=50) for t in PIPELINE_TIERS]
+    assert values == sorted(values), values
+    assert values[-1] > values[0], values
+
+
+def test_base_interest_preserves_warmest_magnitude():
+    # WT-25 must NOT re-tune balance: only the tier→interest direction flips. The
+    # exact-mirror flip keeps the warmest contribution identical to the old curve.
+    # Prior curve's warmest tier_floor was max(0, 4 - 1) * 5 = 15, so the warmest
+    # base (zero credibility) was 30 + 15 = 45. The new warmest tier must match it.
+    warmest = base_interest(pipeline_tier=DISPLAYED_STRONGEST_TIER, credibility_score=0)
+    assert warmest == 45
+
+
+def test_displayed_strongest_tier_matches_base_interest_argmax():
+    # Audit CONTRACT (ADR 0002): the tier the UI displays as strongest must BE the
+    # mechanically strongest. The displayed-strongest tier and base_interest's
+    # ordering must point the SAME way — the argmax of base_interest over all tiers
+    # equals the displayed-strongest tier. This is the regression guard against the
+    # inversion that taught players to value prospects backwards.
+    argmax_tier = max(
+        PIPELINE_TIERS,
+        key=lambda t: base_interest(pipeline_tier=t, credibility_score=50),
+    )
+    assert argmax_tier == DISPLAYED_STRONGEST_TIER
 
 
 def test_narrow_band_noop_when_unscouted():
