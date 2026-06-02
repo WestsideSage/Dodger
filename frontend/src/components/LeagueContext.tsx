@@ -33,11 +33,17 @@ const normalizeApproach = (value: string | null | undefined) => {
   return next && next.length > 0 ? next : DEFAULT_APPROACH;
 };
 
+// The "Plan" badge shows a club's program intent using the command-center
+// display vocabulary the backend now emits (bug #7): Balanced, Aggressive,
+// Control, Defensive, plus the AI-only raw "Develop Youth". Tone the badge to
+// that exact vocabulary. (Substring checks keep this resilient if the backend
+// passthrough ever surfaces another raw intent.)
 const approachToneClass = (value: string | null | undefined) => {
   const normalized = normalizeApproach(value).toLowerCase();
-  if (normalized.includes('aggressive') || normalized.includes('win now')) return 'dm-badge-amber';
-  if (normalized.includes('defensive') || normalized.includes('prepare')) return 'dm-badge-violet';
-  if (normalized.includes('balanced') || normalized.includes('mixed')) return 'dm-badge-cyan';
+  if (normalized.includes('aggressive')) return 'dm-badge-amber';
+  if (normalized.includes('defensive') || normalized.includes('control')) return 'dm-badge-violet';
+  if (normalized.includes('develop')) return 'dm-badge-emerald';
+  if (normalized.includes('balanced')) return 'dm-badge-cyan';
   return 'dm-badge-slate';
 };
 

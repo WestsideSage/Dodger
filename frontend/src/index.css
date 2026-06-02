@@ -6771,9 +6771,14 @@ textarea:focus-visible {
   border-left: 1px solid var(--dm-border);
   border-right: 1px solid var(--dm-border);
 }
+.mr-score-col { display: grid; justify-items: center; gap: 4px; }
 .mr-score-num { font-family: var(--font-mono); font-size: clamp(3rem, 6vw, 5rem); font-weight: 900; line-height: 0.85; font-variant-numeric: tabular-nums; }
 .mr-score-num.home { color: #fb7185; text-shadow: 0 0 28px rgba(244,63,94,0.4); }
 .mr-score-num.away { color: #94a3b8; }
+/* Supporting unit line under the final number: "game points" for official
+   play, "N survivors" for legacy. Keeps the FINAL result distinct from the
+   live mid-replay survivor state shown on the court (BUG #2). */
+.mr-score-unit { font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.14em; color: var(--dm-text-muted, #64748b); text-transform: uppercase; }
 .mr-score-divider { display: grid; justify-items: center; gap: 6px; padding: 0 8px; }
 .mr-final-tag { font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.24em; color: var(--dm-orange-hover); text-transform: uppercase; border: 1px solid rgba(249,115,22,0.4); padding: 3px 8px; border-radius: 3px; background: rgba(249,115,22,0.08); }
 .mr-score-divider .mr-vs { font-family: var(--font-display); font-size: 1.3rem; color: var(--dm-border-strong); font-weight: 800; letter-spacing: 0.18em; }

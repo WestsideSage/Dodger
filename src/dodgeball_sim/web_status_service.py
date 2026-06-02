@@ -251,6 +251,35 @@ def update_tactics_payload(conn: sqlite3.Connection, policy_values: dict[str, An
     return {"status": "success"}
 
 
+# Faithfulness (ADR 0002 / bug #7): the standings "Plan" column shows a club's
+# weekly *program intent* (the stored `plan["intent"]`, one of command_center
+# `INTENTS`). The command center (where the player SETS it) renders these intent
+# ids with friendlier labels — e.g. the player picks the tile labeled
+# "Aggressive", which stores intent "Win Now". Emitting the raw "Win Now" in
+# standings made the same decision read as two different words across screens.
+# This map mirrors the 4 player-facing labels from the frontend command center
+# (`frontend/src/components/match-week/command-center/PreSimDashboard.tsx`
+# `approaches`); keep the two in sync. Any other intent (e.g. the AI-only
+# "Develop Youth", or a future one) passes through unchanged — exactly as the
+# command center's own `intentLabels.get(x) ?? x` fallback does — so no label
+# is ever invented or blanked.
+_INTENT_DISPLAY_LABELS = {
+    "Balanced": "Balanced",
+    "Win Now": "Aggressive",
+    "Prepare For Playoffs": "Control",
+    "Preserve Health": "Defensive",
+}
+
+
+def _intent_display_label(intent: str) -> str:
+    """Translate a stored program intent to its command-center display label.
+
+    Unknown / unmapped intents (incl. the AI-only "Develop Youth") return
+    verbatim, matching the frontend command center's passthrough fallback.
+    """
+    return _INTENT_DISPLAY_LABELS.get(intent, intent)
+
+
 def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     from .persistence import load_program_trajectories
     season_id = get_state(conn, "active_season_id")
@@ -295,7 +324,7 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
                 "points": row.points if row else 0,
                 "elimination_differential": row.elimination_differential if row else 0,
                 "is_user_club": club_id == player_club_id,
-                "latest_approach": latest_plan["intent"] if latest_plan else "Balanced",
+                "latest_approach": _intent_display_label(latest_plan["intent"]) if latest_plan else "Balanced",
                 "program_archetype": club.program_archetype,
                 "program_trajectory_label": traj_label,
             }

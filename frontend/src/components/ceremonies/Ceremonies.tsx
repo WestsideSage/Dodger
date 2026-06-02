@@ -465,7 +465,10 @@ function LegacyClassReport({
   body: unknown;
 }) {
   const otherCount = otherSignings.length;
-  const totalClass = (playerSigning ? 1 : 0) + otherCount;
+  // Your contribution to the class is signedCount (the authoritative count), not
+  // a hardcoded 1-if-any — otherwise "Total Rookies" undercounts a 2+ signing
+  // class and disagrees with "You signed N". (BUG #5)
+  const totalClass = signedCount + otherCount;
   const prose = typeof body === 'string' && body.trim() ? body.trim() : '';
   // Right column shows the structured league list when we have one; otherwise it
   // surfaces the engine's prose as a readable brief (never crammed into the glance).
@@ -482,10 +485,16 @@ function LegacyClassReport({
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'stretch' }}>
         <GlancePanel>
           <div style={{ fontSize: '1.7rem', fontWeight: 900, color: '#e2e8f0', marginTop: '0.6rem', lineHeight: 1.1 }}>
-            {playerSigning ? 'You signed 1.' : "You didn't sign anyone."}
+            {/* BUG #5 / ADR 0002: the headline count was hardcoded to "1"
+                whenever any signing existed, so it read "You signed 1." while
+                the tile beside it read "2/3 used" — the exact contradiction the
+                playtest hit. Drive it from signedCount (the authoritative
+                roster-delta counter) so every "how many you signed" number on
+                this card agrees. */}
+            {signedCount > 0 ? `You signed ${signedCount}.` : "You didn't sign anyone."}
           </div>
           <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '0.3rem', lineHeight: 1.4 }}>
-            {playerSigning
+            {signedCount > 0
               ? `${otherCount} other${otherCount !== 1 ? 's' : ''} joined the league.`
               : otherCount > 0
                 ? `${otherCount} rookie${otherCount !== 1 ? 's' : ''} joined the league.`
@@ -497,7 +506,10 @@ function LegacyClassReport({
           {playerSigning && (
             <div style={{ marginTop: '0.85rem' }}>
               <GlanceRow
-                label="Your signing"
+                // Only the last signee is carried in player_signing, so when you
+                // signed more than one this is the "latest", not the sole pick —
+                // label it honestly rather than implying it was your only signing.
+                label={signedCount > 1 ? 'Latest signing' : 'Your signing'}
                 value={`${playerSigning.name} · OVR ${playerSigning.ovr}`}
                 accent="#22d3ee"
               />
@@ -592,11 +604,24 @@ export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat
   const counts = countSigningsByKind(signings);
   const visible = filterSignings(signings, filter);
 
+  // BUG #5 / ADR 0002 — single source of truth for "how many YOU signed".
+  // signed_count is the authoritative roster-delta counter the backend keeps
+  // (it equals the players actually added this offseason). The card-derived
+  // counts.my comes from recruitment_signing rows, which the offseason signing
+  // flow never writes, so it would disagree with signed_count (the "2/3 used"
+  // vs "You signed 1" contradiction the playtest hit). Every player-facing
+  // NUMBER meaning "how many you signed" therefore reads signedCount: the hero
+  // tile, the headline, the slots-used line, AND the "Your Picks" tab badge.
+  // The card LIST stays honest — we never fabricate cards to match the number.
+  const myCount = signedCount;
+  const tabCounts = { ...counts, my: signedCount };
+
   // League + own-class derivations (all from existing payload arrays).
   const classSize = signings.length;
-  const myCount = counts.my;
   const rivalCount = counts.rival;
-  const othersJoined = classSize - myCount;
+  // Rookies who joined the league besides your signings. Clamp at 0 so a class
+  // with no recorded cards can't render a negative count against signedCount.
+  const othersJoined = Math.max(0, classSize - counts.my);
   const mySignings = signings.filter((c) => c.outcome_kind === 'my_signing');
   const topMine = topCard(mySignings);
   const topClass = topCard(signings);
@@ -637,6 +662,13 @@ export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat
                 <div style={{ marginTop: '0.75rem' }}>
                   {topMine ? (
                     <GlanceRow label="Top signing" value={`${topMine.name} · OVR ${topMine.ovr}`} accent="#22d3ee" />
+                  ) : playerSigning ? (
+                    // No per-pick card on file (the offseason signing flow records
+                    // a roster add + the latest signee, not a recruitment_signing
+                    // row), so surface the last signee the backend DID persist
+                    // rather than a phantom card. Keeps the panel consistent with
+                    // signedCount instead of inventing a list. (BUG #5)
+                    <GlanceRow label="Latest signing" value={`${playerSigning.name} · OVR ${playerSigning.ovr}`} accent="#22d3ee" />
                   ) : topClass ? (
                     <GlanceRow label="Top OVR in class" value={`${topClass.name} (${topClass.ovr})`} />
                   ) : null}
@@ -670,7 +702,7 @@ export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat
                           cursor: 'pointer',
                         }}
                       >
-                        {FILTER_LABELS[f]} <span style={{ opacity: 0.7 }}>({counts[f]})</span>
+                        {FILTER_LABELS[f]} <span style={{ opacity: 0.7 }}>({tabCounts[f]})</span>
                       </button>
                     );
                   })}
@@ -691,7 +723,13 @@ export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat
                       fontSize: '0.85rem',
                     }}
                   >
-                    {FILTER_EMPTY[filter]}
+                    {/* BUG #5: when you signed players this offseason but no
+                        per-pick card was recorded, don't claim "you didn't sign
+                        anyone" — that would contradict the signedCount-driven
+                        badge. Name the real count instead. */}
+                    {filter === 'my' && signedCount > 0
+                      ? `You signed ${signedCount} this offseason${playerSigning ? ` (latest: ${playerSigning.name}).` : '.'} Per-pick cards aren't recorded for offseason signings.`
+                      : FILTER_EMPTY[filter]}
                   </div>
                 ) : (
                   <ul role="list" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>

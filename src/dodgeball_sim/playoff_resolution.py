@@ -107,8 +107,10 @@ def resolve_playoff_match(match: _PlayoffMatchLike) -> PlayoffOutcome:
         winner_id, loser_id, winner_seed = away_id, home_id, match.away_seed
 
     narrative = (
+        # winner_seed is the 0-indexed bracket position; players read seeds as
+        # 1-based (#1 = top seed), so display it +1. Seeding logic is unchanged.
         f"Higher seed advances — regulation ended tied and the #"
-        f"{winner_seed} seed wins the playoff tiebreaker."
+        f"{winner_seed + 1} seed wins the playoff tiebreaker."
     )
     return PlayoffOutcome(
         winner_id=winner_id,

@@ -54,12 +54,17 @@ export function SeasonPreview({
     </div>
   );
 
+  // `ovr` is the GROUP average — the mean OVR across every player sharing this
+  // archetype (season_preview.py -> next_best_improvement.strongest/weakest_
+  // position_group), not a single player's rating. The "group" word makes that
+  // unambiguous (matches the "group … avg OVR" phrasing used elsewhere, e.g.
+  // manager_lesson). Bug #11.
   const archetypeTip = (key: string, display: string, ovr: number) => {
     const termId = archetypeTermId(key);
     return termId ? (
-      <><TermTip term={termId}>{display}</TermTip>{' — '}{ovr} avg OVR</>
+      <><TermTip term={termId}>{display}</TermTip>{' group · '}{ovr} avg OVR</>
     ) : (
-      <>{display} — {ovr} avg OVR</>
+      <>{display} group · {ovr} avg OVR</>
     );
   };
 

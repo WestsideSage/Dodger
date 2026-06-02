@@ -130,6 +130,16 @@ def test_cold_start_scout_reveals_nonempty_derivable_facts():
     assert cold["roster_shape"]["total"] == 6  # fielded program is six-deep
     assert cold["threat"] is not None and cold["threat"]["name"]
 
+    # BUG #10 enrichment: the cold-start read also names the strongest/weakest
+    # archetype family (when any named family is on the roster). It is derived,
+    # not fabricated, so when present it carries a label/count/avg_ovr.
+    groups = cold.get("position_groups")
+    if groups is not None:
+        for slot in ("strongest", "weakest"):
+            assert groups[slot]["label"]
+            assert groups[slot]["count"] >= 1
+            assert 0.0 <= groups[slot]["avg_ovr"] <= 100.0
+
     # Faithfulness (ADR-0002): the program identity the scout shows must be the
     # SAME stored value standings/status display — not a fresh recomputation that
     # could drift. Assert it equals the club's stored program_archetype.
@@ -256,3 +266,132 @@ def test_scout_reveal_is_sourced_from_tape_not_the_live_hidden_plan():
         and value != tape_policy_X[axis]  # X==Y impossible here, but be explicit
     }
     assert not leaks, f"live hidden plan leaked into the scout reveal: {leaks}"
+
+
+# ---------------------------------------------------------------------------
+# BUG #10 — enriched cold-start facts (strongest/weakest group + recent form).
+# Every added fact must be DERIVABLE from the visible roster / standings and the
+# fog-of-war fence must still hold: the opponent's upcoming hidden plan can never
+# reach build_cold_start_intel (it accepts no policy parameter at all).
+# ---------------------------------------------------------------------------
+
+
+def _player(pid: str, archetype, ovr_seed: dict) -> object:
+    """Build a real Player with a chosen archetype and controllable ratings."""
+    from dodgeball_sim.models import Player, PlayerRatings, PlayerTraits
+
+    ratings = PlayerRatings(**ovr_seed).apply_bounds()
+    return Player(
+        id=pid,
+        name=pid.replace("_", " ").title(),
+        age=24,
+        club_id="opp",
+        newcomer=False,
+        ratings=ratings,
+        archetype=archetype,
+        traits=PlayerTraits(potential=70.0, growth_curve="steady", consistency=0.6, pressure=0.6),
+    )
+
+
+def test_cold_start_position_groups_are_derived_from_visible_roster():
+    """Strongest/weakest groups come from the SAME visible archetype split.
+
+    Build a roster where the throwing-oriented core is clearly higher-rated than
+    the defense-oriented core and assert the derived read names throwers as
+    strongest, defenders as weakest, with averages computed from visible OVR.
+    """
+    from dodgeball_sim.command_center import build_cold_start_intel
+    from dodgeball_sim.models import PlayerArchetype
+
+    strong = {"accuracy": 90, "power": 90, "dodge": 80, "catch": 60, "stamina": 80,
+              "tactical_iq": 80, "catch_courage": 60, "throw_selection_iq": 85, "conditioning_curve": 70}
+    weak = {"accuracy": 45, "power": 45, "dodge": 50, "catch": 55, "stamina": 55,
+            "tactical_iq": 50, "catch_courage": 55, "throw_selection_iq": 45, "conditioning_curve": 50}
+    roster = [
+        _player("t1", PlayerArchetype.THROWER, strong),
+        _player("t2", PlayerArchetype.THROWER_DODGER, strong),
+        _player("d1", PlayerArchetype.CATCHER, weak),
+        _player("d2", PlayerArchetype.DODGER_ANCHOR, weak),
+    ]
+
+    intel = build_cold_start_intel(
+        opponent=None,
+        opponent_roster=roster,
+        key_threat=None,
+        opponent_record="4-1",
+    )
+
+    groups = intel["position_groups"]
+    assert groups is not None and groups["single_family"] is False
+    assert groups["strongest"]["label"] == "throwing-oriented"
+    assert groups["weakest"]["label"] == "defense-oriented"
+    # Averages recomputed from the visible OVR confirm nothing is fabricated.
+    expected_strong = round(sum(p.overall_skill() for p in roster[:2]) / 2, 1)
+    expected_weak = round(sum(p.overall_skill() for p in roster[2:]) / 2, 1)
+    assert groups["strongest"]["avg_ovr"] == expected_strong
+    assert groups["weakest"]["avg_ovr"] == expected_weak
+    assert groups["strongest"]["avg_ovr"] > groups["weakest"]["avg_ovr"]
+    # recent_form passes the already-player-facing record straight through.
+    assert intel["recent_form"] == "4-1"
+
+
+def test_cold_start_recent_form_suppresses_placeholder_records():
+    """A vacuous 0-0 / n/a record is not surfaced as a meaningful recent form."""
+    from dodgeball_sim.command_center import build_cold_start_intel
+
+    for placeholder in ("0-0", "n/a", "", None):
+        intel = build_cold_start_intel(
+            opponent=None, opponent_roster=[], key_threat=None, opponent_record=placeholder
+        )
+        assert intel["recent_form"] is None
+    # A real record is surfaced verbatim.
+    assert build_cold_start_intel(
+        opponent=None, opponent_roster=[], key_threat=None, opponent_record="3-2-1"
+    )["recent_form"] == "3-2-1"
+
+
+def test_cold_start_enrichment_holds_fog_of_war_no_upcoming_policy_leak():
+    """Enriched cold-start facts never leak the opponent's live upcoming plan.
+
+    Set the opponent's LIVE hidden coach policy to a sentinel on every axis, then
+    scout at cold start (no tape). The enriched cold_start block (roster shape,
+    position groups, recent form, threat, program identity) must contain NONE of
+    those live-plan axis values — build_cold_start_intel structurally takes no
+    policy, so the fence is preserved end to end.
+    """
+    conn = _career_conn()
+    opponent_id = _current_opponent_id(conn)
+    clubs = load_clubs(conn)
+
+    live_policy = {
+        "approach": "aggressive",
+        "target_focus": "their_stars",
+        "catch_posture": "go_for_catches",
+        "rush_commit": "all_in",
+        "rush_target": "center",
+    }
+    opp_club = dataclasses.replace(
+        clubs[opponent_id],
+        coach_policy=type(clubs[opponent_id].coach_policy).from_dict(live_policy),
+    )
+    from dodgeball_sim.persistence import load_all_rosters
+
+    save_club(conn, opp_club, list(load_all_rosters(conn).get(opponent_id, [])))
+    conn.commit()
+
+    after = mark_opponent_scouted(conn)["plan"]["matchup_details"]["tactical_diff"]
+    cold = after["cold_start"]
+    assert cold is not None  # cold-start facts present with zero tape
+
+    # No tape yet → no per-axis opponent reveal at all.
+    assert after["tape_axes_revealed"] == 0
+    assert all(row["opponent_known"] is False for row in after["player_plan"])
+
+    # The serialized cold_start block must not contain any live-plan axis value.
+    serialized_cold = json.dumps(cold).lower()
+    leaks = [
+        value
+        for value in live_policy.values()
+        if value.replace("_", " ") in serialized_cold
+    ]
+    assert not leaks, f"live upcoming plan leaked into enriched cold-start facts: {leaks}"

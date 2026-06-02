@@ -582,9 +582,24 @@ export interface TacticalDiffIntel {
   text: string;
 }
 
+export interface ColdStartPositionGroup {
+  label: string;
+  count: number;
+  avg_ovr: number;
+}
+
 export interface TacticalDiffColdStart {
   program_archetype?: string | null;
   roster_shape?: { throwers: number; defenders: number; total: number } | null;
+  // BUG #10 enrichment: strongest/weakest archetype family by visible OVR, and
+  // the opponent's already-player-facing W-L-D record. Both derivable; never
+  // sourced from the opponent's hidden upcoming plan.
+  position_groups?: {
+    strongest: ColdStartPositionGroup;
+    weakest: ColdStartPositionGroup;
+    single_family: boolean;
+  } | null;
+  recent_form?: string | null;
   threat?: { name: string; archetype: string; ovr: number } | null;
 }
 
@@ -948,6 +963,16 @@ export interface RecapBeatPayload {
         diff: number;
         is_player_club: boolean;
     }>;
+    /**
+     * Work item #3: present only when the user's club finished OUTSIDE the
+     * playoff cut. `finish` is the 1-based seeding position, `cutoff` the number
+     * of playoff berths, `total` the league size. Absent when the club qualified.
+     */
+    missed_playoffs?: {
+        finish: number;
+        cutoff: number;
+        total: number;
+    };
 }
 
 export interface DevelopmentPlayer {

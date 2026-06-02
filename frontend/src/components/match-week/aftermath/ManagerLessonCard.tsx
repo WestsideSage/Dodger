@@ -3,9 +3,11 @@ import type { Aftermath } from '../../../types';
 /**
  * WT-32: the "Manager Lesson" — an ADJACENT card to the Primary Factor, shown
  * ONLY when the backend surfaces `manager_lesson` (i.e. the Primary Factor was
- * inconclusive on a close loss). The Primary Factor answers "what decided the
- * match?"; this answers the player's other question, "what could *I* have
- * changed?", strictly from controllable prep.
+ * inconclusive on a close loss OR an even, close draw). The Primary Factor
+ * answers "what decided the match?"; this answers the player's other question,
+ * "what could *I* have changed?", strictly from controllable prep. The title
+ * and sentence copy are backend-authored and already result-aware (a draw is
+ * never described as a loss), so this card renders them verbatim.
  *
  * Two honest states, visually distinct so the player is never misled:
  *   - `controllable: true`  -> a real lever (amber, actionable, with chips);

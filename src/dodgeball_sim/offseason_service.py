@@ -162,9 +162,14 @@ def recruit_offseason_payload(
     else:
         signed = sign_best_rookie(conn, player_club_id, season_number)
 
-    signed_count += 1
-    set_state(conn, "offseason_draft_signed_count", str(signed_count))
+    # Faithfulness (BUG #5 / ADR 0002): the signed-count is the single source of
+    # truth for "how many you signed" across the whole Signing-Day surface, so it
+    # must equal the real number of roster additions. Only bump it when a player
+    # was actually signed — sign_best_rookie returns None on an empty pool, and an
+    # un-guarded increment there would let "used" exceed the roster delta.
     if signed:
+        signed_count += 1
+        set_state(conn, "offseason_draft_signed_count", str(signed_count))
         set_state(conn, "offseason_draft_signed_player_id", signed.id)
 
     rosters = load_all_rosters(conn)

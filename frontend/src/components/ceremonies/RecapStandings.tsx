@@ -3,6 +3,17 @@ import { ActionButton } from '../ui';
 
 type RecapBeat = Extract<OffseasonBeat, { key: 'recap' }>;
 
+function ordinal(n: number): string {
+    const rem100 = n % 100;
+    if (rem100 >= 11 && rem100 <= 13) return `${n}th`;
+    switch (n % 10) {
+        case 1: return `${n}st`;
+        case 2: return `${n}nd`;
+        case 3: return `${n}rd`;
+        default: return `${n}th`;
+    }
+}
+
 export function RecapStandings({
     beat,
     onComplete,
@@ -13,6 +24,11 @@ export function RecapStandings({
     acting?: boolean;
 }) {
     const standings = beat.payload.standings;
+    // Work item #3: a truthful post-hoc statement that the season ended without
+    // a playoff berth. Present ONLY when the backend confirmed the user's club
+    // finished outside the cut (derived from the real playoff seeding), so it
+    // never shows for a club that qualified.
+    const missed = beat.payload.missed_playoffs;
 
     return (
         <section className="command-offseason-shell" data-testid="offseason-recap">
@@ -27,6 +43,34 @@ export function RecapStandings({
                     Top four seeds qualify for the playoffs.
                 </p>
             </div>
+
+            {missed && (
+                <div
+                    data-testid="recap-missed-playoffs"
+                    role="status"
+                    style={{
+                        margin: '0 1rem 1rem',
+                        padding: '0.85rem 1rem',
+                        background: 'linear-gradient(90deg, rgba(239,68,68,0.10), rgba(10,18,32,0) 70%)',
+                        border: '1px solid #7f1d1d',
+                        borderLeft: '3px solid #ef4444',
+                        borderRadius: '6px',
+                    }}
+                >
+                    <p
+                        className="dm-kicker"
+                        style={{ margin: 0, color: '#f87171', fontSize: '0.62rem' }}
+                    >
+                        Missed The Playoffs
+                    </p>
+                    <p style={{ margin: '0.3rem 0 0', color: '#e2e8f0', fontSize: '0.9rem', fontWeight: 600 }}>
+                        You finished {ordinal(missed.finish)} of {missed.total} — the top {missed.cutoff} make the playoffs.
+                    </p>
+                    <p style={{ margin: '0.2rem 0 0', color: '#94a3b8', fontSize: '0.78rem' }}>
+                        Season over; on to the offseason.
+                    </p>
+                </div>
+            )}
 
             <div className="dm-panel" style={{ padding: '0', overflow: 'hidden' }}>
                 <div

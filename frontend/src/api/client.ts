@@ -33,6 +33,18 @@ export class ApiError extends Error {
 const LAUNCH_TOKEN_HEADER = 'X-Dodgeball-Launch-Token';
 let launchTokenPromise: Promise<string | null> | null = null;
 
+// The exact detail the server's launch-token guard emits (server.py
+// `_launch_token_guard`). A mutating 403 carrying THIS detail is a token /
+// serving mismatch (stale dist, a restarted backend that re-minted the token,
+// or a vite-preview that never injected the meta tag) — NOT data loss and NOT
+// a business rule. Any other 403 (e.g. "Signing only allowed on Signing Day.")
+// is a real domain rejection and must surface verbatim (ADR 0002 faithfulness).
+const LAUNCH_TOKEN_REJECTION_DETAIL = 'Missing or invalid launch token.';
+// Shown to the player when a token mismatch survives a silent token refresh +
+// retry. Truthful and actionable — and deliberately NOT the 503 "no save
+// loaded" copy, so a serving mismatch can never masquerade as a lost career.
+const LAUNCH_TOKEN_STALE_MESSAGE = 'Action blocked — refresh the page and try again.';
+
 function readLaunchTokenMeta(): string | null {
   if (typeof document === 'undefined') return null;
   const meta = document.querySelector('meta[name="launch-token"]');
@@ -44,13 +56,27 @@ async function resolveLaunchToken(): Promise<string | null> {
   const fromMeta = readLaunchTokenMeta();
   if (fromMeta) return fromMeta;
   if (!launchTokenPromise) {
-    launchTokenPromise = fetch('/api/launch-token')
-      .then((response) => (response.ok ? response.json() : null))
-      .then((payload) =>
-        isObject(payload) && typeof payload.token === 'string' ? payload.token : null,
-      )
-      .catch(() => null);
+    launchTokenPromise = fetchLaunchToken();
   }
+  return launchTokenPromise;
+}
+
+function fetchLaunchToken(): Promise<string | null> {
+  return fetch('/api/launch-token')
+    .then((response) => (response.ok ? response.json() : null))
+    .then((payload) =>
+      isObject(payload) && typeof payload.token === 'string' ? payload.token : null,
+    )
+    .catch(() => null);
+}
+
+// Force a fresh token from the server, BYPASSING the (possibly stale) meta tag.
+// The stale-token case IS a stale meta tag, so re-reading meta would just resend
+// the rejected token; only GET /api/launch-token reflects a backend that has
+// re-minted its token. We replace the cached promise so subsequent calls reuse
+// the refreshed value.
+function refreshLaunchToken(): Promise<string | null> {
+  launchTokenPromise = fetchLaunchToken();
   return launchTokenPromise;
 }
 
@@ -58,16 +84,49 @@ export async function apiGet<T>(url: string): Promise<T> {
   return apiRequest<T>(url);
 }
 
-export async function apiPost<T>(url: string, body?: unknown): Promise<T> {
-  const token = await resolveLaunchToken();
+function postInit(token: string | null, body: unknown): RequestInit {
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (token) headers[LAUNCH_TOKEN_HEADER] = token;
-  return apiRequest<T>(url, {
+  return {
     method: 'POST',
     headers: Object.keys(headers).length > 0 ? headers : undefined,
     body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  };
+}
+
+export async function apiPost<T>(url: string, body?: unknown): Promise<T> {
+  const token = await resolveLaunchToken();
+  try {
+    return await apiRequest<T>(url, postInit(token, body));
+  } catch (err) {
+    // A mutating request rejected by the launch-token guard means the token we
+    // sent is stale/missing — never that the save is gone. Refresh the token
+    // once and retry; if the backend re-minted it (uvicorn --reload), the retry
+    // recovers transparently with no user action.
+    if (err instanceof ApiError && err.status === 403 && err.message === LAUNCH_TOKEN_REJECTION_DETAIL) {
+      const refreshed = await refreshLaunchToken();
+      try {
+        return await apiRequest<T>(url, postInit(refreshed, body));
+      } catch (retryErr) {
+        // Still rejected for the SAME token reason → no recovery is possible in
+        // this tab (e.g. served by a stale dist / vite preview). Surface a clear,
+        // truthful "refresh the page" message — and crucially keep it a 403 so no
+        // consumer routes it into the 503 "no save loaded" / session-lost state.
+        if (
+          retryErr instanceof ApiError &&
+          retryErr.status === 403 &&
+          retryErr.message === LAUNCH_TOKEN_REJECTION_DETAIL
+        ) {
+          throw new ApiError(LAUNCH_TOKEN_STALE_MESSAGE, 403);
+        }
+        // A different failure on retry (incl. a genuine business 403 like
+        // signing-day) is the real outcome — surface it untouched.
+        throw retryErr;
+      }
+    }
+    throw err;
+  }
 }
 
 async function apiRequest<T>(url: string, init?: RequestInit): Promise<T> {
