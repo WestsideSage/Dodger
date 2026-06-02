@@ -23,14 +23,49 @@ export class ApiError extends Error {
   }
 }
 
+// WT-12: per-process launch token. The server mints it at startup, injects it
+// into index.html as <meta name="launch-token">, and also exposes it at
+// GET /api/launch-token. We attach it as a header on every mutating request so
+// a cross-origin drive-by page (which cannot read the meta tag or that GET's
+// body under the same-origin policy) cannot forge a mutating call. Read the
+// meta synchronously when present (prod build); otherwise fetch it once and
+// cache it (the vite dev server serves the un-rewritten source index.html).
+const LAUNCH_TOKEN_HEADER = 'X-Dodgeball-Launch-Token';
+let launchTokenPromise: Promise<string | null> | null = null;
+
+function readLaunchTokenMeta(): string | null {
+  if (typeof document === 'undefined') return null;
+  const meta = document.querySelector('meta[name="launch-token"]');
+  const content = meta?.getAttribute('content');
+  return content && content.length > 0 ? content : null;
+}
+
+async function resolveLaunchToken(): Promise<string | null> {
+  const fromMeta = readLaunchTokenMeta();
+  if (fromMeta) return fromMeta;
+  if (!launchTokenPromise) {
+    launchTokenPromise = fetch('/api/launch-token')
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) =>
+        isObject(payload) && typeof payload.token === 'string' ? payload.token : null,
+      )
+      .catch(() => null);
+  }
+  return launchTokenPromise;
+}
+
 export async function apiGet<T>(url: string): Promise<T> {
   return apiRequest<T>(url);
 }
 
 export async function apiPost<T>(url: string, body?: unknown): Promise<T> {
+  const token = await resolveLaunchToken();
+  const headers: Record<string, string> = {};
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (token) headers[LAUNCH_TOKEN_HEADER] = token;
   return apiRequest<T>(url, {
     method: 'POST',
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+    headers: Object.keys(headers).length > 0 ? headers : undefined,
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 }

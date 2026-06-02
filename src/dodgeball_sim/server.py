@@ -4,11 +4,12 @@ import json
 import math
 import mimetypes
 import re
+import secrets
 from typing import Any
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 
 mimetypes.add_type("application/javascript", ".js")
@@ -152,6 +153,83 @@ DEFAULT_DB_PATH = Path("dodgeball_sim.db")
 SAVES_DIR = Path("saves")
 
 _active_save_path: Path | None = None
+
+# ---------------------------------------------------------------------------
+# WT-12: per-process launch token (CSRF defense for the local server)
+#
+# While the local server is running, a malicious page open in the same browser
+# could issue a cross-origin form/fetch POST to localhost and mutate the active
+# career (simulate / fast-forward / unload). We mint a random token once per
+# process and require it as a header on every mutating /api request. The token
+# is served INTO the page (a <meta> tag in index.html) and is also fetchable at
+# GET /api/launch-token; the first-party SPA reads it and attaches it. A
+# cross-origin drive-by cannot read the page or that response body (same-origin
+# policy, and there is no CORS allowance on this app), so it cannot forge the
+# header. No user action is required — the token rides the launcher.
+#
+# Enforcement is ON by the module default, so the live server is protected
+# however it is launched (including the uvicorn --reload worker, which re-imports
+# this module fresh and so picks up the default — no launcher wiring or env var
+# needed). The pytest suite, which posts to mutating routes without a token, is
+# the only context that disables it: a single autouse fixture in tests/conftest.py
+# (a pytest-only mechanism, never loaded at app runtime) turns it OFF per test.
+# The dedicated WT-12 test flips it back ON inside its own body to exercise both
+# the 403 (missing/forged) and the allowed (valid) paths.
+LAUNCH_TOKEN_HEADER = "X-Dodgeball-Launch-Token"
+LAUNCH_TOKEN: str = secrets.token_urlsafe(32)
+_MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+_enforce_launch_token = True
+
+
+def enable_launch_token_guard(enabled: bool = True) -> None:
+    """Toggle launch-token enforcement.
+
+    The module default is ON (production is protected on import). This exists so
+    the test suite / conftest can disable it and the WT-12 test can re-enable it
+    within a single test, without reaching into the private module global.
+    """
+    global _enforce_launch_token
+    _enforce_launch_token = enabled
+
+
+@app.middleware("http")
+async def _launch_token_guard(request: Request, call_next):
+    if (
+        _enforce_launch_token
+        and request.method in _MUTATING_METHODS
+        and request.url.path.startswith("/api/")
+    ):
+        presented = request.headers.get(LAUNCH_TOKEN_HEADER, "")
+        if not secrets.compare_digest(presented, LAUNCH_TOKEN):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Missing or invalid launch token."},
+            )
+    return await call_next(request)
+
+
+def _inject_launch_token(response: Response) -> Response:
+    """Rewrite a served index.html so the SPA can read the token synchronously.
+
+    Falls back to fetching GET /api/launch-token at runtime when the meta tag
+    is absent (e.g. the vite dev server serves the un-rewritten source file).
+    """
+    path = getattr(response, "path", None)
+    if path is None:
+        return response
+    try:
+        html = Path(path).read_text(encoding="utf-8")
+    except OSError:
+        return response
+    meta = f'<meta name="launch-token" content="{LAUNCH_TOKEN}" />'
+    if 'name="launch-token"' not in html:
+        if "</head>" in html:
+            html = html.replace("</head>", f"    {meta}\n  </head>", 1)
+        else:
+            html = meta + html
+    return HTMLResponse(content=html, status_code=response.status_code)
+
+
 _LEGACY_TARGET_EVIDENCE_RE = re.compile(r"^Target evidence: ([A-Za-z0-9_]+) was targeted (\d+) times\.$")
 _LEGACY_STAR_SETTING_RE = re.compile(r"^Tactical target-stars setting: ([0-9.]+)\.$")
 _LEGACY_RUSH_SETTING_RE = re.compile(r"^Rush frequency setting: ([0-9.]+)\.$")
@@ -375,7 +453,11 @@ class NewSaveRequest(BaseModel):
     name: str
     club_id: str = "aurora"
     root_seed: int = 20260426
-    ruleset_selection: str | None = None  # V11: official ruleset opt-in
+    # WT-17: new careers default to the official foam ruleset at the backend
+    # boundary, matching the frontend default, so an API/automation-created
+    # career no longer silently goes generic when the field is omitted. An
+    # explicit "generic" (or None) is still honored for legacy/opt-out callers.
+    ruleset_selection: str | None = "official_foam"
 
 
 class BuildFromScratchRequest(BaseModel):
@@ -387,7 +469,10 @@ class BuildFromScratchRequest(BaseModel):
     coach_backstory: str
     roster_player_ids: list[str]
     root_seed: int = 20260426
-    ruleset_selection: str | None = None  # V11: official ruleset opt-in
+    # WT-17: build-from-scratch careers also default to official foam at the
+    # backend boundary (see NewSaveRequest). Explicit "generic"/None still
+    # honored for legacy/opt-out callers.
+    ruleset_selection: str | None = "official_foam"
 
 
 class MatchReplayResponse(BaseModel):
@@ -482,6 +567,17 @@ class PitchAngleRequest(BaseModel):
     angle: str
 
 # --- API Endpoints ---
+
+@app.get("/api/launch-token")
+def api_launch_token() -> dict[str, str]:
+    """WT-12: expose the per-process launch token to the first-party SPA.
+
+    This is a non-mutating GET, so the token guard never blocks it. It is safe
+    to serve because a cross-origin page cannot read the response body (no CORS
+    allowance on this app); only same-origin first-party code can consume it.
+    """
+    return {"token": LAUNCH_TOKEN}
+
 
 @app.get("/api/status", response_model=StatusResponse)
 def get_status(conn = Depends(get_db)) -> StatusResponse:
@@ -1374,9 +1470,27 @@ frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
 if frontend_dist.exists():
     app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
 
+    _frontend_dist_root = frontend_dist.resolve()
+    _index_html = _frontend_dist_root / "index.html"
+
+    def _serve_index() -> FileResponse:
+        return _inject_launch_token(FileResponse(_index_html))
+
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str):
-        path = frontend_dist / full_path
-        if path.exists() and path.is_file():
-            return FileResponse(path)
-        return FileResponse(frontend_dist / "index.html")
+        # WT-13: the SPA fallback must never serve a file from outside
+        # frontend/dist. An attacker can encode "../" segments (or use
+        # backslashes / absolute paths on Windows) to try to walk out of the
+        # bundle and read local repo files. Resolve the candidate against the
+        # filesystem and confirm it stays inside the dist root before serving;
+        # anything else falls through to index.html (the SPA's own router then
+        # renders its 404). Resolving handles encoded traversal, mixed
+        # separators, and symlinks regardless of how the bytes arrived.
+        candidate = (_frontend_dist_root / full_path).resolve()
+        if candidate.is_relative_to(_frontend_dist_root) and candidate.is_file():
+            # index.html is always served through the injecting path so the
+            # SPA can read the launch token regardless of how it was requested.
+            if candidate == _index_html:
+                return _serve_index()
+            return FileResponse(candidate)
+        return _serve_index()

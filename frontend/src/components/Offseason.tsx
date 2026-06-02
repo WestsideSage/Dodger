@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { apiPost } from '../api/client';
 import { useApiResource } from '../hooks/useApiResource';
 import type { OffseasonBeat } from '../types';
 import { StatusMessage } from './ui';
@@ -18,19 +19,14 @@ export function Offseason({ onBeatChange }: { onBeatChange?: (title: string | nu
     onBeatChange?.(beat?.title ?? null);
   }, [beat?.title, onBeatChange]);
 
-  const act = (endpoint: string, method = 'POST', body?: unknown) => {
+  // WT-12: route mutating offseason actions through apiPost so the per-process
+  // launch token is attached (a raw fetch would be rejected with 403 once the
+  // server enforces the token). apiPost throws ApiError(detail) on non-2xx,
+  // which maps onto the existing error surface below.
+  const act = (endpoint: string, body?: unknown) => {
     setActing(true);
     setError(null);
-    fetch(endpoint, {
-      method,
-      ...(body !== undefined
-        ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
-        : {}),
-    })
-      .then(res => {
-        if (!res.ok) return res.json().then(d => Promise.reject(new Error(d.detail || 'Action failed')));
-        return res.json();
-      })
+    apiPost<OffseasonBeat & { state?: { state?: string } }>(endpoint, body)
       .then(data => {
         if (data.state?.state === 'season_active_pre_match') {
           window.location.reload();
@@ -38,7 +34,7 @@ export function Offseason({ onBeatChange }: { onBeatChange?: (title: string | nu
         }
         setBeat(data);
       })
-      .catch(err => setError(err.message))
+      .catch(err => setError(err instanceof Error ? err.message : 'Action failed'))
       .finally(() => setActing(false));
   };
 
@@ -51,7 +47,7 @@ export function Offseason({ onBeatChange }: { onBeatChange?: (title: string | nu
   if (!beat) return null;
 
   const advance = () => act('/api/offseason/advance');
-  const recruit = (prospectId: string) => act('/api/offseason/recruit', 'POST', { prospect_id: prospectId });
+  const recruit = (prospectId: string) => act('/api/offseason/recruit', { prospect_id: prospectId });
   const beginSeason = () => act('/api/offseason/begin-season');
 
   if (beat.key === 'champion') return <ChampionReveal beat={beat} onComplete={advance} acting={acting} />;

@@ -10,6 +10,7 @@ from dodgeball_sim.career_state import (
     can_transition,
 )
 from dodgeball_sim.persistence import (
+    CorruptSaveError,
     create_schema,
     load_career_state_cursor,
     save_career_state_cursor,
@@ -99,7 +100,9 @@ def test_load_career_state_cursor_returns_splash_when_absent():
     assert loaded.season_number == 0
 
 
-def test_load_career_state_cursor_recovers_from_malformed_json():
+def test_load_career_state_cursor_raises_on_malformed_json():
+    """WT-16: a persisted-but-unparseable cursor must fail loud, not silently
+    fall back to SPLASH. A corrupt career must not masquerade as a fresh start."""
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     create_schema(conn)
@@ -108,12 +111,12 @@ def test_load_career_state_cursor_recovers_from_malformed_json():
         ("career_state_cursor", "{not-json"),
     )
 
-    loaded = load_career_state_cursor(conn)
+    with pytest.raises(CorruptSaveError):
+        load_career_state_cursor(conn)
 
-    assert loaded == CareerStateCursor(state=CareerState.SPLASH)
 
-
-def test_load_career_state_cursor_recovers_from_invalid_state_value():
+def test_load_career_state_cursor_raises_on_invalid_state_value():
+    """WT-16: an unrecognized state value is corruption, not a fresh start."""
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     create_schema(conn)
@@ -122,9 +125,22 @@ def test_load_career_state_cursor_recovers_from_invalid_state_value():
         ("career_state_cursor", '{"state":"bogus","season_number":1,"week":1,"offseason_beat_index":0}'),
     )
 
-    loaded = load_career_state_cursor(conn)
+    with pytest.raises(CorruptSaveError):
+        load_career_state_cursor(conn)
 
-    assert loaded == CareerStateCursor(state=CareerState.SPLASH)
+
+def test_load_career_state_cursor_raises_on_missing_state_key():
+    """WT-16: a cursor blob missing the required 'state' key is corrupt."""
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    conn.execute(
+        "INSERT INTO dynasty_state (key, value) VALUES (?, ?)",
+        ("career_state_cursor", '{"season_number":1,"week":1,"offseason_beat_index":0}'),
+    )
+
+    with pytest.raises(CorruptSaveError):
+        load_career_state_cursor(conn)
 
 
 def test_load_career_state_cursor_clamps_negative_numbers_and_excessive_beat():
