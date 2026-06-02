@@ -719,6 +719,82 @@ def _load_improvement_panel(
     return build_improvement_panel(roster=roster_rows, starters=starters, recruits=recruits)
 
 
+# Lesson code -> the improvement-panel item category that names the SAME lever.
+# On an inconclusive loss both surfaces can fire; when they do, the Manager
+# Lesson (the loss-specific contextual surface) is kept and the duplicate panel
+# item is dropped so a single lever is not narrated twice.
+#
+# Faithfulness note (proven equality): the two surfaces compute these levers
+# from the SAME inputs via the SAME pure helpers, so they cannot name DIFFERENT
+# things when both are present:
+#   * weakest_role_group / position_group -> both derive from
+#     ``next_best_improvement.weakest_position_group`` over
+#     ``load_all_rosters(conn)[player_club_id]`` (identical rows), so the
+#     archetype is identical. ``_aftermath_weakest_group`` only adds a stricter
+#     gate (must sit >=5 OVR below roster avg); it never changes WHICH group.
+#   * fatigue / condition -> both derive from
+#     ``next_best_improvement.lowest_condition_starter`` over the SAME
+#     ``plan["lineup"]["players"]``, so the starter name is identical.
+# Because each side has effectively one value and they provably match, keying
+# the drop on the lesson's chosen ``code`` is exact, not a category shortcut.
+# (``roster_edge``/``ignored_recommendation``/``no_lever`` have no panel
+# counterpart and so are absent here, leaving the panel untouched for them.)
+# If a future edit makes either helper diverge, revisit: the rule must stay
+# fail-safe (suppress only a genuine duplicate; keep both on any mismatch).
+#
+# Keys are the ``manager_lesson`` code string literals (WEAKEST_ROLE_GROUP /
+# FATIGUE). They are NOT imported as constants here on purpose: ``use_cases``
+# imports ``manager_lesson`` lazily inside ``_build_aftermath`` to keep that
+# submodule off the module-import path, and this dict is built at import time.
+# The dedup test imports the same constants, so any future drift in their
+# values fails that test red.
+_LESSON_CODE_TO_PANEL_CATEGORY = {
+    "weakest_role_group": "position_group",
+    "fatigue": "condition",
+}
+
+
+def _dedup_lesson_panel(aftermath: dict[str, Any]) -> None:
+    """Drop the improvement-panel item that names the SAME lever as the lesson.
+
+    Pure presentation assembly over the already-built payload (no engine or
+    scoring change, no helper change). Mutates ``aftermath`` in place:
+
+    * When ``manager_lesson`` is present AND its ``code`` maps to a panel
+      category, the matching panel item is removed. The Manager Lesson is the
+      loss-specific contextual surface and is always kept.
+    * The lesson picks exactly ONE code by severity, so at most ONE panel item
+      is ever dropped; every non-duplicate item (recruit + the other lever) is
+      kept.
+    * If the panel becomes empty after the drop, ``improvement_panel`` is
+      removed entirely rather than surfacing an empty panel.
+
+    No-ops when either key is absent, or when the lesson code has no panel
+    counterpart (``roster_edge`` / ``ignored_recommendation`` / ``no_lever``).
+    """
+
+    lesson = aftermath.get("manager_lesson")
+    panel = aftermath.get("improvement_panel")
+    if not isinstance(lesson, Mapping) or not isinstance(panel, list):
+        return
+    dup_category = _LESSON_CODE_TO_PANEL_CATEGORY.get(str(lesson.get("code") or ""))
+    if dup_category is None:
+        return  # lesson names a lever with no panel counterpart -> nothing to dedup
+
+    filtered = [
+        item
+        for item in panel
+        if not (isinstance(item, Mapping) and item.get("category") == dup_category)
+    ]
+    if filtered == panel:
+        return  # no matching item was present -> leave the panel untouched
+    if filtered:
+        aftermath["improvement_panel"] = filtered
+    else:
+        # Panel held only the duplicate -> omit the key rather than ship [].
+        aftermath.pop("improvement_panel", None)
+
+
 def _build_aftermath(
     conn,
     dashboard: dict[str, Any],
@@ -1108,6 +1184,17 @@ def _build_aftermath(
                 aftermath["improvement_panel"] = panel
         except Exception:
             pass
+
+    # On an inconclusive loss the Manager Lesson (weakest_role_group / fatigue)
+    # and the improvement panel (position_group / condition) can name the SAME
+    # lever, computed from the same roster/lineup via the same pure helpers.
+    # Drop the duplicate panel item, keep the loss-specific lesson, and keep
+    # every non-duplicate panel item. Pure presentation assembly -- guarded so
+    # a dedup hiccup can never block the payload.
+    try:
+        _dedup_lesson_panel(aftermath)
+    except Exception:
+        pass
 
     # Structural validation: confirm the assembled payload doesn't
     # contradict the resolved MatchResult (winner, survivor counts,
