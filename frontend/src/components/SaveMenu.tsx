@@ -27,26 +27,41 @@ function formatTimeAgo(timestamp?: number): string {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+// Player-facing ruleset copy. FAITHFULNESS-FIRST (ADR 0002): every claim here
+// must be backed by what the engine actually models. The engine's
+// outcome-affecting per-ruleset differences are the ball count, the burden
+// majority threshold, the ball material (which changes the section-21
+// ricochet-save outcome — foam saves the hit player, cloth does not), and the
+// per-ruleset scoring model (foam earns a point on elimination only; cloth
+// scores 2/1/0) — see src/dodgeball_sim/rulesets.py and official_scoring.py —
+// plus the official catch resolution (catch outs the thrower and resurrects a
+// teammate). There is NO velocity / sting / damage / tempo model, so the copy
+// does not claim one.
+//
+// Official titles reuse the canonical `full` form from
+// `frontend/src/legibility/rulesetNames.ts` (WT-5) — do not invent variants.
+// `generic` keeps its friendlier non-official title (its canonical name maps to
+// "Legacy survivor scoring"), and carries no USA Dodgeball lineage line.
 const rulesetExplanations: Record<string, { title: string; desc: string; bullet: string }> = {
   generic: {
     title: "Classic Dodgeball Rules",
-    desc: "The standard experience. Balanced throwing speed, classical catching dynamics, and medium pacing.",
-    bullet: "• 6v6 Format · Balanced Tempo · Standard 8.25-inch balls · High comeback potential",
+    desc: "The original Dodger simulation: survivor-based scoring with classical catching dynamics. A balanced default that is not tied to the USA Dodgeball rule set.",
+    bullet: "• 6v6 Format · Survivor scoring · High comeback potential",
   },
   official_foam: {
-    title: "USA Dodgeball — Foam Division",
-    desc: "Ultra fast-paced gameplay utilizing low-compression foam balls. Emphasizes agility, continuous firing, and high catch volume.",
-    bullet: "• 6v6 Format · Fast Tempo · 6x 7-inch low-compression foam balls · Agile catches & high-speed action",
+    title: "USA Dodgeball 2026.1 — Foam",
+    desc: "Officially-inspired foam division: six balls in play and the official catch rule (a catch eliminates the thrower and resurrects a teammate). A match is decided over multiple games, and a game point is earned only by fully eliminating the opponent. Modeled as a deterministic abstraction — the real-world live-officiating calls (No Blocking, throw clock) are announced for flavor but are not yet outcome-enforced.",
+    bullet: "• 6v6 Format · 6 balls (3 per side) · Catch outs thrower + resurrects · 1 game point per elimination win",
   },
   official_no_sting: {
-    title: "USA Dodgeball — No-Sting Division",
-    desc: "Tactical, control-oriented ruleset. No-sting balls allow for superior grip, encouraging strategic ball control and precise set-ups.",
-    bullet: "• 6v6 Format · Tactical Pacing · 6x 8-inch low-impact balls · Superior grip & strategic possession",
+    title: "USA Dodgeball 2026.1 — No-Sting",
+    desc: "Same modeled rules as the Foam division — six balls, the official catch rule, and a game point only on full elimination. The difference is the real-world ball material (low-sting); grip, possession control, and pacing are not separately simulated. Live-officiating calls (No Blocking, throw clock) are announced but not yet outcome-enforced.",
+    bullet: "• 6v6 Format · 6 balls (3 per side) · Catch outs thrower + resurrects · 1 game point per elimination win",
   },
   official_cloth: {
-    title: "USA Dodgeball — Cloth Division",
-    desc: "The pinnacle of power and throw velocity. Small cloth balls travel at intense speeds. Direct hits are highly lethal.",
-    bullet: "• 6v6 Format · Power Pacing · 6x 3-inch/6.5-inch cloth balls · High-velocity throws & lethal direct hits",
+    title: "USA Dodgeball 2026.1 — Cloth",
+    desc: "Officially-inspired cloth division: five balls in play (two per side plus one neutral center), which lowers the burden majority to 3 and shifts how possession pressure builds. The official catch rule applies, and games are scored differently from foam — a win (elimination or the player majority at time expiry) is worth 2 game points, a tie 1 each. Throw velocity and hit severity are not separately modeled; this is a deterministic abstraction of the official rules.",
+    bullet: "• 6v6 Format · 5 balls (2 per side + 1 center) · Lower burden threshold · Win = 2 game points, tie = 1",
   },
 };
 
