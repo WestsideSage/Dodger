@@ -1082,11 +1082,14 @@ def _build_aftermath(
                 aftermath["primary_factor"] = explanation.primary_factor.as_dict()
 
                 # WT-32: when the Primary Factor is INCONCLUSIVE (a genuine
-                # coin-flip loss — not a decisive blowout), the player still
-                # wants to know "what could *I* have changed?". Surface a
-                # SEPARATE, adjacent "Manager Lesson" drawn only from CONTROLLABLE
-                # prep. The Primary Factor stays strictly event-derived; this
-                # never folds into or reranks it. Faithfulness fences:
+                # coin-flip loss OR an even, close draw — not a decisive
+                # blowout), the player still wants to know "what could *I* have
+                # changed?". Surface a SEPARATE, adjacent "Manager Lesson" drawn
+                # only from CONTROLLABLE prep. ``derive_manager_lesson`` gates on
+                # result internally (Loss/Draw only; a win is out of scope), so a
+                # draw flows through here exactly like a loss. The Primary Factor
+                # stays strictly event-derived; this never folds into or reranks
+                # it. Faithfulness fences:
                 #   * Each lever is passed only when it GENUINELY applies (the
                 #     same thresholds the pre-match week briefing uses), so the
                 #     honest "nothing you controlled" message is reachable.

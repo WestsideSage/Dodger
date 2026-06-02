@@ -3,6 +3,7 @@ import { memo, useMemo, useEffect, useRef, useState } from 'react';
 import type { MatchReplayResponse, ReplayProofEvent } from '../types';
 import { rulesetDisplayName } from '../legibility/rulesetNames';
 import { BroadcastFrameBlock } from './BroadcastFrameBlock';
+import { formatScoreline, survivorDetail } from './match-week/matchResult';
 
 interface PlayerInfo {
   id: string;
@@ -236,15 +237,25 @@ const PossessionBar = ({ events, activeIdx, onJump, homeClubId }: { events: Repl
 const ReplayScoreboard = ({ data }: { data: MatchReplayResponse }) => {
   const homeName = data.home_club_name || 'HOME';
   const awayName = data.away_club_name || 'AWAY';
-  const homeSurv = data.home_survivors ?? 0;
-  const awaySurv = data.away_survivors ?? 0;
-  const diff = Math.abs(homeSurv - awaySurv);
 
-  const isOfficial = data.scoring_model && data.scoring_model !== 'legacy';
-  const scoreHome = isOfficial ? (data.home_game_points ?? 0) : homeSurv;
-  const scoreAway = isOfficial ? (data.away_game_points ?? 0) : awaySurv;
+  // The header is the FINAL match result. It must use the same single-source
+  // scoreline the aftermath hero and playoff bracket use (formatScoreline),
+  // so this surface can never drift back to printing survivors for an official
+  // match — an official 1-1 game-points draw reads 1-1 here, never the 0-0
+  // survivor tally (BUG #2). The live, mid-replay survivor state is shown
+  // separately on the court and in the Current Event card.
+  const scoreline = formatScoreline({
+    scoring_model: data.scoring_model ?? undefined,
+    home_game_points: data.home_game_points ?? undefined,
+    away_game_points: data.away_game_points ?? undefined,
+    home_survivors: data.home_survivors ?? 0,
+    away_survivors: data.away_survivors ?? 0,
+  });
+  const isOfficial = scoreline.isOfficial;
+  const scoreHome = scoreline.home.value;
+  const scoreAway = scoreline.away.value;
   const scoreDiff = Math.abs(scoreHome - scoreAway);
-  const marginLabel = isOfficial ? `+${scoreDiff} GAME PTS` : `+${diff} SURVIVORS`;
+  const marginLabel = isOfficial ? `+${scoreDiff} GAME PTS` : `+${scoreDiff} SURVIVORS`;
   const formatTag = isOfficial ? `${rulesetDisplayName(data.scoring_model, 'short')} · W${String(data.week).padStart(2, '0')}` : `FINAL · W${String(data.week).padStart(2, '0')}`;
 
   return (
@@ -255,13 +266,19 @@ const ReplayScoreboard = ({ data }: { data: MatchReplayResponse }) => {
         <div className="mr-team-tag">PROGRAM</div>
       </div>
       <div className="mr-score">
-        <span className="mr-score-num home">{scoreHome}</span>
+        <div className="mr-score-col">
+          <span className="mr-score-num home">{scoreHome}</span>
+          <span className="mr-score-unit">{survivorDetail(scoreline.home.survivors, isOfficial)}</span>
+        </div>
         <div className="mr-score-divider">
           <span className="mr-final-tag">{formatTag}</span>
           <span className="mr-vs">VS</span>
           <span className="mr-margin">{marginLabel}</span>
         </div>
-        <span className="mr-score-num away">{scoreAway}</span>
+        <div className="mr-score-col">
+          <span className="mr-score-num away">{scoreAway}</span>
+          <span className="mr-score-unit">{survivorDetail(scoreline.away.survivors, isOfficial)}</span>
+        </div>
       </div>
       <div className="mr-team away">
         <div className="mr-team-rec">AWAY</div>

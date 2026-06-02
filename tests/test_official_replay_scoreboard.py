@@ -72,3 +72,78 @@ def test_match_replay_payload_includes_official_scoring():
     assert payload["away_games_won"] == 3
     assert payload["tied_games"] == 0
     assert payload["no_point_games"] == 1
+
+
+def test_official_draw_replay_header_shows_game_points_not_survivors():
+    """BUG #2: an official 1-1 game-points draw must surface 1-1 in the replay
+    header, never the 0-0 survivor count.
+
+    The replay header (``ReplayScoreboard``) renders ``home_game_points`` /
+    ``away_game_points`` for official matches via the shared ``formatScoreline``
+    helper. This pins the payload contract that makes that possible: an
+    official draw where both sides finished with zero survivors still carries a
+    non-legacy ``scoring_model`` and the real 1-1 game-point total, so the
+    header can show 1-1 instead of the survivor 0-0 the playtester reported.
+    """
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+
+    club_a = Club("club_a", "Club A", "red/white", "North", 2020, CoachPolicy())
+    club_b = Club("club_b", "Club B", "blue/gold", "South", 2020, CoachPolicy())
+    save_club(conn, club_a, roster=[])
+    save_club(conn, club_b, roster=[])
+
+    conn.execute(
+        """
+        INSERT INTO matches (id, seed, config_version, winner_team_id, team_a_id, team_b_id, difficulty, setup_json, box_score_json, final_tick)
+        VALUES (43, 123, 'official:foam', NULL, 'club_a', 'club_b', 'pro', '{}', '{"teams": {"club_a": {"totals": {"living": 0}}, "club_b": {"totals": {"living": 0}}}}', 150)
+        """
+    )
+    conn.execute(
+        """
+        INSERT INTO match_roster_snapshots (match_id, club_id, players_json)
+        VALUES ('match_draw', 'club_a', '[]'), ('match_draw', 'club_b', '[]')
+        """
+    )
+
+    save_match_result(
+        conn,
+        match_id="match_draw",
+        season_id="season_1",
+        week=1,
+        home_club_id="club_a",
+        away_club_id="club_b",
+        winner_club_id=None,  # a true draw: no winner
+        home_survivors=0,  # both sides wiped out — survivor score is 0-0
+        away_survivors=0,
+        home_roster_hash="h1",
+        away_roster_hash="h2",
+        config_version="official:foam",
+        ruleset_version="v1.0",
+        seed=123,
+        event_log_hash="event_h",
+        final_state_hash="state_h",
+        engine_match_id=43,
+        scoring_model="foam",
+        home_game_points=1,  # but the official result was a 1-1 game-points draw
+        away_game_points=1,
+        home_games_won=1,
+        away_games_won=1,
+        tied_games=0,
+        no_point_games=0,
+        official_score_json='{"team_a_game_points": 1}',
+    )
+
+    payload = match_replay_payload(conn, "match_draw")
+    # The header keys off scoring_model to choose game points over survivors;
+    # an official match must never be classified as legacy.
+    assert payload["scoring_model"] == "foam"
+    assert payload["scoring_model"] != "legacy"
+    # The official game-point result the header renders: 1-1.
+    assert payload["home_game_points"] == 1
+    assert payload["away_game_points"] == 1
+    # The survivor count (the misleading 0-0) is still present as supporting
+    # detail, but it is NOT the figure the header headlines for official play.
+    assert payload["home_survivors"] == 0
+    assert payload["away_survivors"] == 0

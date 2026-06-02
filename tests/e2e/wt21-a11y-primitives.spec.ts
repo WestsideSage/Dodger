@@ -1,4 +1,5 @@
 import { expect, test, type Page, type APIRequestContext } from '@playwright/test';
+import { launchTokenHeaders } from './_token';
 
 // WT-21 — role-based accessibility specs for the shared primitives and the
 // surfaces migrated onto them. Desktop viewport (the product target). These
@@ -8,7 +9,9 @@ import { expect, test, type Page, type APIRequestContext } from '@playwright/tes
 const baseUrl = 'http://127.0.0.1:8000';
 
 async function freshCareer(request: APIRequestContext, slug: string): Promise<void> {
+  const headers = await launchTokenHeaders(request, baseUrl);
   const create = await request.post(`${baseUrl}/api/saves/new`, {
+    headers,
     data: { name: `e2e-wt21-${slug}-${Date.now()}`, club_id: 'aurora' },
   });
   expect(create.ok()).toBeTruthy();
@@ -156,7 +159,7 @@ test.describe('WT-21 PolicyEditor container modal is an accessible Dialog', () =
 
 test.describe('WT-21 SaveMenu club selection is a keyboard radiogroup', () => {
   async function openTakeoverForm(page: Page, request: APIRequestContext): Promise<void> {
-    await request.post(`${baseUrl}/api/saves/unload`);
+    await request.post(`${baseUrl}/api/saves/unload`, { headers: await launchTokenHeaders(request, baseUrl) });
     await page.goto(baseUrl);
     await expect(page.getByTestId('save-menu')).toBeVisible({ timeout: 10_000 });
     await page.getByTestId('new-game-tab').click();

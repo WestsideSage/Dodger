@@ -3,12 +3,14 @@
 Pure primitives in, ``ManagerLesson`` (or ``None``) out — no match or database
 required. The faithfulness fences under test:
 
-* a lesson surfaces ONLY on an inconclusive loss;
+* a lesson surfaces on an inconclusive loss OR an inconclusive (even, close)
+  draw — a win never gets one;
 * an ignored recommendation ALWAYS wins;
 * otherwise the strongest controllable signal by severity (deterministic);
 * when NO controllable signal applies, the honest "nothing you controlled"
   message — never a fabricated lever;
-* a conclusive result yields no lesson at all (Primary Factor unchanged).
+* a conclusive result yields no lesson at all (Primary Factor unchanged);
+* the result-flavored copy never misdescribes a draw as a loss (ADR 0002).
 """
 
 from dodgeball_sim.manager_lesson import (
@@ -68,13 +70,93 @@ def test_win_gets_no_lesson_even_if_inconclusive():
     assert lesson is None
 
 
-def test_draw_gets_no_lesson():
+def test_conclusive_draw_gets_no_lesson():
+    # A draw the Primary Factor pinned on a real factor (factor_is_inconclusive
+    # =False) is answered by that factor; no Manager Lesson.
+    lesson = derive_manager_lesson(
+        result="Draw",
+        factor_is_inconclusive=False,
+        roster_edge={"net_ovr": -30},
+        fatigue={"name": "Jordan", "stamina": 10},
+    )
+    assert lesson is None
+
+
+# ---------------------------------------------------------------------------
+# Owner-approved scope: an inconclusive DRAW also yields a lesson (a draw at an
+# even matchup is exactly "what could I have changed to edge it?").
+# ---------------------------------------------------------------------------
+
+
+def test_inconclusive_draw_with_lever_surfaces_controllable_lesson():
     lesson = derive_manager_lesson(
         result="Draw",
         factor_is_inconclusive=True,
-        roster_edge={"net_ovr": -30},
+        roster_edge={"net_ovr": -24},
     )
-    assert lesson is None
+    assert lesson is not None
+    assert lesson.code == ROSTER_EDGE
+    assert lesson.controllable is True
+
+
+def test_inconclusive_draw_no_lever_is_honest_no_lever_not_loss_copy():
+    # No controllable signal on an even, rested draw -> the honest no-lever
+    # message. Faithfulness: the copy must NOT claim the draw was lost.
+    lesson = derive_manager_lesson(
+        result="Draw",
+        factor_is_inconclusive=True,
+        ignored_recommendation=None,
+        roster_edge=None,
+        fatigue=None,
+        weakest_role_group=None,
+    )
+    assert lesson is not None
+    assert lesson.code == NO_LEVER
+    assert lesson.controllable is False
+    # The loss-only phrasing ("went the other way") must be absent on a draw;
+    # the draw says it "stayed level".
+    assert "went the other way" not in lesson.sentence
+    assert "stayed level" in lesson.sentence
+
+
+def test_inconclusive_draw_weakest_group_copy_does_not_say_lost():
+    # The weakest-group lever's result-flavored clause must not say "lost this
+    # match" on a draw.
+    lesson = derive_manager_lesson(
+        result="Draw",
+        factor_is_inconclusive=True,
+        weakest_role_group={"archetype": "wall", "avg_overall": 48, "count": 3},
+    )
+    assert lesson is not None
+    assert lesson.code == WEAKEST_ROLE_GROUP
+    assert "lost this match" not in lesson.sentence
+    assert "kept this match even" in lesson.sentence
+
+
+def test_inconclusive_draw_ignored_recommendation_still_wins():
+    lesson = derive_manager_lesson(
+        result="Draw",
+        factor_is_inconclusive=True,
+        ignored_recommendation={
+            "advised_intent": "Preserve Health",
+            "selected_intent": "Win Now",
+            "reason": "2 starters are low on stamina; Preserve Health protects them.",
+        },
+        roster_edge={"net_ovr": -50},
+    )
+    assert lesson is not None
+    assert lesson.code == IGNORED_RECOMMENDATION
+
+
+def test_loss_no_lever_copy_unchanged():
+    # Regression: the loss no-lever copy keeps its original wording.
+    lesson = derive_manager_lesson(
+        result="Loss",
+        factor_is_inconclusive=True,
+    )
+    assert lesson is not None
+    assert lesson.code == NO_LEVER
+    assert "went the other way" in lesson.sentence
 
 
 # ---------------------------------------------------------------------------

@@ -45,3 +45,17 @@ def test_seed_tiebreaker_narrative_mentions_tiebreaker() -> None:
     # Home is the better seed (2 < 3) so home advances.
     assert outcome.winner_id == match.home_club_id
     assert outcome.narrative_note  # non-empty
+
+
+def test_top_seed_tiebreaker_narrative_is_one_indexed() -> None:
+    # Regression: seeds are stored 0-indexed but players read them 1-based.
+    # The narrative must render the *displayed* seed (winner_seed + 1), so the
+    # TOP seed (0-indexed 0) reads "#1" — never the off-by-one "#0".
+    match = scripted_tied_semifinal(home_seed=0, away_seed=3, regulation_score=(0, 0))
+    outcome = resolve_playoff_match(match)
+    assert outcome.decided_by == "seed_tiebreaker"
+    # Home holds the better seed (0 < 3) so home advances.
+    assert outcome.winner_id == match.home_club_id
+    assert outcome.loser_id == match.away_club_id
+    assert "#1" in outcome.narrative_note
+    assert "#0" not in outcome.narrative_note

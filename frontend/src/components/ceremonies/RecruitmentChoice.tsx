@@ -19,7 +19,9 @@ export function RecruitmentChoice({
   const signingLimit = beat.payload.signing_limit ?? 3;
   const remainingSignings = beat.payload.remaining_signings ?? Math.max(0, signingLimit - signedCount);
   const rosterSize = beat.payload.roster_size ?? 0;
-  const rosterLimit = beat.payload.roster_limit ?? 9;
+  // Fallback mirrors MAX_USER_ROSTER (12) on the backend — a missing field must
+  // not render a stale 9-player cap that contradicts the real recruiting gate.
+  const rosterLimit = beat.payload.roster_limit ?? 12;
   const [manualSelectedId, setSelectedId] = useState<string | null>(
     prospects[0]?.prospect_id ?? null,
   );

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { launchTokenHeaders } from './_token';
 
 /**
  * WT-22 — decision-proof: a CHANGED decision must reach the rendered
@@ -69,10 +70,13 @@ test('a changed tactic is recorded by the sim AND the rendered aftermath matches
   page,
   request,
 }) => {
-  // (1) Fresh career. The save-creation POST is launch-token-exempt (existing
-  //     e2e specs rely on this); every later mutation rides the UI.
+  // (1) Fresh career. The save-creation POST is a raw APIRequestContext call,
+  //     so it must carry the WT-12 launch token itself (the guard has no route
+  //     exemption); every later mutation rides the UI, which attaches the token
+  //     automatically via the injected <meta> tag.
   const saveName = `e2e-wt22-decision-${Date.now()}`;
   const create = await request.post(`${baseUrl}/api/saves/new`, {
+    headers: await launchTokenHeaders(request, baseUrl),
     data: { name: saveName, club_id: 'aurora' },
   });
   expect(create.ok()).toBeTruthy();

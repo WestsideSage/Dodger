@@ -170,7 +170,12 @@ def test_standings_endpoint_surfaces_latest_visible_ai_approach():
 
     assert response.status_code == 200
     northwood = next(row for row in response.json()["standings"] if row["club_id"] == "northwood")
-    assert northwood["latest_approach"] == "Prepare For Playoffs"
+    # Bug #7: standings labels the stored program intent with the command-center
+    # display vocabulary (the surface where the player SETS it), not the raw
+    # intent id. "Prepare For Playoffs" -> "Control" — the same translation the
+    # voice-verdict surface already applies (see test_voice_verdict.py). The
+    # stored intent above is unchanged; only the player-facing label is mapped.
+    assert northwood["latest_approach"] == "Control"
 
 
 def test_sim_command_endpoint_supports_web_pacing_modes_and_updates_standings():

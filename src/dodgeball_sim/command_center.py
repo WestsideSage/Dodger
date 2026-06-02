@@ -151,6 +151,15 @@ def aggregate_opponent_tape(
     return tape
 
 
+# Player-facing labels for the two archetype families the cold-start read can
+# speak to. These are the SAME binary split _THROW_ARCHETYPES/_DEFENSE_ARCHETYPES
+# encode — we name them for display, we do not invent a new taxonomy.
+_GROUP_LABELS = {
+    "throwers": "throwing-oriented",
+    "defenders": "defense-oriented",
+}
+
+
 def _roster_shape(opponent_roster: list[Player]) -> dict[str, int] | None:
     """Derivable roster-shape fact: throwing- vs defense-oriented archetypes.
 
@@ -169,10 +178,61 @@ def _roster_shape(opponent_roster: list[Player]) -> dict[str, int] | None:
     }
 
 
+def _position_groups(opponent_roster: list[Player]) -> dict[str, Any] | None:
+    """Derivable strongest/weakest position-group read (BUG #10 enrichment).
+
+    Reuses the SAME thrower/defender archetype partition ``_roster_shape`` uses —
+    no hidden data, no new taxonomy. For each family we count members and average
+    their visible ``overall_skill`` (the OVR the roster screen already shows). The
+    *strongest* group is the higher-average family, the *weakest* the lower; ties
+    and single-family rosters are handled explicitly. Returns ``None`` when no
+    member falls into either named family (nothing derivable to rank).
+    """
+    if not opponent_roster:
+        return None
+
+    families: dict[str, list[Player]] = {
+        "throwers": [p for p in opponent_roster if p.archetype in _THROW_ARCHETYPES],
+        "defenders": [p for p in opponent_roster if p.archetype in _DEFENSE_ARCHETYPES],
+    }
+    present = {key: members for key, members in families.items() if members}
+    if not present:
+        return None
+
+    def _avg_ovr(members: list[Player]) -> float:
+        return round(sum(p.overall_skill() for p in members) / len(members), 1)
+
+    summary = {
+        key: {
+            "label": _GROUP_LABELS[key],
+            "count": len(members),
+            "avg_ovr": _avg_ovr(members),
+        }
+        for key, members in present.items()
+    }
+
+    # Rank by average OVR (then count, then a stable key) — all from visible data.
+    ranked = sorted(
+        summary.items(),
+        key=lambda item: (item[1]["avg_ovr"], item[1]["count"], item[0]),
+        reverse=True,
+    )
+    strongest = ranked[0][1]
+    # With only one family present, strongest and weakest are the same group; the
+    # frontend can collapse that. Never fabricate a second group.
+    weakest = ranked[-1][1]
+    return {
+        "strongest": strongest,
+        "weakest": weakest,
+        "single_family": len(present) == 1,
+    }
+
+
 def build_cold_start_intel(
     opponent: Any,
     opponent_roster: list[Player],
     key_threat: Mapping[str, Any] | None,
+    opponent_record: str | None = None,
 ) -> dict[str, Any]:
     """Always-derivable, already-player-facing opponent facts for the scout.
 
@@ -187,15 +247,34 @@ def build_cold_start_intel(
       NOT recompute it via ``classify_club_archetype`` (that helper only seeds the
       stored value at career setup); recomputing risks showing the same fact two
       different ways if the roster drifted since setup.
+    * ``roster_shape`` / ``position_groups`` — the throwing- vs defense-oriented
+      archetype split of the visible roster, plus which family is the opponent's
+      strongest and weakest by visible OVR (BUG #10 enrichment).
     * ``threat`` — the key threat already derived by ``build_matchup_details``.
+    * ``recent_form`` — the opponent's win/loss/draw record this season, exactly
+      the already-player-facing ``opponent_record`` string the matchup header and
+      scout grid display. Passed in (not re-queried) so the scout can never
+      disagree with those surfaces.
+
+    Fog-of-war (WT-30): this function structurally cannot read the opponent's
+    upcoming/live ``CoachPolicy`` — it accepts only the roster, the already-shown
+    key threat, and the already-shown record. Nothing here exposes the hidden
+    plan for the next match.
     """
     program_archetype = getattr(opponent, "program_archetype", None) or "Balanced Rebuild"
+    # Treat placeholder records ("0-0", "n/a", empty) as "no form yet" so we do
+    # not surface a vacuous "0-0" as if it were a meaningful recent-form read.
+    recent_form = None
+    if opponent_record and str(opponent_record).strip() not in {"", "0-0", "n/a"}:
+        recent_form = str(opponent_record).strip()
     return {
         "program_archetype": program_archetype,
         "roster_shape": _roster_shape(opponent_roster),
+        "position_groups": _position_groups(opponent_roster),
         # Reuse the threat already derived by build_matchup_details (read-only);
         # the scout does not recompute or expose anything new about it.
         "threat": dict(key_threat) if key_threat else None,
+        "recent_form": recent_form,
     }
 
 
@@ -347,6 +426,10 @@ def build_command_center_state(conn: sqlite3.Connection) -> dict[str, Any]:
             clubs.get(opponent_id) if opponent_id else None,
             opponent_roster,
             matchup_details.get("key_threat"),
+            # Already-player-facing W-L-D record from build_matchup_details — passed
+            # through (not re-queried) so the cold-start form can never disagree
+            # with the matchup header / scout grid that show the same string.
+            matchup_details.get("opponent_record"),
         ),
         "default_lineup": load_lineup_default(conn, player_club_id),
         "department_heads": department_heads,

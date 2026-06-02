@@ -808,6 +808,20 @@ export function PreSimDashboard({
                             Roster shape: {details.tactical_diff.cold_start.roster_shape.throwers} throwing-oriented · {details.tactical_diff.cold_start.roster_shape.defenders} defense-oriented
                           </span>
                         )}
+                        {details.tactical_diff.cold_start.position_groups && (
+                          <span data-testid="cold-start-position-groups" style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                            {details.tactical_diff.cold_start.position_groups.single_family ? (
+                              <>Group depth: only a <b style={{ color: '#e2e8f0' }}>{details.tactical_diff.cold_start.position_groups.strongest.label}</b> core ({details.tactical_diff.cold_start.position_groups.strongest.avg_ovr} avg OVR)</>
+                            ) : (
+                              <>Strongest group: <b style={{ color: '#e2e8f0' }}>{details.tactical_diff.cold_start.position_groups.strongest.label}</b> ({details.tactical_diff.cold_start.position_groups.strongest.avg_ovr} avg OVR) · Weakest: {details.tactical_diff.cold_start.position_groups.weakest.label} ({details.tactical_diff.cold_start.position_groups.weakest.avg_ovr} avg OVR)</>
+                            )}
+                          </span>
+                        )}
+                        {details.tactical_diff.cold_start.recent_form && (
+                          <span data-testid="cold-start-recent-form" style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                            Recent form: <b style={{ color: '#e2e8f0' }}>{details.tactical_diff.cold_start.recent_form}</b> this season ({details.tactical_diff.cold_start.recent_form.split('-').length === 3 ? 'W-L-D' : 'W-L'})
+                          </span>
+                        )}
                         {details.tactical_diff.cold_start.threat && (
                           <span data-testid="cold-start-threat" style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
                             Top threat: <b style={{ color: '#e2e8f0' }}>{details.tactical_diff.cold_start.threat.name}</b> · {details.tactical_diff.cold_start.threat.archetype} · {details.tactical_diff.cold_start.threat.ovr} OVR
@@ -943,6 +957,56 @@ export function PreSimDashboard({
               ))}
             </div>
 
+            {/* BUG #6: "Confirm Lineup" must be an INFORMED confirmation, not a
+                blind rubber-stamp. Surface the exact six being confirmed (the
+                canonical fielded-6 the sim will field — always populated, see
+                command_center._lineup_recommendation) right at the confirm
+                point, so the player sees WHO they are confirming before the gate
+                clears. To CHANGE the six, the player edits the game plan; this
+                read-only preview just makes the confirm deliberate. */}
+            {!planConfirmed && !isBye && onConfirmLineup && !confirmLineupGateReady && (
+              <div
+                className="cc-confirm-lineup-preview"
+                data-testid="confirm-lineup-preview"
+                style={{ marginTop: '0.5rem', padding: '0.5rem 0.6rem', background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(30,41,59,0.9)', borderRadius: '5px' }}
+              >
+                <span className="lbl" style={{ fontSize: '0.7rem', color: '#475569' }}>
+                  The six you are confirming
+                </span>
+                {activePlayers.length > 0 ? (
+                  <ol
+                    data-testid="confirm-lineup-list"
+                    style={{ listStyle: 'none', padding: 0, margin: '0.35rem 0 0', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}
+                  >
+                    {activePlayers.map((player, index) => (
+                      <li
+                        key={player.id}
+                        data-testid="confirm-lineup-player"
+                        style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.6rem', fontSize: '0.8rem' }}
+                      >
+                        <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.45rem' }}>
+                          <span className="lbl" style={{ fontSize: '0.66rem', color: '#475569' }}>{index + 1}</span>
+                          <span style={{ fontWeight: 600, color: '#e2e8f0' }}>{player.name}</span>
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.55rem' }}>
+                          <span className="val mono" style={{ color: 'var(--dm-cyan)' }}>{player.overall} OVR</span>
+                          {typeof player.stamina === 'number' && (
+                            <span className="val mono" style={{ fontSize: '0.72rem', color: player.stamina < 60 ? '#f59e0b' : '#94a3b8' }}>
+                              {player.stamina} STA
+                            </span>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p data-testid="confirm-lineup-empty" style={{ margin: '0.35rem 0 0', color: '#f59e0b', fontSize: '0.78rem' }}>
+                    No lineup is available yet. Build the game plan first.
+                  </p>
+                )}
+              </div>
+            )}
+
             {!planConfirmed && !isBye && (onScout || onConfirmLineup) && (
               <div className="cc-readiness-actions" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
                 {onScout && !scoutGateReady && (
@@ -961,10 +1025,10 @@ export function PreSimDashboard({
                     type="button"
                     data-testid="confirm-lineup"
                     className="command-secondary-button"
-                    disabled={saving}
+                    disabled={saving || activePlayers.length === 0}
                     onClick={onConfirmLineup}
                   >
-                    Confirm Lineup
+                    Confirm These Six
                   </button>
                 )}
               </div>
@@ -1125,6 +1189,7 @@ export function PreSimDashboard({
           }}
         />
       )}
+
     </div>
   );
 }

@@ -1,10 +1,15 @@
-"""Deterministic "Manager Lesson" for an inconclusive loss (WT-32).
+"""Deterministic "Manager Lesson" for an inconclusive loss or draw (WT-32).
 
 The Primary Factor (``match_explanation.py``) answers *what decided the match*
 from event-derived evidence. When the match was genuinely close and no single
 event-derived factor is supported, that contract honestly returns a soft
 "no one thing to fix" inconclusive fallback. That answers the wrong question
 for a new player who is really asking **"what could *I* have changed?"**.
+
+This applies equally to an inconclusive **loss** and an inconclusive **draw**:
+a draw at an even, close matchup is exactly the "what could I have changed to
+edge it?" moment. A win is still out of scope (you got the result), and a
+*conclusive* loss/draw is answered by the event-derived Primary Factor.
 
 This module is the *adjacent* answer to that second question. Given the
 already-resolved aftermath primitives — the player's ignored advisory
@@ -113,14 +118,16 @@ def derive_manager_lesson(
     fatigue: Mapping[str, Any] | None = None,
     weakest_role_group: Mapping[str, Any] | None = None,
 ) -> ManagerLesson | None:
-    """Return the Manager Lesson for an inconclusive loss, else ``None``.
+    """Return the Manager Lesson for an inconclusive loss or draw, else ``None``.
 
     Returns ``None`` (no lesson at all) when the result is not an inconclusive
-    loss — i.e. the Primary Factor was conclusive, or the result was not a loss.
-    The Manager Lesson answers "what could *I* have changed?", which only makes
-    sense on a loss the engine could not pin on a single event-derived factor.
+    loss/draw — i.e. the Primary Factor was conclusive, or the result was a win.
+    The Manager Lesson answers "what could *I* have changed?", which makes sense
+    on a loss OR a draw the engine could not pin on a single event-derived
+    factor (a draw at an even matchup is exactly "what could I have changed to
+    edge it?"). A win is out of scope: you already got the result.
 
-    When it IS an inconclusive loss, this ALWAYS returns a ``ManagerLesson``:
+    When it IS an inconclusive loss/draw, this ALWAYS returns a ``ManagerLesson``:
     a controllable lever when one applies, otherwise the honest no-lever
     message. It never returns ``None`` in that case, so the player always gets a
     truthful answer rather than silence.
@@ -137,11 +144,13 @@ def derive_manager_lesson(
       thinnest position group. Only pass it when notably below the rest.
     """
 
-    # Gate: a lesson exists ONLY for an inconclusive loss. A conclusive result
-    # (decisive variance copy or a real event-derived factor) gets no lesson —
-    # the Primary Factor already answered the question. A win/draw is out of
-    # scope: "what could I have changed?" is a loss question.
-    if result != "Loss" or not factor_is_inconclusive:
+    # Gate: a lesson exists ONLY for an inconclusive loss or draw. A conclusive
+    # result (decisive variance copy or a real event-derived factor) gets no
+    # lesson — the Primary Factor already answered the question. A win is out of
+    # scope: "what could I have changed?" is not a question you ask after a win.
+    # A draw at an even matchup is explicitly in scope (owner-approved): it is
+    # exactly the "what could I have changed to edge it?" moment.
+    if result not in ("Loss", "Draw") or not factor_is_inconclusive:
         return None
 
     # 1) An ignored recommendation ALWAYS wins (resolution rule). It is the most
@@ -156,7 +165,7 @@ def derive_manager_lesson(
     signals: list[_Signal] = []
     _add_roster_edge(signals, roster_edge)
     _add_fatigue(signals, fatigue)
-    _add_weakest_role_group(signals, weakest_role_group)
+    _add_weakest_role_group(signals, weakest_role_group, result=result)
 
     if signals:
         signals.sort(
@@ -168,7 +177,7 @@ def derive_manager_lesson(
         return signals[0].factor
 
     # 3) No controllable signal applied — say so honestly. NEVER fabricate.
-    return _no_lever_lesson()
+    return _no_lever_lesson(result=result)
 
 
 # ---------------------------------------------------------------------------
@@ -286,6 +295,8 @@ def _add_fatigue(
 def _add_weakest_role_group(
     signals: list[_Signal],
     group: Mapping[str, Any] | None,
+    *,
+    result: str = "Loss",
 ) -> None:
     if not group:
         return
@@ -304,9 +315,16 @@ def _add_weakest_role_group(
     # base severity of the three levers; lower average OVR raises it modestly.
     severity = max(0.0, (60 - avg_overall) / 30.0)
     chips = (f"{display}: {avg_overall} avg OVR", f"x{count}")
+    # Faithfulness (ADR 0002): the result-flavored clause must match what
+    # actually happened. A draw didn't "lose" the match; say "decide" instead.
+    decided_clause = (
+        "It's not what lost this match on its own"
+        if result == "Loss"
+        else "It's not what kept this match even on its own"
+    )
     sentence = (
         f"Your thinnest group is {display} at {avg_overall} average OVR across {count}. "
-        "It's not what lost this match on its own, but it's the squad hole most worth "
+        f"{decided_clause}, but it's the squad hole most worth "
         "closing in recruiting or development."
     )
     signals.append(
@@ -324,14 +342,21 @@ def _add_weakest_role_group(
     )
 
 
-def _no_lever_lesson() -> ManagerLesson:
+def _no_lever_lesson(*, result: str = "Loss") -> ManagerLesson:
+    # Faithfulness (ADR 0002): the closing clause must match the real result. A
+    # loss "went the other way"; a draw "stayed level" — never claim the draw
+    # was lost.
+    closing = (
+        "it came down to the margins and went the other way. Run it back."
+        if result == "Loss"
+        else "it came down to the margins and stayed level. Run it back."
+    )
     return ManagerLesson(
         code=NO_LEVER,
         title="Nothing you controlled would have changed this",
         sentence=(
             "Honestly, nothing you controlled would have flipped this one. Your six "
-            "were a fair match, rested, and well-drilled — it came down to the margins "
-            "and went the other way. Run it back."
+            f"were a fair match, rested, and well-drilled — {closing}"
         ),
         controllable=False,
         evidence_chips=(),

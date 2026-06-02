@@ -236,7 +236,13 @@ def build_beat_payload(
         return {}
 
     if beat_key == "recap":
-        return {
+        # Rank the recap table by the EXACT playoff-seeding key (not load_standings'
+        # order). On an official points-tie the two can diverge, which would let the
+        # table highlight the player inside the top-cut line while the missed-playoffs
+        # banner (also seeded by this key) says they missed — one fact, two ways, on
+        # one screen. Seeding the table here makes row rank == banner finish ==
+        # playoff qualification by construction.
+        recap: dict[str, Any] = {
             "standings": [
                 {
                     "rank": index + 1,
@@ -248,9 +254,13 @@ def build_beat_payload(
                     "diff": row.elimination_differential,
                     "is_player_club": row.club_id == player_club_id,
                 }
-                for index, row in enumerate(standings)
+                for index, row in enumerate(sorted(standings, key=_playoff_seeding_key))
             ]
         }
+        missed = _missed_playoffs_block(conn, standings, player_club_id, season=season)
+        if missed is not None:
+            recap["missed_playoffs"] = missed
+        return recap
 
     if beat_key == "records_ratified":
         records_book_empty = len(load_league_records(conn)) == 0
@@ -570,6 +580,96 @@ def _parse_hof_entries(raw: Optional[str]) -> list[dict[str, Any]]:
             }
         )
     return out
+
+
+def _playoff_seeding_key(row):
+    """The exact ordering playoff qualification uses (mirrors playoffs.top_four_seeds).
+
+    The recap table, the missed-playoffs finish, and the playoff cut are all
+    ranked by this single key so a club's displayed rank can never contradict
+    whether it qualified. (Distinct from load_standings' official-season game-point
+    tiebreaker, which orders the in-season Standings screen.)
+    """
+    return (-row.points, -row.elimination_differential, row.club_id)
+
+
+def _missed_playoffs_block(
+    conn: sqlite3.Connection,
+    standings: list,
+    player_club_id: str,
+    *,
+    season: Any = None,
+) -> Optional[dict[str, Any]]:
+    """Post-hoc "you missed the playoff cut" facts for the recap beat, or ``None``.
+
+    Work item #3 (2026-06 playtest): a player who fast-forwarded to "pre-playoffs"
+    (or simply finished outside the top seeds) was dropped into the offseason with
+    no statement that their season ended without a berth. This returns the raw
+    numbers the recap banner needs — ``finish`` (1-based position), ``cutoff``
+    (``PLAYOFF_FIELD_SIZE``), ``total`` (real club count) — and ``None`` when the
+    club MADE the cut, so the banner only ever appears on a genuine miss.
+
+    Faithfulness fences (ADR 0002):
+
+    * The finish position is derived from the EXACT seeding key the playoffs use
+      (``-points, -elimination_differential, club_id`` — mirrored from
+      ``playoffs.top_four_seeds``), NOT the recap's display order. For official
+      seasons ``load_standings`` breaks ties on game points, which can diverge
+      from the seeding tiebreaker; sourcing ``finish`` from the seeding key makes
+      ``made`` ⇔ ``finish <= cutoff`` true by construction, so the banner can
+      never say "finished Nth, top N qualify, you missed".
+    * Playoff-field membership prefers the PERSISTED bracket seeds (literally the
+      clubs that played the playoffs) and falls back to ``top_four_seeds`` over
+      the live standings — both agree in normal play; the bracket is authoritative
+      when present. "Missed the cut" is therefore distinct from "lost in the
+      playoffs": a club in ``bracket.seeds`` that lost its semifinal still made it
+      and gets no banner.
+    """
+    if not player_club_id or not standings:
+        return None
+    if not any(getattr(row, "club_id", None) == player_club_id for row in standings):
+        return None
+
+    from .playoffs import PLAYOFF_FIELD_SIZE, top_four_seeds
+
+    cutoff = PLAYOFF_FIELD_SIZE
+    total = len(standings)
+    # A league smaller than the cut has no playoff race to miss (and
+    # create_semifinal_bracket would never have run), so there is nothing to
+    # surface.
+    if total <= cutoff:
+        return None
+
+    # Authoritative playoff field: the persisted bracket seeds when a bracket
+    # was created (who actually played), else the live top-four seeding.
+    field: set[str] = set()
+    season_id = getattr(season, "season_id", None)
+    if season_id:
+        try:
+            from .persistence import load_playoff_bracket
+
+            bracket = load_playoff_bracket(conn, season_id)
+        except Exception:
+            bracket = None
+        if bracket is not None and bracket.seeds:
+            field = set(bracket.seeds)
+    if not field:
+        field = set(top_four_seeds(standings))
+
+    if player_club_id in field:
+        return None  # made the cut — no missed-playoffs banner
+
+    # Finish position from the SAME key top_four_seeds sorts by, so the displayed
+    # cutoff and this position can never contradict the membership decision.
+    seeded = sorted(standings, key=_playoff_seeding_key)
+    finish = next(
+        (index + 1 for index, row in enumerate(seeded) if row.club_id == player_club_id),
+        None,
+    )
+    if finish is None:
+        return None
+
+    return {"finish": int(finish), "cutoff": int(cutoff), "total": int(total)}
 
 
 def load_all_clubs(conn: sqlite3.Connection):
