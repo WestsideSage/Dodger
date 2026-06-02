@@ -263,11 +263,18 @@ def ensure_default_web_career(
     *,
     selected_club_id: str = "aurora",
     root_seed: int = 20260426,
+    ruleset_selection: str | None = "official_foam",
 ) -> None:
+    # WT-17: when this bootstrap path mints a brand-new career it defaults to
+    # the official foam ruleset (matching the frontend / NewSaveRequest), so an
+    # automation-created career is not silently generic. Existing saves with an
+    # active season are left untouched.
     create_schema(conn)
     if get_state(conn, "active_season_id") and get_state(conn, "player_club_id"):
         return
-    initialize_curated_manager_career(conn, selected_club_id, root_seed)
+    initialize_curated_manager_career(
+        conn, selected_club_id, root_seed, ruleset_selection=ruleset_selection
+    )
 
 
 __all__ = [

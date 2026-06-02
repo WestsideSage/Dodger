@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 from typing import Any
 
@@ -62,6 +63,28 @@ def looks_like_dodgeball_save(path: Path) -> bool:
             pass
 
 
+def _connect_readonly(path: Path) -> sqlite3.Connection:
+    """Open a save STRICTLY read-only so listing/metadata cannot write to the
+    save database file.
+
+    WT-15: ``read_save_meta`` runs on the save-listing path. Going through
+    ``connect()`` would (a) flip the file into WAL mode (a header write) and
+    (b) tempt callers into running ``create_schema``/migrations, silently
+    upgrading an older save with no backup the moment it is merely listed.
+    A ``mode=ro`` URI handle forbids every write to the database at the SQLite
+    layer, so the listing path reads metadata without changing a single byte of
+    the save ``.db`` itself — it is byte-identical afterward, and no migration or
+    schema upgrade ever runs on a mere listing. (``mode=ro`` guards the database
+    file, not the directory: SQLite may create empty ``-wal``/``-shm`` sidecars
+    on open; the save's data is never written.) Migration happens only on an
+    explicit resume/load through the backed-up path.
+    """
+    uri = f"file:{path.as_posix()}?mode=ro"
+    conn = sqlite3.connect(uri, uri=True, timeout=5.0, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
 def read_save_meta(path: Path) -> dict[str, Any]:
     import os
     last_modified = 0.0
@@ -71,12 +94,16 @@ def read_save_meta(path: Path) -> dict[str, Any]:
         pass
 
     try:
-        conn = connect(path)
+        conn = _connect_readonly(path)
         try:
-            from .persistence import create_schema, load_all_rosters
+            from .persistence import load_all_rosters
 
-            create_schema(conn)
-            # Try loading rosters to verify database compatibility
+            # WT-15: do NOT run create_schema/migrate here. Listing a save must
+            # be non-mutating; an older-schema save is detected as
+            # ``incompatible`` below (or surfaces via the outer guard) and is
+            # migrated only on an explicit resume.
+            #
+            # Try loading rosters to verify database compatibility.
             try:
                 load_all_rosters(conn)
                 is_incompatible = False
@@ -239,7 +266,56 @@ def starting_prospects_payload() -> dict[str, Any]:
     return {"prospects": prospects_out}
 
 
+FOUNDING_ROSTER_MIN = 6
+FOUNDING_ROSTER_MAX = 10
+
+
+def _validate_founding_roster_ids(
+    requested_ids: Any, valid_ids: set[str]
+) -> list[str]:
+    """Validate the founding roster selection BEFORE any file is created.
+
+    WT-14: a founding roster with duplicate or unknown ids must be rejected up
+    front, so no save (not even a temp file) is ever written for a bad request.
+    Returns the ordered list of unique, valid ids on success; raises
+    ``SaveServiceError`` (mapped to 400 by the route) otherwise.
+    """
+    if not isinstance(requested_ids, list):
+        raise SaveServiceError("Roster selection must be a list of player ids.")
+
+    seen: set[str] = set()
+    ordered_unique: list[str] = []
+    for raw in requested_ids:
+        if not isinstance(raw, str) or not raw:
+            raise SaveServiceError("Roster selection contains an invalid player id.")
+        if raw in seen:
+            raise SaveServiceError(
+                "Roster selection contains duplicate player ids."
+            )
+        seen.add(raw)
+        ordered_unique.append(raw)
+
+    unknown = [pid for pid in ordered_unique if pid not in valid_ids]
+    if unknown:
+        raise SaveServiceError(
+            "Roster selection contains unknown player ids."
+        )
+
+    if len(ordered_unique) < FOUNDING_ROSTER_MIN:
+        raise SaveServiceError(
+            f"Must select at least {FOUNDING_ROSTER_MIN} prospects."
+        )
+    if len(ordered_unique) > FOUNDING_ROSTER_MAX:
+        raise SaveServiceError(
+            f"Cannot select more than {FOUNDING_ROSTER_MAX} prospects."
+        )
+
+    return ordered_unique
+
+
 def build_from_scratch_save(saves_dir: Path, request: dict[str, Any]) -> dict[str, str]:
+    import os
+
     from .config import DEFAULT_SCOUTING_CONFIG
     from .league import Club
     from .models import Player, PlayerRatings, PlayerTraits
@@ -264,69 +340,121 @@ def build_from_scratch_save(saves_dir: Path, request: dict[str, Any]) -> dict[st
 
     pool = generate_prospect_pool(2026, DeterministicRNG(12345), DEFAULT_SCOUTING_CONFIG)
     roster_map = {prospect.player_id: prospect for prospect in pool}
-    custom_roster = []
+
+    # WT-14: validate the selection up front. On rejection we have not created
+    # any file, so no partial/corrupt .db can be left behind.
+    roster_ids = _validate_founding_roster_ids(
+        request.get("roster_player_ids"), set(roster_map.keys())
+    )
+
     from .archetype_derivation import derive_archetype
-    for player_id in request["roster_player_ids"]:
-        if player_id in roster_map:
-            prospect = roster_map[player_id]
-            ratings = PlayerRatings(
-                accuracy=prospect.hidden_ratings["accuracy"],
-                power=prospect.hidden_ratings["power"],
-                dodge=prospect.hidden_ratings["dodge"],
-                catch=prospect.hidden_ratings["catch"],
-                stamina=prospect.hidden_ratings["stamina"],
-                tactical_iq=prospect.hidden_ratings.get("tactical_iq", 50.0),
-                catch_courage=prospect.hidden_ratings.get("catch_courage", 50.0),
-                throw_selection_iq=prospect.hidden_ratings.get("throw_selection_iq", 50.0),
-                conditioning_curve=prospect.hidden_ratings.get("conditioning_curve", 50.0),
-            ).apply_bounds()
-            custom_roster.append(
-                Player(
-                    id=prospect.player_id,
-                    name=prospect.name,
-                    age=prospect.age,
-                    club_id=club_id,
-                    newcomer=True,
-                    ratings=ratings,
-                    archetype=derive_archetype(ratings),
-                    traits=PlayerTraits(
-                        potential=min(100.0, max(70.0, max(prospect.hidden_ratings.values()) + 8.0)),
-                        growth_curve=50.0,
-                        consistency=0.5,
-                        pressure=0.5,
-                    ),
-                )
+    custom_roster = []
+    for player_id in roster_ids:
+        prospect = roster_map[player_id]
+        ratings = PlayerRatings(
+            accuracy=prospect.hidden_ratings["accuracy"],
+            power=prospect.hidden_ratings["power"],
+            dodge=prospect.hidden_ratings["dodge"],
+            catch=prospect.hidden_ratings["catch"],
+            stamina=prospect.hidden_ratings["stamina"],
+            tactical_iq=prospect.hidden_ratings.get("tactical_iq", 50.0),
+            catch_courage=prospect.hidden_ratings.get("catch_courage", 50.0),
+            throw_selection_iq=prospect.hidden_ratings.get("throw_selection_iq", 50.0),
+            conditioning_curve=prospect.hidden_ratings.get("conditioning_curve", 50.0),
+        ).apply_bounds()
+        custom_roster.append(
+            Player(
+                id=prospect.player_id,
+                name=prospect.name,
+                age=prospect.age,
+                club_id=club_id,
+                newcomer=True,
+                ratings=ratings,
+                archetype=derive_archetype(ratings),
+                traits=PlayerTraits(
+                    potential=min(100.0, max(70.0, max(prospect.hidden_ratings.values()) + 8.0)),
+                    growth_curve=50.0,
+                    consistency=0.5,
+                    pressure=0.5,
+                ),
             )
-
-    if len(custom_roster) < 6:
-        raise SaveServiceError("Must select at least 6 prospects.")
-
-    conn = connect(path)
-    try:
-        initialize_curated_manager_career(
-            conn,
-            club_id,
-            int(request.get("root_seed", 20260426)),
-            custom_club=custom_club,
-            custom_roster=custom_roster,
-            ruleset_selection=request.get("ruleset_selection"),
         )
-        set_state(conn, "coach_backstory", request["coach_backstory"])
 
-        # Seed 3 warm prospects from the active career pool.
-        remaining_prospects = load_prospect_pool(conn, class_year=1)
-        remaining_prospects.sort(key=lambda p: (-p.pipeline_tier, p.player_id))
-        warm = remaining_prospects[:3]
-        warm_actions = {
-            p.player_id: {"scouted": True, "contacted": True}
-            for p in warm
-        }
-        set_state(conn, "prospect_recruitment_actions_json", json.dumps(warm_actions))
+    # WT-14: build into a temp file, then atomically rename into place. A crash
+    # mid-build leaves only a temp artifact (cleaned below), never a half-written
+    # save at the real path.
+    tmp_path = path.with_name(f".{safe_name}.db.tmp")
+    _cleanup_sqlite_file(tmp_path)
+    try:
+        conn = connect(tmp_path)
+        try:
+            initialize_curated_manager_career(
+                conn,
+                club_id,
+                int(request.get("root_seed", 20260426)),
+                custom_club=custom_club,
+                custom_roster=custom_roster,
+                ruleset_selection=request.get("ruleset_selection"),
+            )
+            set_state(conn, "coach_backstory", request["coach_backstory"])
 
-        conn.commit()
-    finally:
-        conn.close()
+            # Seed 3 warm prospects from the active career pool.
+            remaining_prospects = load_prospect_pool(conn, class_year=1)
+            remaining_prospects.sort(key=lambda p: (-p.pipeline_tier, p.player_id))
+            warm = remaining_prospects[:3]
+            warm_actions = {
+                p.player_id: {"scouted": True, "contacted": True}
+                for p in warm
+            }
+            set_state(conn, "prospect_recruitment_actions_json", json.dumps(warm_actions))
+
+            conn.commit()
+        finally:
+            conn.close()
+        # Fold the WAL back into the main file so the rename moves a complete DB.
+        _checkpoint_and_drop_wal(tmp_path)
+        os.replace(tmp_path, path)
+    except Exception:
+        _cleanup_sqlite_file(tmp_path)
+        # Never leave a partial save at the real path either.
+        _cleanup_sqlite_file(path)
+        raise
     return {"status": "ok", "path": str(path)}
+
+
+def _cleanup_sqlite_file(path: Path) -> None:
+    """Remove a SQLite file and its WAL/SHM sidecars, ignoring absence."""
+    for suffix in ("", "-wal", "-shm"):
+        sidecar = path if not suffix else path.with_name(path.name + suffix)
+        try:
+            sidecar.unlink()
+        except FileNotFoundError:
+            pass
+        except OSError:
+            pass
+
+
+def _checkpoint_and_drop_wal(path: Path) -> None:
+    """Checkpoint a WAL-mode DB and drop its sidecars so a single-file rename
+    moves a complete, self-contained database."""
+    try:
+        conn = connect(path)
+        try:
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            conn.execute("PRAGMA journal_mode=DELETE")
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        pass
+    for suffix in ("-wal", "-shm"):
+        sidecar = path.with_name(path.name + suffix)
+        try:
+            sidecar.unlink()
+        except FileNotFoundError:
+            pass
+        except OSError:
+            pass
 
 
 def list_clubs_payload() -> dict[str, Any]:

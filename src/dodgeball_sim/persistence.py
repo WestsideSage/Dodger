@@ -2705,8 +2705,13 @@ def load_career_state_cursor(conn: sqlite3.Connection) -> "CareerStateCursor":
     try:
         payload = json.loads(row["value"])
         state = CareerState(payload["state"])
-    except (TypeError, ValueError, KeyError, json.JSONDecodeError):
-        return CareerStateCursor(state=CareerState.SPLASH)
+    except (TypeError, ValueError, KeyError, json.JSONDecodeError) as exc:
+        # A persisted-but-unparseable cursor means the career is damaged. Do not
+        # guess SPLASH: that would let a corrupt career masquerade as a fresh
+        # start. Fail loud so the load/resume path can surface the corruption.
+        raise CorruptSaveError(
+            "Corrupt career state cursor: the saved career position is unreadable."
+        ) from exc
 
     def non_negative_int(value: Any) -> int:
         try:
