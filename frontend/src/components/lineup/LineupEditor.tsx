@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Player } from '../../types';
 import { commandApi } from '../../api/client';
 import { ApiError } from '../../api/client';
 import { TermTip } from '../../legibility';
-import { ActionButton } from '../ui';
+import { ActionButton, Dialog } from '../ui';
 
 const STARTERS_COUNT = 6;
 const ROLE_LABELS = ['Captain', 'Striker', 'Anchor', 'Runner', 'Rookie', 'Utility'];
@@ -67,6 +67,15 @@ export function LineupEditor({ roster, defaultLineup, onClose, onSaved }: Props)
   const [error, setError] = useState<string | null>(null);
   const [errorSlot, setErrorSlot] = useState<number | null>(null);
   const [statusNote, setStatusNote] = useState<string | null>(null);
+  // WT-28 timer-cleanup: the offending-slot red flash auto-clears via setTimeout.
+  // Track the id so closing the editor mid-flash clears it rather than calling
+  // setState on an unmounted dialog.
+  const errorSlotTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (errorSlotTimer.current !== null) clearTimeout(errorSlotTimer.current);
+    };
+  }, []);
 
   const benchPlayers = useMemo(() => {
     const starterSet = new Set(starters);
@@ -99,7 +108,8 @@ export function LineupEditor({ roster, defaultLineup, onClose, onSaved }: Props)
               err.message === 'position_count')
           ) {
             setErrorSlot(offendingSlot);
-            setTimeout(() => setErrorSlot(null), 2000);
+            if (errorSlotTimer.current !== null) clearTimeout(errorSlotTimer.current);
+            errorSlotTimer.current = setTimeout(() => setErrorSlot(null), 2000);
           }
         } else {
           setError('Failed to save lineup.');
@@ -148,36 +158,21 @@ export function LineupEditor({ roster, defaultLineup, onClose, onSaved }: Props)
   }
 
   return (
-    <div
-      role="dialog"
-      aria-label="Lineup Editor"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(2, 6, 23, 0.85)',
-        backdropFilter: 'blur(4px)',
-        zIndex: 1000,
+    <Dialog
+      label="Lineup Editor"
+      onClose={onClose}
+      panelClassName="dm-panel"
+      panelStyle={{
+        width: '100%',
+        maxWidth: '52rem',
+        maxHeight: '90vh',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        borderRadius: 8,
+        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
       }}
-      onClick={onClose}
     >
-      <div
-        className="dm-panel"
-        style={{
-          width: '100%',
-          maxWidth: '52rem',
-          maxHeight: '90vh',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          borderRadius: 8,
-          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
         <div
           style={{
             padding: '1.25rem',
@@ -415,7 +410,14 @@ export function LineupEditor({ roster, defaultLineup, onClose, onSaved }: Props)
             gap: '0.75rem',
           }}
         >
-          <div style={{ fontSize: '0.85rem', minHeight: '1.25rem' }}>
+          {/* WT-21: announce the lineup save outcome. Errors are asserted
+              (role="alert"); the "Saved." / "Reset" note is polite
+              (role="status"). Previously this was a silent coloured span. */}
+          <div
+            role={error ? 'alert' : 'status'}
+            aria-live={error ? 'assertive' : 'polite'}
+            style={{ fontSize: '0.85rem', minHeight: '1.25rem' }}
+          >
             {error && <span style={{ color: '#ef4444' }}>{error}</span>}
             {!error && statusNote && <span style={{ color: '#22d3ee' }}>{statusNote}</span>}
           </div>
@@ -458,7 +460,6 @@ export function LineupEditor({ roster, defaultLineup, onClose, onSaved }: Props)
             <ActionButton onClick={onClose}>Done</ActionButton>
           </div>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }

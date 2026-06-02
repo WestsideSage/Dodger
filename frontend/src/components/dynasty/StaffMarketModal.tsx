@@ -1,6 +1,6 @@
 import { TermTip } from '../../legibility';
 import type { TermId } from '../../legibility';
-import { ActionButton } from '../ui';
+import { ActionButton, Dialog } from '../ui';
 import type { DynastyOfficeResponse } from '../../types';
 
 type StaffCandidate = DynastyOfficeResponse['staff_market']['candidates'][number];
@@ -25,18 +25,18 @@ export function StaffMarketModal({
   onClose: () => void;
 }) {
   return (
-    <div
-      style={{
-        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(0,0,0,0.8)', zIndex: 100,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}
+    <Dialog
+      labelledBy="staff-market-title"
+      label="Staff Market"
+      onClose={onClose}
+      overlayStyle={{ background: 'rgba(0,0,0,0.8)', backgroundColor: undefined, backdropFilter: undefined, padding: undefined, zIndex: 100 }}
+      panelClassName="dm-panel"
+      panelStyle={{ width: '600px', maxHeight: '80vh', overflowY: 'auto' }}
     >
-      <div className="dm-panel" style={{ width: '600px', maxHeight: '80vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem' }}>
           <div>
             <p className="dm-kicker">Program Staff</p>
-            <h2 style={{ margin: '0.25rem 0 0', color: '#fff' }}>Staff Market</h2>
+            <h2 id="staff-market-title" style={{ margin: '0.25rem 0 0', color: '#fff' }}>Staff Market</h2>
           </div>
           <button
             onClick={onClose}
@@ -81,7 +81,6 @@ export function StaffMarketModal({
             No candidates are available this period.
           </div>
         )}
-      </div>
-    </div>
+    </Dialog>
   );
 }

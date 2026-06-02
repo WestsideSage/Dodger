@@ -356,16 +356,30 @@ export function Roster() {
               {roster.map(({ player, starter }, index) => {
                 const isElite = player.potential_tier === 'Elite';
                 return (
-                  <tr 
-                    key={player.id} 
+                  <tr
+                    key={player.id}
                     className={`${isElite ? 'rl-row-elite' : ''} ${starter ? 'rl-row-starter' : ''}`.trim()}
                     style={{ cursor: 'pointer' }}
+                    // WT-21: keep the row a PLAIN table row so the per-column
+                    // rating <td>s stay in the accessibility tree and the
+                    // role-cell TermTip <button> is not nested inside an
+                    // interactive role (an ARIA violation). Mouse users can click
+                    // anywhere on the row; the keyboard/SR activator is the real
+                    // player-name <button> in the name cell below.
                     onClick={() => setSelectedPlayer(player)}
                   >
                     <td className="num rl-rank">{String(index + 1).padStart(2, '0')}</td>
                     <td>
                       <div className="rl-player">
-                        <span className="rl-player-name">{player.name}</span>
+                        <button
+                          type="button"
+                          className="rl-player-name-btn"
+                          aria-label={`${player.name}, OVR ${player.overall}, ${player.role} — open player card`}
+                          style={{ background: 'none', border: 'none', padding: 0, margin: 0, font: 'inherit', textAlign: 'left', cursor: 'pointer' }}
+                          onClick={(e) => { e.stopPropagation(); setSelectedPlayer(player); }}
+                        >
+                          <span className="rl-player-name">{player.name}</span>
+                        </button>
                         <div className="rl-player-meta">
                           <span>Age {player.age}</span>
                           {starter && <span className="rl-pin">●</span>}

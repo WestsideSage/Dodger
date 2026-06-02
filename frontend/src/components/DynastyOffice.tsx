@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CommandCenterPlan, CommandCenterResponse, DynastyOfficeResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
-import { StatusMessage } from './ui';
+import { StatusMessage, Dialog } from './ui';
 import { CredibilityStrip } from './dynasty/CredibilityStrip';
 import { ProspectCard } from './dynasty/ProspectCard';
 import { HistorySubTab } from './dynasty/HistorySubTab';
@@ -116,12 +116,18 @@ function SettingsModal({
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 101, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div className="dm-panel" style={{ width: 'min(92vw, 34rem)', maxHeight: '88vh', overflowY: 'auto' }}>
+    <Dialog
+      labelledBy="program-settings-title"
+      label="Department Orders"
+      onClose={onClose}
+      overlayStyle={{ background: 'rgba(0,0,0,0.8)', backgroundColor: undefined, backdropFilter: undefined, zIndex: 101, padding: '1rem' }}
+      panelClassName="dm-panel"
+      panelStyle={{ width: 'min(92vw, 34rem)', maxHeight: '88vh', overflowY: 'auto' }}
+    >
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.5rem' }}>
           <div>
             <p className="dm-kicker">Program Settings</p>
-            <h2 style={{ margin: '0.25rem 0 0', color: '#fff' }}>Department Orders</h2>
+            <h2 id="program-settings-title" style={{ margin: '0.25rem 0 0', color: '#fff' }}>Department Orders</h2>
             <p style={{ margin: '0.4rem 0 0', color: '#94a3b8', fontSize: '0.875rem' }}>Choose a focused order for each staff room.</p>
           </div>
           <button
@@ -164,8 +170,7 @@ function SettingsModal({
             );
           })}
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }
 

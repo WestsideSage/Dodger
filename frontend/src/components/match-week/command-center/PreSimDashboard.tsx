@@ -7,6 +7,7 @@ import type {
   WeekBriefing,
 } from '../../../types';
 import { BroadcastFrameBlock } from '../../BroadcastFrameBlock';
+import { Dialog } from '../../ui';
 import { PolicyEditor } from './PolicyEditor';
 import { seasonTitle, stakesLine, playerToWatch } from './presimNarrative';
 
@@ -1088,17 +1089,19 @@ export function PreSimDashboard({
         )}
       </div>
 
-      {/* Policy editor overlay */}
+      {/* Policy editor overlay — WT-21: the raw overlay shell is now the shared
+          Dialog primitive (focus-trap/restore + Escape). The PolicyEditor
+          inside is left exactly as-is (wrap, not rewrite). */}
       {policyEditorOpen && (
-        <div
+        <Dialog
+          label="Edit policy"
+          onClose={() => setPolicyEditorOpen(false)}
           className="command-policy-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Edit policy"
-          onClick={() => setPolicyEditorOpen(false)}
+          panelClassName="command-policy-overlay-body"
+          overlayStyle={{ backgroundColor: undefined, backdropFilter: undefined, padding: undefined }}
+          panelStyle={{}}
           data-testid="policy-editor-overlay"
         >
-          <div className="command-policy-overlay-body" onClick={event => event.stopPropagation()}>
             <button
               type="button"
               className="command-policy-overlay-close"
@@ -1108,8 +1111,7 @@ export function PreSimDashboard({
               Close
             </button>
             <PolicyEditor policy={plan.tactics} disabled={planConfirmed} onChange={onSavePolicy} error={null} />
-          </div>
-        </div>
+        </Dialog>
       )}
 
       {/* Fast-forward disclosure dialog (WT-29) */}
