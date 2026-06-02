@@ -35,8 +35,17 @@ _SCOUT_NARROW = 0.4
 
 
 def base_interest(*, pipeline_tier: int, credibility_score: int) -> int:
-    """Starting interest before any contact, from pipeline strength + program credibility."""
-    tier_floor = max(0, 4 - int(pipeline_tier)) * 5  # better pipelines start warmer
+    """Starting interest before any contact, from pipeline strength + program credibility.
+
+    Pipeline tiers run 1 (weakest) → 5 (Elite, strongest), matching the 5-star
+    mental model the UI teaches (``PipelineEmblem`` tier 5 = "Elite"). A *higher*
+    tier starts *warmer*. This is the exact mirror of the prior (inverted) curve:
+    ``max(0, pipeline_tier - 2) * 5`` reflects ``max(0, 4 - pipeline_tier) * 5``
+    around the tier midpoint, so the warmest magnitude (+15) and the population
+    mean over uniform tiers are preserved — only the tier↔interest direction
+    flips (WT-25). No balance re-tune.
+    """
+    tier_floor = max(0, int(pipeline_tier) - 2) * 5  # higher tier starts warmer
     raw = 30 + tier_floor + int(credibility_score) * 0.15
     return _clamp_int(raw, 0, 80)
 
