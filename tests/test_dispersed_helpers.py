@@ -229,6 +229,78 @@ def test_forged_offseason_cursor_is_clamped_to_valid_beat():
     assert beat.key == "schedule_reveal"
 
 
+def test_recruitment_beat_body_renders_integer_ovr_not_float():
+    """§4.1 Class Report: the recruitment/draft ceremony body must show integer
+    OVR ("64 OVR"), never a leaked float like "64.0 OVR". overall_skill() returns
+    an int, so the prose must not force a decimal with a `:.1f` format."""
+    import re
+    from dodgeball_sim.persistence import load_prospect_pool
+
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_manager_career(conn, "aurora", root_seed=20260426)
+    prospect = load_prospect_pool(conn, 1)[0]
+    signed = sign_prospect_to_club(conn, prospect, "aurora", 1)
+
+    recruitment_index = OFFSEASON_CEREMONY_BEATS.index("recruitment")
+    season = load_season(conn, "season_1")
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+    float_ovr = re.compile(r"\d+\.\d+\s*OVR|OVR\s*\d+\.\d+")
+
+    # Read-only draft path (recruitment_available=False, a signing exists):
+    # "Rookie signed: NAME (NN OVR)."
+    read_only = build_offseason_ceremony_beat(
+        recruitment_index, season, clubs, rosters, [], [], "aurora",
+        signed_player_id=signed.id, recruitment_available=False,
+    )
+    assert read_only.key == "recruitment"
+    assert "Rookie signed" in read_only.body
+    assert float_ovr.search(read_only.body) is None, read_only.body
+    assert f"({signed.overall_skill()} OVR)" in read_only.body
+
+    # Active Recruitment Day path (recruitment_available=True):
+    # "Your latest signing: NAME (NN OVR)"
+    active = build_offseason_ceremony_beat(
+        recruitment_index, season, clubs, rosters, [], [], "aurora",
+        signed_player_id=signed.id, recruitment_available=True,
+        recruitment_summary={
+            "current_round": 1, "available_prospects": 0,
+            "signed_count": 1, "sniped_count": 0,
+        },
+    )
+    assert "Your latest signing" in active.body
+    assert float_ovr.search(active.body) is None, active.body
+    assert f"({signed.overall_skill()} OVR)" in active.body
+
+
+def test_retirements_beat_body_renders_integer_ovr_not_float():
+    """The retirements ceremony body is web-facing (rendered verbatim by the
+    Graduation component); a retired player's OVR is an int and must show as
+    "OVR 71", never "OVR 71.0"."""
+    import re
+
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_manager_career(conn, "aurora", root_seed=20260426)
+
+    retirements_index = OFFSEASON_CEREMONY_BEATS.index("retirements")
+    beat = build_offseason_ceremony_beat(
+        retirements_index, load_season(conn, "season_1"), load_clubs(conn),
+        load_all_rosters(conn), [], [], "aurora",
+        retirement_rows=[
+            {"player_name": "Old Timer", "club_id": "aurora", "age": 34, "overall": 71},
+        ],
+    )
+
+    assert beat.key == "retirements"
+    assert "Old Timer" in beat.body
+    assert re.search(r"\d+\.\d+\s*OVR|OVR\s*\d+\.\d+", beat.body) is None, beat.body
+    assert "OVR 71" in beat.body
+
+
 def test_uncertainty_bar_halo_widths():
     from dodgeball_sim.scouting import uncertainty_bar_halo_width_for_tier
 

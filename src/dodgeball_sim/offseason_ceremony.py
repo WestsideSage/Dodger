@@ -996,7 +996,7 @@ def build_offseason_ceremony_beat(
             marker = " *" if row.get("club_id") == player_club_id else ""
             lines.append(
                 f"  {row.get('player_name', row.get('player_id'))} ({club_name(str(row.get('club_id', '')))}): "
-                f"age {row.get('age')} OVR {float(row.get('overall', 0)):.1f}{marker}"
+                f"age {row.get('age')} OVR {int(round(float(row.get('overall', 0))))}{marker}"
             )
         return OffseasonCeremonyBeat(key, "Retirements", "\n".join(lines))
 
@@ -1042,7 +1042,7 @@ def build_offseason_ceremony_beat(
             lines.append(f"Signed this recruitment: {int(summary.get('signed_count', 0))}")
             lines.append(f"Snipes recorded: {int(summary.get('sniped_count', 0))}")
             if signed is not None:
-                lines.append(f"Your latest signing: {signed.name} ({signed.overall_skill():.1f} OVR)")
+                lines.append(f"Your latest signing: {signed.name} ({signed.overall_skill()} OVR)")
             lines.append("")
             lines.append("Current roster sizes:")
             for club_id, size in roster_sizes:
@@ -1052,13 +1052,13 @@ def build_offseason_ceremony_beat(
         # so the copy should not ask the manager to "sign one rookie" when
         # there is no signing UI rendered for this beat.
         if signed is not None:
-            lines = [f"Rookie signed: {signed.name} ({signed.overall_skill():.1f} OVR)."]
+            lines = [f"Rookie signed: {signed.name} ({signed.overall_skill()} OVR)."]
         else:
             lines = [
                 f"Top of this year's class — {len(rookies)} prospect{'s' if len(rookies) != 1 else ''} available.",
             ]
             for player in sorted(rookies, key=lambda item: (-item.overall_skill(), item.id))[:5]:
-                lines.append(f"  {player.name}: OVR {player.overall_skill():.1f}, age {player.age}")
+                lines.append(f"  {player.name}: OVR {player.overall_skill()}, age {player.age}")
         lines.append("")
         lines.append("Current roster sizes:")
         for club_id, size in roster_sizes:
