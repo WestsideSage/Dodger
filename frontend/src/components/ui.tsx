@@ -86,41 +86,6 @@ export function PageHeader({
   );
 }
 
-const variantStyles: Record<string, React.CSSProperties> = {
-  primary: {
-    background: '#f97316',
-    color: '#020617',
-    border: '1px solid #ea6c0a',
-    fontFamily: 'var(--font-display)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
-  accent: {
-    background: 'rgba(34,211,238,0.10)',
-    color: '#22d3ee',
-    border: '1px solid rgba(34,211,238,0.3)',
-    fontFamily: 'var(--font-mono-data)',
-  },
-  secondary: {
-    background: '#1e293b',
-    color: '#cbd5e1',
-    border: '1px solid #334155',
-    fontFamily: 'var(--font-body)',
-  },
-  danger: {
-    background: 'rgba(244,63,94,0.10)',
-    color: '#f43f5e',
-    border: '1px solid rgba(244,63,94,0.3)',
-    fontFamily: 'var(--font-body)',
-  },
-  ghost: {
-    background: 'transparent',
-    color: '#94a3b8',
-    border: '1px solid transparent',
-    fontFamily: 'var(--font-body)',
-  },
-};
-
 export function ActionButton({
   children,
   variant = 'secondary',
@@ -133,31 +98,15 @@ export function ActionButton({
   variant?: 'primary' | 'accent' | 'secondary' | 'danger' | 'ghost';
   className?: string;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  const disabled = Boolean(props.disabled);
-  const baseStyle: React.CSSProperties = {
-    display: 'inline-flex',
-    minHeight: '2.5rem',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '4px',
-    padding: '0.375rem 1rem',
-    fontSize: '0.6875rem',
-    letterSpacing: '0.075em',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    opacity: disabled ? 0.55 : 1,
-    transition: 'all 0.15s',
-    textTransform: 'uppercase',
-    fontWeight: 600,
-    ...variantStyles[variant],
-    ...style,
-  };
-
+  // Visual treatment (palette, hover, active, disabled) lives in the
+  // .dm-action / .dm-action-<variant> CSS so every button gets real
+  // interaction feedback; `style` remains a layout-override escape hatch.
   return (
     <button
       {...props}
       type={type ?? 'button'}
-      className={className}
-      style={baseStyle}
+      className={`dm-action dm-action-${variant} ${className}`.trim()}
+      style={style}
     >
       {children}
     </button>

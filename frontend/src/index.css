@@ -7558,6 +7558,1054 @@ textarea:focus-visible {
 }
 
 /* ============================================================
+   ELEVATION LAYER — 2026-06-09 full-app visual refinement pass
+   Appended last so it wins the cascade. Pure presentation:
+   no data, routing, or behavioral changes live here.
+   ============================================================ */
+
+/* ---- 1. Court-floor atmosphere -------------------------------
+   The shell reads as a broadcast studio over a darkened gym:
+   a faint center circle + center line (court geometry) under a
+   soft vignette. All layers sit under rgba 0.05 so dense panels
+   keep full contrast. */
+.app-shell {
+  background-color: #020617;
+  background-image:
+    /* edge vignette */
+    radial-gradient(ellipse 120% 90% at 50% 0%, transparent 55%, rgba(0, 0, 0, 0.42) 100%),
+    /* broadcast key lights */
+    radial-gradient(circle at 12% -4%, rgba(6, 182, 212, 0.13), transparent 34%),
+    radial-gradient(circle at 88% -6%, rgba(249, 115, 22, 0.11), transparent 30%),
+    /* court center circle */
+    radial-gradient(circle 260px at 50% 46%, transparent 258px, rgba(148, 163, 184, 0.05) 259px, rgba(148, 163, 184, 0.05) 261px, transparent 262px),
+    /* court center line */
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(148, 163, 184, 0.045) calc(50% - 1px), rgba(148, 163, 184, 0.045) calc(50% + 1px), transparent calc(50% + 1px)),
+    /* hardwood seams, barely-there */
+    repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.016) 0 1px, transparent 1px 7rem);
+  background-attachment: fixed;
+}
+
+/* ---- 2. Quiet chrome: scrollbars + selection ---- */
+* { scrollbar-width: thin; scrollbar-color: #334155 transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border: 2px solid #020617;
+  border-radius: 6px;
+}
+*::-webkit-scrollbar-thumb:hover { background: #334155; }
+::selection { background: rgba(34, 211, 238, 0.28); color: #f8fafc; }
+
+/* ---- 3. Broadcast header: title slash + tighter rhythm ---- */
+.broadcast-header h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+.broadcast-header h1::before {
+  content: '';
+  display: inline-block;
+  width: 0.42rem;
+  height: 1.35rem;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, var(--dm-orange), #c2410c);
+  transform: skewX(-14deg);
+}
+
+/* ---- 4. Button system: real hover/active/focus feedback.
+   ActionButton (ui.tsx) renders these classes; variants keep
+   their existing palette but gain motion + glow on interaction. */
+.dm-action {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 4px;
+  padding: 0.375rem 1rem;
+  font-size: 0.6875rem;
+  letter-spacing: 0.075em;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+.dm-action:disabled { cursor: not-allowed; opacity: 0.55; }
+.dm-action:not(:disabled):active { transform: translateY(1px) scale(0.99); }
+
+.dm-action-primary {
+  background: var(--dm-orange);
+  color: #020617;
+  border: 1px solid #ea6c0a;
+  font-family: var(--font-display);
+}
+.dm-action-primary:not(:disabled):hover {
+  background: var(--dm-orange-hover);
+  border-color: var(--dm-orange-hover);
+  box-shadow: 0 0 18px rgba(249, 115, 22, 0.35);
+  transform: translateY(-1px);
+}
+
+.dm-action-accent {
+  background: rgba(34, 211, 238, 0.10);
+  color: var(--dm-cyan);
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  font-family: var(--font-mono-data);
+}
+.dm-action-accent:not(:disabled):hover {
+  background: rgba(34, 211, 238, 0.18);
+  border-color: rgba(34, 211, 238, 0.55);
+  color: var(--dm-cyan-bright);
+}
+
+.dm-action-secondary {
+  background: var(--dm-surface-elevated);
+  color: var(--dm-text-secondary);
+  border: 1px solid var(--dm-border-strong);
+  font-family: var(--font-body);
+}
+.dm-action-secondary:not(:disabled):hover {
+  background: #283548;
+  border-color: #475569;
+  color: #f1f5f9;
+}
+
+.dm-action-danger {
+  background: rgba(244, 63, 94, 0.10);
+  color: var(--dm-rose);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  font-family: var(--font-body);
+}
+.dm-action-danger:not(:disabled):hover {
+  background: rgba(244, 63, 94, 0.20);
+  border-color: rgba(244, 63, 94, 0.55);
+}
+
+.dm-action-ghost {
+  background: transparent;
+  color: var(--dm-text-muted);
+  border: 1px solid transparent;
+  font-family: var(--font-body);
+}
+.dm-action-ghost:not(:disabled):hover {
+  background: rgba(30, 41, 59, 0.6);
+  color: var(--dm-text-secondary);
+  border-color: var(--dm-border);
+}
+
+/* ---- 5. Panel finish: hairline top light so stacked dark
+   panels separate without heavier borders. ---- */
+.dm-panel {
+  box-shadow:
+    inset 0 1px 0 rgba(148, 163, 184, 0.07),
+    0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* ---- 6. Table readability: zebra + numeric alignment ---- */
+.dm-table tbody tr:nth-child(even):not(:hover) { background: rgba(15, 23, 42, 0.5); }
+.dm-table td.dm-data, .dm-table td .dm-data { font-variant-numeric: tabular-nums; }
+
+/* ---- 7. Readiness gates: checklist rows instead of squeezed
+   5-up chips. Six gates always fit; WT-4 pending detail copy
+   gets a full-width line instead of overflowing a 55px cell. */
+.cc-gates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+.cc-gate {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  justify-items: start;
+  gap: 2px 8px;
+  padding: 0.45rem 0.6rem;
+  border-radius: 4px;
+  text-align: left;
+  font-family: var(--font-mono);
+}
+/* the legacy .command-readiness-chips span rule boxes/uppercases every
+   span; reset it inside the gate checklist, then restore the two pieces
+   that should read as chips (label) and as prose (detail). */
+.cc-gates.command-readiness-chips { margin-top: 0; }
+.cc-gates.command-readiness-chips span {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: none;
+  color: inherit;
+}
+.cc-gates .cc-gate .tick { font-size: 0.85rem; font-weight: 800; line-height: 1; }
+.cc-gates .cc-gate .lbl {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.16rem 0.34rem;
+  border: 1px solid color-mix(in srgb, currentColor 32%, transparent);
+  border-radius: 3px;
+}
+.cc-gates .cc-gate.ok .tick, .cc-gates .cc-gate.ok .lbl { color: var(--dm-emerald-bright); }
+.cc-gates .cc-gate.pend .tick, .cc-gates .cc-gate.pend .lbl { color: var(--dm-amber-bright); }
+.cc-gates .cc-gate.opt .tick, .cc-gates .cc-gate.opt .lbl { color: var(--dm-text-muted); }
+.cc-gates .cc-gate .cc-gate-detail,
+.cc-gates.command-readiness-chips span.cc-gate-detail {
+  grid-column: 1 / -1;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: var(--dm-text-secondary);
+  font-family: var(--font-body);
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+}
+/* a pending gate needs room for its reason — let it span the row */
+.cc-gate.pend { grid-column: 1 / -1; }
+
+/* ---- 8. Panel internals: stop distributing leftover column height
+   as voids between content rows. Content stacks from the top and
+   panel footers pin to the bottom edge instead. ---- */
+.cc-panel-body {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.cc-panel-body > .cc-plan-foot { margin-top: auto; }
+
+/* ---- 9. Landing (save menu): title-screen treatment ----
+   Court geometry reads at full strength here because nothing dense
+   sits on top of it — the one place the floor IS the show. */
+.landing-shell {
+  display: flex;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+  background-color: #020617;
+  background-image:
+    radial-gradient(ellipse 140% 100% at 50% -10%, transparent 50%, rgba(0, 0, 0, 0.5) 100%),
+    radial-gradient(circle at 16% 0%, rgba(6, 182, 212, 0.16), transparent 38%),
+    radial-gradient(circle at 86% 4%, rgba(249, 115, 22, 0.14), transparent 34%),
+    /* center circle */
+    radial-gradient(circle 340px at 50% 52%, transparent 337px, rgba(148, 163, 184, 0.09) 338px, rgba(148, 163, 184, 0.09) 341px, transparent 342px),
+    radial-gradient(circle 90px at 50% 52%, rgba(148, 163, 184, 0.05) 88px, transparent 90px),
+    /* center line */
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(148, 163, 184, 0.08) calc(50% - 1px), rgba(148, 163, 184, 0.08) calc(50% + 1px), transparent calc(50% + 1px)),
+    /* attack lines */
+    linear-gradient(90deg, transparent calc(50% - 261px), rgba(249, 115, 22, 0.06) calc(50% - 261px), rgba(249, 115, 22, 0.06) calc(50% - 259px), transparent calc(50% - 259px)),
+    linear-gradient(90deg, transparent calc(50% + 259px), rgba(34, 211, 238, 0.06) calc(50% + 259px), rgba(34, 211, 238, 0.06) calc(50% + 261px), transparent calc(50% + 261px)),
+    repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.02) 0 1px, transparent 1px 6rem);
+}
+
+.landing-brand { margin-bottom: 2rem; text-align: center; }
+.landing-brand .kicker {
+  font-family: var(--font-mono-data);
+  text-transform: uppercase;
+  letter-spacing: 0.34em;
+  font-size: 0.72rem;
+  color: var(--dm-cyan);
+  margin: 0 0 0.4rem;
+}
+.landing-brand h1 {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  margin: 0;
+  text-shadow: 0 0 42px rgba(34, 211, 238, 0.25);
+}
+.landing-brand h1 em {
+  font-style: normal;
+  color: var(--dm-orange);
+}
+.landing-brand .tagline {
+  margin: 0.6rem 0 0;
+  font-size: 0.8rem;
+  color: var(--dm-text-muted);
+  letter-spacing: 0.04em;
+}
+
+.landing-card {
+  width: 100%;
+  max-width: 38rem;
+}
+
+.landing-save-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.7rem 0.6rem;
+  margin: 0 -0.6rem;
+  border-bottom: 1px solid var(--dm-border);
+  border-radius: 4px;
+  transition: background-color 130ms ease;
+}
+.landing-save-row:hover { background: rgba(30, 41, 59, 0.45); }
+
+.landing-monogram {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--mono-hue, #475569) 45%, transparent);
+  background: color-mix(in srgb, var(--mono-hue, #475569) 16%, #0f172a);
+  color: color-mix(in srgb, var(--mono-hue, #94a3b8) 85%, #fff);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.landing-monogram.is-incompatible {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+
+/* ---- 10. Ceremony drama ----
+   Offseason beats are the season's curtain calls; give the stage a
+   spotlight and the champion a gold broadcast frame. */
+.dm-ceremony-stage {
+  position: relative;
+  min-height: 16rem;
+  padding: 1.25rem 0;
+}
+.dm-ceremony-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 70% at 50% 8%, rgba(148, 163, 184, 0.06), transparent 65%),
+    radial-gradient(circle 240px at 50% 96%, transparent 237px, rgba(148, 163, 184, 0.05) 238px, rgba(148, 163, 184, 0.05) 240px, transparent 241px);
+}
+
+.champion-stage {
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+  padding: 3.25rem 1.5rem 2.75rem;
+  border: 1px solid rgba(251, 191, 36, 0.30);
+  border-radius: 6px;
+  background:
+    radial-gradient(ellipse 72% 64% at 50% 0%, rgba(251, 191, 36, 0.16), transparent 62%),
+    radial-gradient(circle 300px at 50% 130%, rgba(251, 191, 36, 0.10), transparent 70%),
+    linear-gradient(180deg, #0d1426 0%, #020617 100%);
+  box-shadow: 0 0 60px rgba(251, 191, 36, 0.08), inset 0 1px 0 rgba(251, 191, 36, 0.18);
+}
+.champion-stage .champion-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-family: var(--font-mono-data);
+  font-size: 0.72rem;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: #fbbf24;
+  margin: 0 0 0.8rem;
+}
+.champion-stage .champion-kicker::before,
+.champion-stage .champion-kicker::after {
+  content: '';
+  width: 2.6rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.7));
+}
+.champion-stage .champion-kicker::after {
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.7), transparent);
+}
+.champion-stage .champion-name {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 5vw, 3.6rem);
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: linear-gradient(180deg, #fef3c7 18%, #fbbf24 55%, #b45309 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+}
+.champion-stage .champion-sub {
+  font-size: 0.85rem;
+  color: var(--dm-text-muted);
+  margin: 0 0 1.4rem;
+}
+.champion-stage .champion-stats {
+  display: flex;
+  gap: 2.25rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.champion-stage .champion-stats .num {
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+.champion-stage .champion-stats .num.gold { color: #fbbf24; }
+.champion-stage .champion-stats .cap {
+  font-family: var(--font-mono-data);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--dm-text-dead);
+  margin-top: 0.2rem;
+}
+
+/* Hall of Fame plaque */
+.hof-plaque {
+  position: relative;
+  padding: 1.1rem 1.2rem 0.9rem;
+  border: 1px solid rgba(251, 191, 36, 0.30);
+  border-radius: 5px;
+  background:
+    radial-gradient(ellipse 80% 90% at 50% -20%, rgba(251, 191, 36, 0.10), transparent 60%),
+    linear-gradient(180deg, #101626, #0a1220);
+  box-shadow: inset 0 1px 0 rgba(251, 191, 36, 0.22);
+}
+.hof-plaque .hof-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.05;
+  background: linear-gradient(180deg, #fef3c7 20%, #fbbf24 60%, #d97706 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hof-plaque .hof-enshrined {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.95rem;
+  font-family: var(--font-mono-data);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  border-radius: 3px;
+  padding: 0.18rem 0.45rem;
+  background: rgba(251, 191, 36, 0.08);
+}
+.hof-plaque .hof-career {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.6rem 0 0;
+}
+.hof-plaque .hof-career span {
+  font-family: var(--font-mono-data);
+  font-size: 0.7rem;
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 3px;
+  padding: 0.16rem 0.45rem;
+  background: rgba(15, 23, 42, 0.7);
+}
+.hof-plaque .hof-legacy {
+  margin: 0.55rem 0 0;
+  font-family: var(--font-mono-data);
+  font-size: 0.72rem;
+  color: var(--dm-text-muted);
+}
+.hof-plaque .hof-reasons {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  color: #cbd5e1;
+}
+
+/* Retirement farewell card — a banner heading to the rafters */
+.farewell-card {
+  position: relative;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--dm-border-strong);
+  border-top: 3px solid #64748b;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #0e1526, #0a101e);
+  transition: opacity 240ms ease;
+}
+.farewell-card.is-latest {
+  border-top-color: #fbbf24;
+  box-shadow: 0 0 28px rgba(251, 191, 36, 0.10);
+}
+.farewell-card .farewell-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #f1f5f9;
+}
+.farewell-card .farewell-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.55rem 0 0;
+}
+.farewell-card .farewell-line span {
+  font-family: var(--font-mono-data);
+  font-size: 0.68rem;
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 3px;
+  padding: 0.14rem 0.42rem;
+  background: rgba(15, 23, 42, 0.7);
+}
+.farewell-card .farewell-tier {
+  margin: 0.55rem 0 0;
+  font-family: var(--font-mono-data);
+  font-size: 0.64rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ---- 11. Dynasty office: credibility meter label lane ----
+   Tier tick letters used to float at -22px into the bracket-label
+   line ("TIER A · MAX REACH" read as clipped). Give the ticks their
+   own lane above the track and keep the edge letters inside it. */
+.do-cred-track { margin-top: 20px; }
+.do-cred-tick .lbl { top: -19px; }
+.do-cred-tick:first-of-type .lbl { transform: translateX(0); }
+
+/* ---- 12. Standings: stop numeric columns drifting apart on wide
+   viewports — they read as one stat block, not scattered digits. */
+.ls-table th.num, .ls-table td.num { width: 3.5rem; }
+
+/* ---- 13. Program archive timeline: the node dot used to sit
+   absolutely on top of the tick label (read as glitched glyphs).
+   Stack tick label above the dot instead. */
+.do-hist-wk { row-gap: 5px; }
+.do-hist-wk .dot {
+  position: static;
+  transform: none;
+}
+
+/* ---- 15. Command Center redesign (2026-06-09 second pass) ----
+   The weekly desk in three acts: billboard hero, plan/intel desks,
+   decision rail. Every fact appears exactly once. */
+
+/* Identity strip slimmed to four facts */
+.cc-id-strip.cc-id-strip-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 720px) {
+  .cc-id-strip.cc-id-strip-4 { grid-template-columns: 1fr 1fr; }
+}
+
+/* Matchup band — rides with the headline, toned by standing */
+.cc-hero-band {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  justify-self: start;
+  padding: 0.42rem 0.75rem;
+  border: 1px solid var(--dm-border-strong);
+  border-left: 3px solid var(--dm-text-muted);
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.7);
+}
+.cc-hero-band .band {
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f1f5f9;
+}
+.cc-hero-band .adv {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  color: var(--dm-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.cc-hero-band[data-standing="favorite"] {
+  border-left-color: var(--dm-emerald);
+  background: rgba(16, 185, 129, 0.07);
+}
+.cc-hero-band[data-standing="favorite"] .band { color: var(--dm-emerald-bright); }
+.cc-hero-band[data-standing="underdog"] {
+  border-left-color: var(--dm-amber);
+  background: rgba(245, 158, 11, 0.07);
+}
+.cc-hero-band[data-standing="underdog"] .band { color: var(--dm-amber-bright); }
+.cc-hero-band[data-standing="even"] {
+  border-left-color: var(--dm-cyan);
+  background: rgba(34, 211, 238, 0.06);
+}
+.cc-hero-band[data-standing="even"] .band { color: var(--dm-cyan-bright); }
+
+/* Hero facts row: three single-source cells */
+.cc-hero-stats.cc-hero-stats-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* Counter Read warning tone (advice = adjust) */
+.cc-scout-edge.is-warning {
+  border-color: rgba(245, 158, 11, 0.3);
+  border-left-color: var(--dm-amber);
+  background: rgba(245, 158, 11, 0.05);
+}
+.cc-scout-edge.is-warning .lbl { color: var(--dm-amber-bright); }
+
+/* Match-day staff strip — compact, on the plan desk */
+.cc-staff-strip { display: grid; gap: 0.45rem; }
+.cc-staff-strip > .lbl {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--dm-cyan);
+}
+.cc-staff-strip .rows {
+  display: grid;
+  gap: 1px;
+  border: 1px solid var(--dm-border);
+  border-radius: 4px;
+  background: var(--dm-border);
+  overflow: hidden;
+}
+.cc-staff-strip .row {
+  display: grid;
+  grid-template-columns: 6.5rem auto minmax(0, 1fr);
+  gap: 0.6rem;
+  align-items: baseline;
+  padding: 0.42rem 0.6rem;
+  background: rgba(2, 6, 23, 0.5);
+}
+.cc-staff-strip .dept {
+  font-family: var(--font-mono-data);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dm-cyan);
+}
+.cc-staff-strip .who { font-size: 0.74rem; font-weight: 600; color: #e2e8f0; white-space: nowrap; }
+.cc-staff-strip .effect { font-size: 0.72rem; color: var(--dm-text-muted); line-height: 1.35; }
+@media (max-width: 1180px) {
+  .cc-staff-strip .row { grid-template-columns: 6.5rem minmax(0, 1fr); }
+  .cc-staff-strip .effect { grid-column: 1 / -1; }
+}
+
+/* Launch dock — the page's one true action gets a stage. */
+.cc-launch {
+  position: relative;
+  display: grid;
+  gap: 0.6rem;
+  margin-top: auto;
+  padding: 0.9rem 0.9rem 0.7rem;
+  border: 1px solid var(--dm-border-strong);
+  border-radius: 6px;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 110%, rgba(249, 115, 22, 0.08), transparent 70%),
+    rgba(2, 6, 23, 0.55);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+/* broadcast corner ticks */
+.cc-launch::before,
+.cc-launch::after {
+  content: '';
+  position: absolute;
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 1px solid rgba(249, 115, 22, 0.0);
+  transition: border-color 200ms ease;
+  pointer-events: none;
+}
+.cc-launch::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.cc-launch::after { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+.cc-launch.is-armed,
+.cc-launch.is-live {
+  border-color: rgba(249, 115, 22, 0.45);
+  box-shadow: 0 0 32px rgba(249, 115, 22, 0.12);
+}
+.cc-launch.is-armed::before, .cc-launch.is-armed::after,
+.cc-launch.is-live::before, .cc-launch.is-live::after {
+  border-color: rgba(249, 115, 22, 0.7);
+}
+.cc-launch .ctx {
+  font-size: 0.78rem;
+  color: var(--dm-text-secondary);
+  line-height: 1.4;
+  text-align: center;
+}
+.cc-launch.is-armed .ctx, .cc-launch.is-live .ctx { color: var(--dm-emerald-bright); font-weight: 600; }
+.cc-launch-secondary { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.cc-launch-secondary > button { flex: 1 1 auto; }
+
+/* Tactical diff rows: in the narrow middle column the fixed 8rem label
+   track squeezes the value columns — tighten the label and let values
+   wrap instead of clipping. (Inline style needs the !important.) */
+@media (max-width: 1366px) {
+  [data-testid="tactical-diff-row"] {
+    grid-template-columns: minmax(5.2rem, 6.5rem) 1fr 1fr !important;
+  }
+  [data-testid="tactical-diff-row"] span { overflow-wrap: anywhere; }
+}
+
+/* ---- 16. Command Center owner-feedback pass ---- */
+
+/* Round 4: with the desks rebalanced (depth intel in a dialog, the
+   broadcast frame on the hero), the three columns stretch to ONE shared
+   bottom edge; each panel pins its foot (plan foot / intel trigger /
+   launch dock) so the equalized height reads crisp, not hollow. */
+.cc-intel-foot {
+  margin-top: auto;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* P2: weekly directive — an issued command-desk order, not an alert bar.
+   Mono directive tag, corner ticks, scanline wash. */
+.cc-objective {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.65rem 0.95rem;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-left: 3px solid var(--dm-amber);
+  border-radius: 5px;
+  background:
+    repeating-linear-gradient(180deg, rgba(245, 158, 11, 0.015) 0 1px, transparent 1px 4px),
+    rgba(245, 158, 11, 0.05);
+}
+.cc-objective::before,
+.cc-objective::after {
+  content: '';
+  position: absolute;
+  width: 0.6rem;
+  height: 0.6rem;
+  border: 1px solid color-mix(in srgb, currentColor 0%, rgba(245, 158, 11, 0.55));
+  pointer-events: none;
+}
+.cc-objective::before { top: -1px; right: -1px; border-left: 0; border-bottom: 0; }
+.cc-objective::after { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+.cc-objective .tag {
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--dm-amber-bright);
+  background: rgba(2, 6, 23, 0.5);
+  white-space: nowrap;
+}
+.cc-objective .msg { display: grid; gap: 2px; flex: 1 1 14rem; min-width: 0; }
+.cc-objective .state {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dm-amber-bright);
+}
+.cc-objective .sub { font-size: 0.78rem; color: var(--dm-text-secondary); line-height: 1.35; }
+.cc-objective .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.cc-objective .act {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.7rem;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #fde68a;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 130ms ease, border-color 130ms ease, transform 130ms ease;
+}
+.cc-objective .act:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: var(--dm-amber-bright);
+  transform: translateY(-1px);
+}
+.cc-objective .act:disabled { opacity: 0.5; cursor: not-allowed; }
+.cc-objective .chip {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dm-amber-bright);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 3px;
+  padding: 0.2rem 0.45rem;
+}
+.cc-objective.is-ready {
+  border-color: rgba(16, 185, 129, 0.3);
+  border-left-color: var(--dm-emerald);
+  background:
+    repeating-linear-gradient(180deg, rgba(16, 185, 129, 0.015) 0 1px, transparent 1px 4px),
+    rgba(16, 185, 129, 0.05);
+}
+.cc-objective.is-ready::before, .cc-objective.is-ready::after { border-color: rgba(16, 185, 129, 0.55); }
+.cc-objective.is-ready .state { color: var(--dm-emerald-bright); }
+.cc-objective.is-ready .tag { border-color: rgba(16, 185, 129, 0.4); color: var(--dm-emerald-bright); }
+.cc-objective.is-live {
+  border-color: rgba(249, 115, 22, 0.35);
+  border-left-color: var(--dm-orange);
+  background:
+    repeating-linear-gradient(180deg, rgba(249, 115, 22, 0.015) 0 1px, transparent 1px 4px),
+    rgba(249, 115, 22, 0.06);
+}
+.cc-objective.is-live::before, .cc-objective.is-live::after { border-color: rgba(249, 115, 22, 0.55); }
+.cc-objective.is-live .state { color: var(--dm-orange-hover); }
+.cc-objective.is-live .tag { border-color: rgba(249, 115, 22, 0.4); color: var(--dm-orange-hover); }
+
+/* P3a: a pending gate carries its own resolving action. */
+.cc-gate .cc-gate-action {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-top: 0.3rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.34rem 0.75rem;
+  border: 1px solid rgba(245, 158, 11, 0.55);
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.14);
+  color: #fde68a;
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 130ms ease, border-color 130ms ease, transform 130ms ease;
+}
+.cc-gate .cc-gate-action:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.26);
+  border-color: var(--dm-amber-bright);
+  transform: translateY(-1px);
+}
+.cc-gate .cc-gate-action:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* P3b: an unavailable Lock button must not out-shout the blockers.
+   Until armed, it renders as a quiet outline; the orange slab is
+   reserved for the moment it can actually be pressed. */
+.cc-launch:not(.is-armed):not(.is-live) .cc-btn-sim:disabled {
+  background: rgba(15, 23, 42, 0.6);
+  border-color: var(--dm-border-strong);
+  color: var(--dm-text-dead);
+  box-shadow: none;
+  opacity: 1;
+}
+.cc-launch:not(.is-armed):not(.is-live) .cc-btn-sim:disabled::after { animation: none; }
+.cc-launch:not(.is-armed):not(.is-live) .ctx { color: var(--dm-text-muted); }
+
+/* (Round 4 superseded the round-2 in-grid wire placement: the ticker
+   now opens the page above the identity strip.) */
+
+/* Fix-list round 2 — #4: intel meter on the Tactical Diff. The locked
+   layer has a visible fill state (0/5 → 5/5 reads revealed). */
+.cc-intel-meter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.14rem 0.5rem;
+  border: 1px dashed rgba(34, 211, 238, 0.35);
+  border-radius: 3px;
+  background: repeating-linear-gradient(45deg, rgba(34, 211, 238, 0.06) 0 4px, transparent 4px 8px);
+  color: rgba(103, 232, 249, 0.8);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: help;
+  white-space: nowrap;
+}
+.cc-intel-meter.is-partial {
+  border-style: solid;
+  border-color: rgba(34, 211, 238, 0.45);
+  background: rgba(34, 211, 238, 0.08);
+  color: var(--dm-cyan-bright);
+}
+.cc-intel-meter.is-open {
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.08);
+  color: var(--dm-emerald-bright);
+}
+
+/* Fix-list round 3 — color language. Emerald is reserved for verified
+   good (gates cleared, profile aligned, intel fully revealed). A SET
+   tactical choice is information, not praise — it reads cyan. Amber =
+   needs attention; rose = risk/threat; orange = the primary action. */
+.cc-policy-cell.ready { border-left-color: rgba(34, 211, 238, 0.55); }
+.cc-policy-cell.ready .lbl { color: var(--dm-cyan); }
+
+/* Tactics cells are real <button>s now (the redundant footer button is
+   gone) — reset UA chrome, keep the cell look, show the ▸ affordance
+   only where clicking actually opens the editor. */
+.cc-policy-cell.is-button {
+  border: 0;
+  border-left: 2px solid transparent;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+}
+.cc-policy-cell.is-button.ready { border-left-color: rgba(34, 211, 238, 0.55); }
+.cc-policy-cell.is-button.pending { border-left-color: var(--dm-amber); }
+.cc-policy-cell.is-static { cursor: default; }
+.cc-policy-cell.is-static::after { content: none; }
+.cc-policy-cell.is-static:hover { background: rgba(2, 6, 23, 0.5); }
+
+/* Fix-list round 3 — League Wire as a broadcast ticker. Scrolls only
+   when the wire actually has news; hover pauses; reduced motion gets a
+   static line. */
+.cc-wire { overflow: hidden; }
+/* Top-of-page rundown bar: slimmer than a panel, reads as chrome. */
+.cc-wire.cc-wire-top { padding: 0.45rem 1rem; border-radius: 5px; }
+.cc-wire .tag { display: inline-flex; align-items: center; gap: 0.4rem; }
+.cc-wire.has-news .tag {
+  color: var(--dm-orange-hover);
+  border-color: rgba(249, 115, 22, 0.4);
+  background: rgba(249, 115, 22, 0.07);
+}
+.cc-wire .tag .pip {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--dm-orange);
+  box-shadow: 0 0 8px rgba(249, 115, 22, 0.8);
+  animation: cc-pulse 1.8s ease-in-out infinite;
+}
+.cc-wire .feed {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+/* Edge-fade only while scrolling — on the static no-news line it was
+   eating the first characters. */
+.cc-wire.has-news .feed {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 1.5rem, #000 calc(100% - 1.5rem), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 1.5rem, #000 calc(100% - 1.5rem), transparent 100%);
+}
+.cc-wire .copy { font-size: 0.74rem; color: var(--dm-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.cc-wire .scroll {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: cc-wire-scroll 38s linear infinite;
+  will-change: transform;
+}
+.cc-wire:hover .scroll { animation-play-state: paused; }
+.cc-wire .half { display: inline-flex; }
+.cc-wire .item {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--dm-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.cc-wire .item::after {
+  content: '◆';
+  margin: 0 1.4rem;
+  color: rgba(249, 115, 22, 0.5);
+  font-size: 0.55rem;
+  vertical-align: middle;
+}
+@keyframes cc-wire-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-wire .scroll { animation: none; }
+}
+
+/* P5: fog of war — unscouted reads as a locked intelligence layer,
+   not as missing data. */
+.cc-fog {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.12rem 0.45rem;
+  border: 1px dashed rgba(34, 211, 238, 0.35);
+  border-radius: 3px;
+  background: repeating-linear-gradient(45deg, rgba(34, 211, 238, 0.06) 0 4px, transparent 4px 8px);
+  color: rgba(103, 232, 249, 0.8);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-style: normal;
+  cursor: help;
+  white-space: nowrap;
+}
+
+/* ---- 14. App boot state: branded, not bare "Loading..." ---- */
+.app-boot { text-align: center; }
+.app-boot .kicker {
+  font-family: var(--font-mono-data);
+  font-size: 0.66rem;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--dm-cyan);
+  margin: 0 0 0.35rem;
+}
+.app-boot .brand {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #fff;
+  margin: 0;
+}
+.app-boot .brand em { font-style: normal; color: var(--dm-orange); }
+.app-boot .court-pulse {
+  width: 3.25rem;
+  height: 3.25rem;
+  margin: 1.1rem auto 0;
+  border: 2px solid rgba(34, 211, 238, 0.45);
+  border-radius: 999px;
+  position: relative;
+  animation: app-boot-pulse 1.6s ease-in-out infinite;
+}
+.app-boot .court-pulse::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(34, 211, 238, 0.45);
+}
+@keyframes app-boot-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.65; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-boot .court-pulse { animation: none; }
+}
+
+@media (max-width: 1180px) {
+  .cc-gates { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ============================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width: 1180px) {

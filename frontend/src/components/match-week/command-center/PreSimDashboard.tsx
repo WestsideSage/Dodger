@@ -329,6 +329,7 @@ export function PreSimDashboard({
   onConfirmLineup?: () => void;
 }) {
   const [policyEditorOpen, setPolicyEditorOpen] = useState(false);
+  const [scoutFileOpen, setScoutFileOpen] = useState(false);
   const [fastForwardOpen, setFastForwardOpen] = useState(false);
 
   const plan = data.plan;
@@ -365,14 +366,26 @@ export function PreSimDashboard({
     .slice(-5)
     .map(record => record.dashboard?.result)
     .filter((result): result is string => Boolean(result));
-  const latestDashboard = data.latest_dashboard;
   const lastRecord = data.history.length > 0 ? data.history[data.history.length - 1] : null;
   const seasonName = seasonTitle(data.season_id);
   const watchLine = playerToWatch(activePlayers);
 
   const readinessChecks = readiness.gates;
-  const scoutGateReady = readinessChecks.some(g => g.id === 'scout' && g.ready);
   const confirmLineupGateReady = readinessChecks.some(g => g.id === 'confirm_lineup' && g.ready);
+  const pendingGates = readinessChecks.filter(g => !g.ready);
+  // Directive subtitle — the pending steps phrased as one order.
+  const gatePhrase = (id: string, shortLabel: string) =>
+    id === 'scout' ? 'scout their projected six'
+    : id === 'confirm_lineup' ? 'confirm the six you will field'
+    : (shortLabel || '').toLowerCase();
+  const pendingPhrases = pendingGates.map(g => gatePhrase(g.id, g.short_label));
+  const objectiveSubBody =
+    pendingPhrases.length > 1
+      ? `${pendingPhrases.slice(0, -1).join(', ')} and ${pendingPhrases[pendingPhrases.length - 1]}`
+      : pendingPhrases[0] ?? '';
+  const objectiveSub = objectiveSubBody
+    ? `${objectiveSubBody.charAt(0).toUpperCase()}${objectiveSubBody.slice(1)} before you sim.`
+    : '';
   const readyCount = readiness.ready_count;
   const isReadyToLock = readiness.is_ready_to_lock;
   const itemsRemaining = readiness.items_remaining;
@@ -404,12 +417,6 @@ export function PreSimDashboard({
       : `${topPlayer.name} covers the primary threat by +${Math.abs(ovrGap)} OVR. `
     : '';
 
-  const scoutRead = isBye
-    ? 'This is a bye week. No opponent to scout. Use this time to rest players and plan training.'
-    : `${scoutGapRead}${recommendation.reason}`;
-
-  const planRead = isBye ? 'Bye week.' : recommendation.reason;
-
   const displayWeek = data.week;
   const stakes = stakesLine(leagueRank, gamesRemaining, recentResults, displayWeek, playoffStage);
   const identityRecordLabel = playoffStage ? 'Record' : 'Form';
@@ -423,12 +430,12 @@ export function PreSimDashboard({
     ?? `${netStarterEdge > 0 ? '+' : ''}${formatEdge(netStarterEdge)} net starter OVR`;
   const primaryActionLabel = planConfirmed ? 'SIMULATE WEEK' : 'LOCK PLAN';
   const primaryActionHint = planConfirmed
-    ? 'The weekly plan is locked. Run the match when you are ready to move the season forward.'
+    ? 'Plan locked. Run the match when ready.'
     : isBye
-    ? 'The plan is ready. Lock it to advance to the next week.'
+    ? 'Bye week — lock to advance.'
     : isReadyToLock
-    ? 'No blockers. Review the decision, then lock the plan.'
-    : `${itemsRemaining} checklist item${itemsRemaining === 1 ? '' : 's'} still need attention before plan lock.`;
+    ? 'All gates green. Lock it in.'
+    : `${itemsRemaining} item${itemsRemaining === 1 ? '' : 's'} left before lock.`;
   const unresolvedIssue = readiness.next_issue;
 
   const wk = String(displayWeek).padStart(2, '0');
@@ -436,6 +443,12 @@ export function PreSimDashboard({
     week: h.week ?? '?',
     summary: h.dashboard?.result ? `${h.dashboard.result} vs ${h.dashboard.opponent_name ?? 'opponent'}` : 'No result',
   }));
+  // Ticker items — only real news rides the wire (your recent results plus
+  // the league leader); an empty league shows one honest static line.
+  const wireItems = [
+    ...recentLeagueWire.map(m => `W${m.week} — ${m.summary}`),
+    ...(leagueLeader ? [`League leader: ${leagueLeader}`] : []),
+  ];
 
   type DeptOrder = {
     dept: string;
@@ -491,8 +504,55 @@ export function PreSimDashboard({
   return (
     <div className="max-content" data-testid="weekly-command-center">
 
-      {/* Identity strip */}
-      <div className="cc-id-strip" data-testid="presim-command-strip" aria-label="Week context">
+      {/* League Wire — the broadcast ticker opens the page like a network
+          rundown. It scrolls only when there is actual news; a quiet league
+          gets one honest static line. */}
+      <div
+        className={`cc-proof cc-wire cc-wire-top${wireItems.length > 0 ? ' has-news' : ''}`}
+        data-testid="secondary-intel-rail"
+      >
+        <span className="tag">
+          {wireItems.length > 0 && <span className="pip" aria-hidden="true" />}
+          League Wire
+        </span>
+        <div className="feed">
+          {wireItems.length > 0 ? (
+            <div className="scroll" aria-label={wireItems.join(' — ')}>
+              <span className="half">
+                {wireItems.map((item, i) => (
+                  <span key={i} className="item">{item}</span>
+                ))}
+              </span>
+              {/* duplicate for a seamless loop; hidden from AT */}
+              <span className="half" aria-hidden="true">
+                {wireItems.map((item, i) => (
+                  <span key={i} className="item">{item}</span>
+                ))}
+              </span>
+            </div>
+          ) : (
+            <span className="copy">Quiet week on the wire — no league results logged yet.</span>
+          )}
+        </div>
+        {lastRecord && (
+          <button
+            type="button"
+            className="show"
+            onClick={() => {
+              const params = new URLSearchParams(window.location.search);
+              params.set('tab', 'standings');
+              window.location.assign(`${window.location.pathname}?${params.toString()}`);
+            }}
+          >
+            League Table ▸
+          </button>
+        )}
+      </div>
+
+      {/* Identity strip — four facts of standing context. Intent and lock
+          status live in the decision rail where they are actually set, not
+          here as read-only echoes. */}
+      <div className="cc-id-strip cc-id-strip-4" data-testid="presim-command-strip" aria-label="Week context">
         <div>
           <span className="lbl">Program</span>
           <span className="val" title={data.player_club_name}>{data.player_club_name}</span>
@@ -503,21 +563,77 @@ export function PreSimDashboard({
         </div>
         <div>
           <span className="lbl">Week</span>
-          <span className="val num">W{wk}{playoffStage ? ` · ${playoffStage}` : ''}</span>
+          <span className="val num">
+            W{wk}
+            {playoffStage ? ` · ${playoffStage}` : isBye ? ' · Bye Week' : ''}
+          </span>
         </div>
         <div>
           <span className="lbl">{identityRecordLabel}</span>
           <span className="val num">{identityRecordValue}</span>
         </div>
-        <div>
-          <span className="lbl">Intent</span>
-          <span className="val cyan">{currentApproach}</span>
-        </div>
-        <div>
-          <span className="lbl">Status</span>
-          <span className={`val ${planConfirmed ? 'orange' : 'cyan'}`}>{planConfirmed ? 'Locked' : 'Ready'}</span>
-        </div>
       </div>
+
+      {/* Weekly directive — the week's next step, issued once at the top as
+          a command-desk order. Pending gates surface here as direct actions;
+          once everything is green it hands off to the Sim Lock dock. */}
+      {!isBye && (
+        <div
+          className={`cc-objective${planConfirmed ? ' is-live' : isReadyToLock ? ' is-ready' : ''}`}
+          data-testid="current-objective"
+          role="status"
+        >
+          <span className="tag" aria-hidden="true">W{wk} · Directive</span>
+          <div className="msg">
+            {planConfirmed ? (
+              <>
+                <span className="state">Plan locked</span>
+                <span className="sub">Simulate the week when ready.</span>
+              </>
+            ) : isReadyToLock ? (
+              <>
+                <span className="state">Ready to lock</span>
+                <span className="sub">All gates green — lock the plan in the Sim Lock panel.</span>
+              </>
+            ) : (
+              <>
+                <span className="state">
+                  {itemsRemaining} action{itemsRemaining === 1 ? '' : 's'} left before lock
+                </span>
+                <span className="sub">{objectiveSub}</span>
+              </>
+            )}
+          </div>
+          {!planConfirmed && !isReadyToLock && (
+            <span className="actions">
+              {pendingGates.map(gate => {
+                const onAction =
+                  gate.id === 'scout' ? onScout
+                  : gate.id === 'confirm_lineup' ? onConfirmLineup
+                  : undefined;
+                const actionLabel =
+                  gate.id === 'scout' ? 'Scout Opponent'
+                  : gate.id === 'confirm_lineup' ? 'Confirm Lineup'
+                  : gate.short_label;
+                return onAction ? (
+                  <button
+                    key={gate.id}
+                    type="button"
+                    className="act"
+                    onClick={onAction}
+                    disabled={saving}
+                    data-testid={`objective-${gate.id}`}
+                  >
+                    {actionLabel} ▸
+                  </button>
+                ) : (
+                  <span key={gate.id} className="chip">{actionLabel}</span>
+                );
+              })}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Hero */}
       <section className={`cc-hero${isBye ? ' is-bye' : ''}`}>
@@ -546,6 +662,20 @@ export function PreSimDashboard({
             )}
           </h2>
 
+          {/* The matchup band is the week's single most decision-relevant
+              read — it sits with the headline, not buried in a stat row. */}
+          {!isBye && (
+            <div
+              className="cc-hero-band"
+              data-testid="matchup-band"
+              data-standing={edge.standing}
+              title="Banded from your fielded six vs theirs. Advisory only — it never implies a mechanical edge."
+            >
+              <span className="band">{edgeHeadline}</span>
+              <span className="adv">{edgeAdvisory}</span>
+            </div>
+          )}
+
           <div className="cc-hero-frame">
             {isBye ? (
               <div className="line"><b>This Week</b>{' '}No match — rest, recover, and plan ahead.</div>
@@ -557,39 +687,31 @@ export function PreSimDashboard({
             )}
           </div>
 
-          <div className="cc-hero-stats">
-            <div>
-              <span className="lbl">Opp Record</span>
-              <span className="val">{isBye ? '—' : details.opponent_record}</span>
+          {/* The broadcast frame IS billboard material — proof-backed stakes
+              and the historical hook frame the matchup, so it rides the hero
+              instead of padding out the scouting desk. */}
+          {!isBye && details.broadcast_frame && (
+            <BroadcastFrameBlock frame={details.broadcast_frame} title="Broadcast Frame" compact />
+          )}
+
+          {/* Single source for these three facts — they no longer repeat in
+              the Opponent File below. */}
+          {!isBye && (
+            <div className="cc-hero-stats cc-hero-stats-3">
+              <div>
+                <span className="lbl">Rank</span>
+                <span className="val">{leagueRank ? `#${leagueRank}` : 'n/a'}</span>
+              </div>
+              <div>
+                <span className="lbl">Opp Record</span>
+                <span className="val">{details.opponent_record}</span>
+              </div>
+              <div>
+                <span className="lbl">Last Meeting</span>
+                <span className="val" style={{ fontSize: '0.78rem', textTransform: 'none', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{details.last_meeting}</span>
+              </div>
             </div>
-            <div>
-              <span className="lbl">Last Meeting</span>
-              <span className="val" style={{ fontSize: '0.78rem', textTransform: 'none', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{isBye ? '—' : details.last_meeting}</span>
-            </div>
-            <div>
-              <span className="lbl">Rank</span>
-              <span className="val">{leagueRank ? `#${leagueRank}` : 'n/a'}</span>
-            </div>
-            <div>
-              <span className="lbl">Matchup</span>
-              {isBye ? (
-                <span className="val" style={{ fontSize: '0.82rem' }}>—</span>
-              ) : (
-                <span
-                  className="val"
-                  data-testid="matchup-band"
-                  data-standing={edge.standing}
-                  style={{ fontSize: '0.82rem' }}
-                  title="Banded from your fielded six vs theirs. Advisory only — it never implies a mechanical edge."
-                >
-                  {edgeHeadline}
-                  <span className="sub" style={{ display: 'block', opacity: 0.7, fontSize: '0.7rem' }}>
-                    {edgeAdvisory}
-                  </span>
-                </span>
-              )}
-            </div>
-          </div>
+          )}
         </div>
 
         {!isBye && (
@@ -599,9 +721,9 @@ export function PreSimDashboard({
                 <span className="lbl">Court Read</span>
                 <span
                   className="side"
-                  title={threatName ? 'Opponent key threat — watch this player' : undefined}
+                  title={threatName ? 'Opponent key threat — watch this player' : 'A schematic of the projected sixes — not live positions'}
                 >
-                  ▸ {threatName ? `${threatName} flagged` : 'Schematic — live positions'}
+                  ▸ {threatName ? `${threatName} flagged` : 'Projected sixes'}
                 </span>
               </div>
               <MiniCourt homePlayers={activePlayers} awayPlayers={opponentPlayers} threatName={threatName} />
@@ -636,6 +758,8 @@ export function PreSimDashboard({
             </p>
           </div>
           <div className="cc-panel-body">
+            {/* One verdict line. The staff's reasoning lives in the Opponent
+                File's Counter Read — not repeated here. */}
             <div className={`cc-align-callout${operationalMisaligned ? ' is-warning' : ''}`} data-testid="plan-readout">
               <div className="copy">
                 <b>
@@ -645,54 +769,91 @@ export function PreSimDashboard({
                     ? 'Adjustment advised.'
                     : 'Profile aligned.'}
                 </b>{' '}
-                {planRead}
+                {operationalPending > 0
+                  ? 'Set every department order before lock.'
+                  : hasPlanConflict
+                  ? 'See the Counter Read in the Opponent File.'
+                  : isBye
+                  ? 'Bye week.'
+                  : 'All orders set for this matchup.'}
               </div>
               <span className={`cc-pill${operationalMisaligned ? ' amber' : ' emer'}`}>
                 {operationalMisaligned ? 'Misaligned' : 'Aligned'}
               </span>
             </div>
 
-            <div className="cc-policy" role="list">
-              {deptOrders.map((o, i) => (
-                <div
-                  key={i}
-                  className={`cc-policy-cell ${o.state}`}
-                  role="listitem"
-                  onClick={o.clickable && !planConfirmed ? () => setPolicyEditorOpen(true) : undefined}
-                  style={o.clickable && !planConfirmed ? undefined : { cursor: 'default' }}
-                >
-                  <span className="lbl">{o.dept}</span>
-                  {o.isDevFocus && !planConfirmed ? (
-                    <select
-                      data-testid="dev-focus-select"
-                      aria-label="Development focus"
-                      value={plan.department_orders?.dev_focus ?? 'BALANCED'}
-                      onChange={event => { event.stopPropagation(); onSaveDevFocus(event.target.value); }}
-                      onClick={e => e.stopPropagation()}
+            <div className="cc-policy">
+              {deptOrders.map((o, i) => {
+                const opensEditor = o.clickable && !planConfirmed;
+                // Tactics cells are real buttons (keyboard path into the
+                // editor — the redundant "Edit Game Plan" button is gone).
+                // The first one carries the canonical editor testid.
+                if (opensEditor) {
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      className={`cc-policy-cell is-button ${o.state}`}
+                      onClick={() => setPolicyEditorOpen(true)}
+                      aria-label={`${o.dept}: ${o.title} — edit the game plan`}
+                      data-testid={o.dept === 'Tactical Approach' ? 'open-policy-editor' : undefined}
                     >
-                      {DEV_FOCUS_OPTIONS.map(option => (
-                        <option key={option} value={option}>{humanize(option)}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <span className="val">{o.title}</span>
-                  )}
-                  <span className="helper">{o.body}</span>
-                </div>
-              ))}
+                      <span className="lbl">{o.dept}</span>
+                      <span className="val">{o.title}</span>
+                      <span className="helper">{o.body}</span>
+                    </button>
+                  );
+                }
+                return (
+                  <div key={i} className={`cc-policy-cell is-static ${o.state}`}>
+                    <span className="lbl">{o.dept}</span>
+                    {o.isDevFocus && !planConfirmed ? (
+                      <select
+                        data-testid="dev-focus-select"
+                        aria-label="Development focus"
+                        value={plan.department_orders?.dev_focus ?? 'BALANCED'}
+                        onChange={event => { event.stopPropagation(); onSaveDevFocus(event.target.value); }}
+                        onClick={e => e.stopPropagation()}
+                      >
+                        {DEV_FOCUS_OPTIONS.map(option => (
+                          <option key={option} value={option}>{humanize(option)}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="val">{o.title}</span>
+                    )}
+                    <span className="helper">{o.body}</span>
+                  </div>
+                );
+              })}
             </div>
+
+            {/* Match-day staff are YOUR operation — they live on the plan
+                desk, not in the opponent's file. */}
+            {details.staff_impact && details.staff_impact.length > 0 && (
+              <div data-testid="staff-impact" className="cc-staff-strip">
+                <span className="lbl">Match-Day Staff</span>
+                <div className="rows">
+                  {details.staff_impact.map((staff) => (
+                    <div
+                      key={staff.department}
+                      data-testid="staff-impact-row"
+                      data-department={staff.department}
+                      className="row"
+                    >
+                      <span className="dept">{staff.department}</span>
+                      <span className="who">{staff.name} ({Math.round(staff.rating_primary)})</span>
+                      <span className="effect">{staff.effect}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="cc-plan-foot">
               <span className="note">{deptOrders.length} orders · {operationalPending} pending</span>
               {!planConfirmed && (
-                <button
-                  type="button"
-                  className="dm-btn"
-                  onClick={() => setPolicyEditorOpen(true)}
-                  data-testid="open-policy-editor"
-                >
-                  Edit Game Plan ▸
-                </button>
+                <span className="note">Click a tactics cell to edit</span>
               )}
             </div>
           </div>
@@ -702,53 +863,56 @@ export function PreSimDashboard({
         <div className="cc-panel" id="command-opponent-file" data-testid="scout-read-panel" tabIndex={-1}>
           <div className="cc-panel-head">
             <span className="kicker">Opponent File</span>
-            <h2>{isBye ? 'Bye Week' : plan.opponent.name}</h2>
-            <p>{isBye ? 'No opponent this week.' : scoutRead}</p>
+            {/* The hero owns the cinematic matchup name — this desk owns the
+                tactical read, so its title says what it does. */}
+            <h2>{isBye ? 'Bye Week' : 'Scouting Report'}</h2>
+            <p>{isBye ? 'No opponent this week.' : (scoutGapRead || details.framing_line)}</p>
           </div>
           <div className="cc-panel-body">
             {!isBye && (
               <>
-                <div className="cc-scout-edge">
+                <div
+                  className={`cc-scout-edge${hasPlanConflict ? ' is-warning' : ''}`}
+                  data-testid="counter-read"
+                >
                   <div className="row">
                     <span className="lbl">Counter Read</span>
                     <span className="val">{recommendationLabel}</span>
                   </div>
-                  <span className="sub">
-                    {latestDashboard?.lanes?.[1]?.summary ?? details.framing_line}
-                  </span>
+                  <span className="sub">{recommendation.reason || details.framing_line}</span>
                 </div>
 
-                <div className="cc-scout-grid">
-                  <div>
-                    <span className="lbl">Opp Record</span>
-                    <span className="val">{details.opponent_record}</span>
-                  </div>
-                  <div>
-                    <span className="lbl">Last Meeting</span>
-                    <span className="val mono">{details.last_meeting}</span>
-                  </div>
-                  <div className="span-2">
-                    <span className="lbl">Risk Notes</span>
-                    <span className="val mono">{scoutRead}</span>
-                  </div>
-                </div>
-
-                {details.broadcast_frame && (
-                  <BroadcastFrameBlock frame={details.broadcast_frame} title="Broadcast Frame" compact />
-                )}
-
-                {details.tactical_diff && (
+                {details.tactical_diff && (() => {
+                  const diffRows = details.tactical_diff.player_plan;
+                  const revealedCount = diffRows.filter(row => row.opponent_known).length;
+                  const allRevealed = revealedCount === diffRows.length && diffRows.length > 0;
+                  return (
                   <div data-testid="tactical-diff" data-scouted={details.tactical_diff.scouted ? 'true' : 'false'} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <span className="lbl">Tactical Diff — Your Plan vs Their Tendencies</span>
-                      {details.tactical_diff.intel_revealed && (
+                      <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'baseline' }}>
+                        {/* The intel meter makes scouting's payoff explicit:
+                            a locked layer with a fill state, not absent data. */}
                         <span
-                          data-testid="tactical-diff-revealed"
-                          style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#34d399', border: '1px solid rgba(52,211,153,0.4)', borderRadius: '3px', padding: '0.05rem 0.35rem' }}
+                          className={`cc-intel-meter${allRevealed ? ' is-open' : revealedCount > 0 ? ' is-partial' : ''}`}
+                          data-testid="tactical-diff-intel-meter"
+                          title={
+                            allRevealed
+                              ? 'All tendency reads revealed from tape.'
+                              : 'Locked intel — scouting reveals their observed tendencies row by row.'
+                          }
                         >
-                          New intel revealed
+                          {revealedCount}/{diffRows.length} reads revealed
                         </span>
-                      )}
+                        {details.tactical_diff.intel_revealed && (
+                          <span
+                            data-testid="tactical-diff-revealed"
+                            style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#34d399', border: '1px solid rgba(52,211,153,0.4)', borderRadius: '3px', padding: '0.05rem 0.35rem' }}
+                          >
+                            New intel revealed
+                          </span>
+                        )}
+                      </span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                       {details.tactical_diff.player_plan.map((row) => (
@@ -762,29 +926,37 @@ export function PreSimDashboard({
                             gridTemplateColumns: '8rem 1fr 1fr',
                             gap: '0.5rem',
                             alignItems: 'baseline',
-                            padding: '0.3rem 0.55rem',
+                            padding: '0.24rem 0.55rem',
                             background: 'rgba(15,23,42,0.6)',
                             border: '1px solid rgba(30,41,59,0.8)',
                             borderRadius: '4px',
-                            fontSize: '0.75rem',
+                            fontSize: '0.74rem',
                           }}
                         >
                           <span className="lbl" style={{ fontSize: '0.6rem' }}>{row.label}</span>
                           <span data-testid="tactical-diff-player" style={{ color: 'var(--dm-cyan)', fontWeight: 600 }}>{row.player_value}</span>
                           <span
                             data-testid="tactical-diff-opponent"
-                            style={{ color: row.opponent_known ? '#e2e8f0' : '#64748b', fontStyle: row.opponent_known ? 'normal' : 'italic' }}
+                            style={{ color: row.opponent_known ? '#e2e8f0' : undefined }}
                           >
-                            {row.opponent_known && row.opponent_value ? row.opponent_value : 'Unscouted'}
+                            {row.opponent_known && row.opponent_value ? (
+                              row.opponent_value
+                            ) : (
+                              <span
+                                className="cc-fog"
+                                title="Locked intel — scout the opponent to reveal observed tendencies."
+                              >
+                                Unscouted
+                              </span>
+                            )}
                             {row.opponent_known && row.opponent_source === 'tape' && (
                               <span
                                 data-testid="tactical-diff-tape-meta"
-                                title={`Observed on tape across ${row.sample ?? 0} game${row.sample === 1 ? '' : 's'} — a tendency, not their hidden plan.`}
-                                style={{ display: 'block', fontSize: '0.58rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '0.1rem' }}
+                                title={`Observed on tape across ${row.sample ?? 0} game${row.sample === 1 ? '' : 's'} — a ${row.confidence_label ?? 'lean'}, not their hidden plan.`}
+                                style={{ marginLeft: '0.4rem', fontSize: '0.58rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}
                               >
-                                Tape · {row.confidence_label ?? 'lean'}
-                                {typeof row.confidence === 'number' ? ` ${Math.round(row.confidence * 100)}%` : ''}
-                                {typeof row.sample === 'number' ? ` · n=${row.sample}` : ''}
+                                {typeof row.confidence === 'number' ? `${Math.round(row.confidence * 100)}%` : (row.confidence_label ?? 'tape')}
+                                {typeof row.sample === 'number' ? ` · n${row.sample}` : ''}
                               </span>
                             )}
                           </span>
@@ -792,117 +964,28 @@ export function PreSimDashboard({
                       ))}
                     </div>
 
-                    {details.tactical_diff.cold_start && (
-                      <div
-                        data-testid="tactical-diff-cold-start"
-                        style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.15rem', padding: '0.35rem 0.55rem', background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(30,41,59,0.8)', borderRadius: '4px' }}
-                      >
-                        <span className="lbl" style={{ fontSize: '0.6rem' }}>Opponent File (no tape yet)</span>
-                        {details.tactical_diff.cold_start.program_archetype && (
-                          <span data-testid="cold-start-archetype" style={{ fontSize: '0.72rem', color: '#e2e8f0' }}>
-                            Program identity: <b>{details.tactical_diff.cold_start.program_archetype}</b>
-                          </span>
-                        )}
-                        {details.tactical_diff.cold_start.roster_shape && (
-                          <span data-testid="cold-start-roster-shape" style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-                            Roster shape: {details.tactical_diff.cold_start.roster_shape.throwers} throwing-oriented · {details.tactical_diff.cold_start.roster_shape.defenders} defense-oriented
-                          </span>
-                        )}
-                        {details.tactical_diff.cold_start.position_groups && (
-                          <span data-testid="cold-start-position-groups" style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-                            {details.tactical_diff.cold_start.position_groups.single_family ? (
-                              <>Group depth: only a <b style={{ color: '#e2e8f0' }}>{details.tactical_diff.cold_start.position_groups.strongest.label}</b> core ({details.tactical_diff.cold_start.position_groups.strongest.avg_ovr} avg OVR)</>
-                            ) : (
-                              <>Strongest group: <b style={{ color: '#e2e8f0' }}>{details.tactical_diff.cold_start.position_groups.strongest.label}</b> ({details.tactical_diff.cold_start.position_groups.strongest.avg_ovr} avg OVR) · Weakest: {details.tactical_diff.cold_start.position_groups.weakest.label} ({details.tactical_diff.cold_start.position_groups.weakest.avg_ovr} avg OVR)</>
-                            )}
-                          </span>
-                        )}
-                        {details.tactical_diff.cold_start.recent_form && (
-                          <span data-testid="cold-start-recent-form" style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-                            Recent form: <b style={{ color: '#e2e8f0' }}>{details.tactical_diff.cold_start.recent_form}</b> this season ({details.tactical_diff.cold_start.recent_form.split('-').length === 3 ? 'W-L-D' : 'W-L'})
-                          </span>
-                        )}
-                        {details.tactical_diff.cold_start.threat && (
-                          <span data-testid="cold-start-threat" style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-                            Top threat: <b style={{ color: '#e2e8f0' }}>{details.tactical_diff.cold_start.threat.name}</b> · {details.tactical_diff.cold_start.threat.archetype} · {details.tactical_diff.cold_start.threat.ovr} OVR
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {details.tactical_diff.opponent_intel.length > 0 && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.15rem' }}>
-                        {details.tactical_diff.opponent_intel.map((item, index) => (
-                          <p
-                            key={`${item.source}-${index}`}
-                            data-testid="tactical-diff-intel"
-                            data-source={item.source}
-                            style={{ margin: 0, fontSize: '0.72rem', color: '#94a3b8', lineHeight: 1.4 }}
-                          >
-                            <span style={{ color: '#475569', textTransform: 'uppercase', fontSize: '0.6rem', marginRight: '0.4rem' }}>
-                              {item.source === 'adaptation' ? 'Observed' : 'Prior'}
-                            </span>
-                            {item.text}
-                          </p>
-                        ))}
-                      </div>
-                    )}
                     <p style={{ margin: '0.1rem 0 0', fontSize: '0.68rem', color: '#475569', fontStyle: 'italic', lineHeight: 1.4 }}>
                       {details.tactical_diff.note}
                     </p>
                   </div>
-                )}
+                  );
+                })()}
 
-                {details.staff_impact && details.staff_impact.length > 0 && (
-                  <div data-testid="staff-impact" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
-                    <span className="lbl">Match-Day Staff</span>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                      {details.staff_impact.map((staff) => (
-                        <div
-                          key={staff.department}
-                          data-testid="staff-impact-row"
-                          data-department={staff.department}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'baseline',
-                            gap: '0.5rem',
-                            padding: '0.4rem 0.55rem',
-                            background: 'rgba(15,23,42,0.6)',
-                            border: '1px solid rgba(30,41,59,0.8)',
-                            borderRadius: '4px',
-                          }}
-                        >
-                          <span className="dm-data" style={{ fontSize: '0.7rem', color: 'var(--dm-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0 }}>
-                            {staff.department}
-                          </span>
-                          <span style={{ fontSize: '0.75rem', color: '#e2e8f0', fontWeight: 600, flexShrink: 0 }}>
-                            {staff.name} ({Math.round(staff.rating_primary)})
-                          </span>
-                          <span style={{ fontSize: '0.75rem', color: '#94a3b8', lineHeight: 1.4 }}>
-                            {staff.effect}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                {/* Depth intel (pre-tape facts, observed adaptation notes)
+                    folds into the Full File dialog. The trigger pins to the
+                    panel foot so the three desks share a crisp bottom edge. */}
+                {details.tactical_diff && (details.tactical_diff.cold_start || details.tactical_diff.opponent_intel.length > 0) && (
+                  <div className="cc-intel-foot">
+                    <button
+                      type="button"
+                      className="dm-btn"
+                      onClick={() => setScoutFileOpen(true)}
+                      data-testid="open-scouting-file"
+                    >
+                      Full Scouting File ▸
+                    </button>
                   </div>
                 )}
-
-                <div
-                  className={`cc-align-callout${hasPlanConflict ? ' is-warning' : ''}`}
-                  style={hasPlanConflict ? undefined : { borderColor: 'rgba(34,211,238,0.25)', borderLeftColor: 'var(--dm-cyan)', background: 'rgba(34,211,238,0.05)' }}
-                >
-                  <div className="copy">
-                    <b style={{ color: '#fff' }}>{hasPlanConflict ? 'Recommendation.' : 'Scouting note.'}</b>{' '}
-                    <span style={hasPlanConflict ? { color: '#fde68a' } : { color: 'var(--dm-text-secondary)' }}>
-                      {hasPlanConflict
-                        ? `Switch to ${recommendationLabel.replace('Adjust to ', '')}.`
-                        : `${scoutGapRead || recommendation.reason}`}
-                    </span>
-                  </div>
-                  <span className={`cc-pill${hasPlanConflict ? ' amber' : ' cyan'}`}>
-                    {hasPlanConflict ? 'Adjust' : 'Keep Plan'}
-                  </span>
-                </div>
               </>
             )}
 
@@ -922,7 +1005,7 @@ export function PreSimDashboard({
         <div className="cc-panel cc-lock" data-testid="readiness-panel">
           <div className="cc-panel-head">
             <span className="kicker">Sim Lock</span>
-            <h2>{planConfirmed ? 'Locked' : 'Ready to decide'}</h2>
+            <h2>{planConfirmed ? 'Locked' : 'Ready to Lock?'}</h2>
             <div className="cc-ready-row">
               <span className="pulse-em" />
               <span className="lbl">
@@ -934,27 +1017,50 @@ export function PreSimDashboard({
           </div>
           <div className="cc-panel-body">
             <div className="cc-gates command-readiness-chips">
-              {readinessChecks.map(check => (
-                <div
-                  key={check.id}
-                  className={`cc-gate ${check.ready ? 'ok' : 'pend'}`}
-                  title={check.detail}
-                  aria-label={check.detail ? `${check.short_label}: ${check.detail}` : check.short_label}
-                >
-                  <span className="tick" aria-hidden="true">{check.ready ? '✓' : '!'}</span>
-                  <span className="lbl">{check.short_label}</span>
-                  {/* WT-4: blocking detail must be visible + accessible, not
-                      title-only. Show it inline for pending gates. */}
-                  {!check.ready && check.detail && (
-                    <span
-                      className="cc-gate-detail"
-                      style={{ display: 'block', fontSize: '0.75rem', opacity: 0.85, marginTop: '0.15rem' }}
-                    >
-                      {check.detail}
-                    </span>
-                  )}
-                </div>
-              ))}
+              {readinessChecks.map(check => {
+                // P3: the blocker carries its own resolving action — the
+                // current step visually dominates the (disabled) lock button.
+                const gateAction =
+                  !planConfirmed && !isBye && !check.ready
+                    ? check.id === 'scout' && onScout
+                      ? { label: 'Scout now', onClick: onScout, testid: 'scout-opponent', disabled: saving }
+                      : check.id === 'confirm_lineup' && onConfirmLineup
+                        ? { label: 'Confirm six', onClick: onConfirmLineup, testid: 'confirm-lineup', disabled: saving || activePlayers.length === 0 }
+                        : null
+                    : null;
+                return (
+                  <div
+                    key={check.id}
+                    className={`cc-gate ${check.ready ? 'ok' : 'pend'}`}
+                    title={check.detail}
+                    aria-label={check.detail ? `${check.short_label}: ${check.detail}` : check.short_label}
+                  >
+                    <span className="tick" aria-hidden="true">{check.ready ? '✓' : '!'}</span>
+                    <span className="lbl">{check.short_label}</span>
+                    {/* WT-4: blocking detail must be visible + accessible, not
+                        title-only. Show it inline for pending gates. */}
+                    {!check.ready && check.detail && (
+                      <span
+                        className="cc-gate-detail"
+                        style={{ display: 'block', fontSize: '0.75rem', opacity: 0.85, marginTop: '0.15rem' }}
+                      >
+                        {check.detail}
+                      </span>
+                    )}
+                    {gateAction && (
+                      <button
+                        type="button"
+                        className="cc-gate-action"
+                        data-testid={gateAction.testid}
+                        disabled={gateAction.disabled}
+                        onClick={gateAction.onClick}
+                      >
+                        {gateAction.label} ▸
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {/* BUG #6: "Confirm Lineup" must be an INFORMED confirmation, not a
@@ -1007,33 +1113,6 @@ export function PreSimDashboard({
               </div>
             )}
 
-            {!planConfirmed && !isBye && (onScout || onConfirmLineup) && (
-              <div className="cc-readiness-actions" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-                {onScout && !scoutGateReady && (
-                  <button
-                    type="button"
-                    data-testid="scout-opponent"
-                    className="command-secondary-button"
-                    disabled={saving}
-                    onClick={onScout}
-                  >
-                    Scout Opponent
-                  </button>
-                )}
-                {onConfirmLineup && !confirmLineupGateReady && (
-                  <button
-                    type="button"
-                    data-testid="confirm-lineup"
-                    className="command-secondary-button"
-                    disabled={saving || activePlayers.length === 0}
-                    onClick={onConfirmLineup}
-                  >
-                    Confirm These Six
-                  </button>
-                )}
-              </div>
-            )}
-
             {!planConfirmed && (
               <div className="cc-intent-field">
                 <span className="lbl">This Week's Intent</span>
@@ -1049,11 +1128,10 @@ export function PreSimDashboard({
               </div>
             )}
 
+            {/* Three facts the lock decision actually turns on. Decision
+                (= the intent above) and Recommendation (= the Counter Read)
+                are not repeated here. */}
             <div className="cc-lock-readout">
-              <div className="lr">
-                <span className="lbl">Decision</span>
-                <span className="val">{currentApproach}</span>
-              </div>
               <div className="lr">
                 <span className="lbl">Risk</span>
                 <span className={`val${isAggressive ? ' rose' : isDefensive ? ' em' : ' am'}`}>
@@ -1062,11 +1140,7 @@ export function PreSimDashboard({
               </div>
               <div className="lr">
                 <span className="lbl">Readiness</span>
-                <span className="val mono em">{readyCount} / {readiness.total}</span>
-              </div>
-              <div className="lr">
-                <span className="lbl">Recommendation</span>
-                <span className="val">{recommendationLabel}</span>
+                <span className={`val mono${isReadyToLock ? ' em' : ' am'}`}>{readyCount} / {readiness.total}</span>
               </div>
               <div className="lr">
                 <span className="lbl">Next Issue</span>
@@ -1074,8 +1148,9 @@ export function PreSimDashboard({
               </div>
             </div>
 
-            <div className="cc-lock-foot">
-              <div className="ctx"><b>{primaryActionHint}</b></div>
+            {/* Launch dock — the one action this whole page builds toward. */}
+            <div className={`cc-launch${planConfirmed ? ' is-live' : isReadyToLock ? ' is-armed' : ''}`}>
+              <div className="ctx">{primaryActionHint}</div>
               <button
                 type="button"
                 className="cc-btn-sim"
@@ -1090,67 +1165,38 @@ export function PreSimDashboard({
                 <span>{saving ? 'Processing...' : primaryActionLabel}</span>
                 <span className="arrow">▸</span>
               </button>
-              {planConfirmed && (
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => onSavePlan(selectedIntent, false)}
-                  className="command-secondary-button"
-                >
-                  Unlock Plan
-                </button>
-              )}
-              {fastForward && (
-                <button
-                  type="button"
-                  data-testid="fast-forward-season"
-                  disabled={saving}
-                  onClick={() => setFastForwardOpen(true)}
-                  className="command-secondary-button"
-                  title="Auto-pilot ahead with the persisted plan and best lineup. Pick a stop point first."
-                >
-                  Fast-forward Season ⏭
-                </button>
-              )}
+              <div className="cc-launch-secondary">
+                {planConfirmed && (
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => onSavePlan(selectedIntent, false)}
+                    className="command-secondary-button"
+                  >
+                    Unlock Plan
+                  </button>
+                )}
+                {fastForward && (
+                  <button
+                    type="button"
+                    data-testid="fast-forward-season"
+                    disabled={saving}
+                    onClick={() => setFastForwardOpen(true)}
+                    className="command-secondary-button"
+                    title="Auto-pilot ahead with the persisted plan and best lineup. Pick a stop point first."
+                  >
+                    Fast-forward Season ⏭
+                  </button>
+                )}
+              </div>
               <div className="cc-lock-meta">
-                <span>⌘ ⏎ to confirm</span>
+                <span>{planConfirmed ? 'Locked in' : `${readyCount} of ${readiness.total} gates green`}</span>
                 <span>Auto-saved</span>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Proof bar — League Wire */}
-      <div className="cc-proof" data-testid="secondary-intel-rail">
-        <span className="tag">League Wire</span>
-        <span className="copy">
-          {recentLeagueWire.length > 0
-            ? recentLeagueWire.map((m, i) => (
-                <span key={i}>
-                  <b>W{m.week}</b> {m.summary}
-                  {i < recentLeagueWire.length - 1 ? '  ·  ' : ''}
-                </span>
-              ))
-            : <span>No recent match history</span>
-          }
-        </span>
-        {leagueLeader && (
-          <span className="wkbadge">Top: {leagueLeader}</span>
-        )}
-        {lastRecord && (
-          <button
-            type="button"
-            className="show"
-            onClick={() => {
-              const params = new URLSearchParams(window.location.search);
-              params.set('tab', 'standings');
-              window.location.assign(`${window.location.pathname}?${params.toString()}`);
-            }}
-          >
-            League Table ▸
-          </button>
-        )}
       </div>
 
       {/* Policy editor overlay — WT-21: the raw overlay shell is now the shared
@@ -1175,6 +1221,113 @@ export function PreSimDashboard({
               Close
             </button>
             <PolicyEditor policy={plan.tactics} disabled={planConfirmed} onChange={onSavePolicy} error={null} />
+        </Dialog>
+      )}
+
+      {/* Full Scouting File — depth intel folded out of the card so the
+          three desks stay uniform. Same overlay pattern as the policy
+          editor; all payload-backed facts, nothing re-derived. */}
+      {scoutFileOpen && details.tactical_diff && (
+        <Dialog
+          label={`Full scouting file — ${plan.opponent.name}`}
+          onClose={() => setScoutFileOpen(false)}
+          className="command-policy-overlay"
+          panelClassName="command-policy-overlay-body"
+          overlayStyle={{ backgroundColor: undefined, backdropFilter: undefined, padding: undefined }}
+          panelStyle={{}}
+          data-testid="scouting-file-overlay"
+        >
+          <button
+            type="button"
+            className="command-policy-overlay-close"
+            onClick={() => setScoutFileOpen(false)}
+            aria-label="Close scouting file"
+          >
+            Close
+          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+            <div>
+              <span className="dm-kicker">Full Scouting File</span>
+              <h2 style={{ margin: '0.25rem 0 0', fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 800, textTransform: 'uppercase', color: '#fff' }}>
+                {plan.opponent.name}
+              </h2>
+            </div>
+
+            {details.tactical_diff.cold_start && (
+              <div
+                data-testid="tactical-diff-cold-start"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.3rem',
+                  padding: '0.6rem 0.7rem',
+                  // Fog-of-war framing: the pre-tape intel layer, styled as
+                  // locked intelligence rather than missing data.
+                  background: 'repeating-linear-gradient(45deg, rgba(34,211,238,0.03) 0 5px, rgba(15,23,42,0.6) 5px 10px)',
+                  border: '1px dashed rgba(34,211,238,0.28)',
+                  borderRadius: '4px',
+                }}
+              >
+                <span className="lbl" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--dm-cyan)' }}>
+                  Pre-tape intel — what the league already knows
+                </span>
+                {details.tactical_diff.cold_start.program_archetype && (
+                  <span data-testid="cold-start-archetype" style={{ fontSize: '0.78rem', color: '#e2e8f0' }}>
+                    Program identity: <b>{details.tactical_diff.cold_start.program_archetype}</b>
+                  </span>
+                )}
+                {details.tactical_diff.cold_start.roster_shape && (
+                  <span data-testid="cold-start-roster-shape" style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                    Roster shape: {details.tactical_diff.cold_start.roster_shape.throwers} throwing-oriented · {details.tactical_diff.cold_start.roster_shape.defenders} defense-oriented
+                  </span>
+                )}
+                {details.tactical_diff.cold_start.position_groups && (
+                  <span data-testid="cold-start-position-groups" style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                    {details.tactical_diff.cold_start.position_groups.single_family ? (
+                      <>Group depth: only a <b style={{ color: '#e2e8f0' }}>{details.tactical_diff.cold_start.position_groups.strongest.label}</b> core ({details.tactical_diff.cold_start.position_groups.strongest.avg_ovr} avg OVR)</>
+                    ) : (
+                      <>Strongest group: <b style={{ color: '#e2e8f0' }}>{details.tactical_diff.cold_start.position_groups.strongest.label}</b> ({details.tactical_diff.cold_start.position_groups.strongest.avg_ovr} avg OVR) · Weakest: {details.tactical_diff.cold_start.position_groups.weakest.label} ({details.tactical_diff.cold_start.position_groups.weakest.avg_ovr} avg OVR)</>
+                    )}
+                  </span>
+                )}
+                {details.tactical_diff.cold_start.recent_form && (
+                  <span data-testid="cold-start-recent-form" style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                    Recent form: <b style={{ color: '#e2e8f0' }}>{details.tactical_diff.cold_start.recent_form}</b> this season ({details.tactical_diff.cold_start.recent_form.split('-').length === 3 ? 'W-L-D' : 'W-L'})
+                  </span>
+                )}
+                {details.tactical_diff.cold_start.threat && (
+                  <span data-testid="cold-start-threat" style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                    Top threat: <b style={{ color: '#e2e8f0' }}>{details.tactical_diff.cold_start.threat.name}</b> · {details.tactical_diff.cold_start.threat.archetype} · {details.tactical_diff.cold_start.threat.ovr} OVR
+                  </span>
+                )}
+              </div>
+            )}
+
+            {details.tactical_diff.opponent_intel.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <span className="lbl" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--dm-cyan)' }}>
+                  Intel Notes
+                </span>
+                {details.tactical_diff.opponent_intel.map((item, index) => (
+                  <p
+                    key={`${item.source}-${index}`}
+                    data-testid="tactical-diff-intel"
+                    data-source={item.source}
+                    style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.45 }}
+                  >
+                    <span style={{ color: '#475569', textTransform: 'uppercase', fontSize: '0.62rem', marginRight: '0.4rem' }}>
+                      {item.source === 'adaptation' ? 'Observed' : 'Prior'}
+                    </span>
+                    {item.text}
+                  </p>
+                ))}
+              </div>
+            )}
+
+            <p style={{ margin: 0, fontSize: '0.7rem', color: '#475569', fontStyle: 'italic', lineHeight: 1.4 }}>
+              {details.tactical_diff.note}
+            </p>
+          </div>
         </Dialog>
       )}
 

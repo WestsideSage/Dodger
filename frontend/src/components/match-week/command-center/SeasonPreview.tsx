@@ -83,7 +83,11 @@ export function SeasonPreview({
         background: 'linear-gradient(180deg, #0a1426 0%, #08101f 45%)',
         borderRadius: '10px',
         padding: '1.25rem',
-        margin: '1rem 0',
+        // Centered, capped column — at 1920 the full-bleed version read as a
+        // wall-to-wall banner with a 1700px-wide button.
+        margin: '1rem auto',
+        width: '100%',
+        maxWidth: '64rem',
         display: 'flex',
         flexDirection: 'column',
         gap: '1rem',
@@ -119,7 +123,10 @@ export function SeasonPreview({
                   minWidth: 0,
                   height: isBye ? '100%' : '55%',
                   borderRadius: '2px',
-                  background: isBye ? '#f59e0b' : '#1e293b',
+                  background: isBye
+                    ? '#f59e0b'
+                    : 'linear-gradient(180deg, rgba(56,189,248,0.30), rgba(56,189,248,0.10))',
+                  border: isBye ? 'none' : '1px solid rgba(56,189,248,0.25)',
                   alignSelf: 'flex-end',
                 }}
                 title={isBye ? `Bye — Week ${w}` : `Week ${w}`}
@@ -153,8 +160,18 @@ export function SeasonPreview({
           <span>Week 1</span>
           <span>Week {preview.regular_season_weeks}</span>
         </div>
-        <p className="season-preview-bye-note" style={{ color: '#f59e0b', fontWeight: 700, margin: '0.35rem 0 0', fontSize: '0.62rem' }}>
-          {preview.bye_text}
+        {/* Amber only when a bye actually exists; "None scheduled" is a calm
+            fact, not a warning. */}
+        <p
+          className="season-preview-bye-note"
+          style={{
+            color: preview.bye_week ? '#f59e0b' : '#64748b',
+            fontWeight: preview.bye_week ? 700 : 500,
+            margin: '0.35rem 0 0',
+            fontSize: '0.62rem',
+          }}
+        >
+          {preview.bye_week ? preview.bye_text : `Bye: ${preview.bye_text.toLowerCase()}`}
         </p>
       </div>
 
@@ -234,17 +251,8 @@ export function SeasonPreview({
         <button
           type="button"
           onClick={onContinue}
-          style={{
-            background: '#38bdf8',
-            color: '#04111f',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '0.7rem 1.4rem',
-            fontWeight: 900,
-            fontSize: '0.92rem',
-            cursor: 'pointer',
-            width: '100%',
-          }}
+          className="dm-action dm-action-primary"
+          style={{ width: '100%', padding: '0.8rem 1.4rem', fontSize: '0.85rem', fontWeight: 800 }}
         >
           To the Command Center →
         </button>

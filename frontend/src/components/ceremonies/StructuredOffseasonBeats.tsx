@@ -350,56 +350,26 @@ export function HallOfFameInduction({
         {inductees.length === 0 ? (
           <p className="command-offseason-copy">No new inductees this off-season.</p>
         ) : (
-          <div style={{ display: 'grid', gap: '0.6rem', marginTop: '0.5rem' }}>
+          <div style={{ display: 'grid', gap: '0.75rem', marginTop: '0.5rem' }}>
             {inductees.map(inductee => (
               <div
                 key={inductee.player_id ?? inductee.player_name}
+                className="hof-plaque"
                 data-broadcast-proof-source={inductee.proof_source ?? `career:${inductee.player_id ?? inductee.player_name}`}
-                style={{
-                  padding: '0.8rem 0.95rem',
-                  background: '#0a1220',
-                  border: '1px solid #1e293b',
-                  borderLeft: '3px solid #fbbf24',
-                  borderRadius: '4px',
-                }}
               >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'baseline',
-                    gap: '0.75rem',
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <p style={{ margin: 0, color: '#fbbf24', fontWeight: 800, fontSize: '1rem' }}>
-                    {inductee.player_name}
-                  </p>
-                  <p
-                    style={{
-                      margin: 0,
-                      fontFamily: 'JetBrains Mono, monospace',
-                      fontSize: '0.74rem',
-                      color: '#94a3b8',
-                    }}
-                  >
-                    Legacy {inductee.legacy_score.toFixed(1)} / {inductee.threshold.toFixed(1)}
-                  </p>
+                <span className="hof-enshrined" aria-label="Enshrined in the Hall of Fame">Enshrined</span>
+                <p className="hof-name">{inductee.player_name}</p>
+                <div className="hof-career">
+                  <span>{inductee.seasons_played} seasons</span>
+                  <span>{inductee.championships} titles</span>
+                  <span>{inductee.awards_won} awards</span>
+                  <span>{inductee.total_eliminations} career elims</span>
                 </div>
-                <p
-                  style={{
-                    margin: '0.35rem 0 0',
-                    fontFamily: 'JetBrains Mono, monospace',
-                    fontSize: '0.74rem',
-                    color: '#cbd5e1',
-                  }}
-                >
-                  {inductee.seasons_played} seasons | {inductee.championships} titles | {inductee.awards_won} awards | {inductee.total_eliminations} career elims
+                <p className="hof-legacy">
+                  Legacy {inductee.legacy_score.toFixed(1)} · clears the {inductee.threshold.toFixed(1)} induction bar
                 </p>
                 {inductee.reasons.length > 0 && (
-                  <p style={{ margin: '0.3rem 0 0', fontSize: '0.76rem', color: '#94a3b8' }}>
-                    {inductee.reasons.join(' | ')}
-                  </p>
+                  <p className="hof-reasons">{inductee.reasons.join(' · ')}</p>
                 )}
                 <ProofDetails source={inductee.proof_source ?? `career:${inductee.player_id ?? inductee.player_name}`} />
               </div>

@@ -471,6 +471,27 @@ function RecruitBoard({
           </div>
         </div>
       </div>
+      {/* Board-level legend — shown once instead of repeating on every card. */}
+      {prospects.length > 0 && (
+        <div
+          aria-label="Card color key: green = Strong Fit, amber = Fair Fit, red = At Risk"
+          style={{
+            display: 'flex',
+            gap: '0.9rem',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            margin: '0.4rem 0 0.65rem',
+            fontSize: '0.62rem',
+            color: '#64748b',
+            letterSpacing: '0.04em',
+          }}
+        >
+          <span style={{ color: '#34d399' }}>● Strong Fit ≥80</span>
+          <span style={{ color: '#f59e0b' }}>● Fair Fit 65–79</span>
+          <span style={{ color: '#f87171' }}>● At Risk &lt;65</span>
+          <span>Scout narrows the OVR range · Contact and visits build interest</span>
+        </div>
+      )}
       <div className="do-board-grid">
         {filtered.map((prospect, index) => (
           <ProspectCard key={prospect.player_id} prospect={prospect} budget={budget} onAction={reload} priority={index + 1} />

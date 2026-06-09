@@ -261,7 +261,8 @@ export function Roster() {
     <div className="max-content rl-shell" data-screen-label="02 Roster">
       <div className="rl-head">
         <div>
-          <span className="dm-kicker">Roster Lab</span>
+          {/* The broadcast header above already says "ROSTER LAB / ROSTER" —
+              don't repeat the kicker a second time 40px below it. */}
           <h2 className="rl-title">Team Roster</h2>
           <p className="rl-sub">Player condition, role fit, and match readiness. {data.roster.length} contracted.</p>
         </div>

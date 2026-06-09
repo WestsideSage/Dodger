@@ -181,8 +181,11 @@ const DarkCourt = memo(function DarkCourt({
         const isFlash = flashTargetId === pid;
         const isActive = isThrower || isTarget;
 
-        const opacity = hasActiveThrow ? (isActive ? 1 : isElim ? 0.35 : 0.22) : (isElim ? 0.35 : 1);
+        // Keep the non-active court readable during a throw: 0.45 still
+        // foregrounds the thrower/target but names stay legible.
+        const opacity = hasActiveThrow ? (isActive ? 1 : isElim ? 0.3 : 0.45) : (isElim ? 0.35 : 1);
         const baseColor = isHome ? '#f43f5e' : '#3b82f6';
+        const labelColor = isHome ? '#fda4af' : '#93c5fd';
         
         const isCatchTarget = isTarget && (activeResolution === 'caught' || activeResolution === 'catch');
         const glowing = isCatchTarget && isFlash;
@@ -195,7 +198,7 @@ const DarkCourt = memo(function DarkCourt({
             <text x={pos.x} y={pos.y + 4} textAnchor="middle" fontFamily="Oswald, sans-serif" fontSize="12" fill="#fff">
               {isHome ? idx + 1 : idx - homeIds.length + 1}
             </text>
-            <text x={pos.x} y={pos.y + 26} textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9" fill={baseColor}>
+            <text x={pos.x} y={pos.y + 27} textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9.5" fontWeight="600" fill={labelColor}>
               {info?.label || ''}
             </text>
             {isElim && <line x1={pos.x - 14} y1={pos.y - 14} x2={pos.x + 14} y2={pos.y + 14} stroke={baseColor} strokeWidth="2" />}

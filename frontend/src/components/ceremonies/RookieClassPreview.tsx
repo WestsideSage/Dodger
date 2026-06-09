@@ -1,5 +1,5 @@
 import type { OffseasonBeat } from '../../types';
-import { ActionButton } from '../ui';
+import { ActionButton, PageHeader } from '../ui';
 
 type RookieClassPreviewBeat = Extract<OffseasonBeat, { key: 'rookie_class_preview' }>;
 
@@ -20,24 +20,25 @@ export function RookieClassPreview({
 
     return (
         <section className="command-offseason-shell" data-testid="offseason-rookie-preview">
-            <div style={{ padding: '1.5rem 1rem 0.75rem' }}>
-                <p style={{
-                    fontSize: '0.68rem',
-                    fontWeight: 900,
-                    letterSpacing: '0.16em',
-                    color: '#38bdf8',
-                    textTransform: 'uppercase',
-                    marginBottom: '0.4rem',
-                }}>
-                    Incoming Class
-                </p>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f1f5f9', margin: 0 }}>
-                    Rookie Class Preview
-                </h2>
-                <p style={{ margin: '0.4rem 0 0', fontSize: '0.82rem', color: '#94a3b8' }}>
-                    Scouting reports are in. Here is the talent entering the league before you set your board.
-                </p>
-            </div>
+            <PageHeader
+                eyebrow={`Offseason Beat ${beat.beat_index + 1}/${beat.total_beats} · Incoming Class`}
+                title="Rookie Class Preview"
+                description="Scouting reports are in. Here is the talent entering the league before you set your board."
+                stats={
+                    <div className="command-offseason-progress" aria-label="Offseason beat progress">
+                        {Array.from({ length: beat.total_beats }).map((_, index) => (
+                            <span
+                                key={index}
+                                className={
+                                    index <= beat.beat_index
+                                        ? 'command-offseason-progress-step command-offseason-progress-step-active'
+                                        : 'command-offseason-progress-step'
+                                }
+                            />
+                        ))}
+                    </div>
+                }
+            />
 
             {/* Primary signal: class quality. top_prospects is the single number
                 that should drive how aggressively the player spends slots
