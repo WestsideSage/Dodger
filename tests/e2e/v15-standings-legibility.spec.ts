@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { launchTokenHeaders } from './_token';
 
 const baseUrl = 'http://127.0.0.1:8000';
 
@@ -7,6 +8,7 @@ test.describe('v15-p2d standings legibility', () => {
     // Create a save so we have a fresh career and standings
     const saveName = `e2e-standings-p2d-${Date.now()}`;
     const create = await request.post(`${baseUrl}/api/saves/new`, {
+      headers: await launchTokenHeaders(request),
       data: { name: saveName, club_id: 'aurora' },
     });
     expect(create.ok()).toBeTruthy();

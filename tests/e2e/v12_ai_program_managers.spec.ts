@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test';
+import { launchTokenHeaders } from './_token';
 
 const baseUrl = 'http://127.0.0.1:8000';
 
 test('AI Program Managers E2E Standings rendering', async ({ page, request }) => {
   const saveName = `e2e-v12-ai-program-${Date.now()}`;
   const create = await request.post(`${baseUrl}/api/saves/new`, {
+    headers: await launchTokenHeaders(request),
     data: { name: saveName, club_id: 'aurora' },
   });
   expect(create.ok()).toBeTruthy();

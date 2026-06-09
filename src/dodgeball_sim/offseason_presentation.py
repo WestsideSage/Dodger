@@ -173,7 +173,10 @@ def build_beat_payload(
             retirees.append(
                 {
                     "name": row.get("player_name", player_id),
-                    "ovr_final": float(row.get("overall", 0)),
+                    # OVR is an integer scale everywhere player-facing; stored
+                    # rows may carry floats from older saves, so round here the
+                    # same way the development beat below does (no "55.7 OVR").
+                    "ovr_final": int(round(float(row.get("overall", 0)))),
                     "career_elims": int((career or {}).get("total_eliminations", 0)),
                     "championships": int((career or {}).get("championships", 0)),
                     "seasons_played": int((career or {}).get("seasons_played", 0)),

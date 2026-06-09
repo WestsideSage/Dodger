@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { launchTokenHeaders } from './_token';
 
 const baseUrl = 'http://127.0.0.1:8000';
 
@@ -21,6 +22,7 @@ async function fastForwardToWeek(request: APIRequestContext, week: number) {
     expect(center.ok()).toBeTruthy();
     const plan = await center.json();
     const sim = await request.post(`${baseUrl}/api/command-center/simulate`, {
+      headers: await launchTokenHeaders(request),
       data: { intent: plan.plan.intent },
     });
     expect(sim.ok()).toBeTruthy();
@@ -46,6 +48,7 @@ async function advanceToOffseasonBeat(page: Page, testId: string) {
 test('V13 broadcast framing and replay log keep proof one click away', async ({ page, request }) => {
   const saveName = `e2e-v13-${Date.now()}`;
   const create = await request.post(`${baseUrl}/api/saves/new`, {
+    headers: await launchTokenHeaders(request),
     data: { name: saveName, club_id: 'aurora' },
   });
   expect(create.ok()).toBeTruthy();
@@ -79,6 +82,7 @@ test('V13 playoff framing and offseason record cards stay browser-visible', asyn
   // fast-forward reaches an aurora playoff semifinal (the default seed leaves
   // aurora out of the top 4, ending the season before any playoff week).
   const create = await request.post(`${baseUrl}/api/saves/new`, {
+    headers: await launchTokenHeaders(request),
     data: { name: saveName, club_id: 'aurora', root_seed: 7 },
   });
   expect(create.ok()).toBeTruthy();
@@ -107,7 +111,11 @@ test('V13 playoff framing and offseason record cards stay browser-visible', asyn
 
   await page.getByRole('button', { name: /close replay/i }).click();
   await expect(page.getByTestId('post-week-dashboard')).toBeVisible();
-  await page.getByRole('button', { name: /(bank the result|move on|shake it off)/i }).click();
+  // AftermathActionBar labels are "BANK THE RESULT →" (win) / "NEXT WEEK →"
+  // (everything else) — the old "move on / shake it off" variants no longer
+  // exist. This spec had only ever run pre-token-guard, so it never saw the
+  // rename.
+  await page.getByRole('button', { name: /(bank the result|next week)/i }).click();
 
   const foundRecordsBeat = await advanceToOffseasonBeat(page, 'offseason-records-ratified');
   if (foundRecordsBeat) {

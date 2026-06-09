@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test';
+import { launchTokenHeaders } from './_token';
 
 const baseUrl = 'http://127.0.0.1:8000';
 
 test('Standings: row-click opens a club program modal with club history content', async ({ page, request }) => {
   const saveName = `e2e-v15-standings-modal-${Date.now()}`;
   const res = await request.post(`${baseUrl}/api/saves/new`, {
+    headers: await launchTokenHeaders(request),
     data: { name: saveName, club_id: 'aurora' },
   });
   expect(res.ok()).toBeTruthy();
@@ -50,6 +52,7 @@ test('Standings: row-click opens a club program modal with club history content'
 test('Standings: no trailing > icon on club rows (Phase 2d cleanup)', async ({ page, request }) => {
   const saveName = `e2e-v15-standings-trailing-icon-${Date.now()}`;
   const res = await request.post(`${baseUrl}/api/saves/new`, {
+    headers: await launchTokenHeaders(request),
     data: { name: saveName, club_id: 'aurora' },
   });
   expect(res.ok()).toBeTruthy();

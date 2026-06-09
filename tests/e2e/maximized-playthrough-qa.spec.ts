@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { launchTokenHeaders } from './_token';
 
 const baseUrl = 'http://127.0.0.1:8000';
 
@@ -24,6 +25,7 @@ test.describe('Maximized browser playthrough and V11 QA Pass', () => {
     // 1. Create a new career with Official Cloth ruleset (highly distinct from Foam)
     await test.step('Create official cloth ruleset save', async () => {
       const createRes = await request.post(`${baseUrl}/api/saves/new`, {
+        headers: await launchTokenHeaders(request),
         data: {
           name: saveName,
           club_id: 'aurora',

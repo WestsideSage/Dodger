@@ -147,3 +147,76 @@ def test_official_draw_replay_header_shows_game_points_not_survivors():
     # detail, but it is NOT the figure the header headlines for official play.
     assert payload["home_survivors"] == 0
     assert payload["away_survivors"] == 0
+
+
+def test_replay_response_model_serializes_official_scoring():
+    """The /api/matches/{id}/replay RESPONSE must carry the official scoring.
+
+    The two tests above pin ``match_replay_payload`` (the service). The route
+    serializes through ``server.MatchReplayResponse``, and a Pydantic response
+    model silently DROPS any field it does not declare — which is exactly what
+    happened: the service built ``scoring_model``/game points, the model
+    stripped them, and every official replay rendered as a legacy survivor
+    scoreline in the browser (caught by tests/e2e/replay-score-parity.spec.ts
+    once the token sweep let it run again). This pins the serialized shape.
+    """
+    from dodgeball_sim.server import MatchReplayResponse
+
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+
+    club_a = Club("club_a", "Club A", "red/white", "North", 2020, CoachPolicy())
+    club_b = Club("club_b", "Club B", "blue/gold", "South", 2020, CoachPolicy())
+    save_club(conn, club_a, roster=[])
+    save_club(conn, club_b, roster=[])
+
+    conn.execute(
+        """
+        INSERT INTO matches (id, seed, config_version, winner_team_id, team_a_id, team_b_id, difficulty, setup_json, box_score_json, final_tick)
+        VALUES (44, 123, 'official:foam', 'club_a', 'club_a', 'club_b', 'pro', '{}', '{"teams": {"club_a": {"totals": {"living": 2}}, "club_b": {"totals": {"living": 0}}}}', 150)
+        """
+    )
+    conn.execute(
+        """
+        INSERT INTO match_roster_snapshots (match_id, club_id, players_json)
+        VALUES ('match_ser', 'club_a', '[]'), ('match_ser', 'club_b', '[]')
+        """
+    )
+    save_match_result(
+        conn,
+        match_id="match_ser",
+        season_id="season_1",
+        week=1,
+        home_club_id="club_a",
+        away_club_id="club_b",
+        winner_club_id="club_a",
+        home_survivors=2,
+        away_survivors=0,
+        home_roster_hash="h1",
+        away_roster_hash="h2",
+        config_version="official:foam",
+        ruleset_version="v1.0",
+        seed=123,
+        event_log_hash="event_h",
+        final_state_hash="state_h",
+        engine_match_id=44,
+        scoring_model="foam",
+        home_game_points=8,
+        away_game_points=3,
+        home_games_won=8,
+        away_games_won=3,
+        tied_games=0,
+        no_point_games=1,
+        official_score_json='{"team_a_game_points": 8}',
+    )
+
+    payload = match_replay_payload(conn, "match_ser")
+    serialized = MatchReplayResponse(**payload).model_dump()
+    assert serialized["scoring_model"] == "foam"
+    assert serialized["home_game_points"] == 8
+    assert serialized["away_game_points"] == 3
+    assert serialized["home_games_won"] == 8
+    assert serialized["away_games_won"] == 3
+    assert serialized["tied_games"] == 0
+    assert serialized["no_point_games"] == 1

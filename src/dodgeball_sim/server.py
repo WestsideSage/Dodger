@@ -488,6 +488,18 @@ class MatchReplayResponse(BaseModel):
     home_survivors: int
     away_survivors: int
     config_version: str | None = None  # V11: "official:..." when run under official ruleset
+    # WT-2/WT-3 family: the replay scoreboard must score official matches in
+    # game points, exactly like the aftermath hero. replay_service builds
+    # these fields; omitting them here made FastAPI strip them from the
+    # serialized response, so every official replay silently rendered as a
+    # legacy survivor scoreline and could contradict the aftermath.
+    scoring_model: str = "legacy"
+    home_game_points: int = 0
+    away_game_points: int = 0
+    home_games_won: int = 0
+    away_games_won: int = 0
+    tied_games: int = 0
+    no_point_games: int = 0
     events: list[dict[str, Any]]
     moment_events: list[dict[str, Any]] = Field(default_factory=list)
     proof_events: list[dict[str, Any]] = Field(default_factory=list)

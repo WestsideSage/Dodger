@@ -1,9 +1,10 @@
 import { expect, test, type Page, type APIRequestContext } from '@playwright/test';
+import { launchTokenHeaders } from './_token';
 
 const baseUrl = 'http://127.0.0.1:8000';
 
 async function ensureSaveMenu(page: Page, request: APIRequestContext) {
-  await request.post(`${baseUrl}/api/saves/unload`);
+  await request.post(`${baseUrl}/api/saves/unload`, { headers: await launchTokenHeaders(request) });
   await page.goto(baseUrl);
   await expect(page.getByTestId('save-menu')).toBeVisible();
 }
@@ -35,6 +36,7 @@ test('build-from-scratch identity fields expose real label associations', async 
 test('roster stays inside a 390px viewport without horizontal scrolling', async ({ page, request }) => {
   const saveName = `e2e-roster-mobile-${Date.now()}`;
   const create = await request.post(`${baseUrl}/api/saves/new`, {
+    headers: await launchTokenHeaders(request),
     data: { name: saveName, club_id: 'aurora' },
   });
   expect(create.ok()).toBeTruthy();
