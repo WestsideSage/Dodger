@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { launchTokenHeaders } from './_token';
 
 const baseUrl = 'http://127.0.0.1:8000';
 
@@ -9,6 +10,7 @@ const baseUrl = 'http://127.0.0.1:8000';
 test('V14 legibility: tactical diff + staff impact pre-sim, primary factor post-sim', async ({ page, request }) => {
   const saveName = `e2e-v14-legibility-${Date.now()}`;
   const create = await request.post(`${baseUrl}/api/saves/new`, {
+    headers: await launchTokenHeaders(request),
     data: { name: saveName, club_id: 'aurora' },
   });
   expect(create.ok()).toBeTruthy();

@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
+import { launchTokenHeaders } from './_token';
 
 const baseUrl = 'http://127.0.0.1:8000';
 
@@ -8,6 +9,7 @@ async function fastForwardToWeek(request: APIRequestContext, week: number) {
     expect(center.ok()).toBeTruthy();
     const plan = await center.json();
     const sim = await request.post(`${baseUrl}/api/command-center/simulate`, {
+      headers: await launchTokenHeaders(request),
       data: { intent: plan.plan.intent },
     });
     expect(sim.ok()).toBeTruthy();
@@ -20,6 +22,7 @@ test('playoff command strip labels regular-season record instead of recent form'
   // fast-forward reaches an aurora playoff semifinal (the default seed leaves
   // aurora out of the top 4, ending the season before any playoff week).
   const create = await request.post(`${baseUrl}/api/saves/new`, {
+    headers: await launchTokenHeaders(request),
     data: { name: saveName, club_id: 'aurora', root_seed: 7 },
   });
   expect(create.ok()).toBeTruthy();

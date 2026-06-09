@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { launchTokenHeaders } from './_token';
 
 // Verifies the History & Identity legibility changes on a fresh save.
 // Populated-history proof (Best Newcomer ProofChip on a 4-season save)
@@ -9,6 +10,7 @@ test.describe('V15 Phase 4a — History & Identity', () => {
     const baseUrl = 'http://127.0.0.1:8000';
     const saveName = `e2e-history-${Date.now()}`;
     const create = await request.post(`${baseUrl}/api/saves/new`, {
+      headers: await launchTokenHeaders(request),
       data: { name: saveName, club_id: 'aurora' },
     });
     expect(create.ok()).toBeTruthy();

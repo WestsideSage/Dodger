@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { launchTokenHeaders } from './_token';
 
 // Verifies the Season Preview information-density upgrade:
 // - The Playoff Cut stat label is a TermTip that reveals its explanation.
@@ -9,6 +10,7 @@ test.describe('Season Preview density (Phase 3c)', () => {
     // Navigate to a fresh-career command center so the Season Preview is shown.
     const saveName = `e2e-season-preview-${Date.now()}`;
     const create = await request.post(`http://127.0.0.1:8000/api/saves/new`, {
+      headers: await launchTokenHeaders(request),
       data: { name: saveName, club_id: 'aurora' },
     });
     expect(create.ok()).toBeTruthy();

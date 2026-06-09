@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { launchTokenHeaders } from './_token';
 
 const baseUrl = 'http://127.0.0.1:8000';
 
@@ -8,6 +9,7 @@ test('diagnostic playable loop: save, status, simulate, replay, next state', asy
 
   await test.step('create and activate a managed save', async () => {
     const create = await request.post(`${baseUrl}/api/saves/new`, {
+      headers: await launchTokenHeaders(request),
       data: { name: saveName, club_id: 'aurora', root_seed: 20260426 },
     });
     evidence.createStatus = create.status();
@@ -32,6 +34,7 @@ test('diagnostic playable loop: save, status, simulate, replay, next state', asy
   let matchId = '';
   await test.step('simulate one command week and capture replay id', async () => {
     const simulated = await request.post(`${baseUrl}/api/command-center/simulate`, {
+      headers: await launchTokenHeaders(request),
       data: { intent: 'Win Now' },
     });
     evidence.simulateStatus = simulated.status();

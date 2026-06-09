@@ -1,10 +1,12 @@
 import { expect, test, type Page, type APIRequestContext } from '@playwright/test';
+import { launchTokenHeaders } from './_token';
 
 const baseUrl = 'http://127.0.0.1:8000';
 
 async function openLineupEditor(page: Page, request: APIRequestContext): Promise<void> {
   const saveName = `e2e-v15-lineup-${Date.now()}`;
   const create = await request.post(`${baseUrl}/api/saves/new`, {
+    headers: await launchTokenHeaders(request),
     data: { name: saveName, club_id: 'aurora' },
   });
   expect(create.ok()).toBeTruthy();

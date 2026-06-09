@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { launchTokenHeaders } from './_token';
 
 const baseUrl = 'http://127.0.0.1:8000';
 
@@ -7,6 +8,7 @@ test.describe('V15 Phase 4b — App shell: nav hamburger + Settings hidden', () 
     // Create a throwaway save so the game shell renders (not the save menu).
     const saveName = `e2e-v15-shell-${Date.now()}`;
     const res = await request.post(`${baseUrl}/api/saves/new`, {
+      headers: await launchTokenHeaders(request),
       data: { name: saveName, club_id: 'aurora' },
     });
     expect(res.ok()).toBeTruthy();

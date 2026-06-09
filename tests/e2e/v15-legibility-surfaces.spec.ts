@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { launchTokenHeaders } from './_token';
 
 const baseUrl = 'http://127.0.0.1:8000';
 
@@ -6,6 +7,7 @@ const baseUrl = 'http://127.0.0.1:8000';
 async function freshAuroraSave(request: import('@playwright/test').APIRequestContext): Promise<string> {
   const saveName = `e2e-v15-legibility-${Date.now()}`;
   const res = await request.post(`${baseUrl}/api/saves/new`, {
+    headers: await launchTokenHeaders(request),
     data: { name: saveName, club_id: 'aurora' },
   });
   expect(res.ok()).toBeTruthy();

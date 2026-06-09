@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test';
+import { launchTokenHeaders } from './_token';
 
 const baseUrl = 'http://127.0.0.1:8000';
 
 test('official rules replay surfaces rules state and explanation panels', async ({ page, request }) => {
   const saveName = `e2e-official-replay-${Date.now()}`;
   const create = await request.post(`${baseUrl}/api/saves/new`, {
+    headers: await launchTokenHeaders(request),
     data: {
       name: saveName,
       club_id: 'aurora',

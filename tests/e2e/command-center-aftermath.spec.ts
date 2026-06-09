@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test';
+import { launchTokenHeaders } from './_token';
 
 const baseUrl = 'http://127.0.0.1:8000';
 
 test('Command Center aftermath presents score, replay identity, fallout, and next action', async ({ page, request }) => {
   const saveName = `e2e-command-center-${Date.now()}`;
   const create = await request.post(`${baseUrl}/api/saves/new`, {
+    headers: await launchTokenHeaders(request),
     data: { name: saveName, club_id: 'aurora' },
   });
   expect(create.ok()).toBeTruthy();
@@ -45,6 +47,7 @@ test('Command Center aftermath presents score, replay identity, fallout, and nex
 test('KeyPlayersPanel shows Your Club Best standout when no user player in top 3', async ({ page, request }) => {
   const saveName = `e2e-standout-${Date.now()}`;
   const create = await request.post(`${baseUrl}/api/saves/new`, {
+    headers: await launchTokenHeaders(request),
     data: { name: saveName, club_id: 'aurora' },
   });
   expect(create.ok()).toBeTruthy();

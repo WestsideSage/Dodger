@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { launchTokenHeaders } from './_token';
 
 const baseUrl = 'http://127.0.0.1:8000';
 
@@ -10,6 +11,7 @@ test.describe('recruit board legibility (V15 Phase 2a)', () => {
   test.beforeEach(async ({ page, request }) => {
     saveName = `e2e-v15-recruit-${Date.now()}`;
     const create = await request.post(`${baseUrl}/api/saves/new`, {
+      headers: await launchTokenHeaders(request),
       data: { name: saveName, club_id: 'aurora' },
     });
     expect(create.ok()).toBeTruthy();
@@ -50,8 +52,9 @@ test.describe('recruit board legibility (V15 Phase 2a)', () => {
     await expect(ovrGroup).toBeVisible();
     // The "Scout to narrow" hint must be present on the card.
     await expect(card).toContainText(/Scout to narrow/i);
-    // The scouting caption below the evidence row must also appear.
-    await expect(card).toContainText(/Scout to narrow the OVR range/i);
+    // The scouting caption moved to a single board-level legend (2026-06-09
+    // UX pass) — it must still be visible once on the board.
+    await expect(page.locator('.do-board')).toContainText(/Scout narrows the OVR range/i);
   });
 
   test('FIT value shows /100 denominator to distinguish it from a roster OVR', async ({ page }) => {
@@ -60,11 +63,13 @@ test.describe('recruit board legibility (V15 Phase 2a)', () => {
     await expect(card).toContainText(/\/100/);
   });
 
-  test('fit-tier legend row explains card color', async ({ page }) => {
-    const card = page.locator('.do-recruit').first();
-    await expect(card).toContainText(/Strong Fit ≥80/i);
-    await expect(card).toContainText(/Fair Fit 65/i);
-    await expect(card).toContainText(/At Risk/i);
+  test('fit-tier legend explains card color once at board level', async ({ page }) => {
+    // The legend was deduplicated from every card to a single board-level
+    // row (2026-06-09 UX pass) — same information, stated once.
+    const board = page.locator('.do-board');
+    await expect(board).toContainText(/Strong Fit ≥80/i);
+    await expect(board).toContainText(/Fair Fit 65/i);
+    await expect(board).toContainText(/At Risk/i);
   });
 
   test('PipelineEmblem carries an accessible tier label', async ({ page }) => {
