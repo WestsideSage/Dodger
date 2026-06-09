@@ -7,6 +7,12 @@
       "runtimeArgs": ["-m", "dodgeball_sim.web_cli"],
       "port": 8000,
       "env": { "DODGEBALL_DEV": "1" }
+    },
+    {
+      "name": "Prod Preview",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "dodgeball_sim"],
+      "port": 8000
     }
   ]
 }
