@@ -42,6 +42,8 @@ export function AwardsNight({ beat, onComplete, acting }: { beat: AwardsBeat; on
     if (allAwards.length === 0) {
         return (
             <CeremonyShell
+                beatIndex={beat.beat_index}
+                totalBeats={beat.total_beats}
                 title={beat.title}
                 eyebrow="Awards"
                 description="The league honors the season's finest."
@@ -64,12 +66,14 @@ export function AwardsNight({ beat, onComplete, acting }: { beat: AwardsBeat; on
 
     return (
         <CeremonyShell
+                beatIndex={beat.beat_index}
+                totalBeats={beat.total_beats}
             title={beat.title}
             eyebrow="Awards Night"
             description="The league gathers to honor the season's best."
             stages={orderedAwards.length}
             renderStage={(stage) => (
-                <div style={{ width: '100%', maxWidth: '520px', margin: '0 auto' }}>
+                <div style={{ width: '100%', maxWidth: '640px', margin: '0 auto' }}>
                     {/* MVP Hero Card — revealed at stage 1 */}
                     {stage >= 1 && orderedAwards[0] && (() => {
                         const award = orderedAwards[0];
@@ -106,10 +110,13 @@ export function AwardsNight({ beat, onComplete, acting }: { beat: AwardsBeat; on
 
                                 {/* Player name — headline */}
                                 <div style={{
-                                    fontSize: '1.75rem',
-                                    fontWeight: 900,
+                                    fontFamily: 'var(--font-display)',
+                                    fontSize: '2.1rem',
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.03em',
                                     color: '#fbbf24',
-                                    lineHeight: 1.1,
+                                    lineHeight: 1.05,
                                     marginBottom: '0.2rem',
                                     paddingRight: '8rem',
                                 }}>
@@ -208,6 +215,8 @@ export function Graduation({ beat, onComplete, acting }: { beat: RetirementsBeat
   if (retirees.length === 0) {
     return (
       <CeremonyShell
+                beatIndex={beat.beat_index}
+                totalBeats={beat.total_beats}
         title={beat.title}
         eyebrow="Graduation"
         description="Farewell to departing veterans."
@@ -225,39 +234,31 @@ export function Graduation({ beat, onComplete, acting }: { beat: RetirementsBeat
 
   return (
     <CeremonyShell
+                beatIndex={beat.beat_index}
+                totalBeats={beat.total_beats}
       title={beat.title}
       eyebrow="Graduation"
       description="Saying goodbye to departing veterans."
       stages={retirees.length}
       renderStage={(stage) => (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '480px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '560px', margin: '0 auto' }}>
           {retirees.slice(0, stage).map((r: OffseasonRetiree, i: number) => {
             const isLatest = i === stage - 1;
             const tierColor = TIER_COLOR[r.potential_tier] ?? '#475569';
             return (
               <div
                 key={i}
-                className="fade-in"
-                style={{
-                  border: `1px solid ${isLatest ? '#10b981' : '#334155'}`,
-                  borderRadius: '8px',
-                  padding: '1rem',
-                  background: '#0f172a',
-                  opacity: isLatest ? 1 : 0.55,
-                }}
+                className={`fade-in farewell-card${isLatest ? ' is-latest' : ''}`}
+                style={{ opacity: isLatest ? 1 : 0.6 }}
               >
-                <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '0.35rem' }}>
-                  {r.name}
+                <div className="farewell-name">{r.name}</div>
+                <div className="farewell-line">
+                  {r.ovr_final ? <span>{Math.round(r.ovr_final)} OVR final</span> : null}
+                  <span>{r.career_elims} career elims</span>
+                  <span>{r.championships} {r.championships === 1 ? 'title' : 'titles'}</span>
+                  <span>{r.seasons_played} seasons</span>
                 </div>
-                {r.ovr_final ? (
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.35rem' }}>
-                    OVR {r.ovr_final}
-                  </div>
-                ) : null}
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
-                  {r.career_elims} career elims · {r.championships} titles · {r.seasons_played} seasons
-                </div>
-                <div style={{ fontSize: '0.7rem', color: tierColor, fontWeight: 600 }}>
+                <div className="farewell-tier" style={{ color: tierColor }}>
                   {r.potential_tier} potential
                 </div>
               </div>
@@ -631,6 +632,8 @@ export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat
 
   return (
     <CeremonyShell
+                beatIndex={beat.beat_index}
+                totalBeats={beat.total_beats}
       title="Class Report"
       eyebrow="Signing Day Update"
       description="Here's how the rookie class shook out."
@@ -771,12 +774,14 @@ export function NewSeasonEve({ beat, onComplete, acting }: { beat: ScheduleRevea
 
     return (
         <CeremonyShell
+                beatIndex={beat.beat_index}
+                totalBeats={beat.total_beats}
             title={beat.title}
             eyebrow={seasonLabel ? `Season ${seasonLabel} · Schedule Reveal` : 'New Season'}
             description="A new chapter begins."
             stages={2}
             renderStage={(stage) => (
-                <div style={{ width: '100%', maxWidth: '520px', margin: '0 auto' }}>
+                <div style={{ width: '100%', maxWidth: '640px', margin: '0 auto' }}>
                     {stage >= 1 && (
                         <div className="fade-in" style={{ marginBottom: '1rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>

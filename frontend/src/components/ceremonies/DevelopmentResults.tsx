@@ -1,5 +1,5 @@
 import type { OffseasonBeat } from '../../types';
-import { ActionButton } from '../ui';
+import { ActionButton, PageHeader } from '../ui';
 import { TermTip } from '../../legibility';
 
 type DevelopmentBeat = Extract<OffseasonBeat, { key: 'development' }>;
@@ -29,17 +29,25 @@ export function DevelopmentResults({
 
     return (
         <section className="command-offseason-shell" data-testid="offseason-development">
-            <div style={{ padding: '1.5rem 1rem 0.5rem' }}>
-                <p style={{ fontSize: '0.75rem', letterSpacing: '0.1em', color: '#94a3b8', marginBottom: '0.5rem' }}>
-                    OFFSEASON DEVELOPMENT
-                </p>
-                <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '0.25rem' }}>
-                    Your Roster Progress
-                </h2>
-                <p style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                    {players.length} player{players.length !== 1 ? 's' : ''} changed OVR
-                </p>
-            </div>
+            <PageHeader
+                eyebrow={`Offseason Beat ${beat.beat_index + 1}/${beat.total_beats} · Development`}
+                title="Your Roster Progress"
+                description={`${players.length} player${players.length !== 1 ? 's' : ''} changed OVR`}
+                stats={
+                    <div className="command-offseason-progress" aria-label="Offseason beat progress">
+                        {Array.from({ length: beat.total_beats }).map((_, index) => (
+                            <span
+                                key={index}
+                                className={
+                                    index <= beat.beat_index
+                                        ? 'command-offseason-progress-step command-offseason-progress-step-active'
+                                        : 'command-offseason-progress-step'
+                                }
+                            />
+                        ))}
+                    </div>
+                }
+            />
 
             <div className="dm-panel" style={{ padding: '0', overflow: 'hidden' }}>
                 {players.length === 0 ? (

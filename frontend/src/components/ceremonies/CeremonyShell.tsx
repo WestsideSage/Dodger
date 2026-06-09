@@ -20,6 +20,8 @@ export function CeremonyShell({
   actionLabel = 'Continue',
   actionDescription = 'Continue to the next offseason beat.',
   isActing = false,
+  beatIndex,
+  totalBeats,
 }: {
   title: string,
   eyebrow: string,
@@ -30,9 +32,15 @@ export function CeremonyShell({
   actionLabel?: string,
   actionDescription?: string,
   isActing?: boolean,
+  /** 0-based beat position — when provided (with totalBeats) the header
+      shows the same progress pips as the structured beats, so the whole
+      offseason sequence reads as one ceremony. */
+  beatIndex?: number,
+  totalBeats?: number,
 }) {
   const [stage, setStage] = useState(0);
   const animating = stage < stages;
+  const showProgress = typeof beatIndex === 'number' && typeof totalBeats === 'number' && totalBeats > 0;
 
   useEffect(() => {
     if (stage >= stages) return;
@@ -57,8 +65,26 @@ export function CeremonyShell({
 
   return (
     <div className="dm-ceremony" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      <PageHeader eyebrow={eyebrow} title={title} description={description} />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <PageHeader
+        eyebrow={showProgress ? `Offseason Beat ${(beatIndex as number) + 1}/${totalBeats} · ${eyebrow}` : eyebrow}
+        title={title}
+        description={description}
+        stats={showProgress ? (
+          <div className="command-offseason-progress" aria-label="Offseason beat progress">
+            {Array.from({ length: totalBeats as number }).map((_, index) => (
+              <span
+                key={index}
+                className={
+                  index <= (beatIndex as number)
+                    ? 'command-offseason-progress-step command-offseason-progress-step-active'
+                    : 'command-offseason-progress-step'
+                }
+              />
+            ))}
+          </div>
+        ) : undefined}
+      />
+      <div className="dm-ceremony-stage" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
          {renderStage(stage)}
       </div>
       <div className="dm-panel command-action-bar" style={{ position: 'sticky', bottom: '1rem', marginTop: 'auto' }}>

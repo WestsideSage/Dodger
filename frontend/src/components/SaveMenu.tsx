@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type React from 'react';
 import type { SaveInfo, SaveListResponse, ClubOption } from '../types';
 import { IdentityStep } from './new-game/IdentityStep';
 import { CoachStep } from './new-game/CoachStep';
@@ -10,6 +11,23 @@ const DEBUG_PREFIXES = ['qa-playthrough-', 'debug-', 'playtest-', 'ux-teardown-'
 
 function isDebugSaveName(name: string) {
   return DEBUG_PREFIXES.some(prefix => name.startsWith(prefix));
+}
+
+// Deterministic club monogram for save rows — initials + a stable accent
+// drawn from the club name so each career reads as a distinct program.
+// Presentation only; no payload fields are invented.
+const MONOGRAM_PALETTE = ['#22d3ee', '#f97316', '#10b981', '#f59e0b', '#a78bfa', '#f43f5e', '#38bdf8', '#fb923c'];
+
+function clubMonogram(name?: string | null): { initials: string; hue: string } {
+  const clean = (name ?? '').trim();
+  if (!clean) return { initials: '?', hue: '#475569' };
+  const words = clean.split(/\s+/).filter(Boolean);
+  const initials = (
+    words.length >= 2 ? `${words[0][0]}${words[words.length - 1][0]}` : clean.slice(0, 2)
+  ).toUpperCase();
+  let hash = 0;
+  for (let i = 0; i < clean.length; i += 1) hash = (hash * 31 + clean.charCodeAt(i)) | 0;
+  return { initials, hue: MONOGRAM_PALETTE[Math.abs(hash) % MONOGRAM_PALETTE.length] };
 }
 
 function formatTimeAgo(timestamp?: number): string {
@@ -219,38 +237,16 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
   return (
     <div
       data-testid="save-menu"
-      style={{
-        display: 'flex',
-        minHeight: '100vh',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#020617',
-        padding: '2.5rem 1rem',
-      }}
+      className="landing-shell"
     >
-      <div style={{ width: '100%', maxWidth: '32rem' }}>
+      <div className="landing-card">
         {/* Title block */}
-        <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-          <p style={{
-            fontFamily: 'var(--font-mono-data)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.22em',
-            fontSize: '0.75rem',
-            color: '#22d3ee',
-            margin: '0 0 0.25rem',
-          }}>
-            Dynasty simulator
-          </p>
-          <h1 style={{
-            fontFamily: 'var(--font-display)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.1em',
-            fontSize: '2.25rem',
-            color: '#ffffff',
-            margin: 0,
-          }}>
-            Dodgeball Manager
+        <div className="landing-brand">
+          <p className="kicker">Dynasty simulator</p>
+          <h1>
+            Dodgeball <em>Manager</em>
           </h1>
+          <p className="tagline">Run the program. Read the league. Own the result.</p>
         </div>
 
         {/* Main panel */}
@@ -418,42 +414,30 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                         </div>
                         <button
                           onClick={() => handleLoad(continueSave.path)}
-                          style={{
-                            borderRadius: '4px',
-                            background: '#f97316',
-                            border: '1px solid #ea6c0a',
-                            padding: '0.625rem 1.5rem',
-                            fontSize: '0.75rem',
-                            fontFamily: 'var(--font-display)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.075em',
-                            color: '#020617',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            boxShadow: '0 2px 10px rgba(249, 115, 22, 0.2)',
-                            transition: 'transform 0.1s',
-                          }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.03)'; }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.0)'; }}
+                          className="dm-action dm-action-primary"
+                          style={{ padding: '0.625rem 1.5rem', fontSize: '0.75rem', fontWeight: 700 }}
                         >
                           Continue
                         </button>
                       </div>
                     )}
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                    {visibleSaves.map((save) => (
+                    {visibleSaves.map((save) => {
+                      const monogram = clubMonogram(save.club_name ?? save.club_id);
+                      return (
                       <li
                         key={save.path}
                         data-testid="save-item"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.75rem',
-                          padding: '0.75rem 0',
-                          borderBottom: '1px solid #1e293b',
-                          opacity: activePath === save.path ? 1 : 0.9,
-                        }}
+                        className="landing-save-row"
+                        style={{ opacity: activePath === save.path ? 1 : 0.92 }}
                       >
+                        <span
+                          className={`landing-monogram${save.incompatible ? ' is-incompatible' : ''}`}
+                          style={{ '--mono-hue': monogram.hue } as React.CSSProperties}
+                          aria-hidden="true"
+                        >
+                          {monogram.initials}
+                        </span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {save.name}
@@ -524,19 +508,8 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                           onClick={() => handleLoad(save.path)}
                           disabled={activePath === save.path || save.incompatible}
                           data-testid="load-save-btn"
-                          style={{
-                            borderRadius: '4px',
-                            border: '1px solid #334155',
-                            background: '#1e293b',
-                            padding: '0.25rem 0.75rem',
-                            fontSize: '0.6875rem',
-                            fontFamily: 'var(--font-display)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.075em',
-                            color: '#cbd5e1',
-                            cursor: 'pointer',
-                            opacity: (activePath === save.path || save.incompatible) ? 0.4 : 1,
-                          }}
+                          className="dm-action dm-action-secondary"
+                          style={{ minHeight: '2rem', padding: '0.25rem 0.75rem', fontFamily: 'var(--font-display)' }}
                         >
                           {activePath === save.path ? 'Loaded' : 'Load'}
                         </button>
@@ -545,25 +518,15 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                             onClick={() => handleDelete(save.path)}
                             disabled={deleting === save.path}
                             data-testid="delete-save-btn"
-                            style={{
-                              borderRadius: '4px',
-                              border: '1px solid rgba(244,63,94,0.3)',
-                              background: 'rgba(244,63,94,0.08)',
-                              padding: '0.25rem 0.75rem',
-                              fontSize: '0.6875rem',
-                              fontFamily: 'var(--font-display)',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.075em',
-                              color: '#fb7185',
-                              cursor: 'pointer',
-                              opacity: deleting === save.path ? 0.4 : 1,
-                            }}
+                            className="dm-action dm-action-danger"
+                            style={{ minHeight: '2rem', padding: '0.25rem 0.75rem', fontFamily: 'var(--font-display)' }}
                           >
                             {deleting === save.path ? '…' : 'Delete'}
                           </button>
                         )}
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
                   {hiddenIncompatibleCount > 0 && (
                     <button

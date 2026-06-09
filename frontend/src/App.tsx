@@ -90,7 +90,11 @@ function App() {
   if (screen === 'loading') {
     return (
       <div className="app-shell" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p className="dm-kicker" style={{ fontSize: '0.875rem', letterSpacing: '0.2em' }}>Loading...</p>
+        <div className="app-boot" role="status" aria-label="Loading Dodgeball Manager">
+          <p className="kicker">Dynasty Simulator</p>
+          <p className="brand">Dodgeball <em>Manager</em></p>
+          <div className="court-pulse" aria-hidden="true" />
+        </div>
       </div>
     );
   }

@@ -1,5 +1,5 @@
 import type { OffseasonBeat } from '../../types';
-import { ActionButton } from '../ui';
+import { ActionButton, PageHeader } from '../ui';
 
 type RecapBeat = Extract<OffseasonBeat, { key: 'recap' }>;
 
@@ -32,17 +32,25 @@ export function RecapStandings({
 
     return (
         <section className="command-offseason-shell" data-testid="offseason-recap">
-            <div style={{ padding: '1.5rem 1rem 0.5rem' }}>
-                <p style={{ fontSize: '0.75rem', letterSpacing: '0.1em', color: '#94a3b8', marginBottom: '0.5rem' }}>
-                    REGULAR SEASON
-                </p>
-                <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '0.35rem' }}>
-                    Final Regular-Season Table
-                </h2>
-                <p style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '1rem' }}>
-                    Top four seeds qualify for the playoffs.
-                </p>
-            </div>
+            <PageHeader
+                eyebrow={`Offseason Beat ${beat.beat_index + 1}/${beat.total_beats} · Regular Season`}
+                title="Final Regular-Season Table"
+                description="Top four seeds qualify for the playoffs."
+                stats={
+                    <div className="command-offseason-progress" aria-label="Offseason beat progress">
+                        {Array.from({ length: beat.total_beats }).map((_, index) => (
+                            <span
+                                key={index}
+                                className={
+                                    index <= beat.beat_index
+                                        ? 'command-offseason-progress-step command-offseason-progress-step-active'
+                                        : 'command-offseason-progress-step'
+                                }
+                            />
+                        ))}
+                    </div>
+                }
+            />
 
             {missed && (
                 <div

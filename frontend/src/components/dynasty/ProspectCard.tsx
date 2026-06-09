@@ -266,22 +266,6 @@ export function ProspectCard({
             hint={prospect.scouted ? undefined : 'Scout to narrow'}
           />
         </div>
-        <div
-          aria-label="Card color key: green = Strong Fit, amber = Fair Fit, red = At Risk"
-          style={{
-            display: 'flex',
-            gap: '0.75rem',
-            marginTop: '0.3rem',
-            fontSize: '0.55rem',
-            color: '#64748b',
-            letterSpacing: '0.04em',
-            flexWrap: 'wrap',
-          }}
-        >
-          <span style={{ color: '#34d399' }}>● Strong Fit ≥80</span>
-          <span style={{ color: '#f59e0b' }}>● Fair Fit 65–79</span>
-          <span style={{ color: '#f87171' }}>● At Risk &lt;65</span>
-        </div>
       </div>
 
       {evidence.length > 0 && (
@@ -290,19 +274,6 @@ export function ProspectCard({
           <span className="copy">{evidence.join(' · ')}</span>
         </div>
       )}
-      {!prospect.scouted && (
-        <p
-          style={{
-            margin: '0.25rem 0 0',
-            fontSize: '0.6rem',
-            color: '#64748b',
-            lineHeight: 1.4,
-          }}
-        >
-          Scout to narrow the OVR range and sharpen fit precision. Contact and visits build interest.
-        </p>
-      )}
-
       <div className="do-recruit-actions">
         <button
           className="do-recruit-btn"

@@ -41,6 +41,47 @@ before implementation.
 
 ## Shipped And Verified
 
+- **Full-app UX elevation + Command Center redesign** (landed 2026-06-09) - an
+  app-wide visual refinement pass plus four owner-feedback iterations on the
+  pre-sim Command Center, documented in full in
+  `docs/ux-reviews/fable/2026-06-09-fable-ux-review.md` (read that for the
+  per-surface ledger; this entry is the index). *App-wide:* an append-only
+  "ELEVATION LAYER" CSS section (court-floor atmosphere, `.dm-action` button
+  system with real hover/focus states, themed scrollbars, table zebra),
+  title-screen save menu with club monograms, unified offseason ceremony
+  headers with beat pips on every beat, gold champion stage, HoF plaques,
+  retirement farewell cards, two-column player scouting modal, and a set of
+  visual bug fixes (readiness-gate overlap, credibility-meter clip, archive
+  timeline dot, replay court label legibility, prospect-card legend dedup).
+  *Command Center:* every fact appears exactly once (dedup ledger in handoff
+  §8), League Wire news ticker opens the page, weekly directive banner with
+  gate-action buttons, launch-dock lock CTA (standby/armed/live), uniform
+  desk bottoms (bounding-rect equal), fog-of-war intel chips + meter, color
+  language fixed (emerald = verified good only; cyan = set/informational).
+  *Backend (one fix):* retirements beat `ovr_final` int-rounded in
+  `offseason_presentation.py` (float-leak family). *Test changes:*
+  `tests/e2e/v15-recruit-board.spec.ts` updated for the board-level legend.
+  *Also closed in the same push:* (a) the open "tokenless e2e sweep" item —
+  all 23 e2e specs with raw mutating `request.post` calls now attach the real
+  launch token via `tests/e2e/_token.ts` (they had silently depended on an
+  unguarded server and failed against the real WT-12 guard); (b) a
+  presentation-truth bug the re-enabled suite immediately exposed:
+  `server.MatchReplayResponse` did not declare `scoring_model`/game-point
+  fields, so FastAPI stripped them and **every official replay rendered as a
+  legacy survivor scoreline**, able to contradict the aftermath hero (WT-2/3
+  family). Fixed in `server.py`, pinned at the serialization layer by
+  `test_official_replay_scoreboard.py::test_replay_response_model_serializes_official_scoring`,
+  and browser-pinned by the updated `replay-score-parity.spec.ts` (which also
+  now waits out the hero count-up animation instead of racing it). Two stale
+  specs were retconned to current truthful behavior (game-point heroes; the
+  "Bank the Result / Next Week" action labels).
+  Verification: full `python -m pytest -q` green; `npm run build` +
+  `npm run lint` clean; targeted Playwright e2e **45/45 passed** (13 specs
+  covering every touched command-center/legibility/broadcast contract,
+  chromium, fresh prod server — and the two prior failures were confirmed to
+  reproduce identically on clean main, i.e. pre-existing); live browser
+  sweeps at 1280/1366/1440/1920 with zero horizontal overflow and zero
+  console errors.
 - **Section 4 desktop-first visual implementation - implemented + browser-verified** (implemented on main 2026-05-30 across four `feat(design)` commits; verified 2026-06-09) - all eight §4 briefs are shipped on main: `1de41e2` (4.1 Class Report), `719f036` (4.2 Season Preview / 4.5 Rookie Class Preview / 4.8 Records Ratified), `17e0f6e` (4.3 Bye Aftermath / 4.4 Match Aftermath), `542e6fe` (4.6 War Room / 4.7 Policy Editor). **Doc-lag correction:** `STATUS.md` had only ever recorded the Phase 8 *briefs* (documentation, `ce50c14`) and still listed Section 4 as "next / re-validate before implementation" - the `feat(design)` implementation that followed was never logged here. A re-validation fan-out (8 briefs vs current source + design-system survey) plus a live **prod-server** browser sweep (`python -m dodgeball_sim`, port 8000, fresh PID; vite/`DODGEBALL_DEV` avoided so the SPA carries the launch token) at **1280x720** (the no-horizontal-overflow floor) confirmed all eight screens meet their brief success criteria with **zero horizontal overflow** (with one honest 4.1 caveat noted below). Deep states were reached via `POST /api/command-center/fast-forward` (`pre_playoffs`/`offseason` - active and completed playoff bracket, offseason ceremony beats) and a build-from-scratch 7-club career (`next_bye`/`max_weeks` - a real bye week). Drift confirmed-resolved against the frozen briefs: 4.1 `signed_count` is the single authoritative count (no card-derived count) and the read-only **legacy fallback** path renders a structured GlancePanel not a text blob (HONEST CAVEAT: only that legacy path was browser-rendered - the **card-grid tab mode** `My/Rival/Surprise` -> "Your Picks/Rival Picks/Surprises" is code-verified via the `FILTER_LABELS` constant but populates from `load_recruitment_signings`, i.e. *in-season* Recruitment Day signings the fast-forwarded careers skipped, so it was not browser-rendered this pass); 4.2 carries the post-brief `archetype_key` for TermTip + a week-timeline bar; 4.4 hero is **game points** (not survivors) with grouped YOU/THEM/RESULT body + the new `manager_lesson` card; 4.6 bracket leads with **game-point** scorelines, a distinct gold "LEAGUE CHAMPIONS" champion card, `YOU ADVANCED` outcome badges, and playoff-aware race copy replacing the stale regular-season copy; 4.8 has a prominent My Club/League scope toggle with `aria-pressed`. **One fix landed:** the §4.1 recruitment/draft ceremony body prose leaked a float OVR ("64.0 OVR") - `overall_skill()` returns an `int` but the prose formatted it `:.1f`; corrected to integer in `offseason_ceremony.py` (3 sites) and pinned by `tests/test_dispersed_helpers.py::test_recruitment_beat_body_renders_integer_ovr_not_float`. Verification: full `python -m pytest -q` green (exit 0); live browser screenshots of all eight screens. **Open (owner-decision enhancements, NOT bugs):** (a) 4.4 surfaces no moment-beat above the collapsed ReplayTimeline when one exists (criterion #5 is "Consider..."; a 5-moment match was confirmed to keep all moments inside the collapsed "POSTGAME REPORT" timeline); (b) the 4.6 champion card is gold + trophy + "LEAGUE CHAMPIONS" but equal-*size* to the semifinal columns - elevating it further is a taste call; (c) `narrative_note` (overtime/seed-tiebreaker copy) renders only on contested playoff results and was not exercised this run. **Adjacent float-leak triage (investigated, mostly NOT leaks):** the one other *web-facing* int-OVR `:.1f` leak - the **retirements** ceremony body (rendered verbatim by the `Graduation` component) - was also fixed and guarded (`test_retirements_beat_body_renders_integer_ovr_not_float`). The rest are deliberately NOT touched: the **development** ceremony body's deltas are *intentionally fractional* (pinned by `test_dispersed_helpers.py` asserting `"+1.2"`) as is `records.py` `overall_gap` (pinned by `test_records.py` asserting `"11.5 OVR underdog"`); `dynasty_office.py` `build_player_profile_details` and `replay_service.py` `team_snapshot` are **test-only legacy** text formatters not wired to the web UI (the web uses structured payloads), so their `:.1f` is harmless dead-path formatting. Non-bug: `offseason_ceremony.py:1061` would `AttributeError` on a `Prospect` in the `draft_pool`, but production passes `load_free_agents(conn) -> list[Player]`, so the `Iterable[Player]` contract holds and the crash is unreachable.
 - **Post-playtest hardening** (landed 2026-06-02, `0673d40`) - closes a follow-up pass after the roadmap trust work: scoring/decision truth repairs, signing-day consistency, scout + aftermath legibility refinements, 403 hardening, missed-playoffs recap coverage, official replay scoreboard tests, and launch-token-aware WT21/WT22 E2E helpers (`tests/e2e/_token.ts`). Verification recorded in the commit includes new Python coverage across manager lesson, scout reveal, signing day, standings intent labels, playoff resolution, and official replay scoreboard paths.
 - **Post-roadmap cleanup** (landed 2026-06-01, `d89f502`) - removes dead `server.py` build-from-scratch code and deduplicates Manager Lesson / Next-Best-Improvement aftermath overlap in `use_cases.py`, pinned by `tests/test_aftermath_dedup.py`. These were previously listed here as open follow-ups; they are now closed.
@@ -107,10 +148,11 @@ before implementation.
    is not enforced by the official engine. `docs/specs/2026-06-01-workflow0-primary-source-rule-verification.md`
    leaves the reduced-blocking resolution parameters OPEN, so implementation
    needs an owner decision before outcome-affecting engine work begins.
-2. **E2E launch-token coverage sweep.** `tests/e2e/_token.ts` now supports the
-   real WT-12 guard and WT21/WT22 use it, but older E2E specs should be audited
-   before any broad claim that the browser suite exercises launch-token
-   enforcement across all mutating flows.
+2. **E2E launch-token coverage sweep — CLOSED 2026-06-09.** Every e2e spec's
+   raw mutating `request.post` call now attaches the real token via
+   `tests/e2e/_token.ts` (23 specs swept in the UX-pass commit). The older
+   specs had silently depended on an unguarded server and failed against the
+   real WT-12 guard; they now run against it.
 3. **`origin/playtest-fixes-2026-05-27` branch decision.** The remote branch has
    commits not on main; make an explicit keep/delete/port decision before
    treating it as historical noise.

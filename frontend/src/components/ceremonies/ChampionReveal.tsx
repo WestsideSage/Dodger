@@ -1,5 +1,5 @@
 import type { OffseasonBeat, PlayoffBracketResponse } from '../../types';
-import { ActionButton } from '../ui';
+import { ActionButton, PageHeader } from '../ui';
 import { useApiResource } from '../../hooks/useApiResource';
 import { PlayoffBracket } from '../standings/PlayoffBracket';
 
@@ -19,53 +19,48 @@ export function ChampionReveal({
 
     return (
         <section className="command-offseason-shell" data-testid="offseason-champion">
-            <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
-                <p style={{ fontSize: '0.75rem', letterSpacing: '0.1em', color: '#94a3b8', marginBottom: '0.5rem' }}>
-                    SEASON CHAMPION
-                </p>
+            <PageHeader
+                eyebrow={`Offseason Beat ${beat.beat_index + 1}/${beat.total_beats} · Postseason`}
+                title={beat.title}
+                description="The bracket is decided. The banner goes up tonight."
+                stats={
+                    <div className="command-offseason-progress" aria-label="Offseason beat progress">
+                        {Array.from({ length: beat.total_beats }).map((_, index) => (
+                            <span
+                                key={index}
+                                className={
+                                    index <= beat.beat_index
+                                        ? 'command-offseason-progress-step command-offseason-progress-step-active'
+                                        : 'command-offseason-progress-step'
+                                }
+                            />
+                        ))}
+                    </div>
+                }
+            />
+            <div className="champion-stage">
+                <p className="champion-kicker">Season Champion</p>
                 {champion ? (
                     <>
-                        <h2
-                            style={{
-                                fontSize: '2rem',
-                                fontWeight: 800,
-                                color: '#fbbf24',
-                                marginBottom: '0.35rem',
-                                lineHeight: 1.2,
-                            }}
-                        >
-                            {champion.club_name}
-                        </h2>
-                        <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '1rem' }}>
-                            Won the championship final to claim the title.
-                        </p>
-                        <div
-                            style={{
-                                display: 'flex',
-                                gap: '1.5rem',
-                                justifyContent: 'center',
-                                flexWrap: 'wrap',
-                                marginBottom: '1.5rem',
-                            }}
-                        >
-                            <div style={{ textAlign: 'center' }}>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#e2e8f0' }}>
+                        <h2 className="champion-name">{champion.club_name}</h2>
+                        <p className="champion-sub">Won the championship final to claim the title.</p>
+                        <div className="champion-stats">
+                            <div>
+                                <div className="num">
                                     {champion.wins}-{champion.losses}-{champion.draws}
                                 </div>
-                                <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Regular Season</div>
+                                <div className="cap">Regular Season</div>
                             </div>
-                            <div style={{ textAlign: 'center' }}>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#fbbf24' }}>
-                                    {champion.title_count}
-                                </div>
-                                <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                            <div>
+                                <div className="num gold">{champion.title_count}</div>
+                                <div className="cap">
                                     {champion.title_count === 1 ? 'Title' : 'Titles'}
                                 </div>
                             </div>
                         </div>
                     </>
                 ) : (
-                    <p style={{ color: '#94a3b8', fontSize: '1rem', marginBottom: '1.5rem' }}>
+                    <p style={{ color: '#94a3b8', fontSize: '1rem', margin: 0 }}>
                         {typeof beat.body === 'string' ? beat.body : 'No champion determined this season.'}
                     </p>
                 )}
