@@ -3,7 +3,18 @@
 When activated, held balls no longer protect a player: a thrown ball that
 hits a held ball still completes its sequence, and the held-ball player can
 become out by body extension. No-blocking is triggered by game-time limit
-(180s in foam/no-sting), match-time end, or playoff overtime.
+(180s in foam/no-sting) or match-time end (the sourced "match-end No
+Blocking game": play continues without interruption).
+
+Primary-source notes (Workflow-0, 2026-06-01): the trigger and the match-end
+terminal state are SOURCED; "Balls do not reset" is SOURCED — the autonomous
+engine activates with ``NoBlockingBallReset.NONE`` (the old ``three_per_side``
+default contradicted the source and survives only as an enum member for
+scripted-test compatibility). What "reduced blocking" changes in resolution
+is NOT specified by the source; the shipping enforcement (the held-ball block
+branch in ``official_resolution.resolve_throw`` is disabled while active) is
+a disclosed sim-design proposal measured in the V17 retro, not a USAD
+fidelity claim.
 """
 
 from __future__ import annotations

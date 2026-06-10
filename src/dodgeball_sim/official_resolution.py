@@ -56,6 +56,34 @@ _CATCH_POWER_WEIGHT = 0.6
 _CATCH_THROW_QUALITY_SLOPE = 2.0
 _CATCH_BIAS = 0.7
 
+# --- Held-ball blocking (WT-20, 2026-06-10) -----------------------------------
+# Before WT-20 the official engine modeled no blocking at all, so the No
+# Blocking rule (Section 27) had nothing to remove and was activation-logged
+# only. A ball-holding defender who declines the catch now puts the held ball
+# between themselves and the throw: a successful block kills the thrown ball
+# (no out, no catch — the sequence resolves empty). Under No Blocking the
+# branch is disabled entirely (the held ball no longer protects; Section 27
+# body-extension semantics per no_blocking.resolve_contact_with_held_ball).
+# The primary source names the No Blocking trigger and terminal state but
+# leaves the reduced-blocking resolution unspecified (see
+# docs/specs/2026-06-01-workflow0-primary-source-rule-verification.md), so
+# "remove block protection, change nothing else" is a PROPOSED sim-design
+# resolution shipped with measurement (owner-ungated 2026-06-10), not a USAD
+# fidelity claim. p(block) at even ratings ~= 0.65, keyed on the blocker's
+# CATCH (ball control) against the thrower's power: holding a ball is real
+# protection in regulation, which is exactly what the No Blocking phase takes
+# away.
+_BLOCK_SLOPE = 3.0
+_BLOCK_THROW_POWER_WEIGHT = 0.6
+# p(block) ~= 0.65 at even ratings. A first cut at 0.3 (p ~= 0.74) made the
+# held ball close to a wall: targeting any holder measured -10pp (the
+# BALL_HOLDERS focus became a trap) and posture economics warped around
+# block-fishing; -0.3 (p ~= 0.61) overcorrected the league economy toward
+# throwing shapes (Power Throwers 73.8% of matched-OVR titles). -0.1 keeps
+# holding a real defensive asset that No Blocking meaningfully strips without
+# making holders unattackable.
+_BLOCK_BIAS = -0.1
+
 # --- Play-safe evasion shading (2026-06-09 systems audit; retuned V17) --------
 # PLAY_SAFE declines marginal catch attempts (official_tactics._catch_thresholds
 # keeps its attempt threshold at 0.65, above the average catch band), so it
@@ -126,13 +154,23 @@ def resolve_throw(
     player_lookup: Dict[str, Player],
     policy: CoachPolicy,
     rng: random.Random,
+    target_holds_ball: bool = False,
+    no_blocking_active: bool = False,
+    opening_catch_factor: float = 1.0,
 ) -> Tuple[ThrowProbabilities, str]:
     """Resolve one throw against one primary target and mutate the sequence.
 
     Returns ``(probabilities, outcome_label)`` where ``outcome_label`` is one
-    of: ``"hit"``, ``"caught"``, ``"dodged"``. The sequence is mutated with
-    the appropriate pending outs and catches; sequence finality is applied
-    by :func:`dodgeball_sim.sequence.resolve_sequence`.
+    of: ``"hit"``, ``"caught"``, ``"dodged"``, ``"blocked"``. The sequence is
+    mutated with the appropriate pending outs and catches; sequence finality
+    is applied by :func:`dodgeball_sim.sequence.resolve_sequence`.
+
+    ``target_holds_ball`` enables the WT-20 block branch for a defender who
+    declines the catch; ``no_blocking_active`` disables that protection
+    (Section 27 — the held ball no longer protects).
+    ``opening_catch_factor`` shades the catch probability during the opening
+    exchange (WT-20 rush: the caller derives it from both teams' rush_commit;
+    1.0 outside the opening ticks).
     """
 
     thrower = player_lookup[thrower_state.player_id]
@@ -144,12 +182,17 @@ def resolve_throw(
         seq.add_contact(SequenceContact(kind=SequenceContactKind.OUT_OF_BOUNDS))
         return probs, "dodged"
 
-    # Target decides whether to attempt a catch.
+    # Target decides whether to attempt a catch (holders are choosier — they
+    # can block instead; see official_tactics._HOLDER_BLOCK_PREFERENCE).
     decision = decide_catch_attempt(
-        target=target_state, player_lookup=player_lookup, policy=policy
+        target=target_state,
+        player_lookup=player_lookup,
+        policy=policy,
+        holds_ball=target_holds_ball and not no_blocking_active,
     )
     if decision.attempt:
-        if rng.random() <= probs.p_catch_given_attempt:
+        p_catch = min(0.97, probs.p_catch_given_attempt * opening_catch_factor)
+        if rng.random() <= p_catch:
             seq.add_catch(catcher_id=target_state.player_id, timestamp_ms=seq.release_time_ms + 10)
             seq.add_contact(SequenceContact(
                 kind=SequenceContactKind.CATCH,
@@ -162,6 +205,27 @@ def resolve_throw(
             kind=SequenceContactKind.HIT, player_id=target_state.player_id,
         ))
         return probs, "hit"
+
+    # No catch attempt -> a ball-holding defender blocks before any dodge roll
+    # (WT-20). Under No Blocking the held ball no longer protects and the
+    # branch is skipped entirely — see the block constants above. Blocking
+    # skill keys on CATCH (ball control — "good hands wall it away"), not
+    # power: keying it on power double-dipped the throwing shapes (power
+    # already shades catchability) and the champion-parity probe measured
+    # Power Throwers spiking to 63-74% of matched-OVR titles.
+    if target_holds_ball and not no_blocking_active:
+        power_thr = thrower.ratings.normalized_power()
+        block_skill = target.ratings.normalized_catch()
+        p_block = _sigmoid(
+            _BLOCK_SLOPE * (block_skill - _BLOCK_THROW_POWER_WEIGHT * power_thr)
+            + _BLOCK_BIAS
+        )
+        if rng.random() <= p_block:
+            seq.add_contact(SequenceContact(
+                kind=SequenceContactKind.BLOCK,
+                player_id=target_state.player_id,
+            ))
+            return probs, "blocked"
 
     # No catch attempt -> dodge roll determines hit.
     # Dodge probability scales inversely with how on-target the throw was.

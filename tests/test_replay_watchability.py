@@ -586,12 +586,12 @@ def test_watchability_metadata_does_not_change_outcomes():
     """Frozen outcome pin for the fixture seed. Watchability metadata must
     never move these; only intentional engine changes may re-capture them.
     Originally measured 2026-06-09 (gp 8-0 across 9 games, alpha winner);
-    RE-CAPTURED 2026-06-10 after the owner-greenlit V17 catch-economy retune
-    (an intentional outcome change — see the V17 sprint plan Task 1):
-    gp 11-0 across 12 games, alpha winner."""
+    RE-CAPTURED 2026-06-10 twice for the owner-greenlit V17 engine changes
+    (Task 1 catch retune: 11-0/12; Task 2 WT-20 live rules: 8-4/12 — see the
+    V17 sprint plan)."""
     _team_a, _team_b, raw, generic = _official_fixture(seed=4242)
     meta = raw.official_metadata
     assert generic.winner_team_id == "alpha"
-    assert int(meta["team_a_game_points"]) == 11
-    assert int(meta["team_b_game_points"]) == 0
+    assert int(meta["team_a_game_points"]) == 8
+    assert int(meta["team_b_game_points"]) == 4
     assert len(meta["games"]) == 12

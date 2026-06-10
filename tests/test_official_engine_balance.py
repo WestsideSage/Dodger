@@ -70,38 +70,40 @@ def test_official_driver_emits_recognition_moments():
 # touching any outcome or the COMEBACK bookkeeping.
 #
 # The constants below drive OfficialMatchEngineDriver over seeds range(24) at
-# 70 vs 63. They were originally captured before the WT-7 gate landed and were
-# RE-CAPTURED 2026-06-10 after the V17 catch-economy retune — an intentional,
-# owner-greenlit outcome change (docs/specs/2026-06-10-post-v16-greenlit-
-# backlog-sequencing-plan.md, V17 Task 1) that moved every frozen official
-# outcome pin. They are the immovable reference the gate is checked against
-# until the next intentional engine change.
+# 70 vs 63. They were originally captured before the WT-7 gate landed and have
+# been RE-CAPTURED twice on 2026-06-10 for the two intentional, owner-greenlit
+# V17 outcome changes (docs/specs/2026-06-10-post-v16-greenlit-backlog-
+# sequencing-plan.md): Task 1 (catch-economy retune) and Task 2 (WT-20 live
+# rules: ball lifecycle, blocking + No Blocking enforcement, opening rush).
+# They are the immovable reference the gate is checked against until the next
+# intentional engine change. (The favorite now wins 22/24: the WT-20 ball-
+# lifecycle fix means a 24-minute match plays ~13 real games instead of 2-4
+# stall-eaten ones, and a best-of-13 expresses a +7 OVR edge far more
+# reliably.)
 _WT7_SEEDS = range(24)
 _WT7_RATING_A = 70.0
 _WT7_RATING_B = 63.0
 # UNCAPPED catch-and-return mean per match over _WT7_SEEDS (the moments the
 # gate would emit with no cap). Measured cap-independently by counting the
 # engine's CATCH_QUEUE return_on_catch events (the same condition the
-# pre-WT-7 baseline measured; pre-retune this was 27.75 — the retune makes
-# catches rarer, which is the point).
-_WT7_BASELINE_DRAMATIC_MEAN = 8.0417
-# Post-V17-retune winner_team_id sequence over _WT7_SEEDS — must be
-# byte-identical under presentation-only changes (the WT-7 cap changes no
-# outcome).
+# pre-WT-7 baseline measured).
+_WT7_BASELINE_DRAMATIC_MEAN = 27.5417
+# Post-WT-20 winner_team_id sequence over _WT7_SEEDS — must be byte-identical
+# under presentation-only changes (the WT-7 cap changes no outcome).
 _WT7_BASELINE_WINNERS = [
-    None, "fav", None, "fav", "fav", "fav", "fav", None, "fav", None, "fav",
-    "fav", "dog", None, "fav", "dog", "dog", "fav", "fav", "fav", "fav", None,
-    None, "fav",
+    "fav", "fav", "fav", "fav", "fav", "fav", "fav", "fav", "fav", "fav",
+    "fav", "fav", "fav", "fav", "fav", "fav", "fav", None, "fav", None,
+    "fav", "fav", "fav", "fav",
 ]
-# Post-V17-retune totals for the non-DRAMATIC moment kinds over _WT7_SEEDS.
+# Post-WT-20 totals for the non-DRAMATIC moment kinds over _WT7_SEEDS.
 # Gating only the DramaticCatch append must leave these untouched; in
 # particular `comeback` is direct proof the comeback_catches increment still
 # fires on every qualifying catch (it is keyed off the same
 # catch_own <= catch_opp guard the gate reuses).
 _WT7_BASELINE_OTHER_KINDS = {
-    "late_game_escape": 67,
-    "comeback": 8,
-    "one_v_one_finale": 4,
+    "late_game_escape": 298,
+    "comeback": 61,
+    "one_v_one_finale": 42,
 }
 
 

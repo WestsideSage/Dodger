@@ -23,16 +23,18 @@ export function PolicyEditor({
   disabled,
   error,
   onChange,
-  rushAnnouncedOnly,
+  officialRuleset,
 }: {
   policy: CoachPolicy;
   disabled?: boolean;
   error?: string | null;
   onChange: (nextPolicy: CoachPolicy) => Promise<void> | void;
-  // True on official-ruleset careers: the official engine does not enforce
-  // opening-rush behavior (WT-20 open), so the two rush rows must disclose
-  // that they are announced-only there rather than imply an outcome effect.
-  rushAnnouncedOnly?: boolean;
+  // True on official-ruleset careers. Post-WT-20 the official engine
+  // ENFORCES opening rush as disclosed sim-design (not a USA Dodgeball
+  // rulebook mechanic) — the rush rows render the enforced note there. Rec
+  // careers keep the Target-is-announced-only advisory (rec Target wiring is
+  // a V19 backlog item).
+  officialRuleset?: boolean;
 }) {
   const { t } = useVoiceRegister(1);
 
@@ -122,7 +124,7 @@ export function PolicyEditor({
               assignment into the match log — the opening rush is resolved
               from Commit (how many players sprint). Saying nothing here lets
               a dead knob pose as a decision. */}
-          {row.key === 'rush_target' && !rushAnnouncedOnly && (
+          {row.key === 'rush_target' && !officialRuleset && (
             <p
               data-testid="rush-target-advisory-note"
               style={{
@@ -262,23 +264,25 @@ export function PolicyEditor({
             </span>
             <span style={{ fontSize: '0.68rem', color: '#64748b' }}>· first moment only</span>
           </div>
-          {rushAnnouncedOnly && (
+          {officialRuleset && (
             <p
-              data-testid="rush-announced-only-note"
+              data-testid="rush-enforced-sim-design-note"
               style={{
                 margin: 0,
                 padding: '0.4rem 0.55rem',
                 borderRadius: '6px',
-                border: '1px solid rgba(251,191,36,0.35)',
-                background: 'rgba(251,191,36,0.07)',
-                color: '#fbbf24',
+                border: '1px solid rgba(34,211,238,0.3)',
+                background: 'rgba(34,211,238,0.06)',
+                color: '#67e8f9',
                 fontSize: '0.7rem',
                 lineHeight: 1.45,
               }}
             >
-              Announced-only under official rules: the broadcast narrates your rush call,
-              but the official engine does not yet enforce opening-rush behavior, so these
-              two settings do not change official match outcomes.
+              Live on official careers: Commit shapes the opening exchange — an all-in
+              rush&apos;s early throws are harder to catch, but its rushers catch worse on
+              the counter — and Target picks which players secure your designated balls.
+              This is Dodgeball Manager sim behavior, not a USA Dodgeball rulebook
+              mechanic.
             </p>
           )}
           {rushRows.map(renderRow)}

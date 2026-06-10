@@ -19,6 +19,7 @@ from .ball_state import (
     OfficialBall,
     activate_ball,
     initial_balls,
+    queue_player_holds_ball_forfeit,
     retrieved_ball_counts_for_burden,
     throw_inactive_ball_marks_thrower_out,
 )
@@ -52,7 +53,7 @@ from .official_actions import (
     ProactiveKind,
     ThrowAction,
 )
-from .official_events import OfficialEvent
+from .official_events import OfficialEvent, OfficialEventKind, RuleReference
 from .player_state import OfficialPlayerState, OfficialPlayerStatus
 from .replay_contracts import (
     OfficialBallView,
@@ -412,7 +413,62 @@ def _throw_action_weight(
 
 import random as _random
 
-from .models import Approach, CoachPolicy, Player
+from .models import Approach, CoachPolicy, OpeningRushCommit, OpeningRushTarget, Player
+
+
+# --- WT-20 opening rush (2026-06-10, sim-design) -------------------------------
+# Opening-rush behavior is NOT a sourced USA Dodgeball rule (the primary source
+# only defines possession by center-line crossing — see
+# docs/specs/2026-06-01-workflow0-primary-source-rule-verification.md). These
+# effects are DISCLOSED sim-design: the rush knobs stop being announced-only on
+# official careers and instead drive two real, legible levers:
+#   * rush_commit -> the opening exchange (the first _OPENING_EXCHANGE_TICKS
+#     of each game): an all-in rush releases closer to the line, so its
+#     throws are harder to catch — but its rushers are not set, so their own
+#     catch attempts on the counter are weaker. Hold-back mirrors (easier to
+#     catch from range; camped defenders catch better). A rank-based
+#     "initiative" model was tried first and measured as a pure first-mover
+#     penalty (hold_back +17pp over all_in — a dominant option, see the V17
+#     retro); the symmetric shading replaces it. First offense is a seeded
+#     coin flip, which also retires the old hardcoded team-A first-throw
+#     asymmetry.
+#   * rush_target -> which players secure the designated balls off the rush
+#     (NEAREST = slot order, the pre-WT-20 behavior; STRONGEST_SIDE = strongest
+#     throwers first; CENTER = best overall players first). Ball-holders are
+#     the throw candidates and (post-WT-20) the held-ball blockers, so who
+#     holds is a real decision.
+_OPENING_EXCHANGE_TICKS = 3
+# Defender's own catch readiness during the opening exchange, by their rush.
+# Asymmetric on purpose (offense payoff > defense cost for ALL_IN): the first
+# symmetric cut (0.85/0.85) still measured all_in at -8pp because the opening
+# exchange is ~40% of a post-WT-20 game and the catch economy punishes the
+# defense-side factor harder.
+_RUSH_CATCH_READINESS = {
+    OpeningRushCommit.ALL_IN: 0.92,
+    OpeningRushCommit.BALANCED: 1.0,
+    OpeningRushCommit.HOLD_BACK: 1.08,
+}
+# How catchable a team's opening-exchange throws are, by the THROWER's rush.
+_RUSH_THROW_PRESSURE = {
+    OpeningRushCommit.ALL_IN: 0.80,
+    OpeningRushCommit.BALANCED: 1.0,
+    OpeningRushCommit.HOLD_BACK: 1.10,
+}
+
+
+def _rush_holder_order(
+    starters: Tuple[str, ...], player_lookup: dict, policy: CoachPolicy
+) -> List[str]:
+    """Order a team's starters for designated-ball assignment (WT-20 rush)."""
+
+    order = list(starters)
+    if policy.rush_target == OpeningRushTarget.STRONGEST_SIDE:
+        order.sort(
+            key=lambda pid: -player_lookup[pid].ratings.normalized_power()
+        )
+    elif policy.rush_target == OpeningRushTarget.CENTER:
+        order.sort(key=lambda pid: -player_lookup[pid].overall_skill())
+    return order
 from .moment_events import (
     Comeback,
     DramaticCatch,
@@ -469,8 +525,10 @@ def run_autonomous_game(
     selector = ActionSelector(rng)
     balls = initial_balls(profile, team_a_id, team_b_id)
     events: List[OfficialEvent] = []
-    a_starters = list(starters_a)
-    b_starters = list(starters_b)
+    # WT-20 opening rush: rush_target orders which players secure the
+    # designated balls (see _rush_holder_order — disclosed sim-design).
+    a_starters = _rush_holder_order(starters_a, player_lookup, policy_a)
+    b_starters = _rush_holder_order(starters_b, player_lookup, policy_b)
     a_idx = 0
     b_idx = 0
     for ball in balls:
@@ -555,7 +613,11 @@ def run_autonomous_game(
             if player.player_id in controllers and player.player_id in living_ids
         ]
 
-    offense_team = team_a_id
+    # WT-20: first offense is a seeded coin flip (retires the old hardcoded
+    # team-A first-throw asymmetry). rush_commit expresses through the
+    # opening-exchange catch shading below, not through initiative — see the
+    # _RUSH_CATCH_READINESS / _RUSH_THROW_PRESSURE design note.
+    offense_team = team_a_id if rng.random() < 0.5 else team_b_id
     policies = {team_a_id: policy_a, team_b_id: policy_b}
     tick_seconds = 6
     ticks = 0
@@ -588,16 +650,70 @@ def run_autonomous_game(
         if (
             not no_blocking_state.active
             and profile.material in (BallMaterial.FOAM, BallMaterial.NO_STING)
-            and game_state.trigger_no_blocking()
         ):
-            no_blocking_state, no_blocking_event = activate_no_blocking(
-                source=NoBlockingSource.GAME_TIME_LIMIT,
-                ball_reset=NoBlockingBallReset.THREE_PER_SIDE,
-                time_limit_seconds=180,
-                match_id=match_id,
+            nb_source = None
+            if game_state.trigger_no_blocking():
+                nb_source = NoBlockingSource.GAME_TIME_LIMIT
+            elif match_clock.expired():
+                # Sourced (Section 27): if the match clock expires during a
+                # game, play continues without interruption and the current
+                # game becomes a match-end No Blocking game.
+                nb_source = NoBlockingSource.MATCH_TIME_END
+            if nb_source is not None:
+                no_blocking_state, no_blocking_event = activate_no_blocking(
+                    source=nb_source,
+                    # Sourced: "Balls do not reset." The pre-WT-20
+                    # three_per_side value contradicted the primary source
+                    # (Workflow-0 latent-inaccuracy note) and is corrected
+                    # here, where No Blocking becomes genuinely enforced.
+                    ball_reset=NoBlockingBallReset.NONE,
+                    time_limit_seconds=profile.no_blocking_trigger_seconds,
+                    match_id=match_id,
+                )
+                events.append(no_blocking_event)
+                game_state.mode = OfficialGameMode.NO_BLOCKING
+
+        # WT-20 ball lifecycle: loose balls re-enter play. Out players forfeit
+        # their held balls (Section 24-core) and blocked throws drop on the
+        # defense's side; each tick a live player on the ball's side picks one
+        # up (non-holders first, slot order). Pre-WT-20 these balls leaked out
+        # of circulation — once every ball was stranded on an out player,
+        # neither side could throw and the game dead-aired to the tick cap
+        # (the no_point stall artifact; see the V17 retro measurement).
+        holder_ids = {
+            b.controller_player_id
+            for b in balls
+            if b.activated and b.state == BallState.HELD
+        }
+        for loose in balls:
+            if not loose.activated or loose.state not in (
+                BallState.FORFEITED,
+                BallState.ACTIVATED_FREE,
+            ):
+                continue
+            side_live = _live_for(loose.side) if loose.side else []
+            if not side_live:
+                continue
+            picker = next(
+                (p for p in side_live if p.player_id not in holder_ids),
+                side_live[0],
             )
-            events.append(no_blocking_event)
-            game_state.mode = OfficialGameMode.NO_BLOCKING
+            loose.state = BallState.HELD
+            loose.controller_player_id = picker.player_id
+            holder_ids.add(picker.player_id)
+            events.append(OfficialEvent(
+                event_id=f"retr-{loose.ball_id}-t{ticks}",
+                kind=OfficialEventKind.BALL,
+                match_id=match_id,
+                ball_ids=(loose.ball_id,),
+                player_ids=(picker.player_id,),
+                team_ids=(loose.side,) if loose.side else (),
+                rule_refs=(RuleReference("24"),),
+                replay_summary=(
+                    f"{picker.player_id} retrieves loose ball {loose.ball_id}."
+                ),
+                payload={"kind": "loose_ball_retrieved"},
+            ))
 
         a_throwers = _holding_ball(team_a_id)
         b_throwers = _holding_ball(team_b_id)
@@ -678,7 +794,26 @@ def run_autonomous_game(
         ball.state = BallState.LIVE_IN_FLIGHT
         ball.last_thrower_id = thrower_state.player_id
 
-        resolve_throw(
+        # WT-20: a ball-holding target may block (regulation only — under No
+        # Blocking the held ball no longer protects).
+        target_holds_ball = any(
+            b.activated
+            and b.state == BallState.HELD
+            and b.controller_player_id == target_state.player_id
+            for b in balls
+        )
+        # WT-20 opening rush: during the opening exchange the catch economy is
+        # shaded by both teams' rush_commit (disclosed sim-design — see the
+        # design note above).
+        if ticks < _OPENING_EXCHANGE_TICKS:
+            opening_catch_factor = _RUSH_CATCH_READINESS.get(
+                policies[defense_team].rush_commit, 1.0
+            ) * _RUSH_THROW_PRESSURE.get(
+                policies[offense_team].rush_commit, 1.0
+            )
+        else:
+            opening_catch_factor = 1.0
+        _probs, outcome_label = resolve_throw(
             seq=seq,
             thrower_state=thrower_state,
             target_state=target_state,
@@ -690,6 +825,9 @@ def run_autonomous_game(
             # Target selection above correctly stays on the offense policy.
             policy=policies[target_state.team_id],
             rng=rng,
+            target_holds_ball=target_holds_ball,
+            no_blocking_active=no_blocking_state.active,
+            opening_catch_factor=opening_catch_factor,
         )
         ruling = ledger.close_sequence(seq.sequence_id)
         events.append(sequence_event(seq))
@@ -710,6 +848,27 @@ def run_autonomous_game(
                     active_a -= 1
                 else:
                     active_b -= 1
+                # WT-20 / Section 24-core: queued players cannot hold balls —
+                # every ball still in the out player's hands forfeits to the
+                # opponent's side (the retrieval pass re-enters it next tick).
+                # Pre-WT-20 these balls stayed stranded on the out player and
+                # leaked out of play entirely.
+                opponent_id = (
+                    team_b_id if player.team_id == team_a_id else team_a_id
+                )
+                for held in balls:
+                    if (
+                        held.activated
+                        and held.state == BallState.HELD
+                        and held.controller_player_id == pid
+                    ):
+                        events.append(queue_player_holds_ball_forfeit(
+                            held,
+                            queued_player_id=pid,
+                            match_id=match_id,
+                            opponent_team_id=opponent_id,
+                            event_id_suffix=f"-t{ticks}",
+                        ))
 
         if ruling.catches:
             catcher_id = ruling.catches[0].catcher_id
@@ -764,11 +923,27 @@ def run_autonomous_game(
                 # qualifying catch regardless of the presentation gate above.
                 if catch_own <= catch_opp:
                     comeback_catches[catch_team] += 1
+        elif outcome_label == "blocked":
+            # WT-20: the blocked throw drops dead on the defense's side; the
+            # retrieval pass re-enters it next tick.
+            ball.state = BallState.ACTIVATED_FREE
+            ball.controller_player_id = None
+            ball.side = defense_team
         else:
-            ball.state = BallState.HELD
-            new_holder = defenders[0] if defenders else None
+            # The thrown ball lands on the defense's side. Only a defender
+            # still standing AFTER the ruling may collect it — the pre-WT-20
+            # code could hand it to the player the throw just put out,
+            # stranding the ball on a queued player.
+            new_holder = next(
+                (d for d in defenders if d.is_live_for_hits()), None
+            )
             if new_holder is not None:
+                ball.state = BallState.HELD
                 ball.controller_player_id = new_holder.player_id
+                ball.side = defense_team
+            else:
+                ball.state = BallState.ACTIVATED_FREE
+                ball.controller_player_id = None
                 ball.side = defense_team
 
         # --- Phase 4a moment recognition (post-resolution state) ---

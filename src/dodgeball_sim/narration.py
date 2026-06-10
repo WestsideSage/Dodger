@@ -64,6 +64,8 @@ def narrate_event(event: MatchEvent, lookup: Lookup) -> str:
             return f"Tick {tick}: {target} snares {thrower}'s throw and eliminates {thrower}!"
         if resolution == "failed_catch":
             return f"Tick {tick}: {target} bobbles the catch from {thrower} and is OUT."
+        if resolution == "blocked":
+            return f"Tick {tick}: {target} blocks {thrower}'s throw with the held ball."
         if resolution == "miss":
             return f"Tick {tick}: {thrower} misses wide against {target}."
         return f"Tick {tick}: {thrower} vs {target} resolves with {resolution}."

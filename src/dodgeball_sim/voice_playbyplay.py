@@ -27,6 +27,15 @@ def render_play(event_type: str, actor: str, target: str, rng: DeterministicRNG,
             "{actor} stands tall and catches {target}'s heat.",
             "Beautiful catching form from {actor} against {target}."
         ]
+    elif event_type == "block":
+        # WT-20: a held-ball block — the actor is the blocker, the target the
+        # thrower. Distinct from a dodge; the ball was walled away, not evaded.
+        templates = [
+            "{actor} walls away {target}'s throw with the held ball.",
+            "{actor} gets the held ball up in time to block {target}.",
+            "{actor} deflects {target}'s throw off the ball in hand.",
+            "A solid block by {actor} kills {target}'s throw.",
+        ]
     elif event_type == "dodge":
         templates = [
             "{target} elegantly dodges {actor}'s throw.",

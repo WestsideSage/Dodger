@@ -178,16 +178,19 @@ export const TERMS = {
     kind: 'flavor',
   },
   // --- Lineup ---
-  // HONESTY (2026-06-09 audit): role labels (Captain → Utility) are advisory
-  // fit notes — no shipping engine applies a role bonus or penalty for
-  // archetype-in-slot fit. Slot ORDER has only marginal real effects (the
-  // first slots take opening-rush assignments in rec matches and initial
-  // balls in official ones). Which six you field is the real lever.
+  // HONESTY (2026-06-09 audit; updated WT-20 2026-06-10): role labels
+  // (Captain → Utility) are advisory fit notes — no shipping engine applies a
+  // role bonus or penalty for archetype-in-slot fit. Slot ORDER gained one
+  // real official-career effect in WT-20: when Opening Rush Target is
+  // "Nearest", the first slots secure the designated balls (holders are the
+  // early throwers and the held-ball blockers); other Target options
+  // re-order holders by power/overall instead. Which six you field is still
+  // the bigger lever.
   'lineup.slot_order': {
     label: 'Slot Order',
     plain: 'The sequence of your six starters from Captain (slot 1) through Utility (slot 6).',
-    why: 'Role labels are advisory fit notes — the engine applies no role bonus or penalty. Picking WHICH six start is the real lever; order itself only sets opening-play assignments. Swap a bench player in by clicking a slot, then a bench card.',
-    kind: 'flavor',
+    why: 'Role labels are advisory fit notes — the engine applies no role bonus or penalty. Order has one real effect: opening-ball assignment (on official careers your first slots secure the designated balls when Opening Rush Target is "Nearest"; holders are the early throwers and blockers). Which six you field is still the bigger lever. Swap a bench player in by clicking a slot, then a bench card.',
+    kind: 'mechanical',
   },
   // --- Department orders ---
   // HONESTY (ADR 0002): apart from Dev Focus (its own pill on the Command

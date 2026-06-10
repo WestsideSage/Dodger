@@ -48,6 +48,65 @@ before implementation.
 
 ## Shipped And Verified
 
+- **V17 Task 2 — WT-20 Official Live Rules enforcement + draw texture**
+  (2026-06-10) - the three announced-only live rules now mechanically resolve
+  (owner-ungated; the reduced-blocking params left OPEN by Workflow-0 shipped
+  as proposed-with-measurement sim-design, disclosed, never claimed as USAD
+  fidelity). *Ball lifecycle (the real draw fix):* out players forfeit held
+  balls (Section 24-core, `queue_player_holds_ball_forfeit` finally invoked
+  by the live loop) and a retrieval pass re-enters loose balls each tick —
+  pre-WT-20, balls stranded on out players leaked out of play until neither
+  side could throw and games dead-aired to the tick cap (measured: 552 of
+  1,572 uniform-even games stalled with both sides alive, eating ~20 of 24
+  match minutes; after: **0 stalls in 5,321 games**, matches play 12-14 real
+  games). Uniform-even match draws 33.5% → **10.5%**, spread-even ~11%, and
+  every remaining draw is an honest equal game-point split (6-6/7-7) — the
+  0-0 stall draw is extinct (gated by
+  `test_wt20_live_rules.py::test_even_strength_draws_are_bounded_and_honest`).
+  *No Blocking (Section 27) enforced:* regulation play now models held-ball
+  blocking (`official_resolution`: a ball-holding catch-decliner blocks at
+  p≈0.65 even-ratings, keyed on the blocker's CATCH vs thrower power); while
+  No Blocking is active the branch is disabled — the held ball genuinely
+  stops protecting. Activation carries the SOURCED "balls do not reset"
+  (the old `three_per_side` contradicted the primary source) and the SOURCED
+  match-end source (clock expiry mid-game → match-end No Blocking game,
+  play continues). Conformance ledger section 27 flipped ANNOUNCED → ENFORCED
+  with the honesty note; 24-core marked SPLIT. *Throw clock:* honestly
+  dispositioned, not theater — the autonomous loop throws every ≤6s tick
+  whenever a side controls a ball, so the sourced 10s/5s failure windows are
+  unreachable by construction; the penalty primitives stay unit-tested and
+  the ledger note says exactly that. *Opening rush wired (disclosed
+  sim-design):* `rush_target` orders which players secure the designated
+  balls (NEAREST = slot order, STRONGEST_SIDE = power, CENTER = overall —
+  holders are the early throwers and blockers, so `lineup.slot_order` is
+  mechanical again with qualified copy); `rush_commit` shades the
+  opening-exchange catch economy both ways (all-in throws harder to catch
+  early / all-in rushers catch worse on the counter); first offense is a
+  seeded coin flip, retiring a hardcoded team-A first-throw asymmetry. A
+  rank-based initiative model was tried first and REJECTED by measurement
+  (hold_back +17pp dominant). Policy Editor official note flipped from
+  announced-only to the enforced-sim-design note; rec rush_target advisory
+  unchanged (V19). *Blocked throws are honest replay events:* new "blocked"
+  outcome through sequence payload → translator → replay labels ("BLOCK: X
+  walls away Y's throw"), play-by-play voice, narration — never narrated as
+  a miss. *Balance verification (400-trial probes, final constants):* every
+  tactic axis is now a real tradeoff with no trap or dominant option
+  (postures 40.8-49.5, rush_commit 44.0-46.2, targeting 45.8-47.2 vs
+  baseline 49.0 — all within CI overlap; three measured re-tunes during the
+  pass killed a go_for trap at −15pp and a play_safe spike); attribute matrix
+  vs 47.5 baseline: accuracy 78.2 / power 70.5 / dodge 61.8 / catch 85.8,
+  dead stats flat (V19 wires them). OVR curve steepened honestly (+24 net →
+  82.5%, +72 → 98.8%, slope +56.5pp): a 24-minute match now aggregates ~13
+  real games, so the better roster expresses reliably; draws across rungs
+  4.7%. Champion parity (matched-OVR shapes): the long-standing Defensive
+  skew (65-73.8%) FLIPPED to Power Throwers 63.8% (gate passes: 3 distinct,
+  max ≤ 0.85; blocks were re-keyed from power to catch specifically to stop
+  Power double-dipping) — recorded as a V19 design item, since the
+  roles/stamina/tactical_iq wiring will reshape this economy anyway. WT-7 +
+  watchability pins re-captured (70v63 favorite now 22/24 — best-of-13
+  aggregation; seed-4242: 8-4 over 12 games). Verification: 103 tests across
+  the 11 affected files green (incl. 11 new WT-20 gates), full suite at
+  commit time, `npm run build` + `npm run lint` clean.
 - **V17 Task 1 — Official catch-economy retune** (2026-06-10) - the official
   engine's throw resolution now shades catchability by throw quality
   (`official_resolution._CATCH_THROW_QUALITY_SLOPE = 2.0`, new) and rebalances
@@ -419,14 +478,17 @@ before implementation.
    and has not been browser-exercised. Out-of-scope follow-up: the same int-OVR
    `:.1f` float-leak pattern fixed in §4.1 also exists in `dynasty_office.py`,
    `replay_service.py`, and the retirements/development ceremony prose.
-1. **WT-20 Official Live Rules — GREENLIT by owner 2026-06-10** (was
-   owner-gated). No Blocking activation is logged, throw-clock settings are
-   threaded through config, and opening-rush behavior is not enforced by the
-   official engine. The reduced-blocking resolution parameters that
-   `docs/specs/2026-06-01-workflow0-primary-source-rule-verification.md`
-   leaves OPEN are now to be proposed-with-measurement during implementation
-   rather than pre-decided. The even-rung draw-texture gate folds into this
-   milestone. See `docs/fable/2026-06-10-owner-decision-log.md` §1/§5.
+1. **WT-20 Official Live Rules — SHIPPED 2026-06-10 (V17 Task 2).** No
+   Blocking resolution, ball lifecycle (Section 24-core forfeiture +
+   retrieval), and opening rush (disclosed sim-design) are enforced by the
+   official engine; the throw-clock penalty paths are honestly dispositioned
+   as structurally unreachable in autonomous play (ledger note). The
+   reduced-blocking resolution params that Workflow-0 left OPEN shipped as
+   proposed-with-measurement sim-design, never claimed as USAD fidelity. The
+   even-rung draw-texture gate landed in the same change (stall draws
+   extinct; even-strength draws ~10-11%, all honest splits). See the V17
+   Task 2 entry above. Remaining genuinely-open slice: entering-player
+   micro-fouls (24-core SPLIT note) and rec-career rush_target wiring (V19).
 2. **E2E launch-token coverage sweep — CLOSED 2026-06-09.** Every e2e spec's
    raw mutating `request.post` call now attaches the real token via
    `tests/e2e/_token.ts` (23 specs swept in the UX-pass commit). The older

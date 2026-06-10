@@ -152,16 +152,21 @@ def test_complete_conformance_is_claimable_only_for_enforced_sections():
     """The honesty contract: announced-only / absent rows exist and are labelled.
 
     This guards against a future edit that quietly relabels a not-yet-wired
-    section as enforced. No Blocking (27) and the 24-core micro-fouls are the
-    canonical announced-only rows; if either flips to enforced it must come
-    with the WT-20 engine wiring AND its own behavioural test -- which would
-    make this assertion's expectation update a deliberate, reviewed act.
+    section as enforced. When a section genuinely flips it must come with the
+    engine wiring AND its own behavioural test -- which makes this
+    assertion's expectation update a deliberate, reviewed act.
     """
 
     states = {entry.section: entry.state for entry in LEDGER}
-    # These are announced-only TODAY by primary-source-verified inspection of
-    # run_autonomous_game. Asserting it pins the honest baseline.
-    assert states["27"] is EnforcementState.ANNOUNCED_ONLY
+    # WT-20 (2026-06-10, owner-greenlit) wired the No Blocking resolution into
+    # run_autonomous_game with behavioural gates (test_wt20_live_rules.py:
+    # block branch disabled while active, balls-do-not-reset, match-end
+    # source) — section 27 is now ENFORCED. This flip is the deliberate,
+    # reviewed act the previous revision of this test demanded.
+    assert states["27"] is EnforcementState.ENFORCED
+    # 24-core stays announced-only as a row: the held-ball forfeiture half IS
+    # live (see the SPLIT note + test_wt20_live_rules.py), but the
+    # entering-player micro-fouls are still module-level only.
     assert states["24-core"] is EnforcementState.ANNOUNCED_ONLY
 
     enforced = {s for s, st in states.items() if st is EnforcementState.ENFORCED}

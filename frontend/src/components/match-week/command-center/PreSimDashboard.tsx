@@ -1246,7 +1246,7 @@ export function PreSimDashboard({
               disabled={planConfirmed}
               onChange={onSavePolicy}
               error={null}
-              rushAnnouncedOnly={Boolean(data.ruleset_selection?.startsWith('official'))}
+              officialRuleset={Boolean(data.ruleset_selection?.startsWith('official'))}
             />
         </Dialog>
       )}

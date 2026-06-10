@@ -266,6 +266,9 @@ def event_label(event: ThrowEvent, name_map: Mapping[str, str]) -> str:
         return label
     if resolution == "dodged":
         return render_play("dodge", target, thrower, rng)
+    if resolution == "blocked":
+        # WT-20: held-ball block — actor is the blocker, target the thrower.
+        return render_play("block", target, thrower, rng)
     if resolution == "miss":
         return render_play("throw", thrower, target, rng) + " It misses wide."
     return render_play("action", thrower, target, rng)

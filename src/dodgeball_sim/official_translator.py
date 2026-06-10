@@ -99,7 +99,11 @@ def translate_events(
         catches = list(payload.get("catches", []))
         target_ids = [pid for pid in outs if pid != thrower_id]
         catcher_id = catches[0] if catches else None
-        target_id = target_ids[0] if target_ids else catcher_id
+        # WT-20: a blocked throw has no outs and no catch, but the blocker IS
+        # the targeted defender — carry them so the replay names the block
+        # instead of narrating a target-less miss.
+        blocker_id = payload.get("blocker_id") if payload.get("blocked") else None
+        target_id = target_ids[0] if target_ids else (catcher_id or blocker_id)
         defense_team = None
         if target_id is not None:
             defense_team = player_team_map.get(str(target_id))
@@ -114,6 +118,11 @@ def translate_events(
         elif outs:
             outcome_kind = "hit"
             resolution = "hit"
+        elif payload.get("blocked"):
+            # WT-20: a held-ball block killed the throw. Distinct from a miss
+            # so the replay narrates the block honestly.
+            outcome_kind = "blocked"
+            resolution = "blocked"
         else:
             outcome_kind = "miss"
             resolution = "miss"

@@ -640,6 +640,9 @@ def replay_event_label(event, name_map: dict | None = None) -> str:
         return f"CATCH: {target} turns over {thrower}"
     if resolution == "dodged":
         return f"DODGE: {target} slips {thrower}"
+    if resolution == "blocked":
+        # WT-20: a held-ball block — distinct from a dodge or a miss.
+        return f"BLOCK: {target} walls away {thrower}'s throw with the held ball"
     if resolution == "miss":
         return f"MISS: {thrower} misses {target}"
     return f"{resolution.upper()}: {thrower} to {target}"
@@ -651,7 +654,7 @@ def replay_phase_delay(event) -> int:
     resolution = event.outcome.get("resolution")
     if resolution in ("hit", "failed_catch", "catch"):
         return 900
-    if resolution == "dodged":
+    if resolution in ("dodged", "blocked"):
         return 650
     return 420
 
