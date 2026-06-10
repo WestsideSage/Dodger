@@ -105,8 +105,11 @@ def test_replay_proof_uses_narrative_pack_language_for_saved_context():
     assert any("opening-rush commitment" in item for item in event["tactic_context"]["items"])
     assert any("synchronized attack triggered" in item.lower() for item in event["tactic_context"]["items"])
     assert any("High fatigue" in item for item in event["fatigue"]["items"])
+    # 2026-06-09 audit: the note must state the advisory fit fact WITHOUT
+    # claiming a "liability penalty" — no shipping engine applies one.
     assert event["liability_context"]["items"] == [
-        "Thrower suffered a liability penalty as a mismatched Captain (Sharpshooter archetype)."
+        "Thrower was fielded out of role as a mismatched Captain (Sharpshooter archetype) "
+        "— advisory fit note; the engine applies no role penalty."
     ]
 
 

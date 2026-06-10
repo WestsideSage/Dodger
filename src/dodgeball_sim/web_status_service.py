@@ -6,7 +6,12 @@ import sqlite3
 from typing import Any
 
 from .career_state import CareerStateCursor
-from .development import calculate_potential_tier, _normalize_growth_curve, _peak_window
+from .development import (
+    calculate_potential_tier,
+    _normalize_growth_curve,
+    _peak_window,
+    _TRAJECTORY_POTENTIAL_FLOOR,
+)
 from .league_memory import recent_match_item
 from .models import CoachPolicy
 from .persistence import (
@@ -19,6 +24,7 @@ from .persistence import (
     load_clubs,
     load_completed_match_ids,
     load_lineup_default,
+    load_player_trajectory,
     load_playoff_bracket,
     load_season,
     load_season_outcome,
@@ -121,13 +127,27 @@ def build_roster_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         ovr = int(round(player.overall_skill()))
         player_dict["overall"] = ovr
         player_dict["role"] = player_archetype_label(player)
-        player_dict["potential_tier"] = calculate_potential_tier(player.traits.potential)
         player_dict["scouting_confidence"] = 3
         player_dict["weekly_ovr_history"] = [ovr]
 
         # Phase 5 — Growth legibility: Player Card fields.
-        ceiling = int(player.traits.potential)
+        # "Ceiling" is the highest OVR the development engine can actually
+        # reach for this player, so it is computed exactly the way the engine
+        # does: the stored potential, raised by the scouted-trajectory floor
+        # when one exists, and never below the current OVR (development only
+        # closes headroom; it cannot pull a player down). Legacy saves carry
+        # seeded potential values below current OVR — displaying those raw
+        # would claim a "highest projected OVR" the player has already passed.
+        stored_potential = int(player.traits.potential)
+        trajectory = load_player_trajectory(conn, player.id)
+        trajectory_floor = _TRAJECTORY_POTENTIAL_FLOOR.get(trajectory)
+        effective_potential = max(
+            stored_potential,
+            int(trajectory_floor) if trajectory_floor is not None else stored_potential,
+        )
+        ceiling = max(effective_potential, ovr)
         headroom = max(0, ceiling - ovr)
+        player_dict["potential_tier"] = calculate_potential_tier(ceiling)
         growth_curve_str = _normalize_growth_curve(player.traits.growth_curve)
         _, peak_end = _peak_window(growth_curve_str)
         if player.age > peak_end:

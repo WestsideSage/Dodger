@@ -48,6 +48,12 @@ class RatifiedRecord:
     # Phase 7: club the holder belongs to (player's current club, or the club
     # itself for team records). Used by the My Club / League scope filter.
     holder_club_id: str = ""
+    # Milestone-vs-bookkeeping: career-counter records are re-broken by their
+    # own holder almost every season (steady noise), while a holder CHANGE is
+    # the actual event. False only when the same holder extended their own
+    # record; True for first-time records and dethronings.
+    is_new_holder: bool = True
+    previous_holder_name: str = ""
 
 
 @dataclass(frozen=True)
@@ -107,6 +113,8 @@ def _record_to_dict(record: RatifiedRecord) -> Dict[str, Any]:
         "set_in_season": record.set_in_season,
         "detail": record.detail,
         "holder_club_id": record.holder_club_id,
+        "is_new_holder": bool(record.is_new_holder),
+        "previous_holder_name": record.previous_holder_name,
     }
 
 
@@ -122,6 +130,10 @@ def _record_from_dict(d: Dict[str, Any]) -> RatifiedRecord:
         set_in_season=d["set_in_season"],
         detail=d["detail"],
         holder_club_id=str(d.get("holder_club_id", "")),
+        # Payloads ratified before these fields existed default to the marquee
+        # treatment — never silently downgrade a record we know nothing about.
+        is_new_holder=bool(d.get("is_new_holder", True)),
+        previous_holder_name=str(d.get("previous_holder_name", "")),
     )
 
 
@@ -167,13 +179,28 @@ def ratify_records(
             )
         )
 
-    # Load existing league records for comparison (keyed by record_type)
+    # Load existing league records for comparison (keyed by record_type).
+    # Holder identity is kept alongside the value so the ceremony can tell a
+    # dethroning (new holder — the actual event) from a holder extending their
+    # own counter record (bookkeeping that recurs nearly every season).
     existing_records: Dict[str, float] = {}
+    existing_holders: Dict[str, tuple[str, str]] = {}
     for rec in load_league_records(conn):
         existing_records[rec["record_type"]] = float(rec["record_value"])
+        existing_holders[rec["record_type"]] = (
+            str(rec.get("holder_id", "")),
+            str((rec.get("record") or {}).get("holder_name", "")),
+        )
 
     # Build individual record candidates from career stats
     candidates = build_individual_records(career_stats, season_id) if career_stats else {}
+    # Team record candidates (most_titles, longest_unbeaten_run) — derived from
+    # the same persisted truth the web path already writes (club trophies +
+    # match records). Before this, build_team_records only ever ran in the
+    # legacy sandbox CLI, so the web record book could never hold a club
+    # record. biggest_upset_win is deliberately NOT ratified: it needs
+    # at-match roster OVR reconstruction (roster snapshots) — deferred.
+    candidates.update(_team_record_candidates(conn, season_id))
 
     # Compare candidates to existing records; collect new records in sorted order
     broken: List[RatifiedRecord] = []
@@ -203,6 +230,8 @@ def ratify_records(
             holder_club_id = candidate.holder_id
         else:
             holder_club_id = player_club_map.get(candidate.holder_id, "")
+        previous_holder_id, previous_holder_name = existing_holders.get(record_type, ("", ""))
+        is_new_holder = not previous_holder_id or previous_holder_id != candidate.holder_id
         broken.append(
             RatifiedRecord(
                 record_type=record_type,
@@ -214,6 +243,8 @@ def ratify_records(
                 set_in_season=season_id,
                 detail=candidate.detail,
                 holder_club_id=holder_club_id,
+                is_new_holder=is_new_holder,
+                previous_holder_name=previous_holder_name,
             )
         )
 
@@ -224,6 +255,58 @@ def ratify_records(
     conn.commit()
 
     return RatificationPayload(season_id=season_id, new_records=records_tuple)
+
+
+def _longest_unbeaten_runs(
+    conn: sqlite3.Connection, club_ids: set[str]
+) -> Dict[str, int]:
+    """Longest no-loss streak (wins + draws) per club across all seasons."""
+    from dodgeball_sim.game_loop import season_sort_key
+
+    best = {club_id: 0 for club_id in club_ids}
+    current = {club_id: 0 for club_id in club_ids}
+    rows = conn.execute(
+        "SELECT season_id, week, match_id, home_club_id, away_club_id, winner_club_id"
+        " FROM match_records"
+    ).fetchall()
+    for row in sorted(
+        rows, key=lambda r: (season_sort_key(r["season_id"]), r["week"], r["match_id"])
+    ):
+        for club_id in (row["home_club_id"], row["away_club_id"]):
+            if club_id not in best:
+                continue
+            if row["winner_club_id"] is not None and row["winner_club_id"] != club_id:
+                current[club_id] = 0
+            else:
+                current[club_id] += 1
+                if current[club_id] > best[club_id]:
+                    best[club_id] = current[club_id]
+    return best
+
+
+def _team_record_candidates(conn: sqlite3.Connection, season_id: str) -> Dict[str, Any]:
+    """Build most_titles / longest_unbeaten_run candidates from saved truth."""
+    from dodgeball_sim.persistence import load_club_trophies, load_clubs
+    from dodgeball_sim.records import TeamRecordStats, build_team_records
+
+    clubs = load_clubs(conn)
+    if not clubs:
+        return {}
+    titles: Dict[str, int] = {}
+    for trophy in load_club_trophies(conn):
+        if trophy.get("trophy_type") == "championship":
+            titles[trophy["club_id"]] = titles.get(trophy["club_id"], 0) + 1
+    unbeaten = _longest_unbeaten_runs(conn, set(clubs))
+    team_stats = [
+        TeamRecordStats(
+            club_id=club_id,
+            club_name=clubs[club_id].name,
+            titles=titles.get(club_id, 0),
+            unbeaten_run=unbeaten.get(club_id, 0),
+        )
+        for club_id in sorted(clubs)
+    ]
+    return build_team_records(team_stats, (), season_id)
 
 
 def _inductee_to_dict(inductee: HallOfFameInductee) -> Dict[str, Any]:

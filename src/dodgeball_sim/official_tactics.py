@@ -43,18 +43,26 @@ def _target_base(
 
 
 def _catch_thresholds(policy: CoachPolicy) -> tuple[float, float]:
+    # (threshold, dodge_guard_offset) per posture. A target attempts a catch
+    # iff normalized_catch >= max(threshold, normalized_dodge + guard_offset).
+    #
+    # 2026-06-09 systems audit: PLAY_SAFE previously computed threshold 0.75 —
+    # above virtually every real roster's catch band (career seeds cluster
+    # ~40-85) — so a play-safe team NEVER attempted a catch. Catches are the
+    # official scoring economy (a catch outs the thrower AND resurrects a
+    # teammate), so the posture was a measured forfeit: 0 wins in 400 even-
+    # strength matches (tools/decision_impact_probe.py). The intended semantic
+    # is "attempt only high-percentage catches, prefer evasion", not "opt out
+    # of the rules' core counterplay". Threshold 0.65 keeps play-safe genuinely
+    # selective (only strong catchers attempt; see the evasion shading in
+    # official_resolution._PLAY_SAFE_EVASION_BONUS for the other half of the
+    # tradeoff). GO_FOR_CATCHES / OPPORTUNISTIC pairs are numerically unchanged,
+    # so every non-play_safe match replays byte-identical.
     if policy.catch_posture == CatchPosture.GO_FOR_CATCHES:
-        base_threshold = 0.35
-        posture_adjustment = -0.15
-    elif policy.catch_posture == CatchPosture.PLAY_SAFE:
-        base_threshold = 0.65
-        posture_adjustment = 0.1
-    else:
-        base_threshold = 0.5
-        posture_adjustment = 0.0
-    threshold = base_threshold + posture_adjustment
-    dodge_guard_offset = -0.15 + posture_adjustment
-    return threshold, dodge_guard_offset
+        return 0.20, -0.30
+    if policy.catch_posture == CatchPosture.PLAY_SAFE:
+        return 0.65, -0.05
+    return 0.50, -0.15
 
 
 def _tempo_level(policy: CoachPolicy) -> float:

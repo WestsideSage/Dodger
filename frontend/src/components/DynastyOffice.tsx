@@ -67,42 +67,48 @@ function SettingsModal({
 }) {
   const departmentEntries = Object.entries(plan.department_orders).filter(([key]) => key !== 'dev_focus');
 
+  // HONESTY (ADR 0002): these orders have no mechanical consumer — they are
+  // recorded on the weekly plan and echoed in the post-week debrief, nothing
+  // more. The previous descriptions claimed engine effects that do not exist
+  // ("reduces injury chance", "fewer rushed throws", "short-term edge,
+  // long-term cost"). Descriptions below are staff color only and must not
+  // promise an outcome effect; the modal banner states the boundary once.
   const DEPARTMENT_DESCRIPTIONS: Record<string, Record<string, string>> = {
     tactics: {
-      'opponent prep': 'Study this week\'s opponent. Gives your team a read on their tendencies.',
-      'star containment': 'Focus defensive attention on the opponent\'s best player.',
-      'possession control': 'Emphasize ball discipline — fewer rushed throws.',
-      'pressure tempo': 'Push an aggressive pace to force opponent mistakes.',
+      'opponent prep': 'Staff note: film time on this week\'s opponent.',
+      'star containment': 'Staff note: attention on the opponent\'s best player.',
+      'possession control': 'Staff note: ball-discipline emphasis in practice.',
+      'pressure tempo': 'Staff note: an up-tempo week on the practice floor.',
     },
     training: {
-      fundamentals: 'Balanced development across all skill areas.',
-      'throw accuracy': 'Extra reps on throw precision this week.',
-      'catch security': 'Focus on reducing missed-catch errors.',
-      'scrimmage reps': 'Live game reps — development from match simulation.',
+      fundamentals: 'Staff note: balanced practice across skill areas.',
+      'throw accuracy': 'Staff note: extra reps on throw precision.',
+      'catch security': 'Staff note: catch-drill emphasis this week.',
+      'scrimmage reps': 'Staff note: live scrimmage emphasis this week.',
     },
     conditioning: {
-      'balanced maintenance': 'Keep everyone fresh without pushing hard.',
-      'recovery emphasis': 'Prioritize rest — good after a tough stretch.',
-      'stamina push': 'Push physical limits. Short-term edge, long-term cost.',
-      'fresh legs': 'Rotate minutes to keep everyone game-ready.',
+      'balanced maintenance': 'Staff note: a standard physical week.',
+      'recovery emphasis': 'Staff note: a lighter week in the gym.',
+      'stamina push': 'Staff note: a heavy week in the gym.',
+      'fresh legs': 'Staff note: workload spread across the squad.',
     },
     medical: {
-      'injury prevention': 'Cautious with everyone — reduces injury chance.',
-      'minutes restriction': 'Actively limit at-risk players\' exposure.',
-      'recovery monitoring': 'Watch and react to player health signals.',
-      'play through': 'Play healthy players at full minutes. Higher risk.',
+      'injury prevention': 'Staff note: cautious handling all week.',
+      'minutes restriction': 'Staff note: flagged players handled carefully.',
+      'recovery monitoring': 'Staff note: health signals under observation.',
+      'play through': 'Staff note: everyone cleared at full participation.',
     },
     scouting: {
-      'next opponent': 'Scouts focus on this week\'s matchup.',
-      'prospect board': 'Scouting time goes to the recruit pool.',
-      'playoff threats': 'Watch teams fighting for postseason position.',
-      'rival tendencies': 'Build a detailed read on a key rival.',
+      'next opponent': 'Staff note: scout time on this week\'s matchup.',
+      'prospect board': 'Staff note: scout time on the recruit pool.',
+      'playoff threats': 'Staff note: scout time on the postseason race.',
+      'rival tendencies': 'Staff note: scout time on a key rival.',
     },
     culture: {
-      'pressure management': 'Help the team handle high-stakes moments.',
-      'youth confidence': 'Extra attention on younger players\' development confidence.',
-      'veteran leadership': 'Lean on experienced players to set the tone.',
-      accountability: 'Hold everyone to standards — sets a focused culture.',
+      'pressure management': 'Staff note: big-moment composure emphasis.',
+      'youth confidence': 'Staff note: encouragement for the young core.',
+      'veteran leadership': 'Staff note: veterans set the tone this week.',
+      accountability: 'Staff note: standards-first messaging this week.',
     },
   };
 
@@ -129,6 +135,11 @@ function SettingsModal({
             <p className="dm-kicker">Program Settings</p>
             <h2 id="program-settings-title" style={{ margin: '0.25rem 0 0', color: '#fff' }}>Department Orders</h2>
             <p style={{ margin: '0.4rem 0 0', color: '#94a3b8', fontSize: '0.875rem' }}>Choose a focused order for each staff room.</p>
+            <p style={{ margin: '0.5rem 0 0', color: '#fbbf24', fontSize: '0.72rem', lineHeight: 1.45 }}>
+              Flavor only: these orders are recorded in your weekly debrief but do not
+              change match outcomes or development. Dev Focus (Command Center) and the
+              Policy Editor are the levers that affect play.
+            </p>
           </div>
           <button
             aria-label="Close program settings"

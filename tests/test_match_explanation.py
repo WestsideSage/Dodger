@@ -10,7 +10,6 @@ from dodgeball_sim.match_explanation import (
     CATCH_DISPARITY,
     FLOOD_THROWS_PUNISHED,
     LATE_STAMINA_COLLAPSE,
-    LIABILITY_INVOLVEMENT,
     OPENING_RUSH_DEFICIT,
     UPSET_VARIANCE,
     CONFIDENCE_HIGH,
@@ -54,7 +53,6 @@ def _base(**overrides):
         deficit_low_tick=0,
         final_tick=100,
         name_map={"p1": "Jordan", "o1": "Casey"},
-        liabilities=(),
     )
     kwargs.update(overrides)
     return derive_match_explanation(**kwargs)
@@ -136,21 +134,18 @@ def test_flood_throws_punished_only_when_returns_exist():
     assert punished.primary_factor.code == FLOOD_THROWS_PUNISHED
 
 
-def test_liability_involvement_is_soft_and_low_confidence():
-    liabilities = [
-        {
-            "name": "Jordan",
-            "role_name": "Pivot",
-            "archetype": "Wall",
-            "on_player_team": True,
-            "eliminated": True,
-        }
-    ]
-    exp = _base(result="Loss", liabilities=liabilities)
-    assert exp.primary_factor.code == LIABILITY_INVOLVEMENT
-    assert exp.primary_factor.confidence == CONFIDENCE_LOW
-    # Involvement language, never "exploited".
-    assert "exploit" not in exp.primary_factor.sentence.lower()
+def test_liability_involvement_never_ranks_as_a_factor():
+    """2026-06-09 audit: slot-role fit has no consumer in any shipping engine,
+    so a role mismatch can never be ranked as a cause of the result. The old
+    "liability_involvement" factor was removed; a loss with nothing else
+    supported must fall back to the honest variance message instead of
+    directing the player at a lever that does not exist."""
+    exp = _base(result="Loss")
+    assert exp.primary_factor.code == UPSET_VARIANCE
+    assert "liability" not in exp.primary_factor.sentence.lower()
+    assert all(
+        "liability" not in factor.sentence.lower() for factor in exp.considered
+    )
 
 
 def test_close_match_falls_back_to_variance_with_soft_language():

@@ -53,11 +53,21 @@ interface ProgramTrajectory {
   recruiting_class_strength: string;
 }
 
+interface AllTimeRecord {
+  wins: number;
+  losses: number;
+  draws: number;
+  seasons: number;
+}
+
 interface ProgramData {
   club_id: string;
   hero: {
     season_1?: HeroSeason;
     current?: HeroSeason;
+    /** True career totals summed over every season row (incl. in-progress).
+        hero.current is only the latest season's snapshot. */
+    all_time?: AllTimeRecord;
   };
   timeline: TimelineEvent[];
   alumni: AlumnusEntry[];
@@ -242,6 +252,7 @@ export function MyProgramView({ clubId, isSelf = true }: { clubId: string; isSel
   if (!data) return null;
 
   const currentHero = data.hero.current ?? data.hero.season_1 ?? null;
+  const allTime = data.hero.all_time ?? null;
   const firstHero = data.hero.season_1 ?? null;
   const latestTrajectory = data.program_trajectories && data.program_trajectories.length > 0
     ? data.program_trajectories[data.program_trajectories.length - 1]
@@ -267,12 +278,24 @@ export function MyProgramView({ clubId, isSelf = true }: { clubId: string; isSel
           </span>
         </div>
         <div className="cell">
-          <span className="lbl">All-Time Record</span>
+          {/* hero.current is the LATEST season's snapshot — rendering it under
+              an "Across completed seasons" label showed a week-2 "1-0-0" as
+              the program's all-time record. Use the real career totals; if an
+              older payload lacks them, label the snapshot as what it is. */}
+          <span className="lbl">{allTime ? 'All-Time Record' : 'Latest Season Record'}</span>
           <span className="val">
-            {currentHero ? `${currentHero.wins}-${currentHero.losses}-${currentHero.draws}` : '—'}
+            {allTime
+              ? `${allTime.wins}-${allTime.losses}-${allTime.draws}`
+              : currentHero
+                ? `${currentHero.wins}-${currentHero.losses}-${currentHero.draws}`
+                : '—'}
           </span>
           <span className="trend">
-            {currentHero ? 'Across completed seasons' : 'First completed season will appear here'}
+            {allTime
+              ? `Across ${allTime.seasons} season${allTime.seasons === 1 ? '' : 's'} (incl. current)`
+              : currentHero
+                ? formatSeasonLabel(currentHero.season_label)
+                : 'First completed season will appear here'}
           </span>
         </div>
         <div className="cell">

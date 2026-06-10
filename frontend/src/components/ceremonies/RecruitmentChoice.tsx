@@ -42,6 +42,18 @@ export function RecruitmentChoice({
 
       <article className="dm-panel command-offseason-feature">
         <p className="dm-kicker">Recruitment Desk</p>
+        {/* Scouted board values are estimates; the OVR shown here is the
+            verified rating — without this line a "65 scouted" prospect signing
+            at "OVR 62" reads as a broken promise rather than fog-of-war. */}
+        {prospects.length > 0 && (
+          <p
+            data-testid="signing-day-ovr-disclosure"
+            style={{ margin: '0.35rem 0 0', fontSize: '0.74rem', color: '#94a3b8', lineHeight: 1.45 }}
+          >
+            Ratings below are each prospect's verified overall. In-season scouting reads are
+            estimates, so a signed player's OVR can differ from your board's scouted band.
+          </p>
+        )}
         <div
           style={{
             display: 'grid',
@@ -148,8 +160,12 @@ export function RecruitmentChoice({
                     >
                       {prospect.overall}
                     </div>
+                    {/* Truth: this is the prospect's actual overall from the
+                        signing payload, shown whether or not they were ever
+                        scouted — labeling it "scouted" claimed a provenance
+                        the number does not have. */}
                     <div style={{ fontSize: '0.58rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      scouted
+                      ovr
                     </div>
                   </div>
                 </button>

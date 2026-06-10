@@ -9,7 +9,7 @@ autonomous action selection is added (Phase 8C).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace as dataclass_replace
 from enum import Enum
 from typing import List, Tuple
 
@@ -981,7 +981,13 @@ def run_autonomous_match(
         )
 
         last_game_res = game_res
-        all_moments.extend(game_res.moment_events)
+        # Tag each moment with its game so replay surfaces can place it: the
+        # moment's ``tick`` is a per-game engine tick and is ambiguous across
+        # a multi-game match without this. Presentation metadata only.
+        all_moments.extend(
+            dataclass_replace(moment, game_number=game_number)
+            for moment in game_res.moment_events
+        )
         game_elapsed = game_res.replay_state.game_clock.elapsed_seconds
         elapsed_match_seconds += game_elapsed
         total_ticks += game_res.ticks

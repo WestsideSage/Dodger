@@ -142,9 +142,9 @@ test.describe('Maximized browser playthrough and V11 QA Pass', () => {
       await expect(page.getByText('BALL STATES', { exact: true })).toBeVisible();
       await expect(page.getByText('RULE CALLS', { exact: true })).toBeVisible();
 
-      // Check Ruleset Profile Name contains 'cloth'
-      const rulesetText = await page.locator('text=/CLOTH/').first().textContent();
-      expect(rulesetText?.toLowerCase()).toContain('cloth');
+      // Check the canonical ruleset display name (WT-5: "Cloth Division", not
+      // the raw "CLOTH-OPEN" profile key this assertion predates).
+      await expect(page.getByTestId('official-ruleset-banner')).toContainText('Cloth Division');
 
       // Check ball count (Cloth profile has 5 balls)
       const ballContainer = page.getByText('BALL STATES', { exact: true }).locator('xpath=./following-sibling::div');

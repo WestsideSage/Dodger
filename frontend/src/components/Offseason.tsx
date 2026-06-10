@@ -50,23 +50,34 @@ export function Offseason({ onBeatChange }: { onBeatChange?: (title: string | nu
   const recruit = (prospectId: string) => act('/api/offseason/recruit', { prospect_id: prospectId });
   const beginSeason = () => act('/api/offseason/begin-season');
 
-  if (beat.key === 'champion') return <ChampionReveal beat={beat} onComplete={advance} acting={acting} />;
-  if (beat.key === 'recap') return <RecapStandings beat={beat} onComplete={advance} acting={acting} />;
-  if (beat.key === 'awards') return <AwardsNight beat={beat} onComplete={advance} acting={acting} />;
-  if (beat.key === 'retirements') return <Graduation beat={beat} onComplete={advance} acting={acting} />;
-  if (beat.key === 'development') return <DevelopmentResults beat={beat} onComplete={advance} acting={acting} />;
-  if (beat.key === 'rookie_class_preview') return <RookieClassPreview beat={beat} onComplete={advance} acting={acting} />;
-  if (beat.key === 'records_ratified') return <RecordsRatified beat={beat} onComplete={advance} acting={acting} />;
-  if (beat.key === 'hof_induction') return <HallOfFameInduction beat={beat} onComplete={advance} acting={acting} />;
-  if (beat.key === 'recruitment' && beat.can_recruit) return (
-    <RecruitmentChoice beat={beat} onSign={recruit} acting={acting} />
-  );
-  if (beat.key === 'recruitment') return <SigningDay beat={beat} onComplete={advance} acting={acting} />;
-  if (beat.key === 'schedule_reveal') return <NewSeasonEve beat={beat} onComplete={beginSeason} acting={acting} />;
-
-  return (
+  let content = (
     <StatusMessage title="Offseason beat unavailable" tone="danger">
       This ceremony step could not be displayed.
     </StatusMessage>
+  );
+  if (beat.key === 'champion') content = <ChampionReveal beat={beat} onComplete={advance} acting={acting} />;
+  else if (beat.key === 'recap') content = <RecapStandings beat={beat} onComplete={advance} acting={acting} />;
+  else if (beat.key === 'awards') content = <AwardsNight beat={beat} onComplete={advance} acting={acting} />;
+  else if (beat.key === 'retirements') content = <Graduation beat={beat} onComplete={advance} acting={acting} />;
+  else if (beat.key === 'development') content = <DevelopmentResults beat={beat} onComplete={advance} acting={acting} />;
+  else if (beat.key === 'rookie_class_preview') content = <RookieClassPreview beat={beat} onComplete={advance} acting={acting} />;
+  else if (beat.key === 'records_ratified') content = <RecordsRatified beat={beat} onComplete={advance} acting={acting} />;
+  else if (beat.key === 'hof_induction') content = <HallOfFameInduction beat={beat} onComplete={advance} acting={acting} />;
+  else if (beat.key === 'recruitment' && beat.can_recruit) content = (
+    <RecruitmentChoice beat={beat} onSign={recruit} acting={acting} />
+  );
+  else if (beat.key === 'recruitment') content = <SigningDay beat={beat} onComplete={advance} acting={acting} />;
+  else if (beat.key === 'schedule_reveal') content = <NewSeasonEve beat={beat} onComplete={beginSeason} acting={acting} />;
+
+  // A rejected action (e.g. the roster-floor guard blocking a recruitment
+  // skip) must be visible: the catch above stores the message, but the
+  // beat-level early return only rendered errors when no beat was loaded.
+  return (
+    <>
+      {error ? (
+        <StatusMessage title="Action blocked" tone="danger">{error}</StatusMessage>
+      ) : null}
+      {content}
+    </>
   );
 }

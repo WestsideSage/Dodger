@@ -168,6 +168,16 @@ def _translate_throw_event(*, raw: Dict[str, Any], event_id: int, seed: int, dif
     if raw.get("type") == "headshot_thrower_out":
         target = None
         target_team = None
+    state_diff = dict(raw.get("state_diff") or {})
+    # A catch_return resurrects a queued teammate of the catcher (the target's
+    # team). Persist that fact: without it the replay's live survivor state
+    # keeps the returned player marked eliminated for the rest of the match.
+    returning_player_id = raw.get("returning_player_id")
+    if raw.get("type") == "catch_return" and returning_player_id:
+        state_diff["player_return"] = {
+            "team": target_team,
+            "player_id": returning_player_id,
+        }
     return MatchEvent(
         event_id=event_id,
         tick=int(raw.get("tick", 0)),
@@ -200,7 +210,7 @@ def _translate_throw_event(*, raw: Dict[str, Any], event_id: int, seed: int, dif
         outcome={
             "resolution": resolution_map.get(str(raw.get("type")), "miss"),
         },
-        state_diff=dict(raw.get("state_diff") or {}),
+        state_diff=state_diff,
     )
 
 
@@ -212,6 +222,21 @@ def _derive_box_score(
 ) -> Dict[str, Any]:
     event_list = list(events)
     box = {"teams": {}, "winner": winner_team_id}
+    # Final on-court status from the full diff stream: an elimination marks a
+    # player out, a catch-return brings them BACK. Treating "was ever out" as
+    # "ended the match out" undercounted survivors on every match with a
+    # return — and, because franchise.simulate_match derives the recorded
+    # winner from these survivor totals, it falsified recorded outcomes (a
+    # 2-0 elimination win recorded as a 0-0 draw). The event log is canon.
+    final_out_ids: set[str] = set()
+    for event in event_list:
+        state_diff = event.state_diff or {}
+        player_out = state_diff.get("player_out") or {}
+        if player_out.get("player_id"):
+            final_out_ids.add(str(player_out["player_id"]))
+        player_return = state_diff.get("player_return") or {}
+        if player_return.get("player_id"):
+            final_out_ids.discard(str(player_return["player_id"]))
     for team in (setup.team_a, setup.team_b):
         team_players = {}
         team_events = [event for event in event_list if event.event_type == "throw"]
@@ -219,7 +244,6 @@ def _derive_box_score(
         hits = 0
         catches = 0
         dodges = 0
-        eliminated_ids: set[str] = set()
         for player in team.players:
             throws = 0
             player_hits = 0
@@ -229,7 +253,6 @@ def _derive_box_score(
             for event in team_events:
                 actors = event.actors
                 resolution = str(event.outcome.get("resolution", "miss"))
-                player_out = (event.state_diff or {}).get("player_out") or {}
                 if actors.get("thrower") == player.id:
                     throws += 1
                     if resolution in {"hit", "failed_catch"}:
@@ -241,8 +264,6 @@ def _derive_box_score(
                         player_catches += 1
                     elif resolution == "dodged":
                         player_dodges += 1
-                if player_out.get("player_id") == player.id:
-                    eliminated_ids.add(player.id)
             team_players[player.id] = {
                 "name": player.name,
                 "throws": throws,
@@ -250,13 +271,13 @@ def _derive_box_score(
                 "catches": player_catches,
                 "dodges": player_dodges,
                 "caught": caught,
-                "is_out": player.id in eliminated_ids,
+                "is_out": player.id in final_out_ids,
             }
             outs_recorded += player_hits
             hits += player_hits
             catches += player_catches
             dodges += player_dodges
-        living = len([player for player in team.players if player.id not in {pid for pid, data in team_players.items() if data["is_out"]}])
+        living = len([player for player in team.players if player.id not in final_out_ids])
         box["teams"][team.id] = {
             "name": team.name,
             "totals": {

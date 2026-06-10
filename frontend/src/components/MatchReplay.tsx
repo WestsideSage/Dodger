@@ -1,9 +1,12 @@
-import { memo, useMemo, useEffect, useRef, useState } from 'react';
+import { Fragment, memo, useMemo, useEffect, useRef, useState } from 'react';
 
-import type { MatchReplayResponse, ReplayProofEvent } from '../types';
+import type { HighlightBeat, MatchReplayResponse, MomentEvent, ReplayGameSegment, ReplayProofEvent } from '../types';
 import { rulesetDisplayName } from '../legibility/rulesetNames';
 import { BroadcastFrameBlock } from './BroadcastFrameBlock';
 import { formatScoreline, survivorDetail } from './match-week/matchResult';
+import { MatchHighlights } from '../features/replay/MatchHighlights';
+import { ReplaySpeedControl, type ReplaySpeed } from './match-week/aftermath/ReplaySpeedControl';
+import { commandApi } from '../api/client';
 
 interface PlayerInfo {
   id: string;
@@ -68,6 +71,29 @@ const resolutionActionLabel = (r: string | null) =>
     : r === 'dodged'
     ? 'DODGE'
     : '';
+
+// How long autoplay holds each play, before the speed factor: outs and
+// catches get a beat to land, misses move the broadcast along.
+const eventHoldMs = (p: ReplayProofEvent | undefined, hasMoment: boolean): number => {
+  if (!p) return 1200;
+  if (hasMoment) return 1600;
+  const r = p.resolution;
+  if (r === 'catch' || r === 'failed_catch') return 1300;
+  if (r === 'hit') return 1100;
+  if (r === 'dodged') return 750;
+  return 500;
+};
+
+const SPEED_FACTOR: Record<Exclude<ReplaySpeed, 'instant'>, number> = { '1x': 1, '2x': 0.5, '4x': 0.25 };
+
+const MOMENT_KIND_LABEL: Record<MomentEvent['kind'], string> = {
+  dramatic_catch: 'DRAMATIC CATCH',
+  late_game_escape: 'LAST STAND',
+  one_v_one_finale: 'ONE-V-ONE FINALE',
+  gassed_collapse: 'GASSED COLLAPSE',
+  flood_throw: 'FLOOD THROW',
+  comeback: 'COMEBACK',
+};
 
 // ── UI Kit Integrated Court ───────────────────────────────────────────────────
 
@@ -211,7 +237,19 @@ const DarkCourt = memo(function DarkCourt({
 
 // ── Components ──────────────────────────────────────────────────────────────
 
-const PossessionBar = ({ events, activeIdx, onJump, homeClubId }: { events: ReplayProofEvent[], activeIdx: number, onJump: (i: number) => void, homeClubId: string }) => {
+const PossessionBar = ({
+  events,
+  activeIdx,
+  onJump,
+  homeClubId,
+  momentIndices,
+}: {
+  events: ReplayProofEvent[];
+  activeIdx: number;
+  onJump: (i: number) => void;
+  homeClubId: string;
+  momentIndices: Set<number>;
+}) => {
   return (
     <div className="mr-possession">
       <div className="mr-possession-head">
@@ -225,14 +263,78 @@ const PossessionBar = ({ events, activeIdx, onJump, homeClubId }: { events: Repl
           const isSwing = ev.is_key_play;
           const owner = isSwing ? 'swing' : (ev.offense_club_id === homeClubId ? 'home' : 'away');
           const active = i === activeIdx;
+          // Official matches: a divider where a new game starts, so the strip
+          // reads as sets instead of one undifferentiated stream.
+          const startsNewGame =
+            i > 0 && ev.game_number != null && events[i - 1].game_number !== ev.game_number;
           return (
-            <button key={i} className={`mr-poss-cell owner-${owner} ${active ? 'is-active' : ''}`} onClick={() => onJump(i)}>
-              <span className="num">{(i + 1).toString().padStart(2, '0')}</span>
-              {isSwing && <div className="swing-pip" />}
-            </button>
+            <Fragment key={i}>
+              {startsNewGame && (
+                <span className="mr-poss-divider" aria-hidden="true">
+                  G{ev.game_number}
+                </span>
+              )}
+              <button className={`mr-poss-cell owner-${owner} ${active ? 'is-active' : ''}`} onClick={() => onJump(i)}>
+                <span className="num">{(i + 1).toString().padStart(2, '0')}</span>
+                {isSwing && <div className="swing-pip" />}
+                {momentIndices.has(i) && <div className="moment-pip" title="Recognition moment" />}
+              </button>
+            </Fragment>
           );
         })}
       </div>
+    </div>
+  );
+};
+
+// Set-by-set story of an official match. Every value comes from the persisted
+// per-game official score; chips jump to the game's first event when the
+// event stream carries game metadata (newly simulated matches).
+const GameSegmentStrip = ({
+  segments,
+  currentGame,
+  onJump,
+}: {
+  segments: ReplayGameSegment[];
+  currentGame: number | null;
+  onJump: (proofIndex: number) => void;
+}) => {
+  if (segments.length === 0) return null;
+  return (
+    <div className="mr-set-strip" data-testid="replay-set-strip" aria-label="Game-by-game set results">
+      <span className="mr-set-kicker">SETS</span>
+      {segments.map((seg) => {
+        const result =
+          seg.home_points > seg.away_points ? 'home' : seg.away_points > seg.home_points ? 'away' : 'none';
+        const isCurrent = currentGame === seg.game_number;
+        const canJump = seg.first_proof_index != null;
+        const title =
+          seg.result_type === 'no_point'
+            ? `Game ${seg.game_number}: no point — neither side closed it out`
+            : seg.result_type === 'tie'
+              ? `Game ${seg.game_number}: tied`
+              : `Game ${seg.game_number}: ${seg.home_points}–${seg.away_points} (${seg.home_final_actives}v${seg.away_final_actives} left standing)`;
+        return (
+          <button
+            key={seg.game_number}
+            type="button"
+            className={`mr-set-chip result-${result} ${isCurrent ? 'is-current' : ''}`}
+            title={title}
+            disabled={!canJump}
+            onClick={() => {
+              if (seg.first_proof_index != null) onJump(seg.first_proof_index);
+            }}
+          >
+            <span className="g">G{seg.game_number}</span>
+            <span className="pts">
+              {seg.result_type === 'no_point' ? '—' : `${seg.home_points}–${seg.away_points}`}
+            </span>
+          </button>
+        );
+      })}
+      <span className="mr-set-running" data-testid="replay-set-running">
+        {segments[segments.length - 1].home_running_points}–{segments[segments.length - 1].away_running_points} on game points
+      </span>
     </div>
   );
 };
@@ -300,28 +402,54 @@ function formatClock(clock?: { limit_seconds: number; elapsed_seconds: number } 
   return `${minutes}:${seconds} left`;
 }
 
+// Raw engine enums (no_blocking, zero_called, a0:held...) read as debug output
+// to a first-hour player; humanize every value at this presentation boundary
+// without inventing state the payload does not carry.
+function humanizeOfficialToken(value: string): string {
+  const text = value.replaceAll('_', ' ').trim().toLowerCase();
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : value;
+}
+
 const OfficialRulesPanel = ({ data }: { data: MatchReplayResponse }) => {
   const official = data.official_state;
   if (!official) return null;
-  const burden = official.burden
-    ? `${official.burden.team_id ?? 'No team'} · ${official.burden.clock_status} · ${official.burden.seconds_remaining}s`
-    : 'No active burden';
-  const ballStates = official.balls.length
-    ? official.balls.map(ball => `${ball.ball_id}:${ball.state}`).join(' · ')
-    : 'No ball state';
+
+  const clubNameById: Record<string, string> = {
+    [data.home_club_id]: data.home_club_name || data.home_club_id,
+    [data.away_club_id]: data.away_club_name || data.away_club_id,
+  };
+
+  const burden = official.burden && official.burden.team_id
+    ? `${clubNameById[official.burden.team_id] ?? official.burden.team_id} · throw clock ${humanizeOfficialToken(official.burden.clock_status).toLowerCase()}`
+    : 'No team on the clock';
+
+  // Grouped rule-call readout: "3 calls · Rule 11 ×2, Rule 34" beats a bare
+  // "11 · 11" (the labels are USA Dodgeball rulebook section numbers).
+  const callCounts = new Map<string, number>();
+  for (const call of official.rule_calls) {
+    callCounts.set(call.rule_label, (callCounts.get(call.rule_label) ?? 0) + 1);
+  }
+  const callGroups = Array.from(callCounts.entries())
+    .slice(0, 3)
+    .map(([label, count]) => (count > 1 ? `Rule ${label} ×${count}` : `Rule ${label}`))
+    .join(', ');
   const ruleCalls = official.rule_calls.length
-    ? official.rule_calls.slice(0, 2).map(call => call.rule_label).join(' · ')
-    : 'No rule calls';
+    ? `${official.rule_calls.length} call${official.rule_calls.length === 1 ? '' : 's'} · ${callGroups}`
+    : 'None';
 
   return (
     <section className="mr-official-panel" data-testid="official-ruleset-banner" aria-label="Official rules replay state">
+      <div>
+        <span title="Officiating snapshot taken at the final whistle — clocks read 00:00 because the match is over.">FULL TIME</span>
+        <strong>Official state</strong>
+      </div>
       <div>
         <span>RULESET</span>
         <strong>{rulesetDisplayName(official.ruleset, 'short')}</strong>
       </div>
       <div>
-        <span>MODE</span>
-        <strong>{official.mode.toUpperCase()}</strong>
+        <span title="The officiating mode in force when the match ended. No Blocking is the official endgame call — announced by the broadcast, not yet outcome-enforced.">MODE</span>
+        <strong>{humanizeOfficialToken(official.mode)}</strong>
       </div>
       <div>
         <span>GAME CLOCK</span>
@@ -332,19 +460,23 @@ const OfficialRulesPanel = ({ data }: { data: MatchReplayResponse }) => {
         <strong>{formatClock(official.match_clock)}</strong>
       </div>
       <div>
-        <span>BURDEN</span>
+        <span title="The burden team must attack before the throw clock expires.">BURDEN</span>
         <strong>{burden}</strong>
       </div>
       <div>
-        <span>BALL STATES</span>
+        <span title="Where each ball ended at the final whistle — held means in a player's hands, dead means loose on the floor.">BALL STATES</span>
         <div className="mr-official-ball-list">
           {official.balls.length
-            ? official.balls.map(ball => <span key={ball.ball_id}>{ball.ball_id}:{ball.state}</span>)
-            : <span>{ballStates}</span>}
+            ? official.balls.map(ball => (
+                <span key={ball.ball_id}>
+                  {ball.ball_id.toUpperCase()} {humanizeOfficialToken(ball.state).toLowerCase()}
+                </span>
+              ))
+            : <span>No ball state</span>}
         </div>
       </div>
       <div>
-        <span>RULE CALLS</span>
+        <span title="Officiating calls logged during the match, by USA Dodgeball rulebook section number.">RULE CALLS</span>
         <strong>{ruleCalls}</strong>
       </div>
     </section>
@@ -375,14 +507,17 @@ const ReplayProofFrames = ({ data }: { data: MatchReplayResponse }) => {
   );
 };
 
+// The headline is the replay's biggest swing in living-count differential
+// (lead flips weighted highest), selected server-side from the same proof
+// timeline the jump lands on — never just "the first hit of the match".
 const TurningPoint = ({ text, onShowCatch }: { text: string, onShowCatch: () => void }) => (
   <div className="mr-turning">
     <div>
-      <span className="mr-turning-kicker">TURNING POINT</span>
+      <span className="mr-turning-kicker">BIGGEST SWING</span>
       <p className="mr-turning-text">{text}</p>
     </div>
     <button className="mr-turning-jump" onClick={onShowCatch}>
-      Jump to Key Play <span className="arrow">▸</span>
+      Jump to This Play <span className="arrow">▸</span>
     </button>
   </div>
 );
@@ -397,6 +532,15 @@ const chipClass = (resolution: string) => {
 
 const scoreDeltaLabel = (current?: ReplayProofEvent, previous?: ReplayProofEvent) => {
   if (!current?.score_state) return 'No score state';
+  // Official game boundary: survivor counts genuinely reset (every game
+  // starts 6v6), so a delta against the previous game would be meaningless.
+  if (
+    previous &&
+    current.game_number != null &&
+    previous.game_number !== current.game_number
+  ) {
+    return `Game ${current.game_number} — fresh court`;
+  }
   const prevHome = previous?.score_state?.home_living ?? current.score_state.home_living;
   const prevAway = previous?.score_state?.away_living ?? current.score_state.away_living;
   const homeDelta = current.score_state.home_living - prevHome;
@@ -429,7 +573,7 @@ const CurrentEventCard = ({
       </div>
       <strong>{actors}</strong>
       <div className="mr-current-meta">
-        <span>T{event.tick}</span>
+        <span>{event.game_number != null ? `G${event.game_number} · ` : ''}T{event.tick}</span>
         <span>{event.resolution}</span>
         <span>{scoreDeltaLabel(event, previousEvent)}</span>
       </div>
@@ -486,10 +630,28 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
   const initialIdx = data.key_play_indices && data.key_play_indices.length > 0 ? data.key_play_indices[0] : 0;
   const [eventIndex, setEventIndex] = useState(initialIdx);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [speed, setSpeed] = useState<ReplaySpeed>('1x');
+  const [highlightBeats, setHighlightBeats] = useState<HighlightBeat[]>([]);
 
   const [activeResolution, setActiveResolution] = useState<string | null>(null);
   const [flashTargetId, setFlashTargetId] = useState<string | null>(null);
   const [ballAnimKey, setBallAnimKey] = useState<string>('init');
+
+  // V13 highlight package (deterministic, event-id-keyed) — gives the replay
+  // a story summary with jump links. Optional: failures just hide the block.
+  useEffect(() => {
+    let cancelled = false;
+    commandApi.highlights(data.match_id)
+      .then((payload) => {
+        if (!cancelled) setHighlightBeats(payload.beats ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setHighlightBeats([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [data.match_id]);
 
   // Autoplay on mount
   useEffect(() => {
@@ -572,21 +734,36 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
     const elims = new Set<string>();
     if (!data || totalEvents === 0) return { eliminatedIds: elims, throwerId: null, targetId: null };
 
-    for (let i = 0; i <= eventIndex; i++) {
-      const p = data.proof_events[i];
-      if (p?.score_state) {
-        p.score_state.home_eliminated_player_ids.forEach((id) => elims.add(id));
-        p.score_state.away_eliminated_player_ids.forEach((id) => elims.add(id));
-      }
-    }
-
+    // The current event's score_state IS the live court truth: the backend
+    // already accumulates eliminations, takes catch-returns back off, and
+    // resets at official game boundaries. Unioning across all prior events
+    // here would re-mark returned players and dead games as eliminated.
     const current = data.proof_events[eventIndex];
+    if (current?.score_state) {
+      current.score_state.home_eliminated_player_ids.forEach((id) => elims.add(id));
+      current.score_state.away_eliminated_player_ids.forEach((id) => elims.add(id));
+    }
     return {
       eliminatedIds: elims,
       throwerId: current ? current.thrower_id : null,
       targetId: current ? current.target_id : null,
     };
   }, [data, eventIndex, totalEvents]);
+
+  // Moments anchored into the proof timeline (server-resolved). Map proof
+  // index -> moments so playback can banner them at the right play.
+  const momentsByIndex = useMemo(() => {
+    const map = new Map<number, MomentEvent[]>();
+    (data?.moment_events ?? []).forEach((moment) => {
+      const anchor = moment.anchor_index;
+      if (anchor == null || anchor < 0) return;
+      const existing = map.get(anchor) ?? [];
+      existing.push(moment);
+      map.set(anchor, existing);
+    });
+    return map;
+  }, [data]);
+  const momentIndices = useMemo(() => new Set(momentsByIndex.keys()), [momentsByIndex]);
 
   useEffect(() => {
     const currentProof = data?.proof_events[eventIndex];
@@ -615,39 +792,64 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
     };
   }, [data, eventIndex]);
 
-  // Auto-play loop
+  // Auto-play loop: outs/catches hold longer than misses, scaled by the
+  // selected speed, so a 200-event official match stays watchable.
   useEffect(() => {
     if (!isPlaying) return;
     if (eventIndex >= totalEvents - 1) {
       const t = setTimeout(() => setIsPlaying(false), 0);
       return () => clearTimeout(t);
     }
-    const t = setTimeout(() => setEventIndex((i) => i + 1), 1200);
+    const factor = speed === 'instant' ? 0.1 : SPEED_FACTOR[speed];
+    const hold = Math.max(120, eventHoldMs(data.proof_events[eventIndex], momentIndices.has(eventIndex)) * factor);
+    const t = setTimeout(() => setEventIndex((i) => i + 1), hold);
     return () => clearTimeout(t);
-  }, [isPlaying, eventIndex, totalEvents]);
+  }, [isPlaying, eventIndex, totalEvents, speed, data, momentIndices]);
 
   const currentEvent = data.proof_events[eventIndex];
   const previousEvent = eventIndex > 0 ? data.proof_events[eventIndex - 1] : undefined;
   const firstKeyPlayIdx = data.key_play_indices?.length > 0 ? data.key_play_indices[0] : 0;
+  const swingJumpIdx = data.report?.turning_point_index ?? firstKeyPlayIdx;
+  const currentMoments = momentsByIndex.get(eventIndex) ?? [];
+  const gameSegments = data.game_segments ?? [];
+  const currentGame = currentEvent?.game_number ?? null;
+  // events[] index (highlight source coordinates) -> proof index for jumps.
+  const proofIndexBySequence = useMemo(() => {
+    const map = new Map<number, number>();
+    data.proof_events.forEach((proof, index) => map.set(proof.sequence_index, index));
+    return map;
+  }, [data]);
 
   return (
     <div className="max-content mr-shell" data-screen-label="03 Dynasty">
       <ReplayScoreboard data={data} />
       <OfficialRulesPanel data={data} />
       <ReplayProofFrames data={data} />
-      <TurningPoint 
-        text={data.report?.turning_point || "Crucial swing in momentum."} 
-        onShowCatch={() => { setEventIndex(firstKeyPlayIdx); setIsPlaying(false); }} 
+      <TurningPoint
+        text={data.report?.turning_point || "Crucial swing in momentum."}
+        onShowCatch={() => { setEventIndex(swingJumpIdx); setIsPlaying(false); }}
       />
 
       <div className="mr-stage">
         <div className="mr-active-readout">
           <span className="lbl">NOW SHOWING</span>
           <span className="sep" />
-          <span className="val">TICK {currentEvent?.tick ?? 0}</span>
+          <span className="val">
+            {currentGame != null ? `GAME ${currentGame} · ` : ''}TICK {currentEvent?.tick ?? 0}
+          </span>
           <span className="sep" />
           <span className="title">{currentEvent?.summary || 'Match Start'}</span>
         </div>
+        {currentMoments.length > 0 && (
+          <div className="mr-moment-banner" data-testid="replay-moment-banner">
+            {currentMoments.map((moment, index) => (
+              <p key={`${moment.kind}-${index}`}>
+                <b>{MOMENT_KIND_LABEL[moment.kind]}</b>
+                {moment.display_text ? ` ${moment.display_text}` : ''}
+              </p>
+            ))}
+          </div>
+        )}
         <div className="mr-court-wrap">
           <DarkCourt
             homeName={data.home_club_name}
@@ -664,7 +866,20 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
             ballAnimKey={ballAnimKey}
           />
         </div>
-        <PossessionBar events={data.proof_events} activeIdx={eventIndex} onJump={setEventIndex} homeClubId={data.home_club_id} />
+        {gameSegments.length > 0 && (
+          <GameSegmentStrip
+            segments={gameSegments}
+            currentGame={currentGame}
+            onJump={(proofIndex) => { setEventIndex(proofIndex); setIsPlaying(false); }}
+          />
+        )}
+        <PossessionBar
+          events={data.proof_events}
+          activeIdx={eventIndex}
+          onJump={setEventIndex}
+          homeClubId={data.home_club_id}
+          momentIndices={momentIndices}
+        />
 
         <div className="mr-transport">
           <button className="mr-tbtn" aria-label="First" onClick={() => { setEventIndex(0); setIsPlaying(false); }}>⏮</button>
@@ -674,6 +889,18 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
           </button>
           <button className="mr-tbtn" aria-label="Next" onClick={() => { setEventIndex(Math.min(totalEvents - 1, eventIndex + 1)); setIsPlaying(false); }}>▸</button>
           <button className="mr-tbtn" aria-label="Last" onClick={() => { setEventIndex(totalEvents - 1); setIsPlaying(false); }}>⏭</button>
+          <ReplaySpeedControl
+            speed={speed}
+            onChange={(next) => {
+              if (next === 'instant') {
+                // "Instant" is a skip: land on the final play, paused.
+                setEventIndex(totalEvents - 1);
+                setIsPlaying(false);
+                return;
+              }
+              setSpeed(next);
+            }}
+          />
           <span className="mr-transport-spd">Space · ◂ ▸</span>
           <span className="mr-transport-pos">
             EVENT <b>{(eventIndex + 1).toString().padStart(2, '0')}/{totalEvents.toString().padStart(2, '0')}</b>
@@ -696,6 +923,24 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
           <div className="mr-sidebar-title">Match Flow</div>
         </div>
         <EventLog events={data.proof_events} activeIdx={eventIndex} onSelect={setEventIndex} />
+        {highlightBeats.length > 0 && (
+          <div className="mr-highlights" data-testid="replay-highlights">
+            <div className="mr-sidebar-head">
+              <span className="mr-sidebar-meta"><b>HIGHLIGHT REEL</b></span>
+              <div className="mr-sidebar-title">The Story in {highlightBeats.length} Plays</div>
+            </div>
+            <MatchHighlights
+              beats={highlightBeats}
+              onShowInTimeline={(sourceEventIndex) => {
+                const proofIndex = proofIndexBySequence.get(sourceEventIndex);
+                if (proofIndex != null) {
+                  setEventIndex(proofIndex);
+                  setIsPlaying(false);
+                }
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

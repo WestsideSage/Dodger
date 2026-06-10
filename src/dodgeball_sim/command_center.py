@@ -652,7 +652,15 @@ def _lineup_warnings(roster: list[Player], player_ids: list[str], intent: str, t
     if weak_starters and intent == "Win Now":
         warnings.append(f"{weak_starters[0].name} is a weak starter and may be targeted.")
     if tactics.get("rush_commit") == "all_in":
-        warnings.append("Heavy rush pressure is creating extreme fatigue risk. Consider rotating your front line more often.")
+        # HONESTY (2026-06-09 audit): the old copy claimed "extreme fatigue
+        # risk" — no engine applies a rush fatigue cost (the rec driver logs a
+        # rush fatigue_delta in event context without applying it; official
+        # careers don't enforce rush at all). State the real, event-backed
+        # tradeoff instead: more opening throws means more early catch exposure.
+        warnings.append(
+            "All-in rush commits extra throwers to the opening play — more early pressure, "
+            "but every early throw risks being caught."
+        )
     return warnings
 
 
@@ -720,19 +728,22 @@ def build_post_week_dashboard(conn: sqlite3.Connection, plan: Mapping[str, Any],
                 "items": [target_note],
             },
             {
+                # Honest lane: injuries are not modeled and stamina is a fixed
+                # rating, so availability literally cannot change from match
+                # load. Say that instead of inventing "medical incidents".
                 "title": "Roster health",
-                "summary": "Roster availability and recovery tracked.",
-                "items": [f"Medical order: {plan.get('department_orders', {}).get('medical', 'none')}.", "Staff report no new medical incidents; fitness levels maintained."],
+                "summary": "Availability is unchanged.",
+                "items": [f"Medical order noted: {plan.get('department_orders', {}).get('medical', 'none')}.", "Injuries are not modeled — no player will miss next week."],
             },
             {
                 "title": "Player movement",
-                "summary": "Training staff logged their weekly progression observations based on the current command intent.",
-                "items": [f"Training order: {plan.get('department_orders', {}).get('training', 'none')}.", "Youth-rep visibility continues to track with recent program trajectory."],
+                "summary": "Development progress resolves in the offseason.",
+                "items": [f"Training order noted: {plan.get('department_orders', {}).get('training', 'none')}.", "Match minutes feed offseason development reps — veterans need them; young players train at full reps regardless."],
             },
             {
                 "title": "Next decisions",
                 "summary": "Use the next command plan to respond to this result.",
-                "items": [f"Scouting order was {plan.get('department_orders', {}).get('scouting', 'none')}.", "Review warnings before simulating again."],
+                "items": [f"Scouting order noted: {plan.get('department_orders', {}).get('scouting', 'none')}.", "Review warnings before simulating again."],
             },
         ],
     }

@@ -149,6 +149,91 @@ def test_wt7_dramatic_catch_rate_is_capped_without_changing_outcomes():
         )
 
 
+# --- 2026-06-09 systems audit: PLAY_SAFE must never be a forfeit --------------
+#
+# PLAY_SAFE previously computed a catch-attempt threshold of 0.75 — above
+# virtually every real roster's catch band — so a play-safe team NEVER attempted
+# a catch. Catches are the official scoring economy (out the thrower AND
+# resurrect a teammate), so the posture measured ZERO wins in 400 even-strength
+# matches on both uniform and realistic-variance fixtures, and "Preserve Health"
+# (whose intent preset selects play_safe) was a hidden self-destruct button on
+# official careers. The fix: threshold 0.65 (strong catchers still attempt) plus
+# a play-safe evasion bonus when the catch is declined
+# (official_resolution._PLAY_SAFE_EVASION_BONUS). Measured after the fix on the
+# fixture below: ~37% wins vs a ~44% default mirror — a real tradeoff, not a
+# forfeit. This gate keeps it that way.
+#
+# The fixture uses a per-player catch/dodge spread around the same 63 mean
+# (career seeds draw each attribute ~gauss(62,10), so real rosters always carry
+# this variance). A uniform-rating fixture is the degenerate worst case for any
+# threshold rule and does not represent a real roster.
+_PLAY_SAFE_SPREAD = (48, 55, 60, 66, 72, 77)
+
+
+def _play_safe_fixture(seed: int, policy_a):
+    from dataclasses import replace as dc_replace
+
+    mi = make_match_input(seed=seed, rating_a=63.0, rating_b=63.0, policy_a=policy_a)
+    lookup = dict(mi.player_lookup)
+    for starters in (mi.starters_a, mi.starters_b):
+        for index, pid in enumerate(starters):
+            player = lookup[pid]
+            lookup[pid] = dc_replace(
+                player,
+                ratings=dc_replace(
+                    player.ratings,
+                    catch=_PLAY_SAFE_SPREAD[index],
+                    dodge=_PLAY_SAFE_SPREAD[-1 - index],
+                ),
+            )
+    return dc_replace(mi, player_lookup=lookup)
+
+
+def test_play_safe_posture_is_not_a_forfeit():
+    from dodgeball_sim.models import CatchPosture, CoachPolicy
+
+    driver = OfficialMatchEngineDriver()
+    play_safe = CoachPolicy(catch_posture=CatchPosture.PLAY_SAFE)
+    trials = 150
+    wins = 0
+    for trial in range(trials):
+        out = driver.run(_play_safe_fixture(21_000_000 + trial, play_safe))
+        if out.winner_team_id == "fav":
+            wins += 1
+    win_rate = wins / trials
+    # Floor: a play-safe side at even strength must stay a competitive
+    # underdog (measured ~37%; 0.25 leaves room for binomial noise at 150).
+    # The pre-fix forfeit measured 0.0% — any re-cliffing fails loudly here.
+    assert win_rate >= 0.25, (
+        f"play_safe won only {win_rate * 100:.1f}% at even strength — "
+        "the posture has regressed toward a forfeit (see 2026-06-09 audit)"
+    )
+
+
+def test_play_safe_team_still_attempts_catches():
+    """The 0.65 threshold must leave realistic rosters with real attempters —
+    a play-safe side that records zero catches across a sweep has been cliffed
+    out of the catch economy again."""
+    from dodgeball_sim.models import CatchPosture, CoachPolicy
+    from dodgeball_sim.official_events import OfficialEventKind
+
+    driver = OfficialMatchEngineDriver()
+    play_safe = CoachPolicy(catch_posture=CatchPosture.PLAY_SAFE)
+    catches = 0
+    for trial in range(12):
+        out = driver.run(_play_safe_fixture(33_000_000 + trial, play_safe))
+        for event in out.events:
+            payload = getattr(event, "payload", None) or {}
+            if (
+                getattr(event, "kind", None) == OfficialEventKind.SEQUENCE
+                and payload.get("kind") == "sequence_final"
+                and payload.get("thrower_team_id") == "dog"
+                and payload.get("catches")
+            ):
+                catches += len(payload.get("catches"))
+    assert catches > 0, "play-safe side never attempted/landed a catch across 12 matches"
+
+
 def test_wt7_all_recognition_kinds_survive_the_cap():
     """The four detectable recognition kinds must all still emit after the cap.
     Uses the same 150-trial config as test_official_driver_emits_recognition_moments

@@ -47,13 +47,17 @@ def compute_staff_recommendation(
     None), and a short ``reason``.
     """
     # Squad health outranks form: depleted starters are the louder signal.
+    # Copy honesty: there is no roster-health system to "protect" — Preserve
+    # Health switches the plan to a patient, play-safe preset that asks less of
+    # the squad in-match. Say what it does, not what it would do in a game
+    # with persistent fatigue.
     if at_risk_count >= 2:
         return {
             "action": "change",
             "recommended_intent": _HEALTH_INTENT,
             "reason": (
-                f"{at_risk_count} starters are low on stamina; "
-                "Preserve Health protects them."
+                f"{at_risk_count} starters have low stamina ratings; "
+                "Preserve Health shifts to a patient, play-safe plan."
             ),
         }
     last_two = [str(result).lower() for result in list(recent_results)[-2:]]
@@ -172,9 +176,12 @@ def _build_readiness(plan: dict[str, Any]) -> dict[str, Any]:
             "label": "Clear the health check",
             "short_label": "Health",
             "detail": (
-                "No starter is critically fatigued."
+                # "Fatigued" would imply a transient condition; the check reads
+                # the fixed stamina RATING (no persistent fatigue exists), and
+                # nothing "rests" a player back up — rotating is the real lever.
+                "No starter has a critically low stamina rating."
                 if health_ok
-                else "A starter is critically fatigued — rest or rotate before you sim."
+                else "A starter's stamina rating is critically low — rotate before you sim."
             ),
             "ready": health_ok,
         },

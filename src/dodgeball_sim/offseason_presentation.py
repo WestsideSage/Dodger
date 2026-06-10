@@ -557,6 +557,10 @@ def _parse_record_entries(raw: Optional[str], player_club_id: str = "") -> list[
                 "proof_source": f"record:{entry.get('record_type', '')}",
                 "holder_club_id": holder_club_id,
                 "is_my_club": bool(player_club_id and holder_club_id == player_club_id),
+                # Milestone-vs-bookkeeping: missing field (pre-existing saves)
+                # defaults to the marquee treatment.
+                "is_new_holder": bool(entry.get("is_new_holder", True)),
+                "previous_holder_name": str(entry.get("previous_holder_name", "")),
             }
         )
     return out

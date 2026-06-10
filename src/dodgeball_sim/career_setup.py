@@ -143,6 +143,34 @@ def _unique_roster_names(rng: DeterministicRNG, count: int) -> List[str]:
     return names
 
 
+def _curated_potential_ceiling(raw_potential: float, ovr: int, age: int) -> int:
+    """Map the legacy 10-90 potential draw onto an OVR-scale ceiling.
+
+    `traits.potential` is consumed everywhere as the highest OVR a player can
+    reach: development closes the (potential - OVR) headroom gap, the roster
+    page renders it as "Ceiling", and potential tiers bucket the absolute
+    value. Every other player source already seeds it on that scale
+    (recruitment rolls 55-96; prospect conversion floors at 70). This curated
+    draw predates that contract, so half a fresh takeover roster used to carry
+    a "ceiling" below its current OVR — zero headroom, zero development, and a
+    first offseason where every starter moved +0. Read the same deterministic
+    draw as growth juice instead: more juice and a younger age mean more room
+    above the current OVR, and a low-juice veteran is honestly plateaued
+    (ceiling == current OVR).
+    """
+    juice = _clamp((raw_potential - 10.0) / 80.0, 0.0, 1.0)
+    if age <= 21:
+        age_scale = 1.0
+    elif age <= 25:
+        age_scale = 0.6
+    elif age <= 29:
+        age_scale = 0.3
+    else:
+        age_scale = 0.1
+    headroom = round(20.0 * juice * age_scale)
+    return int(_clamp(ovr + headroom, ovr, 95))
+
+
 def build_curated_roster(club_id: str, club_name: str, seed: int, count: int = 6) -> List[Player]:
     rng = DeterministicRNG(seed)
     roles = [
@@ -172,23 +200,37 @@ def build_curated_roster(club_id: str, club_name: str, seed: int, count: int = 6
             conditioning_curve=_clamp(rng.gauss(62, 10), 30, 95),
         ).apply_bounds()
         from .archetype_derivation import derive_archetype
-        roster.append(
-            Player(
-                id=f"{club_id}_{index}",
-                name=name,
-                ratings=ratings,
-                archetype=derive_archetype(ratings),
-                traits=PlayerTraits(
-                    potential=int(round(_clamp(rng.gauss(50, 15), 10, 90))),
-                    growth_curve=int(round(_clamp(rng.gauss(50, 12), 10, 90))),
-                    consistency=int(round(_clamp(rng.gauss(50, 12), 10, 90))),
-                    pressure=int(round(_clamp(rng.gauss(50, 12), 10, 90))),
-                ),
-                age=18 + int(rng.unit() * 12),
-                club_id=club_id,
-                newcomer=index >= 5,
-            )
+        player = Player(
+            id=f"{club_id}_{index}",
+            name=name,
+            ratings=ratings,
+            archetype=derive_archetype(ratings),
+            traits=PlayerTraits(
+                potential=int(round(_clamp(rng.gauss(50, 15), 10, 90))),
+                growth_curve=int(round(_clamp(rng.gauss(50, 12), 10, 90))),
+                consistency=int(round(_clamp(rng.gauss(50, 12), 10, 90))),
+                pressure=int(round(_clamp(rng.gauss(50, 12), 10, 90))),
+            ),
+            age=18 + int(rng.unit() * 12),
+            club_id=club_id,
+            newcomer=index >= 5,
         )
+        # Re-read the raw potential draw as an OVR-scale ceiling (the contract
+        # the development engine and roster display consume). Done as a post-hoc
+        # replace so the RNG stream — and therefore every other rolled value —
+        # is byte-identical to the previous seeding.
+        player = dataclasses.replace(
+            player,
+            traits=dataclasses.replace(
+                player.traits,
+                potential=_curated_potential_ceiling(
+                    float(player.traits.potential),
+                    int(round(player.overall_skill())),
+                    player.age,
+                ),
+            ),
+        )
+        roster.append(player)
     return roster
 
 

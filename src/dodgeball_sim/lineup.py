@@ -47,6 +47,13 @@ _ROLE_LIABILITIES = {
 
 
 def check_lineup_liabilities(roster: Sequence[Player], lineup_ids: Sequence[str]) -> List[str]:
+    """Advisory role-fit notes for the first six slots.
+
+    HONESTY (2026-06-09 audit): no shipping engine consumes slot-role fit —
+    only the retired legacy ``MatchEngine`` applied liability penalties. These
+    strings are advisory composition notes, and every surface that renders
+    them must keep that framing (no claimed in-match penalty).
+    """
     players_by_id = {player.id: player for player in roster}
     starters = [players_by_id[pid] for pid in lineup_ids[:STARTERS_COUNT] if pid in players_by_id]
     warnings = []
@@ -54,7 +61,9 @@ def check_lineup_liabilities(roster: Sequence[Player], lineup_ids: Sequence[str]
         role_name = _ROLE_NAMES[idx] if idx < len(_ROLE_NAMES) else "Utility"
         prefs = COURT_SLOT_PREFERENCES.get(idx, set())
         if prefs and not slot_accepts(player.archetype, prefs):
-            warnings.append(f"{player.name} is a mismatched {role_name}: lacks appropriate archetype.")
+            warnings.append(
+                f"{player.name} is a mismatched {role_name}: the role label prefers a different archetype (advisory fit note)."
+            )
     return warnings
 
 

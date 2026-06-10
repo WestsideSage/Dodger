@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any, Iterable, Mapping
 
 
 @dataclass(frozen=True)
@@ -121,9 +122,72 @@ def _canonicalize(
     )
 
 
+def rivalries_from_match_rows(
+    rows: Iterable[Mapping[str, Any]],
+) -> dict[frozenset[str], RivalryRecord]:
+    """Derive every pairwise rivalry record from completed-match rows. Pure.
+
+    Each row mapping must provide: ``match_id``, ``season_id``,
+    ``home_club_id``, ``away_club_id``, ``winner_club_id`` (may be ``None``
+    for a draw), ``margin`` (non-negative int on the match's own scoring
+    scale), ``was_playoff`` and ``was_championship`` (bools). Rows must be
+    ordered chronologically so ``last_winner_club_id`` /
+    ``last_meeting_season`` land on the latest meeting.
+
+    This is the recompute-from-truth counterpart to :func:`update_rivalry`:
+    deriving the whole table from the persisted match records is idempotent
+    by construction, so a match that gets re-simulated or patched (playoff
+    tie resolution) can never double-count a meeting.
+    """
+    records: dict[frozenset[str], RivalryRecord] = {}
+    for row in rows:
+        home = str(row["home_club_id"])
+        away = str(row["away_club_id"])
+        key = frozenset((home, away))
+        record = records.get(
+            key,
+            RivalryRecord(club_a_id=min(home, away), club_b_id=max(home, away)),
+        )
+        records[key] = update_rivalry(
+            record,
+            RivalryMatchResult(
+                match_id=str(row["match_id"]),
+                season_id=str(row["season_id"]),
+                club_a_id=home,
+                club_b_id=away,
+                winner_club_id=row.get("winner_club_id"),
+                score_margin=abs(int(row.get("margin", 0) or 0)),
+                was_playoff=bool(row.get("was_playoff")),
+                was_championship=bool(row.get("was_championship")),
+            ),
+        )
+    return records
+
+
+def rivalry_payload(record: RivalryRecord) -> dict[str, Any]:
+    """Serialize a RivalryRecord into the persisted rivalry_json shape."""
+    return {
+        "club_a_id": record.club_a_id,
+        "club_b_id": record.club_b_id,
+        "a_wins": record.a_wins,
+        "b_wins": record.b_wins,
+        "draws": record.draws,
+        "total_meetings": record.total_meetings,
+        "total_margin": record.total_margin,
+        "playoff_meetings": record.playoff_meetings,
+        "championship_meetings": record.championship_meetings,
+        "last_winner_club_id": record.last_winner_club_id,
+        "last_meeting_season": record.last_meeting_season,
+        "defining_moments": list(record.defining_moments),
+        "rivalry_score": compute_rivalry_score(record),
+    }
+
+
 __all__ = [
     "RivalryMatchResult",
     "RivalryRecord",
     "compute_rivalry_score",
+    "rivalries_from_match_rows",
+    "rivalry_payload",
     "update_rivalry",
 ]

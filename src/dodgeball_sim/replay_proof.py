@@ -112,40 +112,62 @@ def derive_narrative_beats(
     # Active counts start at survivors-at-end + eliminations charged to that
     # team; we recover them by counting future eliminations.
     if player_id and opponent_id:
-        player_eliminated = 0
-        opponent_eliminated = 0
-        # First pass: total eliminations per side.
+        # First pass: net eliminations per side. Catch-returns put a player
+        # BACK on court, so they offset an out — without this the recovered
+        # starting counts (and the whole deficit walk) drift on every match
+        # with a return.
         total_player_outs = 0
         total_opponent_outs = 0
+        total_player_returns = 0
+        total_opponent_returns = 0
         for event in events:
             state_diff = getattr(event, "state_diff", None)
             if not isinstance(state_diff, Mapping):
                 continue
             player_out = state_diff.get("player_out")
-            if not isinstance(player_out, Mapping):
-                continue
-            team_id = str(player_out.get("team", ""))
-            if team_id == player_id:
-                total_player_outs += 1
-            elif team_id == opponent_id:
-                total_opponent_outs += 1
-        # Starting counts = final living + total eliminations on that side.
-        player_active = (home_living or 0) + total_player_outs
-        opponent_active = (away_living or 0) + total_opponent_outs
-        # Walk events forward updating active counts. After each elimination
+            if isinstance(player_out, Mapping):
+                team_id = str(player_out.get("team", ""))
+                if team_id == player_id:
+                    total_player_outs += 1
+                elif team_id == opponent_id:
+                    total_opponent_outs += 1
+            player_return = state_diff.get("player_return")
+            if isinstance(player_return, Mapping):
+                team_id = str(player_return.get("team", ""))
+                if team_id == player_id:
+                    total_player_returns += 1
+                elif team_id == opponent_id:
+                    total_opponent_returns += 1
+        # Starting counts = final living + net eliminations on that side.
+        player_active = (home_living or 0) + total_player_outs - total_player_returns
+        opponent_active = (away_living or 0) + total_opponent_outs - total_opponent_returns
+        # Walk events forward updating active counts. After each change
         # check the differential (positive = player ahead).
         for event in events:
             state_diff = getattr(event, "state_diff", None)
             if not isinstance(state_diff, Mapping):
                 continue
             player_out = state_diff.get("player_out")
-            if not isinstance(player_out, Mapping):
+            player_return = state_diff.get("player_return")
+            changed = False
+            if isinstance(player_out, Mapping):
+                team_id = str(player_out.get("team", ""))
+                if team_id == player_id:
+                    player_active -= 1
+                    changed = True
+                elif team_id == opponent_id:
+                    opponent_active -= 1
+                    changed = True
+            if isinstance(player_return, Mapping):
+                team_id = str(player_return.get("team", ""))
+                if team_id == player_id:
+                    player_active += 1
+                    changed = True
+                elif team_id == opponent_id:
+                    opponent_active += 1
+                    changed = True
+            if not changed:
                 continue
-            team_id = str(player_out.get("team", ""))
-            if team_id == player_id:
-                player_active -= 1
-            elif team_id == opponent_id:
-                opponent_active -= 1
             diff = player_active - opponent_active
             if diff < 0 and -diff > largest_deficit:
                 largest_deficit = -diff
@@ -197,6 +219,16 @@ def _thrower_went_out(event: Mapping[str, Any]) -> bool:
     )
 
 
+def _returned_player(event: Mapping[str, Any], name_map: Mapping[str, str]) -> str | None:
+    """Display name of the teammate a catch brought back, if the event has one."""
+    state_diff = event.get("state_diff") or {}
+    player_return = state_diff.get("player_return") if isinstance(state_diff, Mapping) else None
+    if not isinstance(player_return, Mapping):
+        return None
+    player_id = str(player_return.get("player_id", ""))
+    return _player_name(player_id, name_map) if player_id else None
+
+
 def event_label(event: ThrowEvent, name_map: Mapping[str, str]) -> str:
     if event.get("event_type") == "match_end":
         winner = event.get("outcome", {}).get("winner")
@@ -225,7 +257,13 @@ def event_label(event: ThrowEvent, name_map: Mapping[str, str]) -> str:
     if resolution == "failed_catch":
         return render_play("throw", thrower, target, rng) + " The catch is fumbled and they're out."
     if resolution == "catch":
-        return render_play("catch", target, thrower, rng)
+        label = render_play("catch", target, thrower, rng)
+        # A valid catch returns a queued teammate — the most watchable fact on
+        # the play. Read from the persisted state_diff, never inferred.
+        returned = _returned_player(event, name_map)
+        if returned:
+            label += f" {returned} re-enters."
+        return label
     if resolution == "dodged":
         return render_play("dodge", target, thrower, rng)
     if resolution == "miss":
@@ -258,10 +296,19 @@ def event_detail(event: ThrowEvent, name_map: Mapping[str, str]) -> str:
     else:
         target = _player_name(actors.get("target"), name_map)
         parts = [f"{thrower} vs {target}: {resolution}."]
+        if resolution_raw == "catch" and _thrower_went_out(event):
+            parts.append(f"{thrower} is out on the caught ball.")
+    returned = _returned_player(event, name_map)
+    if returned:
+        parts.append(f"{returned} re-enters from the catch queue.")
     if "p_on_target" in probabilities and "on_target" in rolls:
         parts.append(f"On-target {float(probabilities['p_on_target']):.2f} (roll {float(rolls['on_target']):.2f}).")
     if "p_catch" in probabilities and "catch" in rolls:
         parts.append(f"Catch {float(probabilities['p_catch']):.2f} (roll {float(rolls['catch']):.2f}).")
+    rule_refs = outcome.get("rule_refs")
+    if isinstance(rule_refs, list) and rule_refs:
+        labels = ", ".join(str(ref) for ref in dict.fromkeys(rule_refs))
+        parts.append(f"(USA Dodgeball rule {labels}.)")
     return " ".join(parts)
 
 
@@ -289,7 +336,19 @@ def build_replay_proof(
 
     proof_events: list[dict[str, Any]] = []
     key_play_indices: list[int] = []
+    current_game: int | None = None
     for sequence_index, event in enumerate(events):
+        # Official multi-game matches: every game starts with all starters
+        # active again, so the eliminated sets reset at each game boundary.
+        # The boundary is read from the persisted ``context.official``
+        # metadata; legacy event streams without it keep cumulative behavior.
+        game_number, engine_tick = _official_event_meta(event)
+        if game_number is not None and game_number != current_game:
+            if current_game is not None:
+                for eliminated in eliminated_by_club.values():
+                    eliminated.clear()
+            current_game = game_number
+
         state_diff = event.get("state_diff") or {}
         player_out = state_diff.get("player_out") if isinstance(state_diff, Mapping) else None
         if isinstance(player_out, Mapping):
@@ -297,6 +356,15 @@ def build_replay_proof(
             player_id = str(player_out.get("player_id", ""))
             if club_id and player_id:
                 eliminated_by_club.setdefault(club_id, set()).add(player_id)
+        # A valid catch returns a queued teammate (both engines): take the
+        # returned player back off the eliminated set so the live survivor
+        # state matches what actually happened on court.
+        player_return = state_diff.get("player_return") if isinstance(state_diff, Mapping) else None
+        if isinstance(player_return, Mapping):
+            club_id = str(player_return.get("team", ""))
+            player_id = str(player_return.get("player_id", ""))
+            if club_id and player_id:
+                eliminated_by_club.setdefault(club_id, set()).discard(player_id)
 
         if event.get("event_type") != "throw":
             continue
@@ -311,6 +379,8 @@ def build_replay_proof(
             away_club_id=away_club_id,
             eliminated_by_club=eliminated_by_club,
             active_counts=active_counts,
+            game_number=game_number,
+            engine_tick=engine_tick,
         )
         if proof["is_key_play"]:
             key_play_indices.append(len(proof_events))
@@ -369,7 +439,10 @@ def build_evidence_report(
         },
         {
             "title": "Liability proof",
-            "summary": "Uses roster-snapshot role fit and throw participants; it does not infer hidden boosts.",
+            "summary": (
+                "Role-fit notes are advisory — the engine applies no penalty for "
+                "out-of-role starters; the eliminations shown are the saved facts."
+            ),
             "items": _liability_lane_items(liability_events),
         },
         {
@@ -397,6 +470,26 @@ def build_evidence_report(
     return {"evidence_lanes": lanes}
 
 
+def _official_event_meta(event: Mapping[str, Any]) -> tuple[int | None, int | None]:
+    """Read the persisted official replay metadata off a translated event.
+
+    Returns ``(game_number, engine_tick)`` — both ``None`` for rec/legacy
+    events that never carried ``context.official``.
+    """
+    context = event.get("context")
+    if not isinstance(context, Mapping):
+        return None, None
+    official = context.get("official")
+    if not isinstance(official, Mapping):
+        return None, None
+    game_number = official.get("game_number")
+    engine_tick = official.get("engine_tick")
+    return (
+        int(game_number) if isinstance(game_number, int) else None,
+        int(engine_tick) if isinstance(engine_tick, int) else None,
+    )
+
+
 def _proof_event(
     event: Mapping[str, Any],
     *,
@@ -408,6 +501,8 @@ def _proof_event(
     away_club_id: str,
     eliminated_by_club: Mapping[str, set[str]],
     active_counts: Mapping[str, int],
+    game_number: int | None = None,
+    engine_tick: int | None = None,
 ) -> dict[str, Any]:
     actors = event.get("actors") or {}
     context = event.get("context") or {}
@@ -420,6 +515,12 @@ def _proof_event(
     target_id = str(target_raw) if target_raw is not None else ""
     is_key_play = resolution in {"hit", "failed_catch", "catch"} or bool(state_diff.get("player_out"))
     tags = [resolution.replace("_", " ").upper()]
+    player_return = state_diff.get("player_return") if isinstance(state_diff, Mapping) else None
+    returned_player_id = (
+        str(player_return.get("player_id", "")) if isinstance(player_return, Mapping) else ""
+    )
+    if returned_player_id:
+        tags.append("RETURN")
     rush_context = context.get("rush_context")
     if isinstance(rush_context, Mapping) and rush_context.get("active"):
         tags.append("RUSH")
@@ -460,6 +561,10 @@ def _proof_event(
     return {
         "sequence_index": sequence_index,
         "tick": event.get("tick", 0),
+        "game_number": game_number,
+        "engine_tick": engine_tick,
+        "returned_player_id": returned_player_id or None,
+        "returned_player_name": _player_name(returned_player_id, name_map) if returned_player_id else None,
         "thrower_id": thrower_id,
         "thrower_name": _player_name(thrower_raw, name_map),
         "target_id": target_id,
@@ -572,8 +677,13 @@ def _liability_items(
     for label, player_id in (("Thrower", thrower_id), ("Target", target_id)):
         liability = liability_map.get(player_id)
         if liability and liability.get("is_liability"):
+            # ADR 0002 (2026-06-09 audit): no shipping engine applies a role
+            # penalty — slot-role fit is an advisory note, and this copy must
+            # never claim a mechanical "liability penalty" that does not exist
+            # (only the retired legacy MatchEngine ever applied one).
             items.append(
-                f"{label} suffered a liability penalty as a mismatched {liability['role_name']} ({liability['archetype']} archetype)."
+                f"{label} was fielded out of role as a mismatched {liability['role_name']} "
+                f"({liability['archetype']} archetype) — advisory fit note; the engine applies no role penalty."
             )
     return items
 
@@ -593,14 +703,20 @@ def _liability_tag(
     liability_map: Mapping[str, Mapping[str, Any]],
     state_diff: Mapping[str, Any],
 ) -> str | None:
-    """Classify a throw's relationship to a lineup liability.
+    """Classify a throw's relationship to an out-of-role (advisory) starter.
 
-    Returns ``"exploited"`` only when the event log proves the liability was
-    directly punished: the eliminated player IS the liability, the resolution
-    is a punishing one, and both thrower and target are represented. Returns
-    ``"involved"`` when a liability participated but the proof of punishment is
-    incomplete, and ``None`` when no liability participated. The tag is never
-    asserted beyond what the saved throw evidence supports.
+    Returns ``"exploited"`` only when the event log shows the out-of-role
+    starter was the one who went out on the play: the eliminated player IS the
+    flagged starter, the resolution is a punishing one, and both thrower and
+    target are represented. Returns ``"involved"`` when a flagged starter
+    participated without going out, and ``None`` when none participated.
+
+    PRECISION (ADR 0002, 2026-06-09 audit): the tag is a machine key over the
+    saved event facts. It does NOT assert the role mismatch *caused* the
+    elimination — no shipping engine applies a role penalty (only the retired
+    legacy MatchEngine did). Player-facing copy built from this tag must state
+    the fit note as advisory; see ``_liability_items`` /
+    ``_liability_exploited_note``.
     """
     thrower_liab = bool(liability_map.get(thrower_id, {}).get("is_liability"))
     target_liab = bool(liability_map.get(target_id, {}).get("is_liability"))
@@ -628,23 +744,27 @@ def _liability_exploited_note(
     state_diff: Mapping[str, Any],
     name_map: Mapping[str, str],
 ) -> str:
+    # ADR 0002 (2026-06-09 audit): the saved fact is that an out-of-role
+    # starter went out on this play. Attributing the elimination to the role
+    # mismatch would invent a mechanism — no shipping engine reads role fit —
+    # so the copy states the event and the fit note without a causal claim.
     eliminated_id = _eliminated_player_id(state_diff)
     if eliminated_id == target_id:
         liability = liability_map.get(target_id, {})
         target_name = _player_name(target_id, name_map)
         thrower_name = _player_name(thrower_id, name_map)
         return (
-            f"Liability exploited: {thrower_name} eliminated {target_name}, "
-            f"a mismatched {liability.get('role_name', 'role')} "
+            f"Out-of-role starter eliminated: {thrower_name} eliminated {target_name}, "
+            f"fielded as a mismatched {liability.get('role_name', 'role')} "
             f"({liability.get('archetype', 'unknown')} archetype), on a {resolution.replace('_', ' ')}."
         )
     liability = liability_map.get(thrower_id, {})
     thrower_name = _player_name(thrower_id, name_map)
     target_name = _player_name(target_id, name_map)
     return (
-        f"Liability exploited: {thrower_name}, a mismatched {liability.get('role_name', 'role')} "
-        f"({liability.get('archetype', 'unknown')} archetype), was punished when {target_name} "
-        f"caught the throw."
+        f"Out-of-role starter eliminated: {thrower_name}, fielded as a mismatched "
+        f"{liability.get('role_name', 'role')} ({liability.get('archetype', 'unknown')} archetype), "
+        f"went out when {target_name} caught the throw."
     )
 
 
