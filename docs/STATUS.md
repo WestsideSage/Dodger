@@ -4,12 +4,19 @@ Canonical snapshot of what is actually built and what is still open. When code
 state changes materially, update this file in the same pass. If this file and
 the source disagree, the source wins - then fix this file.
 
-Last updated: 2026-06-09. `main` / `origin/main` are at `0673d40`
-(`fix: post-playtest fixes - scoring/decision truth, signing math, scout +
-aftermath legibility, 403 hardening, a11y e2e gate`). Master-roadmap Phases
-0-7 are on main. Section 4 (the Phase 8 desktop-first visual implementation,
-briefs 4.1-4.8) is **implemented on main** and was **browser-verified
-2026-06-09** - see the top "Shipped And Verified" entry. The next focus is
+Last updated: 2026-06-10. `main` / `origin/main` are at the **V16 Task 0
+sweep commit** (direct child of `6bfc775` `feat(design): full-app UX
+elevation + Command Center redesign`), which landed the six 2026-06-09 audit
+passes (trust audit, first-hour, watchability, systems balance, dynasty
+retention, UI/UX v2 - the "Task 0 sweep" entries below) plus the V16 sprint
+plan, the 2026-06-10 owner decision log, and the stale-save/screenshot purge
+(2,443 local saves and 191 tracked playtest artifacts removed).
+Master-roadmap Phases 0-7 are on main. Section 4 (the Phase 8 desktop-first
+visual implementation, briefs 4.1-4.8) is **implemented on main** and was
+**browser-verified 2026-06-09** - see the "Shipped And Verified" entries.
+The active milestone is **V16 Contested Offseason**
+(`docs/specs/2026-06-09-v16-contested-offseason-sprint-plan.md`): Task 0 is
+complete; Task 1 (Signing Day payload truth) is next. The focus remains
 refinement and gameplay optimization, not unrelated new systems.
 
 ## Current Phase
@@ -41,11 +48,223 @@ before implementation.
 
 ## Shipped And Verified
 
+- **UI/UX visual refinement pass v2 — report-informed** (2026-06-09, landed
+  in the 2026-06-10 Task 0 sweep) - closes every open *UI-owned* item from the five 2026-06-09
+  cross-disciplinary reports; handoff with the full action matrix in
+  `docs/fable/2026-06-09-ui-ux-visual-refinement-v2.md`. *Report-driven:*
+  Signing Day now discloses scouted-estimate vs verified OVR; the week-1
+  "New intel revealed" badge is state-aware ("Scouted · no tape yet" at 0
+  tendency reads); the Class Brief renders structured rows via `BriefProse`
+  (was a run-on blob); the Records Ratified beat separates milestones (new
+  holder / first-time — marquee cards, "New Holder" chip, "takes the record
+  from X") from same-holder re-breaks (quiet "Extended their own records"
+  ledger rows) on new `RatifiedRecord.is_new_holder`/`previous_holder_name`
+  fields compared against the persisted previous holder (back-compat: old
+  cached payloads default to marquee, pinned); the Policy Editor's rush
+  Target row discloses outcome-deadness on REC careers too (consumer truth
+  re-verified in `rec_engine.py` before writing copy); official draws are
+  declared on the aftermath hero ("◆ Draw" badge + "one standings point to
+  each club" footer, verified against `season.py` scoring). *Found in the
+  live audit and fixed:* the Dynasty History "All-Time Record" cell rendered
+  the latest single-season snapshot under an across-all-seasons label — the
+  endpoint now emits a true `hero.all_time` career total (summed from the
+  same `season_standings` rows) with an honest fallback label; playoff-length
+  official matches (12-15 games) ballooned the aftermath hero to ~450px by
+  stacking set chips in the 4.5rem center column — the set story is now a
+  full-width horizontal timeline band (hero 184px). *Known latent issue
+  flagged (not fixed):* `/api/history/my-program` string-sorts season ids
+  (`season_10 < season_2`), so `hero.current` picks a wrong "latest" row from
+  season 10 on. Verification: full `python -m pytest -q` green (exit 0, incl.
+  5 new tests); `npm run build` + `npm run lint` clean; targeted Playwright
+  18/18 (chromium, live prod server — aftermath, replay parity, v13 record
+  cards, official replay, wt22, tier1, recruit board, maximized playthrough);
+  live browser walks at 1280/1440/1920 over seasons 1-4 of a throwaway career
+  (deleted after; prior active save restored) with zero console errors and
+  zero horizontal overflow; both record-cadence states, two real draws, and
+  two real loss aftermaths rendered live.
+- **Dynasty progression / retention pass** (2026-06-09, landed in the 2026-06-10 Task 0 sweep) - full
+  multi-season audit with sweep evidence; handoff with all numbers in
+  `docs/fable/2026-06-09-dynasty-progression-retention-review.md`. *Dead
+  league-memory feeds fixed:* rivalry_records and team records (most_titles /
+  longest_unbeaten_run) were only ever written by the retired sandbox CLI —
+  the Dynasty Office rivalry board, `/api/history/league`, broadcast rivalry
+  tags, and the club side of the record book read tables the web game never
+  fed. Rivalries now rebuild from match_records at the post-match chokepoint
+  (`game_loop.rebuild_rivalry_records`, idempotent, retroactive for legacy
+  saves; numeric season ordering fixes a `season_10 < season_2` sort hazard)
+  and team records ratify in `offseason_beats.ratify_records` from club
+  trophies + match records. *Development reps unit bug fixed:* the
+  `minutes/1000` reps gate never matched either engine's measured scale
+  (official starter season = 64-206 event-tick "minutes", rec = 10-27), so all
+  post-practice development ran at 1-20% rate and stalled 15-22 OVR below the
+  advertised ceiling; `apply_season_development` now takes appearance counts
+  (starter fielding every match = full rate; legacy path byte-identical when
+  params absent) and the offseason passes them. *Aftermath truth:* the
+  survivor-derived winner in `_build_aftermath` (which could only ever
+  contradict the resolved result — measured 17 degraded aftermath panels per
+  80 auto-piloted seasons, all on official game-points draws) is removed.
+  *Roster-floor trap closed:* the user club is exempt from every AI roster
+  repair, so skipping recruitment annually bled a measured roster of 4 by
+  season 10; the offseason "skip" now 409s below a fieldable six while
+  signable players exist, and `Offseason.tsx` finally renders action errors
+  inline. *Copy truth:* Signing Day's rating badge claimed "scouted" but is
+  the prospect's actual overall regardless of scouting — relabeled "OVR".
+  *Instrumentation:* `tools/dynasty_health_probe.py` (seeded N-season sweep of
+  the shipping loop) + `tests/test_dynasty_progression_health.py` (16 guards
+  incl. dynasty determinism). *Measured, NOT changed (owner decisions, see
+  handoff §7):* AI clubs cannot recruit (league has zero roster churn for 7
+  seasons; engaged user wins 60% of titles at +8-9 fielded OVR), Signing Day
+  reveals true OVR (scouting strategically void), development still closes
+  only ~half of remaining headroom by peak-end (pool dilution, not the unit
+  bug), first league retirement waits until season 8. Verification: full
+  `python -m pytest -q` green (1,320 tests); `npm run build` + `npm run lint`
+  clean; Playwright v13-broadcast + maximized-playthrough 3/3 (chromium);
+  live prod-server walk on a throwaway save (15 rivalry pairs in history,
+  team-record ceremony cards with My Club scope, "OVR" label, zero console
+  errors; probe save deleted).
+- **Systems design / balance audit pass** (2026-06-09, landed in the 2026-06-10 Task 0 sweep) - full
+  decision-systems audit with new measurement; handoff with all numbers in
+  `docs/fable/2026-06-09-systems-balance-audit.md`. *Balance bug fixed:* the
+  official engine's PLAY_SAFE catch posture computed a 0.75 catch-attempt
+  threshold — above virtually every roster's catch band — so a play-safe team
+  **never attempted a catch** and measured **0 wins in 400** even-strength
+  matches (catches are the official scoring economy); "Preserve Health"
+  (whose preset selects play_safe) was a hidden self-destruct on official
+  careers, and the AI "Aging Veterans" archetype fell into the same pit. Fixed
+  via threshold 0.65 + a play-safe evasion bonus on declined catches
+  (`official_tactics._catch_thresholds`,
+  `official_resolution._PLAY_SAFE_EVASION_BONUS`); measured 0.0% -> 36.8% W
+  on a realistic catch/dodge-spread fixture (default mirror 44.0%), all
+  non-play_safe matches byte-identical (WT-7 frozen winners re-verified),
+  pinned by two new gates in `tests/test_official_engine_balance.py`.
+  *Truth fixes:* the slot-role "liability" model has NO consumer in any
+  shipping engine (only the retired legacy MatchEngine applied penalties), so
+  the replay's "suffered a liability penalty" / "Liability exploited ... was
+  punished" copy was fiction — reworded to advisory fit notes + saved facts;
+  the "liability_involvement" Primary Factor was REMOVED (it directed players
+  at a non-existent lever); `lineup.slot_order` term downgraded to flavor with
+  honest copy; the all-in-rush "extreme fatigue risk" warning (no engine
+  applies rush fatigue) replaced with the true early-catch-exposure tradeoff.
+  Recruiting courtship truth: interest/fit/pipeline/credibility have no
+  consumer in the shipping signing path (the offseason picker signs directly;
+  `conduct_recruitment_round` is dormant and `/api/recruiting/sign` is a dead
+  stub guarding on a nonexistent state) — terms downgraded to flavor with
+  honest copy until a contested Signing Day ships, and the dormant round's
+  hardcoded credibility=50 now uses the real score. *Instrumentation added:*
+  `tools/decision_impact_probe.py` (tactic-axis + per-attribute win-rate
+  impact, both drivers) and `tests/test_attribute_consumers.py` (same-seed
+  invariance pins for the per-driver dead-attribute matrix; terms.ts identity
+  -trait claims now qualified per ruleset). *Measured, reported, NOT tuned
+  (owner decision):* at even strength on officials, +12 catch = +31pp win
+  rate while +12 accuracy/dodge = MINUS 8-10pp (throwing on-target into an
+  attempting catcher is negative EV), go_for_catches is the dominant posture
+  in both engines, and the defensive shape wins 73.8% of matched-OVR titles —
+  the catch-economy retune needs its own golden-log-aware pass (plan in the
+  handoff §7).
+- **Match watchability / broadcast pass** (2026-06-09, landed in the 2026-06-10 Task 0 sweep) - the
+  watched replay now tells the truth and tells a story; full handoff with
+  evidence in `docs/fable/2026-06-09-watchability-broadcast-pass.md`.
+  *Truth bugs fixed:* (a) catch re-entries never reached the persisted
+  event stream (both engines) and official per-game resets weren't
+  represented, so **99% of official replay events displayed a wrong live
+  score** (court saturated to 12 eliminated players) — returns now ride as
+  `state_diff.player_return` (officials joined on (game_id, sequence_id);
+  sequence ids restart per game), throws carry `context.official`
+  game/tick metadata, and the proof score-state resets per game (now 0
+  drift vs engine ground truth); (b) **legacy rec recorded outcomes could
+  be false** — `rec_adapter._derive_box_score` ignored returns, undercounting
+  recorded survivors on 40/40 probed seeds, and `franchise.simulate_match`
+  derives the recorded winner from those survivors (live repro: an event-log
+  2-0 elimination win recorded as a 0-0 Draw); the box now computes final
+  on-court status from the full diff stream, so records agree with the
+  event log (forward-only; officials byte-identical, pinned by a frozen-seed
+  test + before/after season probes); (c) the "TURNING POINT" was literally
+  the first hit of the match — now the biggest in-game swing (lead-flip
+  weighted, never scored across a game reset) with `turning_point_index` so
+  the jump lands on the headline event. *Watchability added:* official
+  replays show a SETS strip (per-game chips + running game points, jump
+  targets from per-event game metadata; persisted `official_score_json` is
+  finally surfaced), possession-bar game dividers + amber moment pips,
+  GAME-n labels in the readout/current-event card, "fresh court" delta at
+  game boundaries, in-playback moment banners (moments now carry
+  `game_number` + server-resolved `anchor_index`), the V13 highlight reel is
+  finally rendered (dead `MatchHighlights.tsx` wired into the replay sidebar
+  with working jumps; game-aware moment anchoring fixed in `highlights.py`),
+  re-entry narration + USAD rule refs in event labels/details, variable
+  autoplay pacing + the previously-dead `ReplaySpeedControl` (1x/2x/4x/skip),
+  and an aftermath set-story strip on the score hero
+  (`match_card.games`). Verification: full `python -m pytest -q` green
+  (1,294 tests; 16 new in `tests/test_replay_watchability.py`); `npm run
+  build` + `npm run lint` clean; Playwright 8/8 (official-rules-replay
+  extended with set-strip/swing pins, replay-score-parity, wt22, aftermath,
+  v13 ×2, tier1); live browser walk (1440×900 + 1280×720, zero console
+  errors, zero overflow). *Open:* legacy saves keep old-replay limitations
+  (no retroactive inference); official engine still persists no intent
+  context (V16A research spec); `test_server_save_boundary` has a
+  pre-existing order-dependent flake (failed once in one full run, passed
+  in two subsequent full runs + isolation).
+- **First-hour onboarding / growth-truth pass** (2026-06-09, landed in the 2026-06-10 Task 0 sweep) -
+  fresh-player first-hour audit (career creation → weekly loop → replay →
+  aftermath → playoffs → full offseason → season 2) with focused fixes;
+  handoff: `docs/fable/2026-06-09-first-hour-onboarding-review.md`. *Root
+  bug fixed:* curated/takeover rosters seeded `traits.potential` as
+  `gauss(50,15)` — a legacy scale below current OVR for ~half the roster —
+  while the development engine, recruitment seeds, trajectory floors, and the
+  Roster "Ceiling" display all treat potential as an OVR-scale ceiling; live
+  save proof showed every takeover starter developing **+0** in the first
+  offseason and the Roster Lab rendering "Ceil 26" on a 66-OVR starter.
+  `career_setup._curated_potential_ceiling` now maps the same draw (RNG
+  stream byte-identical) onto a true age-scaled ceiling at/above OVR (new
+  careers only), and `web_status_service.build_roster_payload` computes the
+  displayed ceiling exactly as the engine consumes it
+  (`max(stored, trajectory floor, OVR)`) so legacy saves stop displaying
+  impossible ceilings; tier derives from the same number. Pinned by
+  `tests/test_first_hour_growth_truth.py` (7 tests incl. a cause→effect
+  "young curated player actually develops" regression). *Legibility fixes:*
+  replay Official panel humanized (FULL TIME framing, "No Blocking" not
+  `NO_BLOCKING`, club name not raw id in burden, `A0 held` ball chips,
+  grouped rule-call counts not "11 · 11"); TermTip click no longer closes the
+  tooltip it just opened; Key Performers K/C/D/Imp legend + honest Imp
+  tooltip; scout-tape tooltip grammar ("a strong lean"); takeover club picker
+  states the choice is identity, not difficulty. *Stale spec retconned:*
+  `maximized-playthrough-qa.spec.ts` waited on the pre-WT-5 raw `CLOTH` key
+  (dead locator since 2026-06-01, pre-existing failure); now asserts "Cloth
+  Division". Verification: full `python -m pytest -q` green (1,278 tests);
+  `npm run build` + `npm run lint` clean; Playwright
+  official-rules-replay + replay-score-parity 6/6 (3 browsers),
+  maximized-playthrough-qa 1/1 (post-retcon), v15 legibility 36/36; live
+  prod-server browser walks at 1440x900 + 1280x720 with zero horizontal
+  overflow and zero console errors. *Open (owner calls):* AI-symmetric
+  development balance probe not re-run; Signing Day doesn't disclose
+  scouted-estimate vs signed-truth; official replay strip remains an honestly
+  labeled full-time snapshot (not per-event).
+- **Adversarial QA / trust audit fixes** (2026-06-09, landed in the 2026-06-10 Task 0 sweep) - full
+  red-team pass over decision traceability, outcome truth, official-rules
+  honesty, and copy claims; handoff with ranked findings + evidence in
+  `docs/fable/2026-06-09-adversarial-qa-trust-audit.md`. *Real bug fixed:* the
+  offseason dev-focus read had no club filter, so an AI club's persisted plan
+  (dev_focus `YOUTH`/`VETERAN`, silently treated as BALANCED) could replace
+  the player's chosen focus — now `offseason_ceremony._load_player_dev_focus`
+  filters by player club (2 new regression tests). *Copy truth:* the six no-op
+  department orders no longer claim "AFFECTS PLAY"/engine effects (terms.ts →
+  flavor; Dynasty Office settings modal rewritten + boundary banner); the
+  Policy Editor's Opening Rush panel now discloses announced-only on official
+  careers (new `ruleset_selection` on `CommandCenterResponse`, pinned by a
+  serialization-guard test); "+1 training unit", bye "Squad Rested/recovered",
+  "medical incidents", "critically fatigued", and "Preserve Health protects
+  them" all replaced with mechanically true statements. *Test integrity:* a
+  false-confidence staff-development test (wrong department key + trivial
+  `>=`) repaired to actually guard the hook. Verification: full
+  `python -m pytest -q` green (1,271 tests); `npm run build` + `npm run lint`
+  clean; live prod-server browser checks (official career: rush note renders,
+  FLAVOR tooltips, settings banner, zero console errors). Playwright e2e not
+  run (changed strings grepped against all specs — no pins affected).
 - **Full-app UX elevation + Command Center redesign** (landed 2026-06-09) - an
   app-wide visual refinement pass plus four owner-feedback iterations on the
   pre-sim Command Center, documented in full in
-  `docs/ux-reviews/fable/2026-06-09-fable-ux-review.md` (read that for the
-  per-surface ledger; this entry is the index). *App-wide:* an append-only
+  `docs/fable/2026-06-09-fable-ux-review.md` (moved from
+  `docs/ux-reviews/fable/`; read that for the per-surface ledger; this entry
+  is the index). *App-wide:* an append-only
   "ELEVATION LAYER" CSS section (court-floor atmosphere, `.dm-action` button
   system with real hover/focus states, themed scrollbars, table zebra),
   title-screen save menu with club monograms, unified offseason ceremony
@@ -143,11 +362,14 @@ before implementation.
    and has not been browser-exercised. Out-of-scope follow-up: the same int-OVR
    `:.1f` float-leak pattern fixed in §4.1 also exists in `dynasty_office.py`,
    `replay_service.py`, and the retirements/development ceremony prose.
-1. **WT-20 Official Live Rules remains open.** No Blocking activation is logged,
-   throw-clock settings are threaded through config, and opening-rush behavior
-   is not enforced by the official engine. `docs/specs/2026-06-01-workflow0-primary-source-rule-verification.md`
-   leaves the reduced-blocking resolution parameters OPEN, so implementation
-   needs an owner decision before outcome-affecting engine work begins.
+1. **WT-20 Official Live Rules — GREENLIT by owner 2026-06-10** (was
+   owner-gated). No Blocking activation is logged, throw-clock settings are
+   threaded through config, and opening-rush behavior is not enforced by the
+   official engine. The reduced-blocking resolution parameters that
+   `docs/specs/2026-06-01-workflow0-primary-source-rule-verification.md`
+   leaves OPEN are now to be proposed-with-measurement during implementation
+   rather than pre-decided. The even-rung draw-texture gate folds into this
+   milestone. See `docs/fable/2026-06-10-owner-decision-log.md` §1/§5.
 2. **E2E launch-token coverage sweep — CLOSED 2026-06-09.** Every e2e spec's
    raw mutating `request.post` call now attaches the real token via
    `tests/e2e/_token.ts` (23 specs swept in the UX-pass commit). The older
@@ -159,6 +381,39 @@ before implementation.
 4. **Frontend UI/UX targets.** Product direction is desktop-first/desktop-only.
    Future frontend/design audits should treat desktop as the product target and
    mobile as optional/non-goal (see `AGENTS.md` for viewport matrix).
+5. **Recruiting promises have NO UI surface (owner decision).** The V8 promise
+   lane is backend-complete (`POST /api/dynasty-office/promises`, a 3-active
+   cap, offseason evaluation with evidence strings in
+   `dynasty_office.evaluate_season_promises`), but no frontend component
+   creates or displays promises — the V8 claim "exposed through the Dynasty
+   Office" is stale for the current UI. Promise results also feed nothing
+   mechanical. **DECIDED 2026-06-10: revive the surface, with renamed/clear
+   player-facing language** ("Promise Lane" itself failed owner comprehension)
+   and a real consumer for promise results. (Found by the 2026-06-09
+   adversarial QA pass — see
+   `docs/fable/2026-06-09-adversarial-qa-trust-audit.md`; decision in
+   `docs/fable/2026-06-10-owner-decision-log.md`.)
+6. **Department orders (other than Dev Focus) are flavor-only (owner
+   decision).** Six weekly orders (tactics/training/conditioning/medical/
+   scouting/culture) have no mechanical consumer; the 2026-06-09 QA pass
+   corrected the UI copy that claimed engine effects (injury chance, morale,
+   fatigue trade-offs) and marked the term-registry entries `flavor`.
+   **DECIDED 2026-06-10: wire real effects** — staff must stop being
+   meaningless (`docs/fable/2026-06-10-owner-decision-log.md` §1.3).
+7. **V16 Contested Offseason is the planned next milestone** (2026-06-09
+   product-director pass; plan:
+   `docs/specs/2026-06-09-v16-contested-offseason-sprint-plan.md`). Task 0
+   (landing the six 2026-06-09 passes) **completed 2026-06-10**; Task 1
+   (Signing Day payload truth) is next. Core scope: AI offseason signings (the measured static-league/snowball fix),
+   scouted-band Signing Day (closes the `true_overall()` picker leak), and a
+   contested user pick consuming the dormant V2-B round system so
+   interest/credibility become mechanical again. Plan decision D1 (scouted
+   band, no true-OVR leak) is **owner-confirmed 2026-06-10**. Out of V16
+   scope but now all owner-greenlit as post-V16 backlog: WT-20 (item 1
+   above), catch-economy retune, promises revival (#5), department-order
+   effects (#6), development-ceiling overhaul, role/stat hookups, replay
+   intent frames, and the language/dedup/no-floats passes — full dispositions
+   in `docs/fable/2026-06-10-owner-decision-log.md`.
 
 ## Sources Of Truth
 

@@ -96,10 +96,23 @@ def apply_season_development(
     trajectory: str | None = None,
     dev_focus: str = "BALANCED",
     staff_development_modifier: float = 0.0,
+    matches_played: int | None = None,
+    club_matches: int | None = None,
 ) -> Player:
     """Apply one offseason of deterministic development to a player using V6 Reps-based formula.
 
-    Growth is driven by `minutes_played` (Reps), modulated by potential and dev_focus.
+    Growth is gated by playing time (Reps), modulated by potential and dev_focus.
+
+    Reps signal: when ``matches_played`` and ``club_matches`` are provided, the
+    gate is the fraction of the club's recorded matches the player appeared in
+    (a year-round starter = 1.0). Otherwise it falls back to the legacy
+    ``minutes_played / 1000`` formula — which never matched either engine's
+    actual scale (a starter who played EVERY match of a season accrues a
+    measured ~64-206 event-tick "minutes" on the official engine and ~10-27 on
+    the rec engine), so every player past their practice window developed at
+    1-20% of the intended rate and stalled 15-22 OVR short of their displayed
+    ceiling. Callers with access to the season's match records should pass the
+    appearance counts.
     """
     facility_set = {facility.strip().lower() for facility in facilities}
     base_potential = _clamp(player.traits.potential, 0.0, 100.0)
@@ -120,12 +133,19 @@ def apply_season_development(
     headroom = max(0.0, potential - float(player.overall_skill()))
 
     # Reps gate: young players develop through practice even without match
-    # minutes; older players need real playing time to keep improving. The
-    # engine's recorded minutes are a weak signal, so youth get a full practice
-    # season rather than being starved of development.
-    practice_reps = 1000.0 if player.age < peak_start else 0.0
-    reps = max(float(season_stats.minutes_played), practice_reps)
-    reps_factor = min(1.0, reps / 1000.0)
+    # minutes; older players need real playing time to keep improving.
+    if player.age < peak_start:
+        # Youth always get a full practice season.
+        reps_factor = 1.0
+    elif matches_played is not None and club_matches is not None and club_matches > 0:
+        # Appearance-based gate: fraction of the club's matches the player
+        # appeared in. Engine-agnostic, so a regular starter develops at the
+        # full headroom rate through their peak window instead of being
+        # starved by the legacy minutes scale (see docstring).
+        reps_factor = min(1.0, max(0.0, matches_played / club_matches))
+    else:
+        # Legacy fallback for callers without appearance counts.
+        reps_factor = min(1.0, float(season_stats.minutes_played) / 1000.0)
 
     # The dev trait also sets the *rate* the gap is closed, so a higher-ceiling
     # player climbs toward their potential faster than a modest one at the same

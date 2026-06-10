@@ -14,6 +14,16 @@ Mapping rules:
 - Non-sequence official events (ball activation, queue, burden) ride through
   inside ``state_diff`` so the replay service can surface them, but they do
   not generate top-level MatchEvent rows.
+- Catch re-entries (CATCH_QUEUE ``return_on_catch`` events) are folded into
+  the catching sequence's throw MatchEvent as ``state_diff["player_return"]``
+  so the replay's live survivor state can stay truthful — the engine returns
+  a queued teammate on every valid catch, and dropping that fact made the
+  replay court show resurrected players as still-eliminated.
+- Each throw MatchEvent carries ``context["official"]`` with the 1-based
+  ``game_number`` (officials play a series of games per match; eliminations
+  reset between games) and the per-game ``engine_tick`` when the sequence
+  recorded its release time. Both are replay metadata read straight from the
+  persisted official stream; neither affects outcomes.
 """
 
 from __future__ import annotations
@@ -43,6 +53,23 @@ def translate_events(
     events_tuple = tuple(events)
     player_team_map = {player_id: team_a_id for player_id in starters_a}
     player_team_map.update({player_id: team_b_id for player_id in starters_b})
+    # Catch re-entries ride as separate CATCH_QUEUE events keyed by the same
+    # sequence_id as the catching sequence_final; index them so the returned
+    # player can be stamped onto the throw event's state_diff (truth, not
+    # inference — the engine emitted both records for the same catch).
+    # Sequence ids RESTART each game ("s1", "s2", ... per game), so the key
+    # must include the game id or a later game's return lands on an earlier
+    # game's unrelated sequence.
+    returns_by_sequence: Dict[Tuple[str | None, str], Tuple[str, str | None]] = {}
+    for ev in events_tuple:
+        if (
+            ev.kind == OfficialEventKind.CATCH_QUEUE
+            and (ev.payload or {}).get("kind") == "return_on_catch"
+            and ev.sequence_id
+            and ev.player_ids
+        ):
+            team_id = ev.team_ids[0] if ev.team_ids else None
+            returns_by_sequence[(ev.game_id, ev.sequence_id)] = (ev.player_ids[0], team_id)
     out: List[MatchEvent] = []
     event_counter = 0
 
@@ -101,6 +128,19 @@ def translate_events(
                 "team": thrower_team,
                 "player_id": thrower_id,
             }
+        if ev.sequence_id and (ev.game_id, ev.sequence_id) in returns_by_sequence:
+            returned_id, returned_team = returns_by_sequence[(ev.game_id, ev.sequence_id)]
+            state_diff["player_return"] = {
+                "team": returned_team or player_team_map.get(str(returned_id)),
+                "player_id": returned_id,
+            }
+        official_context: Dict[str, Any] = {}
+        game_number = _game_number_from_id(ev.game_id)
+        if game_number is not None:
+            official_context["game_number"] = game_number
+        release_time_ms = payload.get("release_time_ms")
+        if isinstance(release_time_ms, int):
+            official_context["engine_tick"] = release_time_ms // 100
         out.append(MatchEvent(
             event_id=event_counter, tick=tick, seed=seed,
             event_type="throw", phase="live",
@@ -111,7 +151,7 @@ def translate_events(
                 "target": target_id,
                 "catcher_ids": catches,
             },
-            context={},
+            context={"official": official_context} if official_context else {},
             probabilities={},
             rolls={},
             outcome={
@@ -138,6 +178,17 @@ def translate_events(
         state_diff={},
     ))
     return out
+
+
+def _game_number_from_id(game_id: str | None) -> int | None:
+    """Parse the 1-based game number from an official ``game_id`` ("g3" -> 3)."""
+    if not game_id:
+        return None
+    digits = game_id[1:] if game_id.startswith("g") else game_id
+    try:
+        return int(digits)
+    except ValueError:
+        return None
 
 
 def collect_official_metadata(events: Iterable[OfficialEvent]) -> Dict[str, Any]:

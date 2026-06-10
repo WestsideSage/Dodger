@@ -14,7 +14,7 @@ import random
 from dataclasses import dataclass
 from typing import Dict, Tuple
 
-from .models import CoachPolicy, Player
+from .models import CatchPosture, CoachPolicy, Player
 from .official_tactics import decide_catch_attempt
 from .player_state import OfficialPlayerState
 from .sequence import (
@@ -42,6 +42,20 @@ def _sigmoid(x: float) -> float:
 _CATCH_SLOPE = 4.0
 _CATCH_POWER_WEIGHT = 0.6
 _CATCH_BIAS = 0.9
+
+# --- Play-safe evasion shading (2026-06-09 systems audit) ---------------------
+# PLAY_SAFE declines marginal catch attempts (official_tactics._catch_thresholds
+# keeps its attempt threshold at 0.65, above the average catch band), so it
+# forgoes most of the catch economy. Before this pass the declining target got
+# nothing in return — the no-attempt dodge roll (dodge - 0.5 * p_on_target) is
+# brutal — and play-safe measured ZERO wins in 400 even-strength matches. The
+# bonus below applies ONLY when a play-safe defender declines the catch: the
+# posture's promised tradeoff (give up resurrections, evade better) becomes
+# real instead of a forfeit. Same RNG draw count, so every match that involves
+# no play-safe decliner replays byte-identical. Measured at even strength
+# (tools/decision_impact_probe.py fixture, 400 trials): 0.0% -> see
+# tests/test_official_engine_balance.py::test_play_safe_posture_is_not_a_forfeit.
+_PLAY_SAFE_EVASION_BONUS = 0.25
 
 
 @dataclass(frozen=True)
@@ -126,7 +140,17 @@ def resolve_throw(
 
     # No catch attempt -> dodge roll determines hit.
     # Dodge probability scales inversely with how on-target the throw was.
-    p_dodge = max(0.0, target.ratings.normalized_dodge() - 0.5 * probs.p_on_target)
+    # A play-safe defender that declined the catch is committed to evasion;
+    # see _PLAY_SAFE_EVASION_BONUS above for the design reason and measurement.
+    evasion_bonus = (
+        _PLAY_SAFE_EVASION_BONUS
+        if policy.catch_posture == CatchPosture.PLAY_SAFE
+        else 0.0
+    )
+    p_dodge = max(
+        0.0,
+        target.ratings.normalized_dodge() - 0.5 * probs.p_on_target + evasion_bonus,
+    )
     if rng.random() <= p_dodge:
         seq.add_contact(SequenceContact(kind=SequenceContactKind.OUT_OF_BOUNDS))
         return probs, "dodged"

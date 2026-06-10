@@ -6786,7 +6786,8 @@ textarea:focus-visible {
 
 .mr-official-panel {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  /* 8 cells (FULL TIME framing + 7 state facts) — 4 columns keeps two even rows. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1px;
   overflow: hidden;
   border: 1px solid rgba(34,211,238,0.25);
@@ -8640,3 +8641,100 @@ textarea:focus-visible {
   .cc-policy { grid-template-columns: 1fr; }
   .cc-scout-grid { grid-template-columns: 1fr; }
 }
+
+/* ============================================================
+   BROADCAST LAYER — watchable replay (2026-06-09 watchability pass)
+   Set strip, game dividers, moment banner, highlight reel shell,
+   aftermath set-story chips. Append-only.
+   ============================================================ */
+
+/* Game-by-game set strip above the possession timeline (officials only) */
+.mr-set-strip {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  padding: 0.55rem 1rem;
+  background: rgba(2,6,23,0.55);
+  border-top: 1px solid var(--dm-border);
+}
+.mr-set-kicker {
+  font-family: var(--font-mono); font-size: 0.58rem; font-weight: 800;
+  letter-spacing: 0.18em; color: var(--dm-text-muted); margin-right: 2px;
+}
+.mr-set-chip {
+  display: inline-grid; justify-items: center; gap: 1px;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--dm-border); border-radius: 4px;
+  background: rgba(15,23,42,0.6);
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.mr-set-chip:disabled { cursor: default; opacity: 0.75; }
+.mr-set-chip .g { font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.12em; color: var(--dm-text-muted); }
+.mr-set-chip .pts { font-family: var(--font-mono); font-size: 0.72rem; font-weight: 800; color: #f1f5f9; }
+.mr-set-chip.result-home { border-bottom: 2px solid rgba(244,63,94,0.65); }
+.mr-set-chip.result-away { border-bottom: 2px solid rgba(59,130,246,0.65); }
+.mr-set-chip.result-none { border-bottom: 2px dashed var(--dm-border-strong); }
+.mr-set-chip.is-current { border-color: rgba(34,211,238,0.55); background: rgba(34,211,238,0.10); }
+.mr-set-chip:not(:disabled):hover { border-color: var(--dm-border-strong); }
+.mr-set-running {
+  margin-left: auto;
+  font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.1em;
+  color: var(--dm-text-secondary);
+}
+
+/* New-game divider tile inside the possession grid */
+.mr-poss-divider {
+  display: grid; place-items: center;
+  padding: 0.55rem 0.2rem;
+  border: 1px dashed var(--dm-border-strong); border-radius: 3px;
+  background: rgba(2,6,23,0.8);
+  font-family: var(--font-mono); font-size: 0.6rem; font-weight: 800;
+  letter-spacing: 0.14em; color: var(--dm-cyan);
+}
+
+/* Recognition-moment pip on a possession cell (distinct from swing pip) */
+.mr-poss-cell .moment-pip {
+  position: absolute; top: 4px; left: 4px; width: 7px; height: 7px;
+  background: var(--dm-amber, #f59e0b);
+  transform: rotate(45deg);
+  box-shadow: 0 0 6px rgba(245,158,11,0.7);
+}
+
+/* Moment banner above the court during playback */
+.mr-moment-banner {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 0.55rem 1rem;
+  background: linear-gradient(90deg, rgba(245,158,11,0.12), rgba(2,6,23,0) 70%);
+  border-top: 1px solid rgba(245,158,11,0.35);
+  border-left: 3px solid #f59e0b;
+}
+.mr-moment-banner p { margin: 0; font-size: 0.8rem; color: #fde68a; line-height: 1.4; }
+.mr-moment-banner b {
+  font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.14em;
+  color: #f59e0b; margin-right: 6px;
+}
+
+/* Highlight reel shell in the replay sidebar */
+.mr-highlights { margin-top: 1rem; display: grid; gap: 0.6rem; }
+
+/* Aftermath hero: set-story chips as a full-width timeline band under the
+   scoreline. (Previously lived inside the 4.5rem center column, where a
+   playoff-length 12-15 game match stacked the chips into a tall single-file
+   column and ballooned the hero.) */
+.command-score-sets {
+  grid-column: 1 / -1;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 4px;
+  margin: 0; padding: 0.45rem 0.9rem;
+  background: #0a1220;
+  border-top: 1px solid rgba(30, 41, 59, 0.9);
+}
+.command-score-set-chip {
+  display: inline-grid; justify-items: center;
+  padding: 2px 6px;
+  border: 1px solid var(--dm-border); border-radius: 3px;
+  background: rgba(15,23,42,0.6);
+}
+.command-score-set-chip .g { font-family: var(--font-mono); font-size: 0.52rem; letter-spacing: 0.1em; color: var(--dm-text-muted); }
+.command-score-set-chip .r { font-size: 0.7rem; font-weight: 800; line-height: 1; }
+.command-score-set-chip.tone-home .r { color: #f97316; }
+.command-score-set-chip.tone-away .r { color: #22d3ee; }
+.command-score-set-chip.tone-none .r { color: var(--dm-text-muted); }

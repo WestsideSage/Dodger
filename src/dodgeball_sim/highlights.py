@@ -172,11 +172,53 @@ def _is_elimination_event(event: Mapping[str, Any]) -> bool:
     return bool(state_diff.get("player_out")) or resolution == "catch"
 
 
+def _official_meta(event: Mapping[str, Any]) -> Mapping[str, Any]:
+    context = event.get("context")
+    if not isinstance(context, Mapping):
+        return {}
+    official = context.get("official")
+    return official if isinstance(official, Mapping) else {}
+
+
 def _source_event_id_for_moment(
     moment: Mapping[str, Any],
     events: Sequence[Mapping[str, Any]],
 ) -> int | str | None:
     tick = int(moment.get("tick", -1) or -1)
+    # Official multi-game matches: the moment's tick is a per-game engine
+    # tick, while translated event ticks are sequential across the whole
+    # match. Anchor inside the moment's own game via the persisted
+    # ``context.official`` metadata (game_number + engine_tick).
+    game_number = moment.get("game_number")
+    if isinstance(game_number, int):
+        in_game = [
+            event for event in events
+            if event.get("event_type") == "throw"
+            and _official_meta(event).get("game_number") == game_number
+        ]
+        if in_game:
+            exact = [
+                event for event in in_game
+                if _official_meta(event).get("engine_tick") == tick
+            ]
+            if exact:
+                # Prefer the catch when several share a tick (the moment kinds
+                # that anchor to a specific throw are catch-driven).
+                caught = [
+                    event for event in exact
+                    if str((event.get("outcome") or {}).get("resolution", "")) == "catch"
+                ]
+                chosen = (caught or exact)[0]
+                return chosen.get("event_id")
+            prior = [
+                event for event in in_game
+                if isinstance(_official_meta(event).get("engine_tick"), int)
+                and _official_meta(event).get("engine_tick") <= tick
+            ]
+            if prior:
+                return prior[-1].get("event_id")
+            # End-of-game moments (e.g. comeback) anchor to the game's last throw.
+            return in_game[-1].get("event_id")
     throw_exact = next(
         (e for e in events
          if int(e.get("tick", -1) or -1) == tick and e.get("event_type") == "throw"),
@@ -218,7 +260,15 @@ def _swing_event_ids(
 ) -> list[int | str]:
     candidates: list[tuple[float, int, int | str]] = []
     previous = None
+    previous_game = None
     for proof in proof_events:
+        # Survivor counts reset at official game boundaries; comparing the
+        # last event of one game against the first of the next would read the
+        # reset itself as a giant fake swing.
+        game = proof.get("game_number")
+        if game != previous_game:
+            previous = None
+            previous_game = game
         event_id = proof.get("event_id")
         if event_id is None or event_id in excluded:
             previous = proof

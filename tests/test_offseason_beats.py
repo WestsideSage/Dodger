@@ -130,6 +130,76 @@ def test_ratify_records_skips_records_that_did_not_improve():
     assert "career_eliminations" not in types
 
 
+def test_ratify_records_first_time_record_is_new_holder():
+    conn = _fresh_conn()
+    _seed_career(conn, "p1", "Alpha", eliminations=80)
+
+    payload = ratify_records(conn, "season_1")
+
+    record = next(r for r in payload.new_records if r.record_type == "career_eliminations")
+    assert record.is_new_holder is True
+    assert record.previous_holder_name == ""
+
+
+def test_ratify_records_same_holder_rebreak_is_not_new_holder():
+    conn = _fresh_conn()
+    _seed_career(conn, "p1", "Alpha", eliminations=80)
+    save_league_record(
+        conn,
+        record_type="career_eliminations",
+        holder_id="p1",
+        holder_type="player",
+        record_value=60.0,
+        set_in_season="season_0",
+        record_payload={"holder_name": "Alpha", "value": 60.0, "detail": "previous"},
+    )
+
+    payload = ratify_records(conn, "season_1")
+
+    record = next(r for r in payload.new_records if r.record_type == "career_eliminations")
+    assert record.is_new_holder is False
+    assert record.previous_holder_name == "Alpha"
+
+
+def test_ratify_records_dethroning_is_new_holder_and_names_previous():
+    conn = _fresh_conn()
+    _seed_career(conn, "p1", "Alpha", eliminations=80)
+    save_league_record(
+        conn,
+        record_type="career_eliminations",
+        holder_id="legacy",
+        holder_type="player",
+        record_value=60.0,
+        set_in_season="season_0",
+        record_payload={"holder_name": "Legacy", "value": 60.0, "detail": "previous"},
+    )
+
+    payload = ratify_records(conn, "season_1")
+
+    record = next(r for r in payload.new_records if r.record_type == "career_eliminations")
+    assert record.is_new_holder is True
+    assert record.previous_holder_name == "Legacy"
+
+
+def test_ratify_records_cached_payload_without_holder_fields_defaults_to_marquee():
+    # Saves ratified before is_new_holder existed must keep the marquee
+    # treatment rather than being silently demoted to bookkeeping rows.
+    conn = _fresh_conn()
+    _seed_career(conn, "p1", "Alpha", eliminations=80)
+    ratify_records(conn, "season_1")
+
+    raw = get_state(conn, "offseason_records_ratified_json")
+    stripped = [
+        {k: v for k, v in entry.items() if k not in ("is_new_holder", "previous_holder_name")}
+        for entry in json.loads(raw)
+    ]
+    set_state(conn, "offseason_records_ratified_json", json.dumps(stripped))
+
+    payload = ratify_records(conn, "season_1")  # cache path
+    assert all(record.is_new_holder is True for record in payload.new_records)
+    assert all(record.previous_holder_name == "" for record in payload.new_records)
+
+
 def test_ratify_records_empty_payload_when_no_career_data():
     conn = _fresh_conn()
 

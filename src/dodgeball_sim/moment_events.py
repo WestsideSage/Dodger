@@ -35,6 +35,10 @@ class DramaticCatch:
     active_count_a: int
     active_count_b: int
     kind: MomentKind = MomentKind.DRAMATIC_CATCH
+    # Official multi-game matches: which game (1-based) the moment happened in.
+    # ``tick`` is the per-game engine tick, so it is only meaningful alongside
+    # this. None for single-game engines (rec) and legacy payloads.
+    game_number: int | None = None
 
 
 @dataclass(frozen=True)
@@ -48,6 +52,7 @@ class LateGameEscape:
     attacker_team_id: str
     attacker_count: int
     kind: MomentKind = MomentKind.LATE_GAME_ESCAPE
+    game_number: int | None = None
 
 
 @dataclass(frozen=True)
@@ -60,6 +65,7 @@ class OneVOneFinale:
     player_b_id: str
     tick_started: int
     kind: MomentKind = MomentKind.ONE_V_ONE_FINALE
+    game_number: int | None = None
 
 
 @dataclass(frozen=True)
@@ -72,6 +78,7 @@ class GassedCollapse:
     team_id: str
     fatigue_pct: float
     kind: MomentKind = MomentKind.GASSED_COLLAPSE
+    game_number: int | None = None
 
 
 @dataclass(frozen=True)
@@ -83,6 +90,7 @@ class FloodThrow:
     thrower_team_id: str
     thrower_ids: Tuple[str, ...]
     kind: MomentKind = MomentKind.FLOOD_THROW
+    game_number: int | None = None
 
 
 @dataclass(frozen=True)
@@ -95,6 +103,7 @@ class Comeback:
     deficit_at_low_point: int
     catches_during_comeback: int
     kind: MomentKind = MomentKind.COMEBACK
+    game_number: int | None = None
 
 
 MomentEvent = Union[

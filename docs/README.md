@@ -26,6 +26,10 @@ what you need. If two docs disagree, follow the authority order below.
   pre-implementation checklist, and worktree/remote notes.
 - `docs/agents/` — optional skill, issue-tracker, and domain notes. Subordinate
   to root `AGENTS.md`.
+- `docs/fable/` — dated cross-disciplinary audit/review handoffs from Fable
+  agent passes (UX, trust, watchability, balance, dynasty, product-director).
+  Records and evidence, never active authority; active plans still live in
+  `docs/specs/`.
 - `docs/sources/` — active external reference material (e.g., USA Dodgeball Rulebook PDF).
 - `docs/archive/` — the full historical record: shipped-milestone specs,
   retrospectives, learnings, QA reviews, Phase 0 research, execution plans, and

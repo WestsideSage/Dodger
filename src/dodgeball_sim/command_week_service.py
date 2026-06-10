@@ -77,6 +77,10 @@ def command_center_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         "latest_dashboard": latest_dashboard,
         "history": history,
         "season_preview": _build_season_preview_payload(conn, state),
+        # The career's ruleset, so plan-editing surfaces can disclose
+        # announced-only knobs honestly (the official engine does not enforce
+        # opening-rush behavior — WT-20). None/absent => legacy generic career.
+        "ruleset_selection": get_state(conn, "ruleset_selection"),
     }
 
 

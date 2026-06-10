@@ -106,6 +106,156 @@ class ReplayError(RuntimeError):
         self.status_code = status_code
 
 
+def _turning_point_selection(proof_events: list[dict[str, Any]]) -> tuple[str | None, int | None]:
+    """Pick the key play with the biggest swing in living-count differential.
+
+    The old report grabbed the FIRST hit/catch of the match and headlined it
+    "turning point" — fake causality. This selection reuses the highlight
+    swing metric (lead flips dominate, then delta size) over the truthful
+    per-event score state. Comparisons never cross an official game boundary,
+    because survivor counts genuinely reset between games.
+    """
+    from .highlights import _swing_score
+
+    best_index: int | None = None
+    best_score = 0.0
+    previous: dict[str, Any] | None = None
+    previous_game: Any = object()
+    for index, proof in enumerate(proof_events):
+        game = proof.get("game_number")
+        if game != previous_game:
+            previous = None
+            previous_game = game
+        if proof.get("is_key_play"):
+            score = _swing_score(previous, proof)
+            if best_index is None or score > best_score:
+                best_index = index
+                best_score = score
+        previous = proof
+    if best_index is None:
+        return None, None
+    return str(proof_events[best_index].get("summary", "")), best_index
+
+
+def _game_segments(
+    official_score_json: str | None,
+    proof_events: list[dict[str, Any]],
+    home_club_id: str,
+) -> list[dict[str, Any]] | None:
+    """Per-game story of an official match, from the persisted official score.
+
+    Game results come straight from the ``official_score_json`` column written
+    at simulation time; proof-index ranges come from the per-event
+    ``game_number`` metadata (present on newly simulated matches — legacy
+    event streams yield ``None`` ranges, and the segment strip still renders
+    the truthful per-game results without jump targets).
+    """
+    if not official_score_json:
+        return None
+    try:
+        meta = json.loads(official_score_json)
+    except (TypeError, ValueError):
+        return None
+    games = meta.get("games") if isinstance(meta, dict) else None
+    if not isinstance(games, list) or not games:
+        return None
+    a_is_home = str(meta.get("team_a_id", "")) == str(home_club_id)
+
+    first_index: dict[int, int] = {}
+    last_index: dict[int, int] = {}
+    for index, proof in enumerate(proof_events):
+        game_number = proof.get("game_number")
+        if isinstance(game_number, int):
+            first_index.setdefault(game_number, index)
+            last_index[game_number] = index
+
+    segments: list[dict[str, Any]] = []
+    running_home = 0
+    running_away = 0
+    for game in games:
+        if not isinstance(game, dict):
+            continue
+        number = int(game.get("game_number", 0) or 0)
+        a_points = int(game.get("team_a_points", 0) or 0)
+        b_points = int(game.get("team_b_points", 0) or 0)
+        a_actives = int(game.get("final_active_a", 0) or 0)
+        b_actives = int(game.get("final_active_b", 0) or 0)
+        home_points, away_points = (a_points, b_points) if a_is_home else (b_points, a_points)
+        home_actives, away_actives = (a_actives, b_actives) if a_is_home else (b_actives, a_actives)
+        running_home += home_points
+        running_away += away_points
+        segments.append(
+            {
+                "game_number": number,
+                "winner_club_id": game.get("winner_team_id"),
+                "result_type": str(game.get("result_type", "") or ""),
+                "home_points": home_points,
+                "away_points": away_points,
+                "home_running_points": running_home,
+                "away_running_points": running_away,
+                "home_final_actives": home_actives,
+                "away_final_actives": away_actives,
+                "first_proof_index": first_index.get(number),
+                "last_proof_index": last_index.get(number),
+            }
+        )
+    return segments or None
+
+
+def _anchor_proof_index(moment: dict[str, Any], proof_events: list[dict[str, Any]]) -> int | None:
+    """Resolve where in the proof timeline a moment belongs.
+
+    Official moments carry per-game engine ticks plus a ``game_number``; rec
+    moments share the event-tick coordinate directly. Exact tick matches
+    prefer the catch resolution (the catch-driven moment kinds). When only a
+    prior event exists the moment anchors there — i.e. "as of this point",
+    never ahead of the moment. Returns ``None`` when nothing can be anchored
+    truthfully (legacy streams without game metadata).
+    """
+    tick = moment.get("tick")
+    if not isinstance(tick, int):
+        return None
+    game_number = moment.get("game_number")
+    if isinstance(game_number, int):
+        in_game = [
+            (index, proof)
+            for index, proof in enumerate(proof_events)
+            if proof.get("game_number") == game_number
+        ]
+        if not in_game:
+            return None
+        exact = [
+            (index, proof) for index, proof in in_game if proof.get("engine_tick") == tick
+        ]
+        if exact:
+            caught = [
+                (index, proof) for index, proof in exact if proof.get("resolution") == "catch"
+            ]
+            return (caught or exact)[0][0]
+        prior = [
+            index
+            for index, proof in in_game
+            if isinstance(proof.get("engine_tick"), int) and proof["engine_tick"] <= tick
+        ]
+        if prior:
+            return prior[-1]
+        return in_game[-1][0]
+    exact_rec = [
+        (index, proof) for index, proof in enumerate(proof_events) if proof.get("tick") == tick
+    ]
+    if exact_rec:
+        caught = [
+            (index, proof) for index, proof in exact_rec if proof.get("resolution") == "catch"
+        ]
+        return (caught or exact_rec)[0][0]
+    prior_rec = [
+        index
+        for index, proof in enumerate(proof_events)
+        if isinstance(proof.get("tick"), int) and proof["tick"] <= tick
+    ]
+    return prior_rec[-1] if prior_rec else None
+
+
 def match_replay_payload(conn: sqlite3.Connection, match_id: str) -> dict[str, Any]:
     row = conn.execute("SELECT * FROM match_records WHERE match_id = ?", (match_id,)).fetchone()
     if row is None:
@@ -157,19 +307,6 @@ def match_replay_payload(conn: sqlite3.Connection, match_id: str) -> dict[str, A
                 replay_state_from_dict(official_state_data),
                 include_events=False,
             )
-    moment_events = []
-    if events:
-        match_end_context = events[-1].get("context") or {}
-        if isinstance(match_end_context, dict):
-            raw_moments = match_end_context.get("moment_events")
-            if isinstance(raw_moments, list):
-                moment_events = raw_moments
-    team_name_map = {row["home_club_id"]: home.name, row["away_club_id"]: away.name}
-    moment_events = [
-        _enrich_moment_display(moment, name_map, team_name_map)
-        for moment in moment_events
-        if isinstance(moment, dict)
-    ]
     player_club_id = get_state(conn, "player_club_id") or row["home_club_id"]
     if player_club_id not in {row["home_club_id"], row["away_club_id"]}:
         player_club_id = row["home_club_id"]
@@ -204,6 +341,30 @@ def match_replay_payload(conn: sqlite3.Connection, match_id: str) -> dict[str, A
         player_match_stats=stats,
         command_plan=command_plan_for_match(conn, match_id, row["season_id"]),
     )
+
+    # Moment enrichment happens after the proof build so each moment can be
+    # anchored to its spot in the proof timeline (game-aware for officials).
+    moment_events = []
+    if events:
+        match_end_context = events[-1].get("context") or {}
+        if isinstance(match_end_context, dict):
+            raw_moments = match_end_context.get("moment_events")
+            if isinstance(raw_moments, list):
+                moment_events = raw_moments
+    team_name_map = {row["home_club_id"]: home.name, row["away_club_id"]: away.name}
+    moment_events = [
+        {
+            **_enrich_moment_display(moment, name_map, team_name_map),
+            "anchor_index": _anchor_proof_index(moment, proof["proof_events"]),
+        }
+        for moment in moment_events
+        if isinstance(moment, dict)
+    ]
+    game_segments = _game_segments(
+        row["official_score_json"] if "official_score_json" in row.keys() else None,
+        proof["proof_events"],
+        row["home_club_id"],
+    )
     _winner_id = row["winner_club_id"]
 
     def _weighted(player_id: str, stat) -> float:
@@ -232,20 +393,16 @@ def match_replay_payload(conn: sqlite3.Connection, match_id: str) -> dict[str, A
     mvp_id = compute_match_mvp(stats)
     winner_id = _winner_id
     winner_name = clubs[winner_id].name if winner_id in clubs else "Draw"
+    turning_point_text, turning_point_index = _turning_point_selection(proof["proof_events"])
     report = {
         "winner_name": winner_name,
         "match_mvp_player_id": mvp_id,
         "match_mvp_name": name_map.get(mvp_id, mvp_id) if mvp_id else None,
         "top_performers": top_performers,
-        "turning_point": next(
-            (
-                event["label"]
-                for event in events
-                if event.get("event_type") == "throw"
-                and event.get("outcome", {}).get("resolution") in {"hit", "failed_catch", "catch"}
-            ),
-            "No high-leverage swing detected.",
-        ),
+        "turning_point": turning_point_text or "No high-leverage swing detected.",
+        # The proof-timeline index of that same event, so "jump to" lands on
+        # exactly the play the headline describes.
+        "turning_point_index": turning_point_index,
         "evidence_lanes": proof["evidence_report"]["evidence_lanes"],
     }
     return {
@@ -272,6 +429,7 @@ def match_replay_payload(conn: sqlite3.Connection, match_id: str) -> dict[str, A
         "moment_events": moment_events,
         "proof_events": proof["proof_events"],
         "key_play_indices": proof["key_play_indices"],
+        "game_segments": game_segments,
         "report": report,
         "official_state": official_state,
         "broadcast_frame": broadcast_frame.to_dict(),

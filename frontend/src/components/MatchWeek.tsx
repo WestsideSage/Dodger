@@ -438,9 +438,10 @@ export function MatchWeek({
           </div>
         )}
 
-        {/* Bye week: lead with the rest/recovery story — which players got
-            fresher legs — instead of a match the squad never played
-            (Brief 4.3, primary hierarchy + criterion #2). */}
+        {/* Bye week: lead with the no-match story instead of a match the squad
+            never played (Brief 4.3, primary hierarchy + criterion #2). No
+            fatigue/recovery system exists — stamina is a fixed rating — so the
+            card must not claim anyone "rested" or "recovered". */}
         {revealStage >= 1 && isBye && aftermath.bye_recovery && (
           <div className="command-reveal">
             <section
@@ -454,7 +455,7 @@ export function MatchWeek({
                 marginBottom: '1.25rem',
               }}
             >
-              <p className="dm-kicker" style={{ margin: 0, color: '#22d3ee' }}>Squad Rested</p>
+              <p className="dm-kicker" style={{ margin: 0, color: '#22d3ee' }}>Bye Week</p>
               <h3 id="bye-recovery-heading" style={{ margin: '0.25rem 0 0', color: '#f1f5f9', fontSize: '1.15rem', fontWeight: 800 }}>
                 {aftermath.bye_recovery.summary}
               </h3>
@@ -503,6 +504,7 @@ export function MatchWeek({
               scoringModel={aftermath.match_card.scoring_model}
               homeGamePoints={aftermath.match_card.home_game_points}
               awayGamePoints={aftermath.match_card.away_game_points}
+              games={aftermath.match_card.games}
             />
             {/* The verdict is a fallback explanation only — when primary_factor
                 is present it is the canonical "why", so the verdict is not

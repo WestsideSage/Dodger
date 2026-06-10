@@ -65,6 +65,23 @@ _DEV_FOCUS_LABELS = {
     "STRENGTH_AND_CONDITIONING": "Strength and conditioning",
 }
 
+# Honest mechanical description of each dev focus, mirroring the multipliers in
+# development.apply_season_development. No "training units" exist anywhere in
+# the model: weekly choices do NOT accumulate toward ratings — the focus in
+# effect at season's end is the one the offseason development pass applies.
+_DEV_FOCUS_EFFECTS = {
+    "BALANCED": "spreads offseason growth evenly across attributes",
+    "YOUTH_ACCELERATION": (
+        "boosts offseason growth for players 22 and under (and slows it for older players)"
+    ),
+    "TACTICAL_DRILLS": (
+        "tilts offseason growth toward Tactical IQ, at some cost to power, dodge, and stamina"
+    ),
+    "STRENGTH_AND_CONDITIONING": (
+        "tilts offseason growth toward power and stamina, at some cost to accuracy, dodge, and catch"
+    ),
+}
+
 
 def _development_feedback(
     plan: Mapping[str, Any] | None,
@@ -76,32 +93,30 @@ def _development_feedback(
     orders = dict((plan or {}).get("department_orders") or {})
     focus = str(orders.get("dev_focus") or "BALANCED")
     focus_label = _DEV_FOCUS_LABELS.get(focus, focus.replace("_", " ").title())
+    effect = _DEV_FOCUS_EFFECTS.get(focus, _DEV_FOCUS_EFFECTS["BALANCED"])
     roster = list((rosters or {}).get(player_club_id or "", []))
 
+    # Players the current focus is aimed at — illustrative context for the UI,
+    # not a claim of per-player training credit.
     if focus == "YOUTH_ACCELERATION":
         candidates = sorted(roster, key=lambda player: (player.age, -player.traits.potential, player.name))[:3]
-        target = "high-upside younger players"
     elif focus == "TACTICAL_DRILLS":
         candidates = sorted(roster, key=lambda player: (player.ratings.tactical_iq, player.name))[:3]
-        target = "the lowest tactical-IQ rotation players"
     elif focus == "STRENGTH_AND_CONDITIONING":
         candidates = sorted(roster, key=lambda player: (player.ratings.stamina, player.name))[:3]
-        target = "the stamina floor of the roster"
     else:
         candidates = sorted(roster, key=lambda player: (-player.overall_skill(), player.name))[:3]
-        target = "the active rotation"
-
     player_names = [player.name for player in candidates]
-    if player_names:
-        names = ", ".join(player_names)
-        progress = f"+1 training unit toward {focus_label.lower()} for {names}."
-    else:
-        progress = f"+1 training unit toward {focus_label.lower()}."
 
-    if is_bye:
-        summary = f"{focus_label} banked a clean practice week for {target}; rating changes resolve in offseason."
-    else:
-        summary = f"{focus_label} logged weekly reps for {target}; rating changes resolve in offseason."
+    # The previous copy claimed "+1 training unit ... for <names>" — fabricated
+    # bookkeeping (no accumulator exists, and no per-player credit is tracked).
+    # State the real rule instead.
+    progress = (
+        "Offseason growth follows the dev focus in effect at season's end — "
+        f"currently {focus_label}."
+    )
+    held = "held through the bye" if is_bye else "is this week's development focus"
+    summary = f"{focus_label} {held}; it {effect}."
 
     return {
         "focus": focus,
@@ -212,9 +227,13 @@ def _simulate_bye_week(
             "match_card": None,
             "player_growth_deltas": [],
             "development_feedback": _development_feedback(plan, rosters, player_club_id, is_bye=True),
+            # Honest bye copy: there is no persisted fatigue/recovery system —
+            # stamina is a fixed rating — so claiming the squad "avoided fatigue
+            # exposure" (or naming arbitrary players as "recovered") fabricates
+            # a mechanic. A bye is simply a week with no match minutes.
             "bye_recovery": {
-                "summary": "No match scheduled; your starters avoided fatigue exposure this week.",
-                "players": [player.name for player in rosters.get(player_club_id, [])[:3]],
+                "summary": "No match scheduled — your club logged no match minutes this week.",
+                "players": [],
             },
             "standings_shift": [],
             "recruit_reactions": [],
@@ -813,11 +832,15 @@ def _build_aftermath(
     box = record.result.box_score["teams"]
     home_survivors = int(box[record.home_club_id]["totals"]["living"])
     away_survivors = int(box[record.away_club_id]["totals"]["living"])
+    # The resolved MatchResult is canon. The old survivor-derived fallback here
+    # could only ever CONTRADICT it: franchise.simulate_match already patches
+    # non-official winners from survivors upstream, so the only records that
+    # reached this branch with a None winner were official game-points draws
+    # (where unequal survivor counts are legitimate) — and any derived winner
+    # then tripped validate_postgame_payload and degraded the entire aftermath
+    # panel. Measured on a 10-season auto-pilot sweep: 17 degraded aftermaths
+    # in 80 seasons, all from this branch.
     _winner_id = record.result.winner_team_id
-    if _winner_id is None and home_survivors != away_survivors:
-        _winner_id = (
-            record.home_club_id if home_survivors > away_survivors else record.away_club_id
-        )
     start_context = record.result.events[0].context if record.result.events else {}
     end_context = record.result.events[-1].context if record.result.events else {}
     team_policies = (
@@ -953,6 +976,7 @@ def _build_aftermath(
     scoring_model = "legacy"
     home_game_pts = 0
     away_game_pts = 0
+    match_card_games: list[dict[str, Any]] = []
     if record.result.official_metadata:
         meta = record.result.official_metadata
         if "cloth" in record.result.config_version:
@@ -961,6 +985,22 @@ def _build_aftermath(
             scoring_model = "foam"
         home_game_pts = meta.get("team_a_game_points", 0)
         away_game_pts = meta.get("team_b_game_points", 0)
+        # Per-game set story (won/lost/no-point per game, in order) so the
+        # aftermath can show HOW the game points accumulated — a 9-2 win and
+        # a 2-9 collapse read identically without it. Same team_a == home
+        # adapter invariant as the totals above.
+        for game in meta.get("games", []) or []:
+            if not isinstance(game, dict):
+                continue
+            match_card_games.append(
+                {
+                    "game_number": int(game.get("game_number", 0) or 0),
+                    "winner_club_id": game.get("winner_team_id"),
+                    "home_points": int(game.get("team_a_points", 0) or 0),
+                    "away_points": int(game.get("team_b_points", 0) or 0),
+                    "result_type": str(game.get("result_type", "") or ""),
+                }
+            )
 
     aftermath: dict[str, Any] = {
         "headline": headline,
@@ -973,6 +1013,7 @@ def _build_aftermath(
             "scoring_model": scoring_model,
             "home_game_points": home_game_pts,
             "away_game_points": away_game_pts,
+            "games": match_card_games,
         },
         "player_growth_deltas": [],
         "development_feedback": _development_feedback(plan, load_all_rosters(conn), player_club_id),
@@ -1012,7 +1053,6 @@ def _build_aftermath(
                 deficit_timeline,
                 derive_match_explanation,
             )
-            from dodgeball_sim.replay_proof import _liability_map
             from dodgeball_sim.replay_service import roster_snapshots
 
             opponent_club_id = (
@@ -1035,25 +1075,16 @@ def _build_aftermath(
                 snapshots = roster_snapshots(
                     conn, record.match_id, record.home_club_id, record.away_club_id
                 )
-                liab_map = _liability_map(snapshots)
                 name_map_pf = {
                     str(p.get("id", "")): str(p.get("name", p.get("id", "")))
                     for players in snapshots.values()
                     for p in players
                 }
-                eliminated_player = set(timeline.eliminated_by_club.get(player_club_id, ()))
-                liabilities = [
-                    {
-                        "name": name_map_pf.get(pid, pid),
-                        "role_name": meta.get("role_name", "role"),
-                        "archetype": meta.get("archetype", "archetype"),
-                        "on_player_team": True,
-                        "eliminated": pid in eliminated_player,
-                    }
-                    for pid, meta in liab_map.items()
-                    if meta.get("is_liability")
-                    and pid in {str(p.get("id", "")) for p in snapshots.get(player_club_id, [])}
-                ]
+                # 2026-06-09 audit: lineup-liability (slot-role fit) facts are
+                # no longer fed to the Primary Factor — no shipping engine
+                # applies a role penalty, so role mismatch cannot be a cause of
+                # the result. Role-fit notes remain on advisory surfaces (lineup
+                # editor warnings, replay liability lane with advisory copy).
                 # 4.4: for official set-based matches, the game-point gap is the
                 # decisive scoreline — feed it so a 0-4 / 6-0 result is never
                 # explained as "inconclusive / stayed close". Generic matches
@@ -1076,7 +1107,6 @@ def _build_aftermath(
                     deficit_low_tick=timeline.deficit_low_tick,
                     final_tick=int(getattr(record.result, "final_tick", 0) or 0),
                     name_map=name_map_pf,
-                    liabilities=liabilities,
                     point_margin=point_margin,
                 )
                 aftermath["primary_factor"] = explanation.primary_factor.as_dict()

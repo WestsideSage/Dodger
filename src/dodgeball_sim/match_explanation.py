@@ -32,8 +32,14 @@ LATE_STAMINA_COLLAPSE = "late_stamina_collapse"
 CATCH_DISPARITY = "catch_disparity"
 FLOOD_THROWS_PUNISHED = "flood_throws_punished"
 OPENING_RUSH_DEFICIT = "opening_rush_deficit"
-LIABILITY_INVOLVEMENT = "liability_involvement"
 UPSET_VARIANCE = "upset_variance"
+
+# REMOVED (2026-06-09 systems audit): "liability_involvement". Slot-role fit
+# has no consumer in any shipping engine (only the retired legacy MatchEngine
+# applied liability penalties), so a role mismatch cannot be a *factor* in a
+# result — ranking it as one directed players at a lever that does not exist.
+# Role-fit notes remain on explicitly-advisory surfaces (lineup warnings, the
+# replay liability lane).
 
 CONFIDENCE_HIGH = "high"
 CONFIDENCE_MEDIUM = "medium"
@@ -51,7 +57,6 @@ _CODE_PRIORITY = (
     LATE_STAMINA_COLLAPSE,
     FLOOD_THROWS_PUNISHED,
     OPENING_RUSH_DEFICIT,
-    LIABILITY_INVOLVEMENT,
 )
 
 
@@ -200,7 +205,6 @@ def derive_match_explanation(
     deficit_low_tick: int = 0,
     final_tick: int = 0,
     name_map: Mapping[str, str] | None = None,
-    liabilities: Sequence[Mapping[str, Any]] = (),
     point_margin: int = 0,
 ) -> MatchExplanation:
     """Rank supported factors and return the dominant one (or a soft fallback).
@@ -208,9 +212,6 @@ def derive_match_explanation(
     Parameters are all already-resolved primitives so the logic is pure.
 
     ``result`` is from the player's perspective ("Win"/"Loss"/"Draw").
-    ``liabilities`` is a sequence of ``{name, role_name, archetype,
-    on_player_team, eliminated}`` dicts describing active lineup liabilities
-    that were eliminated during the match.
     """
 
     names = dict(name_map or {})
@@ -252,11 +253,6 @@ def derive_match_explanation(
         largest_deficit=largest_deficit,
         deficit_low_tick=deficit_low_tick,
         final_tick=final_tick,
-    )
-    _add_liability_involvement(
-        candidates,
-        result=result,
-        liabilities=liabilities,
     )
 
     # Deterministic ranking: leverage weight desc, then chronological finality
@@ -532,51 +528,6 @@ def _add_opening_rush_deficit(
                 sentence=sentence,
                 confidence=confidence,
                 evidence_chips=chips,
-            ),
-        )
-    )
-
-
-def _add_liability_involvement(
-    candidates: list[_Candidate],
-    *,
-    result: str,
-    liabilities: Sequence[Mapping[str, Any]],
-) -> None:
-    if result == "Win":
-        return
-    eliminated = [
-        liab
-        for liab in liabilities
-        if liab.get("on_player_team") and liab.get("eliminated")
-    ]
-    if not eliminated:
-        return
-    first = eliminated[0]
-    name = str(first.get("name", "A starter"))
-    role = str(first.get("role_name", "role"))
-    archetype = str(first.get("archetype", "archetype"))
-    count = len(eliminated)
-    chips = [f"Liability: {name} ({role})"]
-    if count > 1:
-        chips.append(f"{count} mismatched starters")
-    # Deliberately soft / "involvement" language: proven *exploitation* is the
-    # job of the replay liability tags (Task 5), not this summary factor.
-    sentence = (
-        f"A lineup mismatch was in the mix — {name} played out of role as {role} "
-        f"({archetype}) and was eliminated, a fit problem worth addressing."
-    )
-    candidates.append(
-        _Candidate(
-            code=LIABILITY_INVOLVEMENT,
-            weight=1.0 + 0.5 * (count - 1),
-            finality=0,
-            factor=PrimaryFactor(
-                code=LIABILITY_INVOLVEMENT,
-                title="Lineup liability involved",
-                sentence=sentence,
-                confidence=CONFIDENCE_LOW,
-                evidence_chips=tuple(chips),
             ),
         )
     )

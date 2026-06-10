@@ -23,11 +23,16 @@ export function PolicyEditor({
   disabled,
   error,
   onChange,
+  rushAnnouncedOnly,
 }: {
   policy: CoachPolicy;
   disabled?: boolean;
   error?: string | null;
   onChange: (nextPolicy: CoachPolicy) => Promise<void> | void;
+  // True on official-ruleset careers: the official engine does not enforce
+  // opening-rush behavior (WT-20 open), so the two rush rows must disclose
+  // that they are announced-only there rather than imply an outcome effect.
+  rushAnnouncedOnly?: boolean;
 }) {
   const { t } = useVoiceRegister(1);
 
@@ -112,6 +117,25 @@ export function PolicyEditor({
           >
             {preview}
           </p>
+          {/* Disclosure parity with the official-rules note below: in the rec
+              engine the Target choice only stamps the announced ball
+              assignment into the match log — the opening rush is resolved
+              from Commit (how many players sprint). Saying nothing here lets
+              a dead knob pose as a decision. */}
+          {row.key === 'rush_target' && !rushAnnouncedOnly && (
+            <p
+              data-testid="rush-target-advisory-note"
+              style={{
+                margin: 0,
+                color: '#64748b',
+                fontSize: '0.7rem',
+                lineHeight: 1.45,
+              }}
+            >
+              Recorded as your announced assignment in the match log. The rec engine resolves
+              the opening rush from Commit — Target does not change match outcomes yet.
+            </p>
+          )}
         </div>
       </div>
     );
@@ -238,6 +262,25 @@ export function PolicyEditor({
             </span>
             <span style={{ fontSize: '0.68rem', color: '#64748b' }}>· first moment only</span>
           </div>
+          {rushAnnouncedOnly && (
+            <p
+              data-testid="rush-announced-only-note"
+              style={{
+                margin: 0,
+                padding: '0.4rem 0.55rem',
+                borderRadius: '6px',
+                border: '1px solid rgba(251,191,36,0.35)',
+                background: 'rgba(251,191,36,0.07)',
+                color: '#fbbf24',
+                fontSize: '0.7rem',
+                lineHeight: 1.45,
+              }}
+            >
+              Announced-only under official rules: the broadcast narrates your rush call,
+              but the official engine does not yet enforce opening-rush behavior, so these
+              two settings do not change official match outcomes.
+            </p>
+          )}
           {rushRows.map(renderRow)}
         </div>
       </div>

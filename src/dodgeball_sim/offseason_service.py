@@ -5,7 +5,9 @@ import sqlite3
 from typing import Any
 
 from .career_state import CareerState, advance as state_advance
+from .lineup import STARTERS_COUNT
 from .offseason_ceremony import (
+    available_recruitment_choices,
     begin_next_season,
     finalize_season,
     initialize_manager_offseason,
@@ -126,6 +128,23 @@ def recruit_offseason_payload(
     recruitment_index = active_beats.index("recruitment")
 
     if prospect_id == "skip":
+        # Roster-floor guard: the user club is exempt from every AI roster
+        # repair path (ensure_ai_rosters_playable and the offseason refill both
+        # skip it), so repeatedly skipping recruitment lets retirements bleed
+        # the roster below the fielded six with no in-season recovery — a
+        # measured 10-season auto-pilot sweep ended at 4 players. Block the
+        # skip only when the club genuinely cannot field six AND there is
+        # someone available to sign; an empty pool still allows the skip.
+        user_roster_now = load_all_rosters(conn).get(player_club_id, [])
+        if len(user_roster_now) < STARTERS_COUNT and available_recruitment_choices(
+            conn, cursor.season_number or 1
+        ):
+            raise OffseasonError(
+                f"Your roster has {len(user_roster_now)} players — at least "
+                f"{STARTERS_COUNT} are needed to field a legal six next season. "
+                "Sign at least one player before skipping.",
+                status_code=409,
+            )
         cursor = state_advance(
             cursor,
             CareerState.NEXT_SEASON_READY,

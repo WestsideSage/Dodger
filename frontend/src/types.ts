@@ -141,6 +141,12 @@ export interface DramaticCatchMoment {
     active_count_a: number;
     active_count_b: number;
     display_text?: string;
+    // Official multi-game matches: which game (1-based) the moment happened
+    // in; the tick is a per-game engine tick. Null/absent for rec matches.
+    game_number?: number | null;
+    // Server-resolved position in proof_events where this moment belongs.
+    // Null when the persisted stream predates game/tick anchoring metadata.
+    anchor_index?: number | null;
 }
 
 export interface LateGameEscapeMoment {
@@ -152,6 +158,12 @@ export interface LateGameEscapeMoment {
     attacker_team_id: string;
     attacker_count: number;
     display_text?: string;
+    // Official multi-game matches: which game (1-based) the moment happened
+    // in; the tick is a per-game engine tick. Null/absent for rec matches.
+    game_number?: number | null;
+    // Server-resolved position in proof_events where this moment belongs.
+    // Null when the persisted stream predates game/tick anchoring metadata.
+    anchor_index?: number | null;
 }
 
 export interface OneVOneFinaleMoment {
@@ -162,6 +174,12 @@ export interface OneVOneFinaleMoment {
     player_b_id: string;
     tick_started: number;
     display_text?: string;
+    // Official multi-game matches: which game (1-based) the moment happened
+    // in; the tick is a per-game engine tick. Null/absent for rec matches.
+    game_number?: number | null;
+    // Server-resolved position in proof_events where this moment belongs.
+    // Null when the persisted stream predates game/tick anchoring metadata.
+    anchor_index?: number | null;
 }
 
 export interface GassedCollapseMoment {
@@ -172,6 +190,12 @@ export interface GassedCollapseMoment {
     team_id: string;
     fatigue_pct: number;
     display_text?: string;
+    // Official multi-game matches: which game (1-based) the moment happened
+    // in; the tick is a per-game engine tick. Null/absent for rec matches.
+    game_number?: number | null;
+    // Server-resolved position in proof_events where this moment belongs.
+    // Null when the persisted stream predates game/tick anchoring metadata.
+    anchor_index?: number | null;
 }
 
 export interface FloodThrowMoment {
@@ -181,6 +205,12 @@ export interface FloodThrowMoment {
     thrower_team_id: string;
     thrower_ids: string[];
     display_text?: string;
+    // Official multi-game matches: which game (1-based) the moment happened
+    // in; the tick is a per-game engine tick. Null/absent for rec matches.
+    game_number?: number | null;
+    // Server-resolved position in proof_events where this moment belongs.
+    // Null when the persisted stream predates game/tick anchoring metadata.
+    anchor_index?: number | null;
 }
 
 export interface ComebackMoment {
@@ -191,6 +221,12 @@ export interface ComebackMoment {
     deficit_at_low_point: number;
     catches_during_comeback: number;
     display_text?: string;
+    // Official multi-game matches: which game (1-based) the moment happened
+    // in; the tick is a per-game engine tick. Null/absent for rec matches.
+    game_number?: number | null;
+    // Server-resolved position in proof_events where this moment belongs.
+    // Null when the persisted stream predates game/tick anchoring metadata.
+    anchor_index?: number | null;
 }
 
 export type MomentEvent =
@@ -232,6 +268,13 @@ export interface ScoreState {
 export interface ReplayProofEvent {
     sequence_index: number;
     tick: number;
+    // Official matches: 1-based game this throw belongs to and the per-game
+    // engine tick (both null for rec/legacy streams).
+    game_number?: number | null;
+    engine_tick?: number | null;
+    // The queued teammate a valid catch brought back, when the play had one.
+    returned_player_id?: string | null;
+    returned_player_name?: string | null;
     thrower_id: string;
     thrower_name: string;
     target_id: string;
@@ -345,6 +388,9 @@ export interface MatchReplayResponse {
     moment_events: MomentEvent[];
     proof_events: ReplayProofEvent[];
     key_play_indices: number[];
+    // Per-game story of an official match (set results in order, running
+    // points, proof-index ranges). Null for legacy/rec matches.
+    game_segments?: ReplayGameSegment[] | null;
     official_state?: OfficialReplayState | null;
     report: {
         winner_name: string;
@@ -352,11 +398,28 @@ export interface MatchReplayResponse {
         match_mvp_name: string | null;
         top_performers: TopPerformer[];
         turning_point: string;
+        // Proof-timeline index of the same event the turning_point text
+        // describes, so "jump to" lands on exactly that play.
+        turning_point_index?: number | null;
         evidence_lanes: CommandDashboardLane[];
     };
     broadcast_frame?: BroadcastFrame | null;
     playoff_frame?: PlayoffFrame | null;
     commentary_inserts?: CommentaryInsert[];
+}
+
+export interface ReplayGameSegment {
+    game_number: number;
+    winner_club_id: string | null;
+    result_type: string; // "elimination" | "no_point" | "tie" | "cloth_active_count"
+    home_points: number;
+    away_points: number;
+    home_running_points: number;
+    away_running_points: number;
+    home_final_actives: number;
+    away_final_actives: number;
+    first_proof_index?: number | null;
+    last_proof_index?: number | null;
 }
 
 export interface StandingRow {
@@ -750,6 +813,10 @@ export interface CommandCenterResponse {
     latest_dashboard: CommandDashboard | null;
     history: CommandHistoryRecord[];
     season_preview?: SeasonPreview | null;
+    // Career ruleset ("official_foam" | "official_no_sting" | "official_cloth"
+    // | null/absent for legacy generic). Lets plan-editing surfaces disclose
+    // announced-only knobs (official engine does not enforce opening rush — WT-20).
+    ruleset_selection?: string | null;
 }
 
 export interface SeasonPreview {
@@ -784,6 +851,15 @@ export interface Aftermath {
         scoring_model?: string;
         home_game_points?: number;
         away_game_points?: number;
+        // Official matches: per-game set results in playing order, so the
+        // aftermath can show how the game points accumulated.
+        games?: Array<{
+            game_number: number;
+            winner_club_id: string | null;
+            home_points: number;
+            away_points: number;
+            result_type: string;
+        }>;
     } | null;
     player_growth_deltas: Array<{
         player_id: string;
@@ -1051,6 +1127,11 @@ export interface RatifiedRecordEntry {
     // Phase 7: club scope filter fields
     holder_club_id?: string;
     is_my_club?: boolean;
+    /** False when the same holder extended their own record (bookkeeping);
+        true for first-time records and dethronings. Missing on payloads
+        ratified before this field existed — treat as true. */
+    is_new_holder?: boolean;
+    previous_holder_name?: string;
 }
 
 export interface RecordsRatifiedBeatPayload {

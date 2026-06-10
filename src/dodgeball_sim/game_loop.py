@@ -230,6 +230,79 @@ def recompute_regular_season_standings(conn: sqlite3.Connection, season: Season)
             )
         )
     save_standings(conn, season.season_id, compute_standings(results))
+    # Rivalries ride the same post-match chokepoint: every web-path sim batch
+    # (user week, AI batch, playoff round) recomputes standings, so rebuilding
+    # here keeps the rivalry book in lockstep with the match records. Before
+    # this, rivalry_records was only ever written by the legacy sandbox CLI —
+    # the Dynasty Office, /api/history/league, and broadcast rivalry tags all
+    # read a table the web game never fed.
+    rebuild_rivalry_records(conn)
+
+
+def season_sort_key(season_id: str) -> tuple[int, str]:
+    """Numeric-aware sort key for ``season_N`` ids (string sort puts 10 < 2)."""
+    suffix = str(season_id).rsplit("_", 1)[-1]
+    if suffix.isdigit():
+        return (int(suffix), "")
+    return (1 << 30, str(season_id))
+
+
+def rebuild_rivalry_records(conn: sqlite3.Connection) -> None:
+    """Recompute the full rivalry book from persisted match records.
+
+    Derivation from truth, not incremental updates: re-simulated or
+    tie-resolution-patched matches can never double-count, and legacy saves
+    gain their full rivalry history retroactively on the next recompute.
+    Margins use each match's own scoring scale (game points when set-scored,
+    survivors otherwise).
+    """
+    from .rivalries import rivalries_from_match_rows, rivalry_payload
+
+    rows = conn.execute(
+        """
+        SELECT match_id, season_id, week, home_club_id, away_club_id,
+               winner_club_id, home_survivors, away_survivors,
+               home_game_points, away_game_points, scoring_model
+        FROM match_records
+        """
+    ).fetchall()
+    # Chronological order needs a NUMERIC season sort: the season_id strings
+    # sort "season_10" before "season_2", which would scramble multi-season
+    # last-meeting fields. Same hazard for any streak math over season_id.
+    rows = sorted(
+        rows, key=lambda r: (season_sort_key(r["season_id"]), r["week"], r["match_id"])
+    )
+    prepared = []
+    for row in rows:
+        season_id = row["season_id"]
+        # Same prefix contract as playoffs.is_playoff_match_id (inlined to keep
+        # this module free of a playoffs import).
+        is_playoff = row["match_id"].startswith(f"{season_id}_p_")
+        is_final = row["match_id"] == f"{season_id}_p_final"
+        if (row["scoring_model"] or "legacy") != "legacy":
+            margin = abs(int(row["home_game_points"] or 0) - int(row["away_game_points"] or 0))
+        else:
+            margin = abs(int(row["home_survivors"] or 0) - int(row["away_survivors"] or 0))
+        prepared.append(
+            {
+                "match_id": row["match_id"],
+                "season_id": season_id,
+                "home_club_id": row["home_club_id"],
+                "away_club_id": row["away_club_id"],
+                "winner_club_id": row["winner_club_id"],
+                "margin": margin,
+                "was_playoff": is_playoff,
+                "was_championship": is_final,
+            }
+        )
+    records = rivalries_from_match_rows(prepared)
+    conn.execute("DELETE FROM rivalry_records")
+    from .persistence import save_rivalry_record
+
+    for record in records.values():
+        save_rivalry_record(
+            conn, record.club_a_id, record.club_b_id, rivalry_payload(record)
+        )
 
 
 def _team_snapshot_for_ids(
@@ -255,6 +328,7 @@ def _team_snapshot_for_ids(
 __all__ = [
     "current_week",
     "persist_match_record",
+    "rebuild_rivalry_records",
     "recompute_regular_season_standings",
     "simulate_scheduled_match",
 ]

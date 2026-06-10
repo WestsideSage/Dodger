@@ -62,7 +62,14 @@ def test_liability_target_eliminated_is_exploited():
     event = _proof(_throw("hit", thrower="home_2", target="away_1", player_out={"team": "away", "player_id": "away_1"}))
     assert event["liability_context"]["tag"] == "exploited"
     assert "LIABILITY EXPLOITED" in event["proof_tags"]
-    assert any("Liability exploited" in item for item in event["liability_context"]["items"])
+    # 2026-06-09 audit: the note states the saved fact (an out-of-role starter
+    # went out) without claiming the mismatch caused it — no shipping engine
+    # applies a role penalty.
+    assert any(
+        "Out-of-role starter eliminated" in item
+        for item in event["liability_context"]["items"]
+    )
+    assert not any("penalty as a mismatched" in item for item in event["liability_context"]["items"])
 
 
 def test_liability_thrower_caught_is_exploited():

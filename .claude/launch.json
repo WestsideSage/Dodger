@@ -4,14 +4,36 @@
     {
       "name": "Dev Server",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "dodgeball_sim.web_cli"],
+      "runtimeArgs": [
+        "-m",
+        "dodgeball_sim.web_cli"
+      ],
       "port": 8000,
-      "env": { "DODGEBALL_DEV": "1" }
+      "env": {
+        "DODGEBALL_DEV": "1"
+      }
     },
     {
       "name": "Prod Preview",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "dodgeball_sim"],
+      "runtimeArgs": [
+        "-m",
+        "dodgeball_sim"
+      ],
+      "port": 8000
+    },
+    {
+      "name": "E2E Uvicorn",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "uvicorn",
+        "dodgeball_sim.server:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8000"
+      ],
       "port": 8000
     }
   ]

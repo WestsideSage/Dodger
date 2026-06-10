@@ -739,6 +739,13 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                   }}>
                     Club
                   </span>
+                  {/* Honest pre-creation guidance: rosters are generated fresh at
+                      career start from the same templates, so there is no
+                      stronger/weaker pick to reveal here — only identity. */}
+                  <p style={{ fontSize: '0.6875rem', color: '#64748b', margin: '0 0 0.375rem' }}>
+                    Every club starts with a comparable six — this choice is about the identity
+                    and rival style you inherit, not a difficulty setting.
+                  </p>
                   {clubs.length > 0 ? (
                     <RadioGroup
                       value={newClubId}

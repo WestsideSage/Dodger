@@ -14,21 +14,22 @@ function StatChips({ player }: { player: TopPerformer }) {
   return (
     <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '2px', alignItems: 'center' }}>
       {player.eliminations_by_throw > 0 && (
-        <span style={chipStyle('rgba(249,115,22,0.15)', '#f97316')}>
+        <span title="Eliminations by throw" style={chipStyle('rgba(249,115,22,0.15)', '#f97316')}>
           {player.eliminations_by_throw}K
         </span>
       )}
       {player.catches_made > 0 && (
-        <span style={chipStyle('rgba(34,211,238,0.12)', '#22d3ee')}>
+        <span title="Catches made" style={chipStyle('rgba(34,211,238,0.12)', '#22d3ee')}>
           {player.catches_made}C
         </span>
       )}
       {player.dodges_successful > 0 && (
-        <span style={chipStyle('rgba(163,230,53,0.12)', '#a3e635')}>
+        <span title="Successful dodges" style={chipStyle('rgba(163,230,53,0.12)', '#a3e635')}>
           {player.dodges_successful}D
         </span>
       )}
       <span
+        title="Impact — match-stat score, weighted up for players on the winning side"
         style={{
           fontFamily: 'JetBrains Mono, monospace',
           fontSize: '0.55rem',
@@ -73,6 +74,11 @@ export function KeyPlayersPanel({
     <section className="dm-panel command-key-players" data-testid="key-players-panel">
       <div className="dm-panel-header">
         <p className="dm-kicker">Key Performers</p>
+        {/* First-hour legend: K/C/D/Imp are never expanded anywhere else, and
+            tooltips alone are not discoverable. One quiet line decodes them. */}
+        <p style={{ margin: 0, fontSize: '0.55rem', color: '#475569', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          K eliminations · C catches · D dodges · Imp impact
+        </p>
       </div>
       <div className="command-key-player-list">
         {top3.map((player, index) => {

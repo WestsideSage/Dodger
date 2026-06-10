@@ -43,4 +43,20 @@ test('official rules replay surfaces rules state and explanation panels', async 
   await expect(page.getByText('BURDEN', { exact: true })).toBeVisible();
   await expect(page.getByText('BALL STATES', { exact: true })).toBeVisible();
   await expect(page.getByText('RULE CALLS', { exact: true })).toBeVisible();
+
+  // 2026-06-09 watchability pass: an official match is a series of games —
+  // the replay must show the set-by-set story, and every set chip on a fresh
+  // sim must jump (the event stream carries per-game metadata).
+  const setStrip = page.getByTestId('replay-set-strip');
+  await expect(setStrip).toBeVisible();
+  const setChips = setStrip.locator('.mr-set-chip');
+  expect(await setChips.count()).toBeGreaterThan(0);
+  await expect(setChips.first()).toBeEnabled();
+  await expect(page.getByTestId('replay-set-running')).toContainText('on game points');
+
+  // The biggest-swing block jumps to the exact event its headline describes.
+  await expect(page.getByText('BIGGEST SWING', { exact: true })).toBeVisible();
+  const swingText = (await page.locator('.mr-turning-text').innerText()).trim();
+  await page.getByRole('button', { name: /jump to this play/i }).click();
+  await expect(page.locator('.mr-active-readout .title')).toHaveText(swingText);
 });

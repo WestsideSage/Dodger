@@ -36,6 +36,58 @@ const TIER_COLOR: Record<string, string> = {
   Unknown: '#475569',
 };
 
+// The ceremony engine emits multi-line briefs ("Current roster sizes:" plus
+// indented club rows, "Label: value" facts, blank-line section breaks). A bare
+// {prose} render collapses all of it onto one run-on line — this keeps the
+// backend's structure: section labels, indented rows, and fact rows stay rows.
+function BriefProse({ text }: { text: string }) {
+  const lines = text.split('\n');
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+      {lines.map((line, index) => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          return <div key={index} aria-hidden="true" style={{ height: '0.35rem' }} />;
+        }
+        const indented = line.startsWith('  ') || trimmed.startsWith('- ');
+        const content = trimmed.startsWith('- ') ? trimmed.slice(2) : trimmed;
+        if (!indented && trimmed.endsWith(':')) {
+          return (
+            <p
+              key={index}
+              style={{
+                margin: '0.2rem 0 0',
+                fontSize: '0.66rem',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                color: '#64748b',
+              }}
+            >
+              {trimmed.slice(0, -1)}
+            </p>
+          );
+        }
+        const kv = /^([^:]{2,42}):\s+(.+)$/.exec(content);
+        if (kv) {
+          return (
+            <p key={index} style={{ margin: 0, paddingLeft: indented ? '0.85rem' : 0 }}>
+              <span style={{ color: '#94a3b8' }}>{kv[1]}</span>
+              <span style={{ color: '#475569' }}>{' · '}</span>
+              <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{kv[2]}</span>
+            </p>
+          );
+        }
+        return (
+          <p key={index} style={{ margin: 0, paddingLeft: indented ? '0.85rem' : 0 }}>
+            {content}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export function AwardsNight({ beat, onComplete, acting }: { beat: AwardsBeat; onComplete: () => void; acting?: boolean }) {
     const allAwards = beat.payload.awards;
 
@@ -539,7 +591,7 @@ function LegacyClassReport({
                 minWidth: 0,
               }}
             >
-              {prose}
+              <BriefProse text={prose} />
             </div>
           ) : otherCount === 0 ? (
             <div

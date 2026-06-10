@@ -40,16 +40,24 @@ def _career_conn() -> sqlite3.Connection:
 
 
 def test_offseason_dev_path_loads_department_head_and_applies_modifier():
-    """Hiring a development dept head with rating 100 should raise average OVR compared to no head."""
+    """Hiring a TRAINING dept head with rating 100 should raise average OVR compared to no head.
+
+    The department string matters: ``initialize_manager_offseason`` reads
+    ``_all_dept_heads.get("training")`` for the staff development modifier.
+    This test previously inserted a ``development`` head, so the modifier was
+    0.0 on BOTH sides and the ``>=`` assertion passed trivially — it could
+    never have detected a broken staff-development hook.
+    """
     conn_base = _career_conn()
     conn_hired = _career_conn()
 
-    # Insert a development dept head at rating 100 in the hired conn
+    # Insert a TRAINING dept head at rating 100 in the hired conn — the
+    # department the offseason development path actually reads.
     conn_hired.execute(
         """
         INSERT OR REPLACE INTO department_heads
           (department, name, rating_primary, rating_secondary, voice)
-        VALUES ('development', 'Elite Dev Coach', 100.0, 80.0, 'direct')
+        VALUES ('training', 'Elite Dev Coach', 100.0, 80.0, 'direct')
         """
     )
     conn_hired.commit()
@@ -91,9 +99,82 @@ def test_offseason_dev_path_loads_department_head_and_applies_modifier():
         len(updated_hired.get(player_club_hired, [])), 1
     )
 
-    assert avg_ovr_hired >= avg_ovr_base, (
-        f"Expected hired ({avg_ovr_hired:.2f}) >= base ({avg_ovr_base:.2f})"
+    # Strict inequality: a rating-100 training head yields the max staff
+    # modifier (pool x1.15 + a flat bonus), which must be visible in the
+    # roster-average OVR. The old `>=` passed even with the modifier at 0.0.
+    assert avg_ovr_hired > avg_ovr_base, (
+        f"Expected hired ({avg_ovr_hired:.2f}) > base ({avg_ovr_base:.2f})"
     )
+
+
+def test_player_dev_focus_reads_player_plan_not_ai_plan():
+    """The offseason dev focus must come from the PLAYER's latest saved plan.
+
+    AI weekly plans are persisted into the same ``weekly_command_plans`` table
+    (``prepare_ai_plans_for_matches`` -> ``save_weekly_command_plan``) carrying
+    dev_focus values like ``YOUTH``/``VETERAN`` from
+    ``get_ai_department_orders`` — vocabulary ``apply_season_development``
+    silently treats as BALANCED. The unfiltered latest-week read this guards
+    against could return an AI club's plan and silently discard the player's
+    chosen focus.
+    """
+    from dodgeball_sim.offseason_ceremony import _load_player_dev_focus
+    from dodgeball_sim.persistence import save_weekly_command_plan
+
+    conn = _career_conn()
+    season_id = get_state(conn, "active_season_id")
+    player_club_id = get_state(conn, "player_club_id")
+
+    # Player saved TACTICAL_DRILLS in week 3...
+    save_weekly_command_plan(
+        conn,
+        {
+            "season_id": season_id,
+            "week": 3,
+            "player_club_id": player_club_id,
+            "intent": "Balanced",
+            "department_orders": {"dev_focus": "TACTICAL_DRILLS"},
+        },
+    )
+    # ...and an AI club's plan lands in a LATER week (e.g. a playoff round the
+    # player's club is not part of), with AI dev-focus vocabulary.
+    save_weekly_command_plan(
+        conn,
+        {
+            "season_id": season_id,
+            "week": 5,
+            "player_club_id": "ai_club_x",
+            "intent": "Win Now",
+            "department_orders": {"dev_focus": "YOUTH"},
+        },
+    )
+    conn.commit()
+
+    assert _load_player_dev_focus(conn, season_id, player_club_id) == "TACTICAL_DRILLS"
+
+
+def test_player_dev_focus_defaults_balanced_without_any_player_plan():
+    """No saved player plan -> BALANCED, even when AI plans exist."""
+    from dodgeball_sim.offseason_ceremony import _load_player_dev_focus
+    from dodgeball_sim.persistence import save_weekly_command_plan
+
+    conn = _career_conn()
+    season_id = get_state(conn, "active_season_id")
+    player_club_id = get_state(conn, "player_club_id")
+
+    save_weekly_command_plan(
+        conn,
+        {
+            "season_id": season_id,
+            "week": 2,
+            "player_club_id": "ai_club_x",
+            "intent": "Win Now",
+            "department_orders": {"dev_focus": "VETERAN"},
+        },
+    )
+    conn.commit()
+
+    assert _load_player_dev_focus(conn, season_id, player_club_id) == "BALANCED"
 
 
 def test_apply_scouting_carry_forward_is_importable():

@@ -96,13 +96,13 @@ export const TERMS = {
   'attr.throw_selection_iq': {
     label: 'Throw Selection IQ',
     plain: 'How well a player picks good throws vs. low-percentage ones.',
-    why: 'Higher IQ means fewer wasted/headshot throws and fewer flood-throw mistakes.',
+    why: 'Rec-league matches only: fewer wasted/headshot throws. Official-rules matches do not model it in-play; it still shapes archetype identity and development.',
     kind: 'mechanical',
   },
   'attr.catch_courage': {
     label: 'Catch Courage',
     plain: 'Willingness to attempt catches on hard incoming throws.',
-    why: 'More catch attempts = more resurrections, but missed attempts cost eliminations.',
+    why: 'Rec-league matches only: more catch attempts (more resurrections, more risk). Official-rules matches read the Catch rating and posture instead; it still shapes identity and development.',
     kind: 'mechanical',
   },
   'growth.ceiling': {
@@ -117,17 +117,25 @@ export const TERMS = {
     why: 'High headroom + young age = a genuine high-upside develop target.',
     kind: 'mechanical',
   },
+  // HONESTY (2026-06-09 audit): the shipping signing path (the offseason
+  // recruitment picker) signs the player's choice directly — no contested
+  // offers, no interest check. Until a contested Signing Day ships, Interest /
+  // Fit / Pipeline / Credibility are courtship TRACKERS, not signing
+  // modifiers, and must not claim "easier to sign / closes / gates". The
+  // V2-B round system (recruitment.conduct_recruitment_round) exists but has
+  // no production caller. Scouting (OVR Range) stays mechanical: the narrowed
+  // band is real revealed information.
   'recruit.fit': {
     label: 'Fit',
     plain: 'How well this prospect matches your program right now (0-100).',
-    why: 'Higher fit closes more easily; it is NOT the same as their OVR.',
-    kind: 'mechanical',
+    why: 'A shortlist aid blending the public range with your credibility. It is NOT their OVR, and it does not change signing odds — the offseason picker signs your choice directly.',
+    kind: 'flavor',
   },
   'recruit.interest': {
     label: 'Interest',
     plain: 'How interested the prospect is in your program (%).',
-    why: 'Rises with contact/visits and credibility; courted prospects are easier to sign.',
-    kind: 'mechanical',
+    why: 'Rises with contact/visits and credibility. Today it is a courtship tracker — the offseason picker signs your choice directly; contested signings are not yet modeled.',
+    kind: 'flavor',
   },
   'recruit.ovr_range': {
     label: 'OVR Range',
@@ -138,14 +146,14 @@ export const TERMS = {
   'recruit.pipeline': {
     label: 'Pipeline',
     plain: 'A recruiting region/tier your program has a relationship with.',
-    why: 'Stronger pipeline tier means warmer prospects and easier closes.',
-    kind: 'mechanical',
+    why: 'A higher tier starts the prospect warmer on the board. Contested closes are not yet modeled, so the tier changes information, not signing odds.',
+    kind: 'flavor',
   },
   'program.credibility': {
     label: 'Program Credibility',
     plain: 'The recruiting-facing reputation that sets which prospects are interested.',
-    why: 'Rises with wins and dev; gates the tier of recruits you can attract.',
-    kind: 'mechanical',
+    why: 'Rises with wins and youth focus; feeds the board’s interest and fit estimates. No signing gate is modeled yet.',
+    kind: 'flavor',
   },
   'program.prestige': {
     label: 'Club Prestige',
@@ -171,49 +179,59 @@ export const TERMS = {
     why: 'A flavor summary of how you’ve managed — not a hidden stat bonus.',
     kind: 'flavor',
   },
-  // --- Lineup (mechanical: slot order drives role-label assignment) ---
+  // --- Lineup ---
+  // HONESTY (2026-06-09 audit): role labels (Captain → Utility) are advisory
+  // fit notes — no shipping engine applies a role bonus or penalty for
+  // archetype-in-slot fit. Slot ORDER has only marginal real effects (the
+  // first slots take opening-rush assignments in rec matches and initial
+  // balls in official ones). Which six you field is the real lever.
   'lineup.slot_order': {
     label: 'Slot Order',
     plain: 'The sequence of your six starters from Captain (slot 1) through Utility (slot 6).',
-    why: 'Each slot carries a role label that summarizes the position. Reorder to put the right archetype in the right slot — swap a bench player in by clicking a slot, then a bench card.',
-    kind: 'mechanical',
+    why: 'Role labels are advisory fit notes — the engine applies no role bonus or penalty. Picking WHICH six start is the real lever; order itself only sets opening-play assignments. Swap a bench player in by clicking a slot, then a bench card.',
+    kind: 'flavor',
   },
-  // --- Department orders (mechanical: each drives a weekly staff focus) ---
+  // --- Department orders ---
+  // HONESTY (ADR 0002): apart from Dev Focus (its own pill on the Command
+  // Center), department orders have NO mechanical consumer — they are logged
+  // in the weekly debrief as staff color. These entries previously claimed
+  // kind:'mechanical' ("AFFECTS PLAY" badge) for injury/morale/scouting
+  // systems that do not exist. Keep them 'flavor' until a real hook ships.
   'dept.tactics': {
     label: 'Tactics',
-    plain: 'Your staff\'s game-planning focus this week — opponent prep, containment, or tempo.',
-    why: 'Tactical orders bias how your team approaches the next match. Mechanical.',
-    kind: 'mechanical',
+    plain: 'Your staff\'s game-planning note this week — opponent prep, containment, or tempo.',
+    why: 'Flavor only — logged in your weekly debrief. Match tactics are set in the Policy Editor, which IS mechanical.',
+    kind: 'flavor',
   },
   'dept.training': {
     label: 'Training',
-    plain: 'What your training staff emphasizes in practice — fundamentals, throws, or catches.',
-    why: 'Training focus shapes which attributes your players develop toward. Mechanical.',
-    kind: 'mechanical',
+    plain: 'What your training staff emphasizes in practice this week.',
+    why: 'Flavor only — development is driven by the Dev Focus pill (Command Center) and match minutes, not this order.',
+    kind: 'flavor',
   },
   'dept.conditioning': {
     label: 'Conditioning',
-    plain: 'How hard you push the squad physically — recovery emphasis vs. stamina push.',
-    why: 'Conditioning order trades short-term edge for long-term freshness. Mechanical.',
-    kind: 'mechanical',
+    plain: 'How the staff frames the squad\'s physical week.',
+    why: 'Flavor only — no fatigue carries between weeks (stamina is a fixed rating), so this order changes nothing.',
+    kind: 'flavor',
   },
   'dept.medical': {
     label: 'Medical',
-    plain: 'How aggressively your medical staff manages player minutes and injury risk.',
-    why: 'Affects whether injured or tired players are rested or pushed. Mechanical.',
-    kind: 'mechanical',
+    plain: 'Your medical staff\'s stance for the week.',
+    why: 'Flavor only — injuries are not modeled, so availability is never actually at risk.',
+    kind: 'flavor',
   },
   'dept.scouting': {
     label: 'Scouting',
-    plain: 'What your scouts focus on — next opponent, the prospect board, or playoff rivals.',
-    why: 'Scouting focus narrows which information you get each week. Mechanical.',
-    kind: 'mechanical',
+    plain: 'Where your scouts say their attention is this week.',
+    why: 'Flavor only — real scouting happens via the Scout action (readiness gate) and the recruit board\'s Scout/Contact/Visit.',
+    kind: 'flavor',
   },
   'dept.culture': {
     label: 'Culture',
-    plain: 'The locker-room emphasis this week — youth confidence, veteran leadership, accountability.',
-    why: 'Culture orders influence morale and long-term player identity. Mechanical.',
-    kind: 'mechanical',
+    plain: 'The locker-room emphasis your staff notes this week.',
+    why: 'Flavor only — there is no morale or chemistry stat for this to move.',
+    kind: 'flavor',
   },
   // --- Staff roles (Phase 3b) ---
   'staff.training': {

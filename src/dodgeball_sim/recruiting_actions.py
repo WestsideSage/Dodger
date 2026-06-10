@@ -8,10 +8,17 @@ whether any of them did anything. This module makes each action mutate a
 - **Scout** narrows the public OVR band (reveals information). The narrowed band
   is the one the rest of the recruiting surface reads, so the effect is real and
   durable, not cosmetic.
-- **Contact / Visit** raise a persisted ``interest`` value (0-100). Interest is
-  not a hidden boost: it feeds the user's offer strength at signing (see
-  ``recruitment.conduct_recruitment_round``), so building interest genuinely
-  improves the chance of landing the recruit.
+- **Contact / Visit** raise a persisted ``interest`` value (0-100).
+
+HONESTY (2026-06-09 audit): interest currently has NO consumer in the shipping
+signing flow. The only production signing path is the offseason recruitment
+picker (``offseason_ceremony.sign_chosen_rookie``), which signs the player's
+choice directly — ``recruitment.conduct_recruitment_round`` (where interest
+strengthens the user offer) exists but has no production caller, and the
+``/api/recruiting/sign`` endpoint is a dead stub (it guards on a career state
+value that does not exist). Until a contested Signing Day ships, interest is a
+courtship tracker, and every player-facing string here and in the term
+registry must avoid claiming it changes signing odds.
 
 The module is pure -- it takes the prospect's current action state plus its base
 public band and returns a new state and a :class:`RecruitingActionResult`. No
@@ -159,13 +166,15 @@ def _headline(
 
 
 def _next_step(state: dict[str, Any], interest: int) -> str:
+    # Copy honesty: never promise a signing-odds effect (interest has no
+    # consumer in the shipping signing flow — see the module docstring).
     if not state.get("scouted"):
         return "Scout to tighten the OVR read before you commit a visit slot."
     if interest < 50:
         return "Interest is lukewarm — a contact call or visit builds your standing."
     if not state.get("visited"):
-        return "Strong interest. A campus visit makes your Signing Day offer hard to beat."
-    return "You've done the work — slot this prospect as a Signing Day target."
+        return "Strong interest. A campus visit caps off the courtship."
+    return "You've done the work — keep this prospect at the top of your offseason shortlist."
 
 
 def _clamp_int(value: float, low: int, high: int) -> int:

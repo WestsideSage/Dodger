@@ -610,14 +610,25 @@ def conduct_recruitment_round(
         raise ValueError(f"Unknown prospect: {selected_player_id}")
     # The recruiting actions the user invested in (contact/visit) build a
     # persisted interest value; it strengthens the Signing Day offer on top of
-    # the strong base, so the work the player did is mechanically rewarded
-    # rather than cosmetic. See recruiting_actions / Task 7.
+    # the strong base. NOTE (2026-06-09 audit): this round system currently has
+    # no production caller — the shipping web flow signs via the offseason
+    # picker (offseason_ceremony.sign_chosen_rookie), which ignores interest.
+    # Kept correct for when a contested Signing Day is wired in.
     from .recruiting_actions import current_interest
     actions = load_json_state(conn, "prospect_recruitment_actions_json", {})
+    # Use the REAL program credibility, not a hardcoded 50: for an untouched
+    # prospect current_interest falls back to base_interest(credibility), and
+    # a hardcoded value would silently disagree with the interest the recruit
+    # board displayed for the same prospect.
+    from .persistence import load_command_history
+    from .recruiting_office import _credibility_score
+
+    history = load_command_history(conn, season_id)
+    credibility = _credibility_score(conn, season_id, user_club_id, history)
     interest = current_interest(
         actions.get(selected_player_id, {}),
         pipeline_tier=prospect.pipeline_tier,
-        credibility_score=50,
+        credibility_score=credibility,
     )
     user_offer = RecruitmentOffer(
         season_id=season_id,

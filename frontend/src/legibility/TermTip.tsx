@@ -16,7 +16,12 @@ export function TermTip({ term, children }: { term: TermId; children: React.Reac
         onMouseLeave={() => setOpen(false)}
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
-        onClick={() => setOpen((v) => !v)}
+        // Click must not toggle: hover/focus already set open=true, so a
+        // toggle would close the tooltip at the exact moment a mouse user
+        // clicks the term to "ask" for it. Click re-opens (touch/AT users);
+        // mouse-leave and blur are the closers.
+        onClick={() => setOpen(true)}
+        onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}
         style={{
           background: 'none',
           border: 'none',

@@ -247,6 +247,10 @@ def sequence_event(seq: SequenceOfPlay) -> OfficialEvent:
             "catches": [c.catcher_id for c in seq.final.catches],
             "thrower_out": seq.final.thrower_out,
             "clock_expired_at_release": seq.clock_expired_at_release,
+            # Replay metadata: when the throw was released (the autonomous
+            # loop sets this to engine_tick * 100), so moment events — which
+            # carry per-game engine ticks — can be anchored to the sequence.
+            "release_time_ms": seq.release_time_ms,
         },
     )
 

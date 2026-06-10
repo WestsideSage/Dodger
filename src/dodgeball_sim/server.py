@@ -504,6 +504,10 @@ class MatchReplayResponse(BaseModel):
     moment_events: list[dict[str, Any]] = Field(default_factory=list)
     proof_events: list[dict[str, Any]] = Field(default_factory=list)
     key_play_indices: list[int] = Field(default_factory=list)
+    # Per-game story of an official match (set results, running points, proof
+    # index ranges). None for legacy/rec matches. Must be declared here or
+    # FastAPI strips it from the serialized response (WT-2/WT-3 bug family).
+    game_segments: list[dict[str, Any]] | None = None
     report: dict[str, Any]
     official_state: dict[str, Any] | None = None
     broadcast_frame: dict[str, Any] | None = None
@@ -526,6 +530,10 @@ class CommandCenterResponse(BaseModel):
     latest_dashboard: dict[str, Any] | None = None
     history: list[dict[str, Any]]
     season_preview: dict[str, Any] | None = None
+    # Declared here so FastAPI does not strip it at the serialization layer
+    # (the MatchReplayResponse field-stripping bug, 2026-06-09). Lets the
+    # Policy Editor disclose announced-only knobs on official careers (WT-20).
+    ruleset_selection: str | None = None
 
 
 class SeasonPreviewSkipRequest(BaseModel):
@@ -1103,6 +1111,16 @@ def get_history_my_program(club_id: str, conn = Depends(get_db)):
         current["avg_ovr"] = avg_ovr
         current["championships"] = champ_count
         hero["current"] = current
+        # The history glance "All-Time Record" cell previously rendered the
+        # latest season snapshot under an across-all-seasons label. Sum the
+        # same persisted rows so the number matches the claim (includes the
+        # in-progress season — season_standings carries it from week 1).
+        hero["all_time"] = {
+            "wins": sum(int(row["wins"]) for row in all_seasons),
+            "losses": sum(int(row["losses"]) for row in all_seasons),
+            "draws": sum(int(row["draws"]) for row in all_seasons),
+            "seasons": len(all_seasons),
+        }
 
     # Timeline events
     timeline = []

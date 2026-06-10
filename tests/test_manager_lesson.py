@@ -140,7 +140,7 @@ def test_inconclusive_draw_ignored_recommendation_still_wins():
         ignored_recommendation={
             "advised_intent": "Preserve Health",
             "selected_intent": "Win Now",
-            "reason": "2 starters are low on stamina; Preserve Health protects them.",
+            "reason": "2 starters have low stamina ratings; Preserve Health shifts to a patient, play-safe plan.",
         },
         roster_edge={"net_ovr": -50},
     )
@@ -171,7 +171,7 @@ def test_ignored_recommendation_always_wins_over_other_signals():
         ignored_recommendation={
             "advised_intent": "Preserve Health",
             "selected_intent": "Win Now",
-            "reason": "2 starters are low on stamina; Preserve Health protects them.",
+            "reason": "2 starters have low stamina ratings; Preserve Health shifts to a patient, play-safe plan.",
         },
         # Strong competing signals present — the ignored rec must still win.
         roster_edge={"net_ovr": -50},

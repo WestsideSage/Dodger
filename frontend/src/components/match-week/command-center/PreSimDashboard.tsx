@@ -904,12 +904,26 @@ export function PreSimDashboard({
                         >
                           {revealedCount}/{diffRows.length} reads revealed
                         </span>
-                        {details.tactical_diff.intel_revealed && (
+                        {/* Week 1 trap: the scout action can reveal only
+                            pre-tape facts, leaving 0/5 tendency reads — an
+                            emerald "New intel revealed" beside "0/5" reads as
+                            a contradiction. When no reads exist, say what
+                            actually happened instead. */}
+                        {details.tactical_diff.intel_revealed && revealedCount > 0 && (
                           <span
                             data-testid="tactical-diff-revealed"
                             style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#34d399', border: '1px solid rgba(52,211,153,0.4)', borderRadius: '3px', padding: '0.05rem 0.35rem' }}
                           >
                             New intel revealed
+                          </span>
+                        )}
+                        {details.tactical_diff.intel_revealed && revealedCount === 0 && (
+                          <span
+                            data-testid="tactical-diff-revealed"
+                            title="Scouting logged the pre-tape file. Tendency reads appear once this opponent has match tape to study."
+                            style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', border: '1px solid rgba(100,116,139,0.4)', borderRadius: '3px', padding: '0.05rem 0.35rem' }}
+                          >
+                            Scouted · no tape yet
                           </span>
                         )}
                       </span>
@@ -952,7 +966,14 @@ export function PreSimDashboard({
                             {row.opponent_known && row.opponent_source === 'tape' && (
                               <span
                                 data-testid="tactical-diff-tape-meta"
-                                title={`Observed on tape across ${row.sample ?? 0} game${row.sample === 1 ? '' : 's'} — a ${row.confidence_label ?? 'lean'}, not their hidden plan.`}
+                                title={`Observed on tape across ${row.sample ?? 0} game${row.sample === 1 ? '' : 's'} — ${
+                                  // Backend sends 'strong' / 'leans' / 'mixed'; phrase each
+                                  // so the sentence reads as English, not template output.
+                                  row.confidence_label === 'strong' ? 'a strong lean'
+                                  : row.confidence_label === 'leans' ? 'a moderate lean'
+                                  : row.confidence_label === 'mixed' ? 'a mixed read'
+                                  : 'a lean'
+                                }, not their hidden plan.`}
                                 style={{ marginLeft: '0.4rem', fontSize: '0.58rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}
                               >
                                 {typeof row.confidence === 'number' ? `${Math.round(row.confidence * 100)}%` : (row.confidence_label ?? 'tape')}
@@ -1220,7 +1241,13 @@ export function PreSimDashboard({
             >
               Close
             </button>
-            <PolicyEditor policy={plan.tactics} disabled={planConfirmed} onChange={onSavePolicy} error={null} />
+            <PolicyEditor
+              policy={plan.tactics}
+              disabled={planConfirmed}
+              onChange={onSavePolicy}
+              error={null}
+              rushAnnouncedOnly={Boolean(data.ruleset_selection?.startsWith('official'))}
+            />
         </Dialog>
       )}
 

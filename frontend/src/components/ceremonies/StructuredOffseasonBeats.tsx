@@ -217,6 +217,10 @@ export function RecordsRatified({
           </div>
         )}
 
+        {/* Milestone vs bookkeeping: a holder CHANGE (or first-time record) is
+            the event and keeps the marquee card; the same leader re-breaking
+            their own counter record happens ~every season and reads as noise
+            when given equal drama — those compress into quiet ledger rows. */}
         {records.length === 0 ? (
           <div style={{ marginTop: '0.85rem', textAlign: myClubEmptyButLeagueHas ? 'center' : 'left' }}>
             <p className="command-offseason-copy" style={{ margin: 0 }}>{emptyMessage()}</p>
@@ -239,17 +243,24 @@ export function RecordsRatified({
               </button>
             )}
           </div>
-        ) : (
+        ) : (() => {
+          const milestones = records.filter(r => r.is_new_holder !== false);
+          const extensions = records.filter(r => r.is_new_holder === false);
+          return (
           <div style={{ display: 'grid', gap: '0.6rem', marginTop: '0.85rem' }}>
-            {records.map(record => {
+            {milestones.map(record => {
               const mine = record.is_my_club === true;
               const delta = record.new_value - record.previous_value;
               const accent = mine ? '#fbbf24' : '#475569';
+              const dethroned = Boolean(
+                record.previous_holder_name && record.previous_holder_name !== record.holder_name,
+              );
               return (
                 <div
                   key={record.record_id ?? record.record_type}
                   data-broadcast-proof-source={record.proof_source ?? `record:${record.record_type}`}
                   data-my-club={mine ? 'true' : 'false'}
+                  data-testid="record-milestone-card"
                   style={{
                     padding: '0.75rem 0.9rem',
                     background: mine
@@ -264,22 +275,40 @@ export function RecordsRatified({
                     <p className="dm-kicker" style={{ margin: 0, color: accent, fontSize: '0.62rem' }}>
                       {titleize(record.record_type)}
                     </p>
-                    {mine && (
-                      <span
-                        style={{
-                          fontSize: '0.56rem',
-                          fontWeight: 900,
-                          letterSpacing: '0.08em',
-                          textTransform: 'uppercase',
-                          padding: '0.12rem 0.4rem',
-                          borderRadius: '999px',
-                          background: 'rgba(251,191,36,0.16)',
-                          color: '#fbbf24',
-                        }}
-                      >
-                        Your Club
-                      </span>
-                    )}
+                    <span style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}>
+                      {dethroned && (
+                        <span
+                          style={{
+                            fontSize: '0.56rem',
+                            fontWeight: 900,
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                            padding: '0.12rem 0.4rem',
+                            borderRadius: '999px',
+                            background: 'rgba(56,189,248,0.14)',
+                            color: '#38bdf8',
+                          }}
+                        >
+                          New Holder
+                        </span>
+                      )}
+                      {mine && (
+                        <span
+                          style={{
+                            fontSize: '0.56rem',
+                            fontWeight: 900,
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                            padding: '0.12rem 0.4rem',
+                            borderRadius: '999px',
+                            background: 'rgba(251,191,36,0.16)',
+                            color: '#fbbf24',
+                          }}
+                        >
+                          Your Club
+                        </span>
+                      )}
+                    </span>
                   </div>
                   <p style={{ margin: '0.25rem 0 0.3rem', color: '#f1f5f9', fontWeight: 700 }}>
                     {record.holder_name}
@@ -310,6 +339,11 @@ export function RecordsRatified({
                         +{formatValue(delta)}
                       </span>
                     )}
+                    {dethroned && (
+                      <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                        takes the record from {record.previous_holder_name}
+                      </span>
+                    )}
                   </div>
                   {record.detail && (
                     <p style={{ margin: '0.3rem 0 0', fontSize: '0.76rem', color: '#94a3b8' }}>
@@ -320,8 +354,76 @@ export function RecordsRatified({
                 </div>
               );
             })}
+
+            {extensions.length > 0 && (
+              <div data-testid="record-extensions" style={{ marginTop: milestones.length > 0 ? '0.2rem' : 0 }}>
+                <p
+                  className="dm-kicker"
+                  style={{ margin: '0 0 0.4rem', fontSize: '0.6rem', color: '#64748b' }}
+                >
+                  Extended their own records
+                </p>
+                <div style={{ display: 'grid', gap: '0.3rem' }}>
+                  {extensions.map(record => {
+                    const mine = record.is_my_club === true;
+                    return (
+                      <div
+                        key={record.record_id ?? record.record_type}
+                        data-broadcast-proof-source={record.proof_source ?? `record:${record.record_type}`}
+                        data-my-club={mine ? 'true' : 'false'}
+                        data-testid="record-extension-row"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'baseline',
+                          gap: '0.6rem',
+                          flexWrap: 'wrap',
+                          padding: '0.4rem 0.7rem',
+                          background: 'rgba(10,18,32,0.6)',
+                          border: '1px solid rgba(30,41,59,0.7)',
+                          borderRadius: '4px',
+                          fontSize: '0.76rem',
+                        }}
+                      >
+                        <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{record.holder_name}</span>
+                        <span style={{ color: '#94a3b8' }}>
+                          extends their own {titleize(record.record_type).toLowerCase()} mark
+                        </span>
+                        <span
+                          style={{
+                            fontFamily: 'JetBrains Mono, monospace',
+                            fontSize: '0.72rem',
+                            color: '#cbd5e1',
+                            marginLeft: 'auto',
+                          }}
+                        >
+                          {formatValue(record.previous_value)}{' → '}
+                          <strong style={{ color: '#34d399' }}>{formatValue(record.new_value)}</strong>
+                        </span>
+                        {mine && (
+                          <span
+                            style={{
+                              fontSize: '0.54rem',
+                              fontWeight: 900,
+                              letterSpacing: '0.08em',
+                              textTransform: 'uppercase',
+                              padding: '0.1rem 0.35rem',
+                              borderRadius: '999px',
+                              background: 'rgba(251,191,36,0.16)',
+                              color: '#fbbf24',
+                            }}
+                          >
+                            Your Club
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+          );
+        })()}
       </article>
     </BeatShell>
   );
