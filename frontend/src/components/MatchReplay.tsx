@@ -448,7 +448,7 @@ const OfficialRulesPanel = ({ data }: { data: MatchReplayResponse }) => {
         <strong>{rulesetDisplayName(official.ruleset, 'short')}</strong>
       </div>
       <div>
-        <span title="The officiating mode in force when the match ended. No Blocking is the official endgame call — announced by the broadcast, not yet outcome-enforced.">MODE</span>
+        <span title="The officiating mode in force when the match ended. No Blocking is the official endgame call — once active, held balls stop blocking throws and play runs until someone wins the game.">MODE</span>
         <strong>{humanizeOfficialToken(official.mode)}</strong>
       </div>
       <div>

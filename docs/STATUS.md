@@ -13,11 +13,15 @@ visual implementation, briefs 4.1-4.8) is **implemented on main** and was
 **V16 Contested Offseason is SHIPPED (2026-06-10)** — all seven plan tasks
 (`docs/specs/2026-06-09-v16-contested-offseason-sprint-plan.md`; retro:
 `docs/retrospectives/2026-06-10-v16-contested-offseason-retrospective.md`).
-**V17 Official Engine Truth is IN PROGRESS** — the greenlit post-V16 backlog
-was sequenced into milestones V17–V21 on 2026-06-10
+**V17 Official Engine Truth is SHIPPED (2026-06-10)** — the greenlit
+post-V16 backlog was sequenced into milestones V17–V21
 (`docs/specs/2026-06-10-post-v16-greenlit-backlog-sequencing-plan.md`,
-commit `e235326`); V17 Task 1 (catch-economy retune) is shipped (entry
-below), WT-20 enforcement is next.
+commit `e235326`); Task 1 catch-economy retune (`2dfc4a0`) and Task 2
+WT-20 enforcement + draw texture (`bb07fda`) are on main with the
+verification sweep (retro:
+`docs/retrospectives/2026-06-10-v17-official-engine-truth-retrospective.md`).
+Next milestone per the sequencing plan: **V18 Development & Mortality**
+(dev-ceiling overhaul, vet seeding, Monte Carlo re-run).
 
 ## Current Phase
 
@@ -104,9 +108,17 @@ before implementation.
   Power double-dipping) — recorded as a V19 design item, since the
   roles/stamina/tactical_iq wiring will reshape this economy anyway. WT-7 +
   watchability pins re-captured (70v63 favorite now 22/24 — best-of-13
-  aggregation; seed-4242: 8-4 over 12 games). Verification: 103 tests across
-  the 11 affected files green (incl. 11 new WT-20 gates), full suite at
-  commit time, `npm run build` + `npm run lint` clean.
+  aggregation; seed-4242: 8-4 over 12 games). Verification: full
+  `python -m pytest -q` green (**1,363 tests**, incl. 11 new WT-20 gates;
+  the first full run caught a latent cloth equal-ball-discretion crash the
+  new lifecycle exposed — fixed in the verification commit); `npm run
+  build` + `npm run lint` clean; targeted Playwright **9/9** (chromium,
+  official replay/parity/aftermath/wt22/tier1/v13/maximized specs); live
+  prod-server browser walk on a fresh official-foam career (win + explicit
+  LOSS aftermath, 530-event replay with honest BLOCKED events, enforced
+  rush note, zero console errors; two stale "not yet outcome-enforced" copy
+  surfaces found and fixed in the walk; walk/e2e saves purged). V17 retro:
+  `docs/retrospectives/2026-06-10-v17-official-engine-truth-retrospective.md`.
 - **V17 Task 1 — Official catch-economy retune** (2026-06-10) - the official
   engine's throw resolution now shades catchability by throw quality
   (`official_resolution._CATCH_THROW_QUALITY_SLOPE = 2.0`, new) and rebalances
