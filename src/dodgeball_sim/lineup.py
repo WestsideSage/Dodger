@@ -45,14 +45,41 @@ _ROLE_LIABILITIES = {
     for slot, prefs in COURT_SLOT_PREFERENCES.items()
 }
 
+# V19a: the disclosed engine effect of slot-role fit, in normalized rating
+# units (+0.03 = +3 sheet points on every action stat while seated right).
+# Bonus-only — a mismatched seat costs the foregone bonus, never a hidden
+# penalty (the 2026-06-09 audit's "liability fiction" stays dead). Both
+# shipping engines consume this map at match start.
+ROLE_FIT_BONUS = 0.03
+
+
+def role_fit_bonuses(
+    starters_groups: Sequence[Sequence[str]],
+    player_lookup,
+    bonus: float = ROLE_FIT_BONUS,
+) -> dict:
+    """Per-player fit bonus for starters seated in a fitting court role."""
+    bonuses: dict = {}
+    for starters in starters_groups:
+        for slot, pid in enumerate(starters):
+            prefs = COURT_SLOT_PREFERENCES.get(slot)
+            player = player_lookup.get(pid) if hasattr(player_lookup, "get") else None
+            if player is None:
+                continue
+            if prefs and slot_accepts(player.archetype, prefs):
+                bonuses[pid] = bonus
+    return bonuses
+
 
 def check_lineup_liabilities(roster: Sequence[Player], lineup_ids: Sequence[str]) -> List[str]:
     """Advisory role-fit notes for the first six slots.
 
-    HONESTY (2026-06-09 audit): no shipping engine consumes slot-role fit —
-    only the retired legacy ``MatchEngine`` applied liability penalties. These
-    strings are advisory composition notes, and every surface that renders
-    them must keep that framing (no claimed in-match penalty).
+    HONESTY (2026-06-09 audit; V19a update 2026-06-10): both shipping engines
+    now consume slot-role fit through ``role_fit_bonuses`` — a FITTING seat
+    earns a small bonus on every action stat. There is still NO penalty for a
+    mismatch (the old "liability" framing stays dead); a mismatch costs only
+    the foregone bonus, so these notes describe a real but bonus-only
+    tradeoff.
     """
     players_by_id = {player.id: player for player in roster}
     starters = [players_by_id[pid] for pid in lineup_ids[:STARTERS_COUNT] if pid in players_by_id]
@@ -244,6 +271,7 @@ class LineupResolver:
 
 __all__ = [
     "COURT_SLOT_PREFERENCES",
+    "ROLE_FIT_BONUS",
     "STARTERS_COUNT",
     "LineupResolver",
     "LineupViolation",
@@ -253,5 +281,6 @@ __all__ = [
     "check_lineup_liabilities",
     "is_liability",
     "optimize_ai_lineup",
+    "role_fit_bonuses",
     "slot_accepts",
 ]

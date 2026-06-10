@@ -240,10 +240,39 @@ def test_uniform_even_games_no_longer_stall_to_the_tick_cap():
 
 def test_no_blocking_activation_says_balls_do_not_reset():
     """Sourced: 'Balls do not reset.' The pre-WT-20 activation hardcoded an
-    unsourced three_per_side reset."""
+    unsourced three_per_side reset.
+
+    Fixture re-derived for V19a: the engine consumers (tiq catch-timing,
+    role fit, stamina) sped up even-63 uniform games enough that none
+    survives to the 180s line any more, so the sweep uses a DEFENSIVE
+    stall shape (low throw / high dodge+catch) — exactly the matchup the
+    No Blocking rule exists to break (25/30 seeds activate)."""
+    from dataclasses import replace as dc_replace
+
     found = 0
-    for seed in range(20):
-        _, res = _run_game(seed)
+    for seed in range(8):
+        mi = make_match_input(seed=seed, rating_a=63.0, rating_b=63.0)
+        lookup = {
+            pid: dc_replace(
+                p,
+                ratings=dc_replace(
+                    p.ratings, accuracy=42.0, power=42.0, dodge=88.0, catch=80.0
+                ),
+            )
+            for pid, p in mi.player_lookup.items()
+        }
+        res = run_autonomous_game(
+            profile=_PROFILE,
+            match_id=mi.match_id,
+            team_a_id=mi.team_a_id,
+            team_b_id=mi.team_b_id,
+            starters_a=mi.starters_a,
+            starters_b=mi.starters_b,
+            player_lookup=lookup,
+            policy_a=mi.policy_a,
+            policy_b=mi.policy_b,
+            seed=seed,
+        )
         for ev in res.events:
             if ev.kind == OfficialEventKind.NO_BLOCKING:
                 found += 1

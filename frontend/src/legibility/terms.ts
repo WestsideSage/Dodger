@@ -178,18 +178,17 @@ export const TERMS = {
     kind: 'flavor',
   },
   // --- Lineup ---
-  // HONESTY (2026-06-09 audit; updated WT-20 2026-06-10): role labels
-  // (Captain → Utility) are advisory fit notes — no shipping engine applies a
-  // role bonus or penalty for archetype-in-slot fit. Slot ORDER gained one
-  // real official-career effect in WT-20: when Opening Rush Target is
-  // "Nearest", the first slots secure the designated balls (holders are the
-  // early throwers and the held-ball blockers); other Target options
-  // re-order holders by power/overall instead. Which six you field is still
-  // the bigger lever.
+  // HONESTY (2026-06-09 audit; WT-20; V19a 2026-06-10): role fit is now a
+  // REAL engine effect in both rulesets — a starter whose archetype fits
+  // their seat (slots 1-4 carry archetype preferences) plays +3 on every
+  // action stat (lineup.role_fit_bonuses). Bonus-only: a mismatched seat
+  // costs the foregone bonus, never a hidden penalty. Slot ORDER also keeps
+  // its WT-20 effect: rush Target orders who secures the opening balls /
+  // sprints (officials and rec).
   'lineup.slot_order': {
     label: 'Slot Order',
     plain: 'The sequence of your six starters from Captain (slot 1) through Utility (slot 6).',
-    why: 'Role labels are advisory fit notes — the engine applies no role bonus or penalty. Order has one real effect: opening-ball assignment (on official careers your first slots secure the designated balls when Opening Rush Target is "Nearest"; holders are the early throwers and blockers). Which six you field is still the bigger lever. Swap a bench player in by clicking a slot, then a bench card.',
+    why: 'Role fit is mechanical: a starter whose archetype fits their seat (slots 1-4) plays +3 on every action stat — bonus-only, a mismatch just forgoes it. Order also sets the opening rush: your first slots secure the designated balls when Rush Target is "Nearest" (other Target options re-order by power/overall). Swap a bench player in by clicking a slot, then a bench card.',
     kind: 'mechanical',
   },
   // --- Department orders ---

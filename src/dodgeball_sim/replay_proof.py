@@ -680,13 +680,14 @@ def _liability_items(
     for label, player_id in (("Thrower", thrower_id), ("Target", target_id)):
         liability = liability_map.get(player_id)
         if liability and liability.get("is_liability"):
-            # ADR 0002 (2026-06-09 audit): no shipping engine applies a role
-            # penalty — slot-role fit is an advisory note, and this copy must
-            # never claim a mechanical "liability penalty" that does not exist
-            # (only the retired legacy MatchEngine ever applied one).
+            # ADR 0002 (2026-06-09 audit; V19a update 2026-06-10): both
+            # shipping engines now grant a small fit BONUS to a starter whose
+            # archetype fits their seat (lineup.role_fit_bonuses). There is
+            # still no penalty — a mismatch forgoes the bonus — so this copy
+            # must never claim a "liability penalty".
             items.append(
                 f"{label} was fielded out of role as a mismatched {liability['role_name']} "
-                f"({liability['archetype']} archetype) — advisory fit note; the engine applies no role penalty."
+                f"({liability['archetype']} archetype) — forgoes the role-fit bonus; the engine applies no penalty."
             )
     return items
 

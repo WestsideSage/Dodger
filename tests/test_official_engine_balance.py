@@ -87,23 +87,28 @@ _WT7_RATING_B = 63.0
 # gate would emit with no cap). Measured cap-independently by counting the
 # engine's CATCH_QUEUE return_on_catch events (the same condition the
 # pre-WT-7 baseline measured).
-_WT7_BASELINE_DRAMATIC_MEAN = 27.5417
-# Post-WT-20 winner_team_id sequence over _WT7_SEEDS — must be byte-identical
-# under presentation-only changes (the WT-7 cap changes no outcome).
+# RE-CAPTURED 2026-06-10 (third time, V19a engine consumers): stamina
+# erosion, tactical_iq timing/read, and slot-role fit are owner-greenlit
+# outcome changes (V19 sprint plan), so the frozen sweep values moved.
+_WT7_BASELINE_DRAMATIC_MEAN = 24.75
+# Post-V19a winner_team_id sequence over _WT7_SEEDS — must be byte-identical
+# under presentation-only changes (the WT-7 cap changes no outcome). The +7
+# OVR favorite now takes all 24 (the two WT-20-era draws resolved — the V19a
+# consumers express the edge slightly more reliably).
 _WT7_BASELINE_WINNERS = [
     "fav", "fav", "fav", "fav", "fav", "fav", "fav", "fav", "fav", "fav",
-    "fav", "fav", "fav", "fav", "fav", "fav", "fav", None, "fav", None,
+    "fav", "fav", "fav", "fav", "fav", "fav", "fav", "fav", "fav", "fav",
     "fav", "fav", "fav", "fav",
 ]
-# Post-WT-20 totals for the non-DRAMATIC moment kinds over _WT7_SEEDS.
+# Post-V19a totals for the non-DRAMATIC moment kinds over _WT7_SEEDS.
 # Gating only the DramaticCatch append must leave these untouched; in
 # particular `comeback` is direct proof the comeback_catches increment still
 # fires on every qualifying catch (it is keyed off the same
 # catch_own <= catch_opp guard the gate reuses).
 _WT7_BASELINE_OTHER_KINDS = {
-    "late_game_escape": 298,
-    "comeback": 61,
-    "one_v_one_finale": 42,
+    "late_game_escape": 316,
+    "comeback": 58,
+    "one_v_one_finale": 44,
 }
 
 

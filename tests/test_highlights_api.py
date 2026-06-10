@@ -13,7 +13,12 @@ def test_highlights_endpoint_returns_beats_with_proof_sources() -> None:
     conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.row_factory = sqlite3.Row
     create_schema(conn)
-    initialize_curated_manager_career(conn, "aurora", root_seed=20260426)
+    # Seed 20260428, not 20260426: the V19a rec-engine consumers (stamina
+    # staying power, tactical_iq timing/read, role fit, rush sprinters)
+    # shifted the old seed's week-1 match to a 2-beat reel; this seed's
+    # match produces a full >=4-beat reel so the endpoint contract stays
+    # strongly exercised.
+    initialize_curated_manager_career(conn, "aurora", root_seed=20260428)
     conn.commit()
 
     def override_db():

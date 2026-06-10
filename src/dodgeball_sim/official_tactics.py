@@ -108,6 +108,17 @@ def select_thrower(
     return scored[0][2]
 
 
+# --- V19a tactical_iq consumer (2026-06-10) -----------------------------------
+# Tactical IQ is the thrower's COURT READ: how accurately they assess which
+# opponent is actually the right target. A low-IQ thrower's per-candidate
+# read carries this much uniform error at IQ 0, scaling linearly to zero at
+# IQ 100 — high-IQ players pick the genuinely vulnerable target, low-IQ
+# players spray at whoever caught their eye. This wires the rating sheet's
+# "court awareness, timing, and play reading" claim into outcomes without
+# touching the catch economy (selection quality, not resolution math).
+_TARGET_READ_NOISE_MAX = 0.30
+
+
 def select_target(
     *,
     defense_states: Sequence[OfficialPlayerState],
@@ -115,13 +126,21 @@ def select_target(
     policy: CoachPolicy,
     recent_pressure_player_id: Optional[str],
     rng: random.Random,
+    thrower_tactical_iq: float = 50.0,
 ) -> Optional[OfficialPlayerState]:
-    """Choose an opposing target. Mirrors engine._select_target weighting."""
+    """Choose an opposing target. Mirrors engine._select_target weighting.
+
+    ``thrower_tactical_iq`` (0-100) scales the per-candidate read error —
+    see ``_TARGET_READ_NOISE_MAX``.
+    """
 
     if not defense_states:
         return None
     scored: List[Tuple[float, str, OfficialPlayerState]] = []
     noise = rng.random() * 0.05
+    read_noise = _TARGET_READ_NOISE_MAX * (
+        1.0 - max(0.0, min(100.0, float(thrower_tactical_iq))) / 100.0
+    )
     for state in defense_states:
         player = player_lookup[state.player_id]
         normalized_overall = player.overall_skill() / 100.0
@@ -132,7 +151,7 @@ def select_target(
             vulnerability=vulnerability,
             is_recent_pressure_target=state.player_id == recent_pressure_player_id,
         )
-        score = base + noise * (rng.random() - 0.5)
+        score = base + noise * (rng.random() - 0.5) + read_noise * (rng.random() - 0.5)
         scored.append((score, state.player_id, state))
     scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
     return scored[0][2]

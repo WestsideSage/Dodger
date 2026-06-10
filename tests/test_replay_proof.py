@@ -105,11 +105,13 @@ def test_replay_proof_uses_narrative_pack_language_for_saved_context():
     assert any("opening-rush commitment" in item for item in event["tactic_context"]["items"])
     assert any("synchronized attack triggered" in item.lower() for item in event["tactic_context"]["items"])
     assert any("High fatigue" in item for item in event["fatigue"]["items"])
-    # 2026-06-09 audit: the note must state the advisory fit fact WITHOUT
-    # claiming a "liability penalty" — no shipping engine applies one.
+    # 2026-06-09 audit (V19a update): both engines now grant a fit BONUS to
+    # fitting seats (lineup.role_fit_bonuses); a mismatch forgoes it. The
+    # note states that truth WITHOUT claiming a "liability penalty" — no
+    # shipping engine applies one.
     assert event["liability_context"]["items"] == [
         "Thrower was fielded out of role as a mismatched Captain (Sharpshooter archetype) "
-        "— advisory fit note; the engine applies no role penalty."
+        "— forgoes the role-fit bonus; the engine applies no penalty."
     ]
 
 

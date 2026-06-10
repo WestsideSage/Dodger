@@ -50,9 +50,22 @@ scarcity (trajectory-gated elite tiers: Elite 0.75/class, Generational ~1
 per 4-6 classes and the label IS the ≥96 guarantee; NORMAL-72 and
 conversion-70 floors removed; league S10 mean OVR 88.9 → 82.6 with delivery
 still 96-100%; contested BASE re-tuned 85 → 79, witnesses 7/11; gated by
-`tests/test_v19_ceiling_scarcity.py`). Remaining: V19a engine consumers
-(slot roles, stamina, tactical_iq, rec rush targeting), V19b staff/orders,
-promises, week-1 scouting intel.
+`tests/test_v19_ceiling_scarcity.py`). **V19a engine consumers
+SHIPPED 2026-06-10**: stamina (late-match erosion on officials /
+fatigue staying-power on rec — measured +12 → 54.8% / 52.2% vs ~dead
+before), tactical_iq (targeting read + release timing + catch-timing —
+58.0% / 54.0% vs dead), slot-role fit (+3 on every action stat in a
+fitting seat, bonus-only — no liability fiction), and rec rush targeting
+(rush_target orders who sprints; the proximity modifier the telemetry
+always claimed now lands). Catch stays the premium skill (89.5%); the
+three identity traits stay honestly dead on officials and
+invariance-pinned. Dead-attribute pins INVERTED to consumer pins
+(`tests/test_attribute_consumers.py`); WT-7 winners (24/24), seed-4242
+watchability (13-0/13), highlights fixture, rec sanity probe, and the
+WT-20 No-Blocking activation fixture re-derived as a documented
+intentional outcome change (V19 sprint plan has all BEFORE/AFTER
+matrices). Remaining: V19b staff/orders, promises revive, week-1
+scouting intel.
 
 ## Current Phase
 

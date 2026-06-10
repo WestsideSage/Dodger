@@ -72,6 +72,87 @@ change, dead-attribute invariance pins in `tests/test_attribute_consumers.py`
 FLIP to consumer pins (same-seed invariance must now FAIL for wired stats —
 the pin inverts), dynasty health gate green.
 
+### V19a measurements (2026-06-10 — SHIPPED)
+
+**Implemented consumers** (both engines unless noted):
+
+1. **Stamina — "staying power."** Officials: action stats erode with MATCH
+   progress scaled by (1 − stamina/100)
+   (`official_engine._STAMINA_EROSION_MAX = 0.18`; a stamina-100 player
+   never erodes). Rec: stamina governs how much accumulated fatigue
+   degrades performance (`fatigue.effectiveness(state, stamina=…)`;
+   stamina-50 reproduces the legacy curve exactly). Distinct from
+   `conditioning_curve` (accumulation rate) — no double-pricing.
+2. **Tactical_iq — "court awareness, timing, and play reading."** Three
+   disclosed components: targeting-read noise scaling (low-IQ throwers
+   spray at the wrong target — `official_tactics._TARGET_READ_NOISE_MAX`,
+   mirrored in `rec_engine._TARGET_READ_NOISE_MAX`), a small release-window
+   on-target term, and the load-bearing one: a well-TIMED throw is harder
+   to CATCH (`_TIQ_TIMING_CATCH` — the same defensive-economy channel V17
+   gave accuracy). Iteration note: timing-into-on-target alone could not
+   separate IQ from baseline at any sane slope because an on-target throw
+   is only marginally +EV in the V17 catch economy; the targeting read
+   alone cannot express in the uniform-opponent probe fixture (identical
+   targets — the V17 uniform-fixture trap, again).
+3. **Slot-role fit** (`lineup.role_fit_bonuses`, shared): a starter whose
+   archetype fits their seat (slots 1–4 carry preferences) plays **+3 on
+   every action stat**. Bonus-only — a mismatch forgoes the bonus, never a
+   penalty; the "liability fiction" stays dead and the replay/terms copy
+   now states the bonus truth.
+4. **Rec rush targeting**: `rush_target` orders who SPRINTS (Nearest = slot
+   order / Strongest Side = power / Center = overall — the official WT-20
+   semantics), and only sprinters may take the opening-tick throws; the
+   rush proximity modifier the event telemetry always reported now actually
+   lands on the throw. Policy Editor's announced-only advisory replaced
+   with the enforced note.
+
+**Attribute matrix, BEFORE → AFTER (+12 vs uniform 63, 400 trials/attr):**
+
+| Attribute | Official BEFORE | Official AFTER | Rec BEFORE | Rec AFTER |
+|---|---|---|---|---|
+| baseline | 47.5 | 48.0 | 50.5 | 49.8 |
+| accuracy | 78.2 | 72.8 | 49.8 | 50.0 |
+| power | 70.5 | 68.0 | 45.0 | 49.5 |
+| dodge | 61.8 | 70.0 | 51.0 | 53.2 |
+| catch | 85.8 | **89.5** (premium holds) | 56.5 | 60.5 |
+| **stamina** | 42.8 (dead) | **54.8** | 47.0 (dead) | **52.2** |
+| **tactical_iq** | 48.0 (dead) | **58.0** | 48.8 (dead) | **54.0** |
+| catch_courage | 45.2 (dead) | 49.2 (dead, pinned) | 53.2 | 52.5 |
+| throw_selection_iq | 44.0 (dead) | 46.0 (dead, pinned) | 45.8 | 46.5 |
+| conditioning_curve | 45.0 (dead) | 45.5 (dead, pinned) | 51.7 | 46.8 |
+
+Every displayed stat ≥ even baseline within CI; stamina/tiq are real
+secondary stats; catch stays the premium skill; the three identity traits
+remain HONESTLY dead on officials and stay invariance-pinned. Tactic
+spreads stay trap-free (official postures 45.8–48.2 vs 43.5 baseline;
+approaches 41.5–47.0; rush axes within CI; the wide rec posture spread —
+go_for 61.3 / play_safe 36.8 — is pre-existing rec economics, unchanged).
+
+**Pin churn (documented intentional outcome change per AGENTS.md):** WT-7
+frozen winners (favorite now 24/24, was 22+2 draws; uncapped dramatic mean
+27.54 → 24.75; moment-kind totals re-captured), watchability seed-4242 pin
+(8-4/12 → 13-0/13), highlights fixture re-seeded (20260426 → 20260428 to
+keep the ≥4-beat contract exercised), rec sanity probe at 40 matches (1v1
+finale left the default 25-match seed window).
+`tests/test_attribute_consumers.py` inverted: consumer pins now PROVE
+stamina/tiq/role-fit/rush-target consumption in both drivers; power stays
+the one pinned-dead rec attribute (SPREAD targeting), disclosed per-ruleset.
+Known rec wart (pre-existing, out of V19a scope): rec ACCURACY byte-diverges
+but measures ~baseline win impact — the rec connect math saturates; left
+for a rec-engine pass.
+
+Reachability note (disclosed): the V19a consumers sped up even-63 uniform
+games enough that none survives to the 180s No Blocking line any more
+(pre-V19a a tail of slow even games did). No Blocking still activates
+exactly where its design role lives — defensive stall shapes (low throw /
+high dodge+catch) activate on 25/30 probed seeds — and the WT-20 activation
+test was re-derived onto that fixture.
+
+**Dynasty spot check (engaged 8×10, official_foam):** title share 15.0%
+(parity 16.7%), six distinct champions (8–23 titles each), ceiling delivery
+intact (user 100%/100%, AI 95%/97%), mortality unchanged (first retirement
+3.2, 1.80/season) — every V18 gate holds under the V19a engine.
+
 **V19b — management lanes** (no engine churn; each lands with its own
 measurement):
 

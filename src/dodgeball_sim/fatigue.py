@@ -66,12 +66,21 @@ def recover(
     return FatigueState(value=new_value)
 
 
-def effectiveness(state: FatigueState) -> float:
+def effectiveness(state: FatigueState, *, stamina: float = 50.0) -> float:
     """Return an effectiveness multiplier in (0, 1] for throws/dodges.
 
-    Linear-ish curve: fresh = 1.0, gassed threshold = ~0.75, fully gassed = 0.4.
+    Linear-ish curve: fresh = 1.0, fully gassed = ~0.4 at average stamina.
+
+    V19a: ``stamina`` (0-100) governs how much accumulated fatigue actually
+    degrades performance — "staying power": a high-stamina player performs
+    near their sheet even when gassed, a low-stamina player collapses harder.
+    At stamina 50 the curve is exactly the pre-V19a one, so legacy callers
+    are unchanged. (Distinct from ``conditioning_curve``, which governs how
+    FAST fatigue accumulates — no double-pricing.)
     """
-    return max(0.4, 1.0 - 0.6 * state.value)
+    stamina_norm = max(0.0, min(100.0, float(stamina))) / 100.0
+    degradation = 0.6 * (1.4 - 0.8 * stamina_norm)
+    return max(0.3, 1.0 - degradation * state.value)
 
 
 __all__ = [

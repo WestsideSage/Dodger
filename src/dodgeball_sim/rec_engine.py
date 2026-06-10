@@ -21,6 +21,7 @@ from .ball_state import BallState, OfficialBall
 from .catch_queue import CatchQueueState, enqueue_out_player, return_player_on_catch
 from .engine_driver import DriverMatchInput, DriverMatchOutput
 from .fatigue import FatigueParams, FatigueState, accumulate, effectiveness, recover
+from .lineup import role_fit_bonuses
 from .flood_throws import FloodThrowTracker, PendingThrow
 from .models import (
     Approach,
@@ -169,6 +170,8 @@ class _MatchRuntime:
     comeback_catches: Dict[str, int] = field(default_factory=dict)
     recent_targets_by_team: Dict[str, List[str]] = field(default_factory=dict)
     opening_rush_by_team: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    # V19a: per-player slot-role fit bonuses (lineup.role_fit_bonuses).
+    role_fit: Dict[str, float] = field(default_factory=dict)
 
 
 class RecTier1Driver:
@@ -297,16 +300,21 @@ class RecTier1Driver:
             },
             comeback_catches={mi.team_a_id: 0, mi.team_b_id: 0},
             recent_targets_by_team={mi.team_a_id: [], mi.team_b_id: []},
+            role_fit=role_fit_bonuses(
+                (mi.starters_a, mi.starters_b), mi.player_lookup
+            ),
             opening_rush_by_team={
                 mi.team_a_id: self._opening_rush(
                     team_id=mi.team_a_id,
                     starters=mi.starters_a,
                     policy=self._policy_for_team(mi, mi.team_a_id),
+                    player_lookup=mi.player_lookup,
                 ),
                 mi.team_b_id: self._opening_rush(
                     team_id=mi.team_b_id,
                     starters=mi.starters_b,
                     policy=self._policy_for_team(mi, mi.team_b_id),
+                    player_lookup=mi.player_lookup,
                 ),
             },
         )
@@ -508,10 +516,18 @@ class RecTier1Driver:
             opening_sprinters = set(opening_rush.get("sprinter_ids", []))
             candidates = []
             for p in active:
-                if rt.tick == 0 and policy.rush_commit == OpeningRushCommit.HOLD_BACK and p.player_id not in opening_sprinters:
+                # V19a: the opening tick belongs to the SPRINTERS — and who
+                # sprints is now ordered by rush_target (see _opening_rush),
+                # so the targeting knob decides who takes the opening throws
+                # (mirrors the official engine's WT-20 holder semantics).
+                # Pre-V19a only HOLD_BACK gated here; ALL_IN sprints everyone
+                # so its tick-0 behavior is unchanged.
+                if rt.tick == 0 and p.player_id not in opening_sprinters:
                     continue
-                eff = effectiveness(rt.fatigue[p.player_id])
                 player = mi.player_lookup[p.player_id]
+                eff = effectiveness(
+                    rt.fatigue[p.player_id], stamina=player.ratings.stamina
+                )
                 expected_value = (player.ratings.accuracy / 100.0) * eff
                 if not _should_throw_under_iq(
                     iq=player.ratings.throw_selection_iq,
@@ -556,6 +572,9 @@ class RecTier1Driver:
             policy=offense_policy,
             ball_holder_ids=self._ball_holder_ids(rt, opp_team),
             recent_targets=rt.recent_targets_by_team.get(opp_team, []),
+            # V19a: the thrower's tactical IQ sets their court-read quality.
+            thrower_tactical_iq=thrower.ratings.tactical_iq,
+            rng=rt.rng,
         )
         target_state = target_scores[0][2]
         target = mi.player_lookup[target_state.player_id]
@@ -569,8 +588,14 @@ class RecTier1Driver:
             ],
         ][:6]
 
-        thrower_eff = effectiveness(rt.fatigue[thrower_id])
-        target_eff = effectiveness(rt.fatigue[target_state.player_id])
+        # V19a: stamina governs how much fatigue degrades performance.
+        thrower_eff = effectiveness(
+            rt.fatigue[thrower_id], stamina=thrower.ratings.stamina
+        )
+        target_eff = effectiveness(
+            rt.fatigue[target_state.player_id],
+            stamina=mi.player_lookup[target_state.player_id].ratings.stamina,
+        )
         rush_context = self._rush_context_for_throw(rt, mi, thrower_team_id, thrower_id)
         sync_context = {
             "is_synced": is_synced,
@@ -618,9 +643,37 @@ class RecTier1Driver:
             reset_on_throw_call(rt, thrower_team_id, team_a)
             return
 
-        accuracy = (thrower.ratings.accuracy / 100.0) * thrower_eff
-        dodge = (target.ratings.dodge / 100.0) * target_eff
-        catch_skill = (target.ratings.catch / 100.0) * target_eff
+        # V19a: slot-role fit shades action stats (bonus-only — see
+        # lineup.role_fit_bonuses), and the rush proximity modifier the event
+        # telemetry has always reported now actually lands on the throw
+        # (pre-V19a it was label-only).
+        thrower_fit = rt.role_fit.get(thrower_id, 0.0)
+        target_fit = rt.role_fit.get(target_state.player_id, 0.0)
+        # V19a tactical_iq timing (mirrors official_resolution._TIQ_TIMING_SLOPE
+        # at rec scale): a high-IQ thrower releases into the right window.
+        # Probe iterations: 0.10 left +12 IQ inside the baseline CI; 0.22
+        # separates it as a real secondary stat.
+        tiq_timing = 0.22 * (thrower.ratings.normalized_tactical_iq() - 0.5)
+        accuracy = min(
+            1.0,
+            (thrower.ratings.accuracy / 100.0) * thrower_eff
+            + thrower_fit
+            + tiq_timing
+            + rush_context["proximity_modifier"],
+        )
+        dodge = min(1.0, (target.ratings.dodge / 100.0) * target_eff + target_fit)
+        # V19a: a well-timed throw is also harder to CATCH (the unambiguous
+        # +EV channel — a caught throw outs the thrower), mirroring
+        # official_resolution._TIQ_TIMING_CATCH at rec scale.
+        catch_skill = max(
+            0.0,
+            min(
+                1.0,
+                (target.ratings.catch / 100.0) * target_eff
+                + target_fit
+                - 0.25 * (thrower.ratings.normalized_tactical_iq() - 0.5),
+            ),
+        )
 
         connect_roll = rt.rng.random()
         base = accuracy / max(0.0001, accuracy + (1.0 - dodge))
@@ -776,6 +829,12 @@ class RecTier1Driver:
         )
         return scored[0][2]
 
+    # V19a tactical_iq consumer — the thrower's COURT READ (mirrors
+    # official_tactics._TARGET_READ_NOISE_MAX): per-candidate read error at
+    # this amplitude for IQ 0, scaling linearly to zero at IQ 100. High-IQ
+    # throwers pick the genuinely right target; low-IQ throwers spray.
+    _TARGET_READ_NOISE_MAX = 0.30
+
     def _target_scores(
         self,
         *,
@@ -784,7 +843,14 @@ class RecTier1Driver:
         policy: CoachPolicy,
         ball_holder_ids: set[str],
         recent_targets: Sequence[str],
+        thrower_tactical_iq: float = 100.0,
+        rng: random.Random | None = None,
     ) -> list[tuple[float, str, OfficialPlayerState]]:
+        read_noise = 0.0
+        if rng is not None:
+            read_noise = self._TARGET_READ_NOISE_MAX * (
+                1.0 - max(0.0, min(100.0, float(thrower_tactical_iq))) / 100.0
+            )
         scored: list[tuple[float, str, OfficialPlayerState]] = []
         for state in defense_states:
             player = player_lookup[state.player_id]
@@ -796,6 +862,10 @@ class RecTier1Driver:
                 score = 0.7 * (1.0 if state.player_id in ball_holder_ids else 0.0) + 0.3 * base_targetability
             else:
                 score = 0.7 * (1.0 - self._recency_weight(recent_targets, state.player_id)) + 0.3 * base_targetability
+            if rng is not None:
+                # Draw consumed at every IQ (amplitude may be zero) so the
+                # RNG stream length never depends on the rating value.
+                score += read_noise * (rng.random() - 0.5)
             scored.append((score, state.player_id, state))
         scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
         return scored
@@ -806,10 +876,27 @@ class RecTier1Driver:
         team_id: str,
         starters: Sequence[str],
         policy: CoachPolicy,
+        player_lookup: Mapping[str, Player] | None = None,
     ) -> dict[str, Any]:
-        sprinter_count = min(len(starters), _OPENING_RUSH_SPRINTERS[policy.rush_commit])
-        sprinter_ids = list(starters[:sprinter_count])
-        hold_back_ids = list(starters[sprinter_count:])
+        # V19a: rush_target now ORDERS who sprints (mirrors the official
+        # engine's WT-20 holder semantics) — NEAREST keeps slot order,
+        # STRONGEST_SIDE sends the power arms, CENTER sends the best
+        # overall players. Sprinters take the opening-tick throws (see
+        # _select_throwers), so the knob is finally outcome-affecting on
+        # rec careers instead of telemetry-only.
+        ordered = list(starters)
+        if player_lookup is not None:
+            if policy.rush_target == OpeningRushTarget.STRONGEST_SIDE:
+                ordered.sort(
+                    key=lambda pid: (-player_lookup[pid].ratings.normalized_power(), pid)
+                )
+            elif policy.rush_target == OpeningRushTarget.CENTER:
+                ordered.sort(
+                    key=lambda pid: (-player_lookup[pid].overall_skill(), pid)
+                )
+        sprinter_count = min(len(ordered), _OPENING_RUSH_SPRINTERS[policy.rush_commit])
+        sprinter_ids = list(ordered[:sprinter_count])
+        hold_back_ids = list(ordered[sprinter_count:])
         prefix = (team_id or "x").lower()[0]
         if policy.rush_target == OpeningRushTarget.CENTER:
             target_pool = ("ball_center_0", "ball_center_1", "ball_center_2")
