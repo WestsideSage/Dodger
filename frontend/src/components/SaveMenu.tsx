@@ -69,12 +69,12 @@ const rulesetExplanations: Record<string, { title: string; desc: string; bullet:
   },
   official_foam: {
     title: "USA Dodgeball 2026.1 — Foam",
-    desc: "Officially-inspired foam division: six balls in play and the official catch rule (a catch eliminates the thrower and resurrects a teammate). A match is decided over multiple games, and a game point is earned only by fully eliminating the opponent. Modeled as a deterministic abstraction — the real-world live-officiating calls (No Blocking, throw clock) are announced for flavor but are not yet outcome-enforced.",
+    desc: "Officially-inspired foam division: six balls in play and the official catch rule (a catch eliminates the thrower and resurrects a teammate). A match is decided over multiple games, and a game point is earned only by fully eliminating the opponent. No Blocking is enforced: held balls block throws in regulation, and once a game passes the three-minute line that protection is stripped until someone wins. Modeled as a deterministic abstraction of the official rules.",
     bullet: "• 6v6 Format · 6 balls (3 per side) · Catch outs thrower + resurrects · 1 game point per elimination win",
   },
   official_no_sting: {
     title: "USA Dodgeball 2026.1 — No-Sting",
-    desc: "Same modeled rules as the Foam division — six balls, the official catch rule, and a game point only on full elimination. The difference is the real-world ball material (low-sting); grip, possession control, and pacing are not separately simulated. Live-officiating calls (No Blocking, throw clock) are announced but not yet outcome-enforced.",
+    desc: "Same modeled rules as the Foam division — six balls, the official catch rule, a game point only on full elimination, and enforced No Blocking (held-ball protection strips after the three-minute line). The difference is the real-world ball material (low-sting); grip, possession control, and pacing are not separately simulated.",
     bullet: "• 6v6 Format · 6 balls (3 per side) · Catch outs thrower + resurrects · 1 game point per elimination win",
   },
   official_cloth: {

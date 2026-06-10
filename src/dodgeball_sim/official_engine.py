@@ -638,7 +638,18 @@ def run_autonomous_game(
             team_b_id=team_b_id,
         )
         if discretion is not None:
-            events.append(discretion.to_official_event(match_id=match_id))
+            # WT-20 made this path reachable in autonomous play: the ball
+            # lifecycle (forfeiture + next-tick retrieval) can leave a cloth
+            # court with equal CONTROLLED balls mid-game, which triggers the
+            # equal-ball reachability discretion. Pre-WT-20 every ball stayed
+            # controlled forever, so the call (with its missing-event_id
+            # latent bug) never executed on this path. Tick-stamped id keeps
+            # repeat rulings unique within the game.
+            events.append(discretion.to_official_event(
+                event_id=f"discretion-t{ticks}",
+                match_id=match_id,
+                team_ids=(next_burden.team_id,) if next_burden.team_id else (),
+            ))
         if (
             burden_state is None
             or burden_state.team_id != next_burden.team_id
