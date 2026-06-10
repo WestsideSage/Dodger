@@ -69,29 +69,39 @@ def test_official_driver_emits_recognition_moments():
 # (catching side even-or-behind, OR a side on its last live player) WITHOUT
 # touching any outcome or the COMEBACK bookkeeping.
 #
-# The constants below were captured from the engine *before* the gate landed,
-# driving OfficialMatchEngineDriver over seeds range(24) at 70 vs 63. They are
-# the immovable reference the gate is checked against.
+# The constants below drive OfficialMatchEngineDriver over seeds range(24) at
+# 70 vs 63. They were originally captured before the WT-7 gate landed and were
+# RE-CAPTURED 2026-06-10 after the V17 catch-economy retune — an intentional,
+# owner-greenlit outcome change (docs/specs/2026-06-10-post-v16-greenlit-
+# backlog-sequencing-plan.md, V17 Task 1) that moved every frozen official
+# outcome pin. They are the immovable reference the gate is checked against
+# until the next intentional engine change.
 _WT7_SEEDS = range(24)
 _WT7_RATING_A = 70.0
 _WT7_RATING_B = 63.0
-# Pre-WT-7 mean DRAMATIC_CATCH moments per match over _WT7_SEEDS (uncapped ~24+).
-_WT7_BASELINE_DRAMATIC_MEAN = 27.75
-# Pre-WT-7 winner_team_id sequence over _WT7_SEEDS — must be byte-identical after
-# the gate, since the cap is presentation-only and changes no outcome.
+# UNCAPPED catch-and-return mean per match over _WT7_SEEDS (the moments the
+# gate would emit with no cap). Measured cap-independently by counting the
+# engine's CATCH_QUEUE return_on_catch events (the same condition the
+# pre-WT-7 baseline measured; pre-retune this was 27.75 — the retune makes
+# catches rarer, which is the point).
+_WT7_BASELINE_DRAMATIC_MEAN = 8.0417
+# Post-V17-retune winner_team_id sequence over _WT7_SEEDS — must be
+# byte-identical under presentation-only changes (the WT-7 cap changes no
+# outcome).
 _WT7_BASELINE_WINNERS = [
-    "fav", None, "fav", None, None, "fav", "fav", "fav", "dog", "fav", "fav",
-    None, None, "fav", "fav", "fav", "fav", "fav", "dog", "fav", "fav", "fav",
-    "fav", None,
+    None, "fav", None, "fav", "fav", "fav", "fav", None, "fav", None, "fav",
+    "fav", "dog", None, "fav", "dog", "dog", "fav", "fav", "fav", "fav", None,
+    None, "fav",
 ]
-# Pre-WT-7 totals for the non-DRAMATIC moment kinds over _WT7_SEEDS. Gating only
-# the DramaticCatch append must leave these untouched; in particular `comeback`
-# is direct proof the comeback_catches increment still fires on every qualifying
-# catch (it is keyed off the same catch_own <= catch_opp guard the gate reuses).
+# Post-V17-retune totals for the non-DRAMATIC moment kinds over _WT7_SEEDS.
+# Gating only the DramaticCatch append must leave these untouched; in
+# particular `comeback` is direct proof the comeback_catches increment still
+# fires on every qualifying catch (it is keyed off the same
+# catch_own <= catch_opp guard the gate reuses).
 _WT7_BASELINE_OTHER_KINDS = {
-    "late_game_escape": 116,
-    "comeback": 45,
-    "one_v_one_finale": 1,
+    "late_game_escape": 67,
+    "comeback": 8,
+    "one_v_one_finale": 4,
 }
 
 
@@ -232,6 +242,80 @@ def test_play_safe_team_still_attempts_catches():
             ):
                 catches += len(payload.get("catches"))
     assert catches > 0, "play-safe side never attempted/landed a catch across 12 matches"
+
+
+# --- V17: catch-economy retune — no displayed core skill is a liability -------
+#
+# The 2026-06-09 systems audit (§3.4) measured the pre-V17 economy at even
+# strength: +12 accuracy = 30.9% and +12 dodge = 28.2% against a 38.7%
+# baseline. p(catch|attempt) at even ratings was ~0.527 — far above the 1/3
+# EV-neutral line (a catch is a -2 swing for the throwing team vs +1 for a
+# hit) — so on-target throws FED the opponent's catch economy: two of the five
+# displayed core skills lowered your win rate. The V17 retune shades
+# catchability by throw quality (official_resolution._CATCH_THROW_QUALITY_SLOPE)
+# and rebalances _CATCH_BIAS so the even-strength catch rate sits just below
+# EV-neutral. Measured at 400 trials post-retune (probe records in the V17
+# retro): baseline 35.5%, +12 accuracy 54.2%, +12 dodge 39.2%, +12 catch
+# 62.7%, +12 power 48.2%. Seeds are fixed, so these gates are deterministic;
+# margins leave room for future seed-flow changes while any regression toward
+# the old inverted economy (accuracy/dodge ~7pp BELOW baseline) fails loudly.
+_V17_EV_TRIALS = 150
+_V17_EV_SEED_BASE = 64_000_000
+
+
+def _v17_attr_win_rate(attr: str | None) -> float:
+    from dataclasses import replace as dc_replace
+
+    driver = OfficialMatchEngineDriver()
+    wins = 0
+    for trial in range(_V17_EV_TRIALS):
+        mi = make_match_input(
+            seed=_V17_EV_SEED_BASE + trial, rating_a=63.0, rating_b=63.0
+        )
+        if attr is not None:
+            lookup = dict(mi.player_lookup)
+            for pid in mi.starters_a:
+                player = lookup[pid]
+                lookup[pid] = dc_replace(
+                    player, ratings=dc_replace(player.ratings, **{attr: 75})
+                )
+            mi = dc_replace(mi, player_lookup=lookup)
+        if driver.run(mi).winner_team_id == "fav":
+            wins += 1
+    return wins / _V17_EV_TRIALS
+
+
+def test_v17_no_displayed_core_skill_is_a_liability():
+    """+12 in any displayed core skill must never sit materially BELOW the
+    even-strength baseline — the pre-V17 economy had accuracy and dodge as
+    outright liabilities, which silently inverted every roster/recruiting
+    decision built on the displayed sheet."""
+    baseline = _v17_attr_win_rate(None)
+    accuracy = _v17_attr_win_rate("accuracy")
+    dodge = _v17_attr_win_rate("dodge")
+
+    assert accuracy >= baseline + 0.05, (
+        f"+12 accuracy ({accuracy * 100:.1f}%) no longer clearly beats the even"
+        f" baseline ({baseline * 100:.1f}%) — the catch economy has regressed"
+        " toward throw-EV-negative (see 2026-06-09 audit §3.4)"
+    )
+    assert dodge >= baseline - 0.05, (
+        f"+12 dodge ({dodge * 100:.1f}%) sits materially below the even"
+        f" baseline ({baseline * 100:.1f}%) — dodge has regressed to a"
+        " liability (see 2026-06-09 audit §3.4)"
+    )
+
+
+def test_v17_catch_remains_the_premium_skill():
+    """The retune must reduce catch's dominance, not delete the catch economy:
+    catching stays the strongest single-skill investment on officials."""
+    baseline = _v17_attr_win_rate(None)
+    catch = _v17_attr_win_rate("catch")
+    assert catch >= baseline + 0.10, (
+        f"+12 catch ({catch * 100:.1f}%) is no longer a clearly premium skill"
+        f" vs baseline ({baseline * 100:.1f}%) — the retune overshot and"
+        " removed the catch economy"
+    )
 
 
 def test_wt7_all_recognition_kinds_survive_the_cap():

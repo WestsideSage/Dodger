@@ -28,22 +28,35 @@ def _sigmoid(x: float) -> float:
     return 1.0 / (1.0 + math.exp(-x))
 
 
-# --- Catch-balance tuning (Phase 4a) -----------------------------------------
+# --- Catch-balance tuning (Phase 4a, retuned V17) -----------------------------
 # The original even-ratings catch rate (~0.65 when attempted, with everyone
 # always attempting) made a throw ~2.3x likelier to out the thrower (caught +
 # resurrect) than to score a hit. Throwing was net-negative EV, so games rarely
 # reached full elimination -> clock expiry -> 0-0 no_point draws -> ~22% draws,
 # and OVR could not express in the win curve (measured slope +3.3pp vs a +10pp
-# gate, top floor 43.7% vs 60%). These constants pull the catch rate down and
-# sharpen its rating sensitivity so the favorite's superior catch/accuracy/power
-# compounds into elimination differential instead of being swamped by a
-# coin-flip catch. The catch-outs-thrower-and-resurrects rule itself is
-# unchanged (faithful to USA Dodgeball).
+# gate, top floor 43.7% vs 60%). Phase 4a pulled the catch rate down and
+# sharpened its rating sensitivity. The catch-outs-thrower-and-resurrects rule
+# itself is unchanged (faithful to USA Dodgeball).
+#
+# V17 catch-economy retune (2026-06-10, owner-greenlit): even after Phase 4a,
+# p(catch|attempt) at even ratings was ~0.527 — above the 1/3 EV-neutral line
+# (a catch is a -2 swing vs +1 for a hit), so an on-target throw stayed
+# net-negative EV. Measured consequence (2026-06-09 systems audit §3.4):
+# +12 accuracy = MINUS 8pp win rate and +12 dodge = MINUS 10pp at even
+# strength — two of the five displayed core skills were liabilities. The fix
+# shades catchability by throw quality (_CATCH_THROW_QUALITY_SLOPE: a more
+# accurate throw is harder to catch), giving accuracy a defensive-economy
+# answer, and rebalances _CATCH_BIAS so the even-strength catch rate sits just
+# below EV-neutral. Constants chosen by deterministic grid search against the
+# decision-impact probe; see tests/test_official_engine_balance.py for the
+# non-negativity gates and docs/specs/2026-06-10-post-v16-greenlit-backlog-
+# sequencing-plan.md (V17 Task 1) for the acceptance criteria.
 _CATCH_SLOPE = 4.0
 _CATCH_POWER_WEIGHT = 0.6
-_CATCH_BIAS = 0.9
+_CATCH_THROW_QUALITY_SLOPE = 2.0
+_CATCH_BIAS = 0.7
 
-# --- Play-safe evasion shading (2026-06-09 systems audit) ---------------------
+# --- Play-safe evasion shading (2026-06-09 systems audit; retuned V17) --------
 # PLAY_SAFE declines marginal catch attempts (official_tactics._catch_thresholds
 # keeps its attempt threshold at 0.65, above the average catch band), so it
 # forgoes most of the catch economy. Before this pass the declining target got
@@ -52,10 +65,17 @@ _CATCH_BIAS = 0.9
 # bonus below applies ONLY when a play-safe defender declines the catch: the
 # posture's promised tradeoff (give up resurrections, evade better) becomes
 # real instead of a forfeit. Same RNG draw count, so every match that involves
-# no play-safe decliner replays byte-identical. Measured at even strength
-# (tools/decision_impact_probe.py fixture, 400 trials): 0.0% -> see
-# tests/test_official_engine_balance.py::test_play_safe_posture_is_not_a_forfeit.
-_PLAY_SAFE_EVASION_BONUS = 0.25
+# no play-safe decliner replays byte-identical.
+#
+# V17: the bonus was 0.25 under the old economy, where declining a catch
+# forfeited the dominant scoring resource. The catch retune made catches
+# rarer, so 0.25 overpaid — play_safe measured 50.7% vs go_for 40.2% at even
+# strength (a new dominant posture, the same legibility bug in reverse). At
+# 0.10 the posture spread is a real tradeoff (measured 250 trials/option:
+# default 40.8 / go_for 37.6 / play_safe 39.2); the forfeit floor stays
+# pinned by tests/test_official_engine_balance.py::
+# test_play_safe_posture_is_not_a_forfeit.
+_PLAY_SAFE_EVASION_BONUS = 0.10
 
 
 @dataclass(frozen=True)
@@ -81,11 +101,16 @@ def compute_throw_probabilities(
 
     # On-target: accuracy beats dodge; power slightly helps.
     p_on_target = _sigmoid(3.0 * (accuracy_eff - dodge_eff) + 0.5 * power_eff)
-    # Catch given attempt: catch rating vs power, biased down so a catch is no
-    # longer the default outcome of an on-target throw (Phase 4a). The steeper
-    # slope makes a strong catcher's edge over a weak one express more.
+    # Catch given attempt: catch rating vs throw quality (power AND accuracy),
+    # biased down so a catch is no longer the default outcome of an on-target
+    # throw (Phase 4a). The steeper catch slope makes a strong catcher's edge
+    # over a weak one express more; the throw-quality term (V17) makes an
+    # accurate throw harder to catch, so accuracy buys catch-economy defense
+    # instead of feeding the opponent's catch counterplay.
     p_catch_given_attempt = _sigmoid(
-        _CATCH_SLOPE * (catch_eff - _CATCH_POWER_WEIGHT * power_eff) - _CATCH_BIAS
+        _CATCH_SLOPE * (catch_eff - _CATCH_POWER_WEIGHT * power_eff)
+        - _CATCH_THROW_QUALITY_SLOPE * accuracy_eff
+        - _CATCH_BIAS
     )
     return ThrowProbabilities(
         p_on_target=p_on_target,

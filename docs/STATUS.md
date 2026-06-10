@@ -4,19 +4,20 @@ Canonical snapshot of what is actually built and what is still open. When code
 state changes materially, update this file in the same pass. If this file and
 the source disagree, the source wins - then fix this file.
 
-Last updated: 2026-06-10. `main` / `origin/main` are at `0c9bf28`
-(`feat: V16 Contested Offseason`, child of `5668471`, which followed the
-`2969271` Task 0 sweep that landed the six 2026-06-09 audit passes — the
-"Task 0 sweep" entries below).
+Last updated: 2026-06-10. `main` / `origin/main`: V16 shipped at `0c9bf28`
+(child of `5668471`, which followed the `2969271` Task 0 sweep that landed
+the six 2026-06-09 audit passes — the "Task 0 sweep" entries below).
 Master-roadmap Phases 0-7 are on main. Section 4 (the Phase 8 desktop-first
 visual implementation, briefs 4.1-4.8) is **implemented on main** and was
 **browser-verified 2026-06-09** - see the "Shipped And Verified" entries.
 **V16 Contested Offseason is SHIPPED (2026-06-10)** — all seven plan tasks
 (`docs/specs/2026-06-09-v16-contested-offseason-sprint-plan.md`; retro:
 `docs/retrospectives/2026-06-10-v16-contested-offseason-retrospective.md`).
-The focus remains refinement and gameplay optimization, not unrelated new
-systems; the next milestone comes from the greenlit post-V16 backlog in
-`docs/fable/2026-06-10-owner-decision-log.md`.
+**V17 Official Engine Truth is IN PROGRESS** — the greenlit post-V16 backlog
+was sequenced into milestones V17–V21 on 2026-06-10
+(`docs/specs/2026-06-10-post-v16-greenlit-backlog-sequencing-plan.md`,
+commit `e235326`); V17 Task 1 (catch-economy retune) is shipped (entry
+below), WT-20 enforcement is next.
 
 ## Current Phase
 
@@ -47,6 +48,39 @@ before implementation.
 
 ## Shipped And Verified
 
+- **V17 Task 1 — Official catch-economy retune** (2026-06-10) - the official
+  engine's throw resolution now shades catchability by throw quality
+  (`official_resolution._CATCH_THROW_QUALITY_SLOPE = 2.0`, new) and rebalances
+  `_CATCH_BIAS` 0.9 → 0.7, dropping even-strength p(catch|attempt) from ~0.527
+  — far above the 1/3 EV-neutral line (a catch is a −2 swing vs +1 for a hit),
+  which made an on-target throw net-NEGATIVE EV and turned two of the five
+  displayed core skills into measured liabilities — to just under EV-neutral.
+  Measured BEFORE → AFTER (`tools/decision_impact_probe.py`, 400 trials/attr,
+  even strength, baseline 38.2 → 35.5): **+12 accuracy 31.2% → 54.2%**,
+  **+12 dodge 30.5% → 39.2%**, +12 catch 71.5% → 62.7% (still clearly the
+  premium skill; dominance reduced), +12 power 52.8% → 48.2%. OVR curve
+  (`tier_engine_health_probe`, 400/rung): slope +36.0pp → **+44.8pp**, +72
+  floor 72.0% → **79.8%**, draws across rungs 23.1% → 22.2%, median match
+  length 241 → 183 events. Champion parity (40 seeds × 2 seasons,
+  official_foam): Defensive Specialist 65.0% → **37.5%** / Power Throwers
+  2.5% → **32.5%** / Balanced Rebuild 32.5% → 30.0% — near-parity, closing
+  the audit's defense-skew finding. `_PLAY_SAFE_EVASION_BONUS` 0.25 → 0.10
+  in the same change: the old value was compensation priced for the old
+  economy and made play_safe the NEW dominant posture post-retune (50.7% vs
+  go_for 40.2%); at 0.10 the posture spread is a real tradeoff (36.2–43.2
+  across options vs 41.2 baseline, 400 trials). All frozen official-outcome
+  pins re-captured as a documented intentional outcome change (AGENTS.md
+  golden-log rule): WT-7 winners/kind-totals in
+  `tests/test_official_engine_balance.py` (the uncapped dramatic baseline is
+  now measured cap-independently from CATCH_QUEUE `return_on_catch` events:
+  8.04/match), and the watchability seed-4242 pin (8-0 over 9 games → 11-0
+  over 12). New permanent gates:
+  `test_v17_no_displayed_core_skill_is_a_liability` (accuracy/dodge must
+  never sit materially below the even baseline again) and
+  `test_v17_catch_remains_the_premium_skill` (the retune must not delete the
+  catch economy). Verification: full `python -m pytest -q` green (1,352
+  tests, incl. the re-captured pins and the dynasty health gate against the
+  retuned engine); no rec-engine changes.
 - **V16 — Contested Offseason** (2026-06-10) - the offseason class is a
   market: prospect picks resolve through the contested V2-B round
   (`recruitment.conduct_recruitment_round`, first production caller), where
