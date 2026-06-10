@@ -281,9 +281,16 @@ constants — this is the milestone AFTER state):
    auto-pilot default (creation lineup order, signings seated at slot 6) is
    the V19 candidate: fast-forward should re-seat the fielded six (or
    disclose that it won't).
-2. **S5 retirement cohort wave** (~5/league in one offseason): the seeded
-   31–33 vets age out together in a fresh league. It washes out by S6 and
-   only affects new careers' first cycle; acceptable texture, noted.
+2. **S5 retirement cohort wave** — RESOLVED same-day (owner delegated the
+   fix): Captain band widened 31–33 → 30–34 and Anchor 28–31 → 27–31, so the
+   age-36/38 gate cohorts stop colliding in one offseason. Re-measured: the
+   S5 spike drops 5.1 → 4.0 with mortality now starting S2 on some seeds and
+   spreading S2–S10 (first retirement mean 2.9–3.0, league 1.80/season
+   unchanged). Contested market re-probed after the band change: byte-stable
+   (43% uncourted / 12% courted, witnesses 7/13 unchanged). Engaged title
+   share read 30.0% on the re-run vs 22.5% (different leagues — ages moved
+   every match; edge curves identical at +2.9/+3.1 peak, both well under
+   the 0.35 gate).
 3. **League OVR inflation watch**: with everyone delivering, league mean
    fielded OVR converges high-80s by S10 (prospect pool mean potential ~87).
    Zero-sum match outcomes are unaffected, but stat/records cadence on an
