@@ -280,6 +280,7 @@ def _update_career_summaries(
     conn: sqlite3.Connection,
     rosters: Mapping[str, List[Player]],
     awards: Iterable[Any],
+    season_id: str | None = None,
 ) -> None:
     award_rows = list(awards)
     player_lookup = {player.id: player for roster in rosters.values() for player in roster}
@@ -293,11 +294,23 @@ def _update_career_summaries(
         # Persisted into career_summary_json so ratify_records can scope records
         # to the My Club filter without a separate roster join.
         current_club_id = player.club_id or ""
+        # V18: "recent" means the season being finalized. A player benched for
+        # that whole season has no row in it — their recent count is honestly
+        # 0, not the stale total from their last fielded season (which kept
+        # declining veterans permanently above should_retire's <4 gate).
+        recent_eliminations = int(rows[-1].get("total_eliminations") or 0)
+        if season_id is not None and str(rows[-1].get("season_id") or "") != season_id:
+            recent_eliminations = 0
+        # V18: the synthetic prior-career length seeded for curated veterans
+        # rides along across rewrites; seasons_played stays recorded-only.
+        existing = load_player_career_stats(conn, player_id) or {}
+        prior_seasons = int(existing.get("seasons_played_prior", 0))
         summary = {
             "player_id": player_id,
             "player_name": player.name,
             "club_id": current_club_id,
             "seasons_played": len(rows),
+            "seasons_played_prior": prior_seasons,
             "championships": sum(1 for row in rows if int(row.get("champion") or 0)),
             "awards_won": len(player_awards),
             "total_matches": sum(int(row.get("matches") or 0) for row in rows),
@@ -306,7 +319,7 @@ def _update_career_summaries(
             "total_dodges_successful": sum(int(row.get("total_dodges_successful") or 0) for row in rows),
             "total_times_eliminated": sum(int(row.get("total_times_eliminated") or 0) for row in rows),
             "peak_eliminations": max((int(row.get("total_eliminations") or 0) for row in rows), default=0),
-            "recent_eliminations": int(rows[-1].get("total_eliminations") or 0),
+            "recent_eliminations": recent_eliminations,
             "career_eliminations": sum(int(row.get("total_eliminations") or 0) for row in rows),
             "career_catches": sum(int(row.get("total_catches_made") or 0) for row in rows),
             "career_dodges": sum(int(row.get("total_dodges_successful") or 0) for row in rows),
@@ -411,7 +424,7 @@ def finalize_season(
     """Compute and persist season awards, player season stats, and career summaries (idempotent)."""
     existing_awards = load_awards(conn, season.season_id)
     if existing_awards:
-        _update_career_summaries(conn, rosters, existing_awards)
+        _update_career_summaries(conn, rosters, existing_awards, season_id=season.season_id)
         conn.commit()
         return
     season_stats = fetch_season_player_stats(conn, season.season_id)
@@ -440,7 +453,7 @@ def finalize_season(
         )
     }
     save_player_season_stats(conn, season.season_id, season_stats, player_club_map, matches_by_player, newcomers)
-    _update_career_summaries(conn, rosters, awards)
+    _update_career_summaries(conn, rosters, awards, season_id=season.season_id)
     season_outcome = conn.execute(
         "SELECT champion_club_id FROM season_outcomes WHERE season_id = ?",
         (season.season_id,),
@@ -1373,5 +1386,6 @@ career_rows_for_player = _career_rows_for_player
 
 
 def update_manager_career_summaries(conn, season, rosters, awards):
-    """Legacy 4-arg wrapper. The canonical 3-arg form is ``_update_career_summaries``."""
-    _update_career_summaries(conn, rosters, awards)
+    """Legacy 4-arg wrapper. The canonical form is ``_update_career_summaries``."""
+    season_id = getattr(season, "season_id", None)
+    _update_career_summaries(conn, rosters, awards, season_id=season_id)
