@@ -469,6 +469,27 @@ def _rush_holder_order(
     elif policy.rush_target == OpeningRushTarget.CENTER:
         order.sort(key=lambda pid: -player_lookup[pid].overall_skill())
     return order
+
+
+# --- V19a engine consumers (2026-06-10) ----------------------------------------
+# Slot-role fit: a starter seated (slot order = the lineup) in one of the four
+# preference-bearing court roles whose archetype fits plays slightly above
+# their sheet on every action stat — lineup.role_fit_bonuses, shared with the
+# rec driver. Bonus-only by design — a mismatched seat costs the foregone
+# bonus, never a hidden penalty, so the 2026-06-09 audit's "liability
+# fiction" stays dead and the Lineup Editor's fit notes become a real,
+# disclosed tradeoff against raw OVR.
+#
+# Stamina: action stats erode with MATCH progress, scaled by how far the
+# player's stamina sits below the cap — "staying power across a long match",
+# exactly what the rating tooltip has always claimed. A stamina-100 player
+# never erodes; at the career-seed mean (~63) the erosion reaches ~6.7 points
+# by full time. Both sides erode together at even stamina, so the
+# even-strength baseline holds; the differential is the consumer (probe
+# iteration: 0.12 measured +12 stamina at 52.0% vs 49.8% baseline — live but
+# inside the CI; 0.18 separates it cleanly without approaching the core-four
+# attribute weights).
+_STAMINA_EROSION_MAX = 0.18
 from .moment_events import (
     Comeback,
     DramaticCatch,
@@ -621,6 +642,21 @@ def run_autonomous_game(
     policies = {team_a_id: policy_a, team_b_id: policy_b}
     tick_seconds = 6
     ticks = 0
+
+    # V19a performance shades: role fit (static per game) minus stamina
+    # erosion (grows with match progress; the closure reads the live clock).
+    from .lineup import role_fit_bonuses
+
+    role_fit = role_fit_bonuses((starters_a, starters_b), player_lookup)
+
+    def _shade_for(pid: str) -> float:
+        progress = min(
+            1.0,
+            match_clock.elapsed_seconds / max(1, match_clock.limit_seconds),
+        )
+        stamina_norm = max(0.0, min(1.0, player_lookup[pid].ratings.stamina / 100.0))
+        erosion = _STAMINA_EROSION_MAX * progress * (1.0 - stamina_norm)
+        return role_fit.get(pid, 0.0) - erosion
 
     while ticks < max_ticks and active_a > 0 and active_b > 0:
         controller_teams = _ball_controller_teams(balls, players)
@@ -785,6 +821,8 @@ def run_autonomous_game(
             policy=policies[offense_team],
             recent_pressure_player_id=recent_pressure_by_team[offense_team],
             rng=rng,
+            # V19a: the thrower's tactical IQ sets their court-read quality.
+            thrower_tactical_iq=player_lookup[thrower_state.player_id].ratings.tactical_iq,
         )
         if target_state is None:
             break
@@ -839,6 +877,9 @@ def run_autonomous_game(
             target_holds_ball=target_holds_ball,
             no_blocking_active=no_blocking_state.active,
             opening_catch_factor=opening_catch_factor,
+            # V19a: role fit + stamina erosion shade each side's action stats.
+            thrower_shade=_shade_for(thrower_state.player_id),
+            target_shade=_shade_for(target_state.player_id),
         )
         ruling = ledger.close_sequence(seq.sequence_id)
         events.append(sequence_event(seq))

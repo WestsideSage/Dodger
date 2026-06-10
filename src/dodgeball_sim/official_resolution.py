@@ -105,6 +105,40 @@ _BLOCK_BIAS = -0.1
 # test_play_safe_posture_is_not_a_forfeit.
 _PLAY_SAFE_EVASION_BONUS = 0.10
 
+# --- V19a performance shades (2026-06-10) -------------------------------------
+# A per-player normalized shade applied to that player's ACTION stats for one
+# throw resolution: thrower accuracy/power, defender dodge/catch (and the
+# block-skill read). Composed by the engine from two disclosed consumers:
+#
+# * Slot-role fit (+_ROLE_FIT_BONUS in official_engine): a starter seated in a
+#   role their archetype fits plays slightly above their sheet — bonus-only,
+#   so a mismatched seat costs the foregone bonus, never a hidden penalty
+#   (the 2026-06-09 audit's "liability fiction" stays dead).
+# * Stamina (late-match erosion in official_engine): action stats erode with
+#   MATCH progress, scaled by (1 - normalized stamina) — "staying power
+#   across a long match", exactly what the rating tooltip promises. At even
+#   stamina both sides erode together, so the even-strength baseline holds.
+#
+# Shades are small (|shade| <= ~0.12 normalized) and clamped at the eff layer.
+
+
+# V19a tactical_iq (thrower side): the rating sheet promises "court
+# awareness, TIMING, and play reading". The read/awareness half lives in
+# official_tactics.select_target (targeting noise scales down with IQ); this
+# is the timing half — a high-IQ thrower releases into the right window, a
+# low-IQ thrower forces bad moments. Centered at IQ 50 so the league-average
+# thrower is unchanged. The targeting read alone could not express in the
+# uniform-opponent attribute probe (identical targets = nothing to select),
+# which is exactly the uniform-fixture trap the V17 retro flagged. Probe
+# iterations: routing timing only into p_on_target could not separate IQ
+# from baseline at any sane slope, because an on-target throw is only
+# marginally +EV in the V17 catch economy (it can be caught). The honest
+# timing channel is CATCHABILITY (_TIQ_TIMING_CATCH below): a well-timed
+# throw arrives when the catcher is off-balance, the same defensive-economy
+# answer V17 gave accuracy. The on-target component stays small.
+_TIQ_TIMING_SLOPE = 0.6
+_TIQ_TIMING_CATCH = 1.0
+
 
 @dataclass(frozen=True)
 class ThrowProbabilities:
@@ -112,23 +146,39 @@ class ThrowProbabilities:
     p_catch_given_attempt: float
 
 
+def _shaded(value: float, shade: float) -> float:
+    return max(0.0, min(1.0, value + shade))
+
+
 def compute_throw_probabilities(
-    *, thrower: Player, target: Player
+    *,
+    thrower: Player,
+    target: Player,
+    thrower_shade: float = 0.0,
+    target_shade: float = 0.0,
 ) -> ThrowProbabilities:
     """Return the on-target and catch probabilities for one throw.
 
     Tuning constants are intentionally simpler than the generic engine to
     keep the V11 resolution honest about ratings without depending on the
-    full ``BalanceConfig`` infrastructure.
+    full ``BalanceConfig`` infrastructure. ``*_shade`` are the V19a
+    performance shades (role fit + stamina erosion); defaults keep legacy
+    callers byte-identical.
     """
 
-    accuracy_eff = thrower.ratings.normalized_accuracy()
-    dodge_eff = target.ratings.normalized_dodge()
-    catch_eff = target.ratings.normalized_catch()
-    power_eff = thrower.ratings.normalized_power()
+    accuracy_eff = _shaded(thrower.ratings.normalized_accuracy(), thrower_shade)
+    dodge_eff = _shaded(target.ratings.normalized_dodge(), target_shade)
+    catch_eff = _shaded(target.ratings.normalized_catch(), target_shade)
+    power_eff = _shaded(thrower.ratings.normalized_power(), thrower_shade)
 
-    # On-target: accuracy beats dodge; power slightly helps.
-    p_on_target = _sigmoid(3.0 * (accuracy_eff - dodge_eff) + 0.5 * power_eff)
+    # On-target: accuracy beats dodge; power slightly helps; tactical IQ
+    # times the release window (V19a — see _TIQ_TIMING_SLOPE).
+    tiq_centered = thrower.ratings.normalized_tactical_iq() - 0.5
+    p_on_target = _sigmoid(
+        3.0 * (accuracy_eff - dodge_eff)
+        + 0.5 * power_eff
+        + _TIQ_TIMING_SLOPE * tiq_centered
+    )
     # Catch given attempt: catch rating vs throw quality (power AND accuracy),
     # biased down so a catch is no longer the default outcome of an on-target
     # throw (Phase 4a). The steeper catch slope makes a strong catcher's edge
@@ -138,6 +188,7 @@ def compute_throw_probabilities(
     p_catch_given_attempt = _sigmoid(
         _CATCH_SLOPE * (catch_eff - _CATCH_POWER_WEIGHT * power_eff)
         - _CATCH_THROW_QUALITY_SLOPE * accuracy_eff
+        - _TIQ_TIMING_CATCH * tiq_centered
         - _CATCH_BIAS
     )
     return ThrowProbabilities(
@@ -157,6 +208,8 @@ def resolve_throw(
     target_holds_ball: bool = False,
     no_blocking_active: bool = False,
     opening_catch_factor: float = 1.0,
+    thrower_shade: float = 0.0,
+    target_shade: float = 0.0,
 ) -> Tuple[ThrowProbabilities, str]:
     """Resolve one throw against one primary target and mutate the sequence.
 
@@ -175,7 +228,12 @@ def resolve_throw(
 
     thrower = player_lookup[thrower_state.player_id]
     target = player_lookup[target_state.player_id]
-    probs = compute_throw_probabilities(thrower=thrower, target=target)
+    probs = compute_throw_probabilities(
+        thrower=thrower,
+        target=target,
+        thrower_shade=thrower_shade,
+        target_shade=target_shade,
+    )
 
     on_target = rng.random() <= probs.p_on_target
     if not on_target:
@@ -214,8 +272,8 @@ def resolve_throw(
     # already shades catchability) and the champion-parity probe measured
     # Power Throwers spiking to 63-74% of matched-OVR titles.
     if target_holds_ball and not no_blocking_active:
-        power_thr = thrower.ratings.normalized_power()
-        block_skill = target.ratings.normalized_catch()
+        power_thr = _shaded(thrower.ratings.normalized_power(), thrower_shade)
+        block_skill = _shaded(target.ratings.normalized_catch(), target_shade)
         p_block = _sigmoid(
             _BLOCK_SLOPE * (block_skill - _BLOCK_THROW_POWER_WEIGHT * power_thr)
             + _BLOCK_BIAS
@@ -238,7 +296,9 @@ def resolve_throw(
     )
     p_dodge = max(
         0.0,
-        target.ratings.normalized_dodge() - 0.5 * probs.p_on_target + evasion_bonus,
+        _shaded(target.ratings.normalized_dodge(), target_shade)
+        - 0.5 * probs.p_on_target
+        + evasion_bonus,
     )
     if rng.random() <= p_dodge:
         seq.add_contact(SequenceContact(kind=SequenceContactKind.OUT_OF_BOUNDS))

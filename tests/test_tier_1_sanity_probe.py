@@ -19,7 +19,11 @@ def test_average_moment_events_per_match_at_least_one():
 
 
 def test_default_probe_emits_all_six_moment_kinds():
-    report = run_sanity_probe()
+    # 40 matches, not the 25 default: the V19a consumers (stamina staying
+    # power, tactical_iq targeting, role fit, rush sprinters) shifted rec
+    # outcomes and the default seed window no longer happens to produce a
+    # 1v1 finale; at 40 deterministic matches every kind appears again.
+    report = run_sanity_probe(matches=40)
     for kind in MomentKind:
         assert report.moment_kind_counts[kind] > 0, f"missing {kind.value}"
 

@@ -77,8 +77,10 @@ def test_generate_prospect_pool_includes_all_trajectory_tiers_in_long_run():
 
     for tier in Trajectory:
         assert counts[tier.value] > 0, f"No {tier.value} prospects in 1000-prospect class"
+    # V19 ceiling scarcity: shares are 0.86/0.10/0.03/0.01 (config comment) —
+    # the labeled tiers are the scarce ceiling promise.
     assert 3 <= counts["GENERATIONAL"] <= 25
-    assert 650 <= counts["NORMAL"] <= 750
+    assert 810 <= counts["NORMAL"] <= 910
 
 
 def test_generate_prospect_pool_public_baseline_band_width_matches_config():

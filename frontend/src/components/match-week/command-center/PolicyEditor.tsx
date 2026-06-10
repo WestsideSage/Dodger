@@ -119,11 +119,12 @@ export function PolicyEditor({
           >
             {preview}
           </p>
-          {/* Disclosure parity with the official-rules note below: in the rec
-              engine the Target choice only stamps the announced ball
-              assignment into the match log — the opening rush is resolved
-              from Commit (how many players sprint). Saying nothing here lets
-              a dead knob pose as a decision. */}
+          {/* V19a: the rec engine now resolves Target for real — it orders
+              who SPRINTS at the opening whistle (Nearest = slot order,
+              Strongest Side = power arms, Center = best overall), and only
+              sprinters may take the opening-tick throws. The old
+              announced-only advisory is retired because the knob is no
+              longer dead. */}
           {row.key === 'rush_target' && !officialRuleset && (
             <p
               data-testid="rush-target-advisory-note"
@@ -134,8 +135,8 @@ export function PolicyEditor({
                 lineHeight: 1.45,
               }}
             >
-              Recorded as your announced assignment in the match log. The rec engine resolves
-              the opening rush from Commit — Target does not change match outcomes yet.
+              Resolved by the rec engine: Target orders who sprints at the opening whistle
+              (slot order / power / overall), and sprinters take the opening throws.
             </p>
           )}
         </div>

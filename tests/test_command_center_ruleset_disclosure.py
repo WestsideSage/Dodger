@@ -2,10 +2,10 @@
 
 The Policy Editor uses ``ruleset_selection`` to scope the opening-rush
 disclosure per ruleset. Post-WT-20 (2026-06-10) the official engine enforces
-opening rush as DISCLOSED SIM-DESIGN (not USAD fidelity), so official careers
-render the enforced-sim-design note while rec careers keep the
-Target-is-announced-only advisory — without this field the editor cannot
-tell the truth for either career type.
+opening rush as DISCLOSED SIM-DESIGN (not USAD fidelity); post-V19a the rec
+engine resolves rush Target too (sprinter ordering), so each career type
+renders its own enforced note — without this field the editor cannot tell
+the truth for either career type.
 
 This is a serialization-layer guard on purpose: the 2026-06-09 UX pass found
 ``MatchReplayResponse`` silently stripping undeclared fields at the FastAPI
