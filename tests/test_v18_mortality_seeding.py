@@ -55,8 +55,10 @@ class TestVetSeeding:
         assert rosters, "curated league seeded no rosters"
         for club_id, roster in rosters.items():
             ages = sorted(player.age for player in roster)
-            assert any(31 <= age <= 33 for age in ages), (
-                f"{club_id}: no 31-33 veteran in seeded ages {ages}"
+            # Captain band is 30-34 (widened from 31-33 to spread the
+            # retirement cohort across seasons instead of an S5 cliff).
+            assert any(30 <= age <= 34 for age in ages), (
+                f"{club_id}: no 30-34 veteran in seeded ages {ages}"
             )
             assert any(age <= 20 for age in ages), (
                 f"{club_id}: no prodigy (<=20) in seeded ages {ages}"

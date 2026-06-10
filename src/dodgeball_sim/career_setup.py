@@ -180,10 +180,15 @@ def build_curated_roster(club_id: str, club_name: str, seed: int, count: int = 6
     # The band draw consumes exactly ONE rng.unit() per player — the same
     # count as the old draw — so every other rolled value (names, ratings,
     # traits) is byte-identical to the previous seeding.
+    # Band widths are deliberate: the V18 ship sweep measured a season-5
+    # retirement spike (~5 league-wide in one offseason) because every
+    # Captain seeded 31-33 and every Anchor 28-31 hit the age-36/38
+    # retirement gates in the same one-two seasons. Wider vet bands spread
+    # each club's mortality across seasons 2-7 instead of a cohort cliff.
     roles = [
-        ("Captain", (76, 72, 62, 58), (31, 33)),   # proven veteran leader
+        ("Captain", (76, 72, 62, 58), (30, 34)),   # proven veteran leader
         ("Striker", (70, 78, 58, 52), (26, 29)),   # prime scorer
-        ("Anchor", (61, 62, 64, 76), (28, 31)),    # late-prime stabilizer
+        ("Anchor", (61, 62, 64, 76), (27, 31)),    # late-prime stabilizer
         ("Runner", (64, 58, 78, 60), (22, 25)),    # rising starter
         ("Rookie", (60, 61, 62, 63), (18, 20)),    # prodigy
         ("Utility", (66, 65, 65, 65), (19, 23)),   # young depth

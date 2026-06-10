@@ -57,7 +57,9 @@ plus the Task 3/D3 ship commit.
   22.5% from 2.5% title share; the auto-pilot default (creation order,
   signings at slot 6) needs a product decision.
 - **S5 retirement cohort wave** (~5 in one offseason, fresh careers only) —
-  acceptable texture, noted.
+  fixed same-day after the owner delegated it: vet age bands widened
+  (Captain 30–34, Anchor 27–31), spike 5.1 → 4.0 with mortality spread
+  S2–S10; contested market re-probed byte-stable.
 - **League OVR inflation watch**: delivered ceilings converge the league to
   high-80s OVR by S10; presentation consideration for V20/V21.
 
