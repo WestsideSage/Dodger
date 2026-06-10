@@ -22,6 +22,11 @@ CONTESTED Signing Day round (`sign_chosen_rookie_contested`, snipes possible)
   * retirements, ratified records, and Hall of Fame inductions per offseason
     (does the history layer keep producing texture in seasons 5-10, or go
     quiet?)
+  * a DEV-ARC TRACE (V18): every rostered player's age, OVR, effective
+    potential (stored potential raised by the scouted-trajectory floor — the
+    engine's true growth cap), displayed ceiling, and fielded-six membership
+    per post-offseason snapshot, so ceiling delivery for full-time starters
+    (peak OVR vs the promised ceiling) is measurable before/after dev changes
 
 HONESTY / SCOPE
 ---------------
@@ -66,12 +71,14 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from statistics import mean
+from typing import Mapping
 
 repo_root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(repo_root / "src"))
 sys.path.insert(0, str(repo_root / "tools"))
 
 from dodgeball_sim.career_setup import initialize_curated_manager_career  # noqa: E402
+from dodgeball_sim.development import _TRAJECTORY_POTENTIAL_FLOOR  # noqa: E402
 from dodgeball_sim.offseason_ceremony import (  # noqa: E402
     available_recruitment_choices,
     begin_next_season,
@@ -88,6 +95,7 @@ from dodgeball_sim.persistence import (  # noqa: E402
     load_clubs,
     load_hall_of_fame,
     load_lineup_default,
+    load_player_trajectory,
     load_season,
     load_season_outcome,
     load_standings,
@@ -124,6 +132,10 @@ class SeasonSnapshot:
     retirements_user: int
     records_ratified: int
     hof_inducted_total: int             # cumulative size of the hall
+    # V18 dev-arc trace: one row per rostered player (all clubs), captured at
+    # the same post-offseason moment as the OVR aggregates above.
+    # {player_id, club_id, age, ovr, potential (effective), ceiling, starter}
+    roster_arcs: tuple[dict, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -143,16 +155,54 @@ class DynastySweep:
         return len(self.runs[0].seasons) if self.runs else 0
 
 
-def _fielded_six_ovr(conn: sqlite3.Connection, club_id: str, roster) -> float:
-    """Mean OVR of the club's resolved fielded six (lineup default order)."""
+def _resolve_fielded_six(conn: sqlite3.Connection, club_id: str, roster) -> list:
+    """The club's resolved fielded six (lineup default order)."""
     by_id = {player.id: player for player in roster}
     default = load_lineup_default(conn, club_id) or [p.id for p in roster]
     six = [by_id[pid] for pid in default if pid in by_id][:6]
     if not six:
         six = list(roster)[:6]
+    return six
+
+
+def _fielded_six_ovr(conn: sqlite3.Connection, club_id: str, roster) -> float:
+    """Mean OVR of the club's resolved fielded six (lineup default order)."""
+    six = _resolve_fielded_six(conn, club_id, roster)
     if not six:
         return 0.0
     return round(mean(player.overall_skill() for player in six), 2)
+
+
+def _roster_arc_rows(conn: sqlite3.Connection, rosters: Mapping[str, list]) -> tuple[dict, ...]:
+    """One dev-arc row per rostered player across all clubs (read-only).
+
+    `potential` is the engine's effective growth cap: the stored potential
+    raised by the scouted-trajectory floor (development applies the same
+    floor). `ceiling` is the displayed value, which additionally never sits
+    below current OVR (web_status_service.build_roster_payload).
+    """
+    rows: list[dict] = []
+    for club_id in sorted(rosters):
+        roster = rosters.get(club_id) or []
+        starters = {player.id for player in _resolve_fielded_six(conn, club_id, roster)}
+        for player in roster:
+            stored = int(player.traits.potential)
+            trajectory = load_player_trajectory(conn, player.id)
+            floor = _TRAJECTORY_POTENTIAL_FLOOR.get(trajectory)
+            potential = max(stored, int(floor)) if floor is not None else stored
+            ovr = int(player.overall_skill())
+            rows.append(
+                {
+                    "player_id": player.id,
+                    "club_id": club_id,
+                    "age": int(player.age),
+                    "ovr": ovr,
+                    "potential": potential,
+                    "ceiling": max(potential, ovr),
+                    "starter": player.id in starters,
+                }
+            )
+    return tuple(rows)
 
 
 def _user_standings_row(standings, user_club_id: str):
@@ -317,6 +367,7 @@ def run_dynasty_career(
                     ),
                     records_ratified=len(record_rows),
                     hof_inducted_total=len(load_hall_of_fame(conn)),
+                    roster_arcs=_roster_arc_rows(conn, post_rosters),
                 )
             )
 
@@ -360,8 +411,98 @@ def default_seed_set(*, count: int, seed_base: int = 20260600, stride: int = 211
 
 
 # ---------------------------------------------------------------------------
+# Dev-arc / mortality summaries (V18 baseline instrumentation)
+# ---------------------------------------------------------------------------
+
+# A "full-time starter" sits in the resolved fielded six in at least this many
+# post-offseason snapshots of a run — long enough for a dev arc to express.
+FULL_TIME_STARTER_MIN_SEASONS = 3
+
+
+def summarize_dev_arcs(sweep: DynastySweep, *, user_club: bool) -> dict | None:
+    """Ceiling delivery for full-time starters, pooled across the sweep's runs.
+
+    peak OVR is each starter's best post-offseason OVR; the promise it is
+    measured against is the highest EFFECTIVE potential observed for them
+    (stored potential + trajectory floor — the engine growth cap), not the
+    displayed ceiling, which is OVR-maxed and would mark a stalled player as
+    "delivered".
+    """
+    first_ovrs: list[int] = []
+    peak_ovrs: list[int] = []
+    promises: list[int] = []
+    shortfalls: list[int] = []
+    closures: list[float] = []
+    within_two = 0
+    for run in sweep.runs:
+        series: dict[str, list[dict]] = {}
+        for snap in run.seasons:
+            for row in snap.roster_arcs:
+                is_user = row["club_id"] == run.user_club_id
+                if is_user != user_club:
+                    continue
+                series.setdefault(row["player_id"], []).append(row)
+        for rows in series.values():
+            if sum(1 for r in rows if r["starter"]) < FULL_TIME_STARTER_MIN_SEASONS:
+                continue
+            first = rows[0]
+            peak = max(r["ovr"] for r in rows)
+            promise = max(r["potential"] for r in rows)
+            first_ovrs.append(first["ovr"])
+            peak_ovrs.append(peak)
+            promises.append(promise)
+            shortfalls.append(promise - peak)
+            initial_headroom = first["potential"] - first["ovr"]
+            if initial_headroom > 0:
+                closures.append((peak - first["ovr"]) / initial_headroom)
+            if peak >= promise - 2:
+                within_two += 1
+    if not peak_ovrs:
+        return None
+    n = len(peak_ovrs)
+    return {
+        "n": n,
+        "mean_first_ovr": mean(first_ovrs),
+        "mean_peak_ovr": mean(peak_ovrs),
+        "mean_promise": mean(promises),
+        "mean_shortfall": mean(shortfalls),
+        "mean_headroom_closure": mean(closures) if closures else None,
+        "share_within_two": within_two / n,
+    }
+
+
+def summarize_mortality(sweep: DynastySweep) -> dict:
+    """First-retirement season per seed + league/user retirements per season."""
+    first_seasons: list[int | None] = []
+    for run in sweep.runs:
+        first = next(
+            (s.season_number for s in run.seasons if s.retirements_total > 0), None
+        )
+        first_seasons.append(first)
+    all_snaps = [s for run in sweep.runs for s in run.seasons]
+    return {
+        "first_retirement_seasons": first_seasons,
+        "league_per_season": mean(s.retirements_total for s in all_snaps),
+        "user_per_season": mean(s.retirements_user for s in all_snaps),
+    }
+
+
+# ---------------------------------------------------------------------------
 # CLI (composition + printing only)
 # ---------------------------------------------------------------------------
+
+def _format_dev_arc_line(label: str, stats: dict | None) -> str:
+    if stats is None:
+        return f"    {label}: no full-time starters observed"
+    closure = stats["mean_headroom_closure"]
+    closure_txt = f"{100.0 * closure:.0f}%" if closure is not None else "n/a"
+    return (
+        f"    {label}: n={stats['n']}  first OVR={stats['mean_first_ovr']:.1f}  "
+        f"peak OVR={stats['mean_peak_ovr']:.1f}  eff. ceiling={stats['mean_promise']:.1f}  "
+        f"shortfall={stats['mean_shortfall']:.1f}  headroom closed={closure_txt}  "
+        f"peak within 2 of ceiling: {100.0 * stats['share_within_two']:.0f}%"
+    )
+
 
 def _format_report(sweep: DynastySweep) -> str:
     runs = sweep.runs
@@ -437,6 +578,29 @@ def _format_report(sweep: DynastySweep) -> str:
         f"  League churn: AI prospect signings={total_ai_signings} "
         f"({total_ai_signings / max(1, total_seasons):.1f}/offseason)  "
         f"user picks sniped={total_user_snipes}"
+    )
+
+    lines.append("")
+    lines.append(
+        "  Dev arcs -- full-time starters (fielded six in "
+        f">={FULL_TIME_STARTER_MIN_SEASONS} post-offseason snapshots):"
+    )
+    lines.append(_format_dev_arc_line("user club", summarize_dev_arcs(sweep, user_club=True)))
+    lines.append(_format_dev_arc_line("AI clubs ", summarize_dev_arcs(sweep, user_club=False)))
+
+    mortality = summarize_mortality(sweep)
+    firsts = [
+        str(s) if s is not None else "none" for s in mortality["first_retirement_seasons"]
+    ]
+    observed = [s for s in mortality["first_retirement_seasons"] if s is not None]
+    firsts_mean = f"{mean(observed):.1f}" if observed else "n/a"
+    lines.append(
+        f"  Mortality: first league retirement season per seed: [{', '.join(firsts)}]"
+        f"  (mean of seeds with any: {firsts_mean})"
+    )
+    lines.append(
+        f"    league retirements/season={mortality['league_per_season']:.2f}  "
+        f"user-club retirements/season={mortality['user_per_season']:.2f}"
     )
     return "\n".join(lines)
 

@@ -145,7 +145,8 @@ Redo the development math so the displayed ceiling is an honest promise:
   `seasons_played` history consistent with their age (or the age gates need
   a measured retune) so mortality starts in seasons 2–4, not at age 40.
 - Acceptance gates: first league retirement by season ≤ 3 (mean across
-  seeds; BEFORE ~8), retirements/season produces visible offseason texture
+  seeds; BEFORE = 9 on all 8 seeds), retirements/season produces visible
+  offseason texture
   without cratering league OVR or roster floors (AI roster floor gate stays
   green); HoF/records cadence keeps producing texture (probe already
   records it).
@@ -172,7 +173,73 @@ retro in `docs/retrospectives/`; STATUS + MILESTONES updates; push.
 
 ## BEFORE table (Task 1 capture — post-V17 main, pre-V18 dev changes)
 
-*To be filled by the Task 1 baseline capture in this milestone. Numbers below
-this line are the binding baseline for Task 2/3/4 gates.*
+Captured 2026-06-10 on main at `5fb72d4` (engine source unchanged since the
+V17 sweep `a6165fa`; the only working-tree delta is the additive dev-arc
+trace in `tools/dynasty_health_probe.py`). Config: 8 seeds × 10 seasons,
+`official_foam`, seed base 20260600/stride 211, user club aurora.
+**Engaged** = `--signings 3 --optimize-lineup`; **Passive** = `--signings 3`
+(shipping auto-pilot default lineup). All arcs are post-offseason snapshots;
+"peak OVR" is a starter's best post-offseason OVR; "eff. ceiling" is the
+highest effective potential observed (stored potential + trajectory floor —
+the engine growth cap), NOT the OVR-maxed display value.
 
-(pending)
+### 1. Ceiling delivery — full-time starters (fielded six in ≥3 snapshots)
+
+| Cohort | n | first OVR | peak OVR | eff. ceiling | shortfall | headroom closed | peak within 2 of ceiling |
+|---|---|---|---|---|---|---|---|
+| Engaged user club | 62 | 64.4 | 71.4 | 81.0 | **9.6** | **34%** | **6%** |
+| Passive user club | 48 | 64.8 | 67.7 | 74.0 | 6.3 | 20% | 21% |
+| AI clubs (engaged run) | 343 | 66.0 | 70.0 | 80.3 | 10.3 | 20% | 9% |
+| AI clubs (passive run) | 344 | 66.0 | 70.0 | 80.2 | 10.3 | 20% | 10% |
+
+The displayed ceiling is a ~10-OVR overpromise for a decade-long starter.
+The pre-V17 report language ("~half of headroom closed by peak-end") was
+GENEROUS: measured post-V17 closure for full-time starters is 20–34%. The
+passive cohort's lower mean ceiling (74.0) is a composition effect — the
+auto-pilot keeps the creation lineup, so high-potential signings ride the
+bench and never qualify as starters; that is the lineup trap, not better
+delivery. AI delivery (20%) is the Task 2/4 symmetry control: user and AI
+develop on the same math today, and must still do so AFTER.
+
+### 2. Mortality
+
+| Metric | Engaged | Passive |
+|---|---|---|
+| First league retirement season (per seed) | 9, 9, 9, 9, 9, 9, 9, 9 | 9, 9, 9, 9, 9, 9, 9, 9 |
+| League retirements/season (mean) | 0.68 | 0.69 |
+| …of which seasons 1–8 | 0.00 | 0.00 |
+| …seasons 9–10 (mean/offseason) | ~3.4 | ~3.4 |
+| User-club retirements/season | 0.16 | 0.19 |
+
+Zero retirements for eight straight seasons on every seed, then a season-9
+cliff — exactly the `should_retire` seasons-played gate expressing (curated
+players start at `seasons_played = 0`; the 18–29 age band reaches the age-36+
+gates only by season ~9). Task 3 gate: first league retirement by season ≤ 3.
+
+### 3. Title-share curve (user titles per season, /8 seeds)
+
+| Season | S1 | S2 | S3 | S4 | S5 | S6 | S7 | S8 | S9 | S10 | Total |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Engaged | 3 | 1 | 1 | 1 | 2 | 3 | 2 | 0 | 0 | 1 | **14/80 (17.5%)** |
+| Passive | 3 | 2 | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | **7/80 (8.8%)** |
+
+Parity baseline = 1/6 = 16.7%. Engaged sits at parity with six distinct
+champions (solstice 18, northwood 17, aurora 14, lunar 14, harbor 13,
+granite 4); passive decays toward zero as the auto-pilot lineup ages. No
+snowball in the BEFORE state — the V17-retro concern is a watch item for
+AFTER, not a present condition.
+
+### 4. OVR-edge curve (user fielded-6 OVR − best-AI fielded-6 OVR)
+
+| Season | S1 | S2 | S3 | S4 | S5 | S6 | S7 | S8 | S9 | S10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Engaged | −0.50 | −0.29 | −0.21 | −0.10 | −0.44 | −0.27 | −0.59 | −0.33 | −0.75 | −1.23 |
+| Passive | −1.50 | −2.86 | −3.13 | −3.79 | −5.19 | −6.16 | −7.86 | −9.29 | −8.63 | −7.75 |
+
+The engaged user tracks the best AI club (slightly behind, −0.1 to −1.2)
+while the league as a whole drifts upward ~+5 OVR over ten seasons with no
+retirement pressure. The passive curve shows the aging-starter slide
+(user fielded OVR 65.4 → 62.7 by S8 while the league grows), partially
+recovering S9–S10 only because the retirement cliff finally clears vets.
+League texture context: AI signings 5.0/offseason and 16 user snipes per
+sweep in both configs (V16 churn intact).
