@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { OffseasonBeat } from '../../types';
+import { KnownValue } from '../../legibility/KnownValue';
 import { ActionButton, PageHeader } from '../ui';
 
 
@@ -31,6 +32,7 @@ export function RecruitmentChoice({
     : (prospects[0]?.prospect_id ?? null);
   const selected = prospects.find(prospect => prospect.prospect_id === selectedId) ?? null;
   const lastSigning = beat.payload.player_signing;
+  const signingOutcome = beat.signing_outcome ?? null;
 
   return (
     <section className="command-offseason-shell" data-testid="offseason-recruitment-action">
@@ -42,17 +44,71 @@ export function RecruitmentChoice({
 
       <article className="dm-panel command-offseason-feature">
         <p className="dm-kicker">Recruitment Desk</p>
-        {/* Scouted board values are estimates; the OVR shown here is the
-            verified rating — without this line a "65 scouted" prospect signing
-            at "OVR 62" reads as a broken promise rather than fog-of-war. */}
+        {/* Fog-of-war truth (V16): prospect ratings are SCOUTED RANGES, never
+            the hidden true overall. Free agents are league veterans with
+            public records, so their OVR is verified. */}
         {prospects.length > 0 && (
           <p
             data-testid="signing-day-ovr-disclosure"
             style={{ margin: '0.35rem 0 0', fontSize: '0.74rem', color: '#94a3b8', lineHeight: 1.45 }}
           >
-            Ratings below are each prospect's verified overall. In-season scouting reads are
-            estimates, so a signed player's OVR can differ from your board's scouted band.
+            Prospect ratings are scouted ranges — the verified OVR is revealed only when they
+            sign. Rival clubs bid on prospects too: interest built through scouting, contact
+            and visits strengthens your offer. Free agents are league veterans with public
+            ratings and sign uncontested.
           </p>
+        )}
+        {signingOutcome && signingOutcome.kind === 'sniped' && (
+          <div
+            data-testid="signing-snipe-banner"
+            style={{
+              margin: '0.6rem 0 0',
+              border: '1px solid rgba(249,115,22,0.4)',
+              borderLeft: '3px solid #f97316',
+              background: 'rgba(249,115,22,0.08)',
+              borderRadius: '4px',
+              padding: '0.7rem 0.8rem',
+            }}
+          >
+            <p style={{ margin: 0, fontSize: '0.68rem', color: '#fb923c', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Sniped
+            </p>
+            <p style={{ margin: '0.2rem 0 0', color: '#f8fafc', fontWeight: 700 }}>
+              {signingOutcome.winning_club_name} landed {signingOutcome.prospect_name}
+            </p>
+            <p style={{ margin: '0.15rem 0 0', fontSize: '0.78rem', color: '#cbd5e1' }}>
+              {signingOutcome.explanation} Your signing slot was not used — pick from the
+              remaining class.
+            </p>
+          </div>
+        )}
+        {signingOutcome && signingOutcome.kind === 'signed' && (
+          <div
+            data-testid="signing-win-banner"
+            style={{
+              margin: '0.6rem 0 0',
+              border: '1px solid rgba(34,197,94,0.35)',
+              borderLeft: '3px solid #22c55e',
+              background: 'rgba(34,197,94,0.07)',
+              borderRadius: '4px',
+              padding: '0.7rem 0.8rem',
+            }}
+          >
+            <p style={{ margin: 0, fontSize: '0.68rem', color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Contested Round Won
+            </p>
+            <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: '#cbd5e1' }}>
+              {signingOutcome.explanation}
+            </p>
+            {signingOutcome.reveal && (
+              <p
+                data-testid="signing-reveal-line"
+                style={{ margin: '0.15rem 0 0', fontSize: '0.78rem', color: '#a7f3d0' }}
+              >
+                {signingOutcome.reveal}
+              </p>
+            )}
+          </div>
         )}
         <div
           style={{
@@ -154,19 +210,33 @@ export function RecruitmentChoice({
                     </p>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div
-                      className="dm-data"
-                      style={{ fontSize: '1.15rem', fontWeight: 900, color: '#22d3ee' }}
-                    >
-                      {prospect.overall}
-                    </div>
-                    {/* Truth: this is the prospect's actual overall from the
-                        signing payload, shown whether or not they were ever
-                        scouted — labeling it "scouted" claimed a provenance
-                        the number does not have. */}
-                    <div style={{ fontSize: '0.58rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      ovr
-                    </div>
+                    {prospect.kind === 'prospect' && prospect.public_ovr_band ? (
+                      <>
+                        <KnownValue
+                          state={prospect.scouted ? 'known' : 'estimated'}
+                          label="ovr"
+                          value={`${prospect.public_ovr_band[0]}–${prospect.public_ovr_band[1]}`}
+                          hint="Scout to narrow"
+                        />
+                        {typeof prospect.interest === 'number' && (
+                          <div style={{ marginTop: '0.2rem', fontSize: '0.62rem', color: '#94a3b8' }}>
+                            Interest {prospect.interest}%
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div
+                          className="dm-data"
+                          style={{ fontSize: '1.15rem', fontWeight: 900, color: '#22d3ee' }}
+                        >
+                          {prospect.overall}
+                        </div>
+                        <div style={{ fontSize: '0.58rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          verified ovr
+                        </div>
+                      </>
+                    )}
                   </div>
                 </button>
               );

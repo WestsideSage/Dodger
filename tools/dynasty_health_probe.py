@@ -6,8 +6,10 @@ A deterministic, seeded N-season sweep of the SHIPPING career loop: a real
 curated career (`initialize_curated_manager_career`), each season fast-forwarded
 through the canonical `auto_pilot_weeks` path (real weekly plans, real AI plans,
 real playoffs), then the real offseason
-(`finalize_season` -> `initialize_manager_offseason` -> user signings via
-`sign_best_rookie` -> `begin_next_season`). Per season it records:
+(`finalize_season` -> `initialize_manager_offseason` -> user picks through the
+CONTESTED Signing Day round (`sign_chosen_rookie_contested`, snipes possible)
+-> AI Signing Day sweep (`ensure_ai_offseason_signings`) ->
+`begin_next_season`). Per season it records:
 
   * user club rank / record / title, champion + runner-up identity
   * fielded-6 mean OVR for the user club, the best AI club, and the AI mean
@@ -15,7 +17,8 @@ real playoffs), then the real offseason
     compound into a runaway OVR edge?)
   * roster sizes (does the AI league bleed depth toward the 6-player floor
     while the user builds to the 12 cap?)
-  * signings actually made (true OVR + stored potential ceiling)
+  * signings actually made (true OVR + stored potential ceiling), user picks
+    SNIPED by rival offers, and AI prospect signings (league churn — V16)
   * retirements, ratified records, and Hall of Fame inductions per offseason
     (does the history layer keep producing texture in seasons 5-10, or go
     quiet?)
@@ -27,10 +30,12 @@ fielded-6, no scouting actions, no staff hires, no dev-focus orders). That is
 the real shipping fast-forward path, so the sweep isolates the STRUCTURAL
 asymmetries between the user club and AI clubs:
 
-  * only the user signs prospects (up to `--signings` per offseason, the
-    shipping picker's 3-signing / 12-roster cap),
-  * AI clubs are trimmed to 9 and only refilled from leftovers when they fall
-    below 6 (`_sign_ai_replacements`),
+  * the user attempts up to `--signings` prospect picks per offseason (the
+    shipping picker's 3-signing / 12-roster cap) through the contested round
+    — a sniped pick costs no slot but signs nobody and the probe moves on,
+  * AI clubs are trimmed to 9, refilled from leftovers when below 6
+    (`_sign_ai_replacements`), and sign real prospects in the V16 Signing Day
+    sweep (1 per club per offseason),
   * AI clubs develop on BALANCED focus with no staff modifier.
 
 It does NOT model an engaged player's tactics/scouting/staff play, so the
@@ -68,10 +73,12 @@ sys.path.insert(0, str(repo_root / "tools"))
 
 from dodgeball_sim.career_setup import initialize_curated_manager_career  # noqa: E402
 from dodgeball_sim.offseason_ceremony import (  # noqa: E402
+    available_recruitment_choices,
     begin_next_season,
+    ensure_ai_offseason_signings,
     finalize_season,
     initialize_manager_offseason,
-    sign_best_rookie,
+    sign_chosen_rookie_contested,
 )
 from dodgeball_sim.offseason_presentation import MAX_USER_ROSTER  # noqa: E402
 from dodgeball_sim.persistence import (  # noqa: E402
@@ -111,6 +118,8 @@ class SeasonSnapshot:
     user_roster_size: int
     ai_roster_sizes: tuple[int, ...]
     signings: tuple[dict, ...]          # {player_id, overall, potential}
+    user_snipes: int                    # user picks lost to rival offers
+    ai_signings: tuple[dict, ...]       # {player_id, club_id} (league churn)
     retirements_total: int
     retirements_user: int
     records_ratified: int
@@ -212,15 +221,35 @@ def run_dynasty_career(
                 get_state(conn, "offseason_records_ratified_json") or "[]"
             )
 
-            # ---- user signings through the shipping picker path --------------
+            # ---- user signings through the shipping CONTESTED picker path ----
+            # Mirrors recruit_offseason_payload's auto-pick: best available by
+            # PUBLIC estimate, resolved through the contested round. A sniped
+            # pick signs nobody (and costs no signing slot in the shipping
+            # flow); the probe simply tries the next-best remaining choice.
             signings: list[dict] = []
+            user_snipes = 0
             cursor = load_career_state_cursor(conn)
-            for _ in range(signings_per_offseason):
+            attempts = 0
+            while len(signings) < signings_per_offseason and attempts < (
+                signings_per_offseason + 6
+            ):
+                attempts += 1
                 current = load_all_rosters(conn).get(user_club_id, [])
                 if len(current) >= MAX_USER_ROSTER:
                     break
-                signed = sign_best_rookie(conn, user_club_id, cursor.season_number or 1)
+                # Distinct names: `season_number` is the outer loop label that
+                # SeasonSnapshot records; the cursor's view drives signing.
+                cursor_season = cursor.season_number or 1
+                choices = available_recruitment_choices(conn, cursor_season)
+                if not choices:
+                    break
+                signed, pick_outcome = sign_chosen_rookie_contested(
+                    conn, user_club_id, cursor_season, choices[0]["prospect_id"]
+                )
                 if signed is None:
+                    if pick_outcome is not None and pick_outcome.get("kind") == "sniped":
+                        user_snipes += 1
+                        continue
                     break
                 signings.append(
                     {
@@ -229,6 +258,16 @@ def run_dynasty_career(
                         "potential": int(signed.traits.potential),
                     }
                 )
+
+            # ---- AI Signing Day sweep (V16 league churn) ----------------------
+            ensure_ai_offseason_signings(conn)
+            from dodgeball_sim.persistence import load_recruitment_signings
+
+            ai_signings = tuple(
+                {"player_id": s.player_id, "club_id": s.club_id}
+                for s in load_recruitment_signings(conn, season_id)
+                if s.source == "ai"
+            )
 
             if optimize_user_lineup:
                 from dodgeball_sim.lineup import optimize_ai_lineup
@@ -270,6 +309,8 @@ def run_dynasty_career(
                     user_roster_size=len(user_roster),
                     ai_roster_sizes=ai_sizes,
                     signings=tuple(signings),
+                    user_snipes=user_snipes,
+                    ai_signings=ai_signings,
                     retirements_total=len(retire_rows),
                     retirements_user=sum(
                         1 for r in retire_rows if r.get("club_id") == user_club_id
@@ -386,6 +427,17 @@ def _format_report(sweep: DynastySweep) -> str:
             f"  Signings: n={len(signed_ovr)}  mean OVR={mean(signed_ovr):.1f}  "
             f"mean potential={mean(signed_pot):.1f}"
         )
+    total_ai_signings = sum(
+        len(snap.ai_signings) for run in runs for snap in run.seasons
+    )
+    total_user_snipes = sum(
+        snap.user_snipes for run in runs for snap in run.seasons
+    )
+    lines.append(
+        f"  League churn: AI prospect signings={total_ai_signings} "
+        f"({total_ai_signings / max(1, total_seasons):.1f}/offseason)  "
+        f"user picks sniped={total_user_snipes}"
+    )
     return "\n".join(lines)
 
 

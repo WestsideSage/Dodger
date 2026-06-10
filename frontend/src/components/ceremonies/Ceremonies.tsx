@@ -659,13 +659,13 @@ export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat
 
   // BUG #5 / ADR 0002 — single source of truth for "how many YOU signed".
   // signed_count is the authoritative roster-delta counter the backend keeps
-  // (it equals the players actually added this offseason). The card-derived
-  // counts.my comes from recruitment_signing rows, which the offseason signing
-  // flow never writes, so it would disagree with signed_count (the "2/3 used"
-  // vs "You signed 1" contradiction the playtest hit). Every player-facing
-  // NUMBER meaning "how many you signed" therefore reads signedCount: the hero
-  // tile, the headline, the slots-used line, AND the "Your Picks" tab badge.
-  // The card LIST stays honest — we never fabricate cards to match the number.
+  // (it equals the players actually added this offseason). Since V16, contested
+  // prospect picks DO write recruitment_signing rows (cards), but free-agent
+  // signings still don't — so counts.my can legitimately undercount. Every
+  // player-facing NUMBER meaning "how many you signed" therefore reads
+  // signedCount: the hero tile, the headline, the slots-used line, AND the
+  // "Your Picks" tab badge. The card LIST stays honest — we never fabricate
+  // cards to match the number.
   const myCount = signedCount;
   const tabCounts = { ...counts, my: signedCount };
 
@@ -779,11 +779,11 @@ export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat
                     }}
                   >
                     {/* BUG #5: when you signed players this offseason but no
-                        per-pick card was recorded, don't claim "you didn't sign
-                        anyone" — that would contradict the signedCount-driven
-                        badge. Name the real count instead. */}
+                        per-pick card was recorded (free-agent signings don't
+                        write contested-round cards), don't claim "you didn't
+                        sign anyone" — name the real count instead. */}
                     {filter === 'my' && signedCount > 0
-                      ? `You signed ${signedCount} this offseason${playerSigning ? ` (latest: ${playerSigning.name}).` : '.'} Per-pick cards aren't recorded for offseason signings.`
+                      ? `You signed ${signedCount} this offseason${playerSigning ? ` (latest: ${playerSigning.name}).` : '.'} Free-agent signings don't get contested-round cards.`
                       : FILTER_EMPTY[filter]}
                   </div>
                 ) : (

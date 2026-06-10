@@ -9,10 +9,10 @@ from .lineup import STARTERS_COUNT
 from .offseason_ceremony import (
     available_recruitment_choices,
     begin_next_season,
+    ensure_ai_offseason_signings,
     finalize_season,
     initialize_manager_offseason,
-    sign_best_rookie,
-    sign_chosen_rookie,
+    sign_chosen_rookie_contested,
     stored_root_seed,
 )
 from .offseason_presentation import MAX_USER_ROSTER, build_beat_response, load_active_beats
@@ -90,6 +90,7 @@ def advance_offseason_beat_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         )
         save_career_state_cursor(conn, cursor)
         conn.commit()
+        ensure_ai_offseason_signings(conn)
         return build_beat_response(conn, cursor)
 
     next_index = beat_index + 1
@@ -152,9 +153,13 @@ def recruit_offseason_payload(
         )
         save_career_state_cursor(conn, cursor)
         conn.commit()
+        # Recruitment is closed: the AI clubs make their Signing Day moves now
+        # so the class report the player is about to see includes them.
+        ensure_ai_offseason_signings(conn)
         return {
             **build_beat_response(conn, cursor),
             "signed_player": None,
+            "signing_outcome": None,
         }
 
     signed_count_str = get_state(conn, "offseason_draft_signed_count") or "0"
@@ -173,19 +178,30 @@ def recruit_offseason_payload(
 
     season_number = cursor.season_number or 1
     if prospect_id:
-        signed = sign_chosen_rookie(conn, player_club_id, season_number, prospect_id)
-        if signed is None:
+        signed, signing_outcome = sign_chosen_rookie_contested(
+            conn, player_club_id, season_number, prospect_id
+        )
+        if signed is None and signing_outcome is None:
             raise OffseasonError(
                 "That prospect is no longer available to sign.", status_code=409
             )
     else:
-        signed = sign_best_rookie(conn, player_club_id, season_number)
+        # Auto-pick: the best available signee by PUBLIC estimate (the same
+        # order the picker shows). It goes through the contested round like
+        # any other prospect pick — auto-pick is not a snipe-proof back door.
+        choices = available_recruitment_choices(conn, season_number)
+        if choices:
+            signed, signing_outcome = sign_chosen_rookie_contested(
+                conn, player_club_id, season_number, choices[0]["prospect_id"]
+            )
+        else:
+            signed, signing_outcome = None, None
 
     # Faithfulness (BUG #5 / ADR 0002): the signed-count is the single source of
     # truth for "how many you signed" across the whole Signing-Day surface, so it
     # must equal the real number of roster additions. Only bump it when a player
-    # was actually signed — sign_best_rookie returns None on an empty pool, and an
-    # un-guarded increment there would let "used" exceed the roster delta.
+    # was actually signed — a snipe or an empty pool adds nobody, and an
+    # un-guarded increment would let "used" exceed the roster delta.
     if signed:
         signed_count += 1
         set_state(conn, "offseason_draft_signed_count", str(signed_count))
@@ -194,7 +210,8 @@ def recruit_offseason_payload(
     rosters = load_all_rosters(conn)
     user_roster = rosters.get(player_club_id, [])
 
-    if signed_count >= 3 or len(user_roster) >= MAX_USER_ROSTER:
+    closed = signed_count >= 3 or len(user_roster) >= MAX_USER_ROSTER
+    if closed:
         cursor = state_advance(
             cursor,
             CareerState.NEXT_SEASON_READY,
@@ -203,6 +220,8 @@ def recruit_offseason_payload(
         save_career_state_cursor(conn, cursor)
 
     conn.commit()
+    if closed:
+        ensure_ai_offseason_signings(conn)
     return {
         **build_beat_response(conn, cursor),
         "signed_player": (
@@ -215,6 +234,7 @@ def recruit_offseason_payload(
             if signed
             else None
         ),
+        "signing_outcome": signing_outcome,
     }
 
 

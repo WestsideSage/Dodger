@@ -117,43 +117,41 @@ export const TERMS = {
     why: 'High headroom + young age = a genuine high-upside develop target.',
     kind: 'mechanical',
   },
-  // HONESTY (2026-06-09 audit): the shipping signing path (the offseason
-  // recruitment picker) signs the player's choice directly — no contested
-  // offers, no interest check. Until a contested Signing Day ships, Interest /
-  // Fit / Pipeline / Credibility are courtship TRACKERS, not signing
-  // modifiers, and must not claim "easier to sign / closes / gates". The
-  // V2-B round system (recruitment.conduct_recruitment_round) exists but has
-  // no production caller. Scouting (OVR Range) stays mechanical: the narrowed
-  // band is real revealed information.
+  // TRUTH (V16 Contested Offseason): Signing Day prospect picks resolve
+  // through a contested round (recruitment.conduct_recruitment_round) where
+  // your offer = base + interest x weight against real rival bids. Interest,
+  // Pipeline and Credibility are therefore MECHANICAL (they feed that offer
+  // chain). Fit stays a flavor reading: it summarizes mechanical inputs
+  // (scouted range + credibility) but is not itself consumed anywhere.
   'recruit.fit': {
     label: 'Fit',
     plain: 'How well this prospect matches your program right now (0-100).',
-    why: 'A shortlist aid blending the public range with your credibility. It is NOT their OVR, and it does not change signing odds — the offseason picker signs your choice directly.',
+    why: 'A shortlist aid blending the scouted range with your credibility — a reading, not a lever. Your signing odds come from Interest, not Fit.',
     kind: 'flavor',
   },
   'recruit.interest': {
     label: 'Interest',
     plain: 'How interested the prospect is in your program (%).',
-    why: 'Rises with contact/visits and credibility. Today it is a courtship tracker — the offseason picker signs your choice directly; contested signings are not yet modeled.',
-    kind: 'flavor',
+    why: 'Rises with contact/visits and credibility — and it strengthens your Signing Day offer in the contested round. Courted prospects are measurably harder for rival clubs to snipe.',
+    kind: 'mechanical',
   },
   'recruit.ovr_range': {
     label: 'OVR Range',
     plain: 'The estimated band for this prospect’s true overall.',
-    why: 'Scouting narrows the band — you learn how good they really are.',
+    why: 'Scouting narrows the band — the verified OVR is revealed only at signing.',
     kind: 'mechanical',
   },
   'recruit.pipeline': {
     label: 'Pipeline',
     plain: 'A recruiting region/tier your program has a relationship with.',
-    why: 'A higher tier starts the prospect warmer on the board. Contested closes are not yet modeled, so the tier changes information, not signing odds.',
-    kind: 'flavor',
+    why: 'A higher tier starts the prospect warmer (higher base interest), which feeds straight into your contested Signing Day offer.',
+    kind: 'mechanical',
   },
   'program.credibility': {
     label: 'Program Credibility',
     plain: 'The recruiting-facing reputation that sets which prospects are interested.',
-    why: 'Rises with wins and youth focus; feeds the board’s interest and fit estimates. No signing gate is modeled yet.',
-    kind: 'flavor',
+    why: 'Rises with wins and youth focus; sets the interest baseline every prospect starts from, which feeds your contested Signing Day offer.',
+    kind: 'mechanical',
   },
   'program.prestige': {
     label: 'Club Prestige',

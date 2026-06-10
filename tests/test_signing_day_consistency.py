@@ -58,13 +58,25 @@ def _enter_recruitment_state(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def test_signing_day_counts_agree_across_used_signed_and_cap():
+def _disable_rival_bids(monkeypatch) -> None:
+    """This file tests count CONSISTENCY, not contested-round odds: remove
+    rival bidders so every pick lands by construction, independent of balance
+    constants (snipe odds are pinned in test_contested_offseason.py)."""
+    from dodgeball_sim import recruitment
+
+    monkeypatch.setattr(
+        recruitment, "_eligible_ai_offer_clubs", lambda *args, **kwargs: set()
+    )
+
+
+def test_signing_day_counts_agree_across_used_signed_and_cap(monkeypatch):
     """signed_count, remaining_signings, and roster_size stay mutually consistent."""
     conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.row_factory = sqlite3.Row
     create_schema(conn)
     initialize_curated_manager_career(conn, "aurora", root_seed=20260426)
     _enter_recruitment_state(conn)
+    _disable_rival_bids(monkeypatch)
     baseline_roster = len(load_all_rosters(conn)["aurora"])
 
     def override_db():

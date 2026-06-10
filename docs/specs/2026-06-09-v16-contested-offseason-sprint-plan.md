@@ -1,7 +1,9 @@
 # V16 — Contested Offseason: Sprint Plan
 
-Status: planned 2026-06-09 (product-director pass). Active milestone authority
-once Task 0 (land the working tree) is complete.
+Status: SHIPPED 2026-06-10 (all seven tasks). Retrospective:
+`docs/retrospectives/2026-06-10-v16-contested-offseason-retrospective.md`
+(includes the measured before/after and the five source-wins plan
+deviations). Original plan text below is preserved as the design record.
 
 Relation to prior specs: consumes the dormant V2-B recruitment-round system
 (`docs/archive/specs/v2/2026-04-28-v2-b-recruitment/design.md`) as the

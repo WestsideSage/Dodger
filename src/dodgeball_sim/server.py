@@ -53,6 +53,7 @@ from dodgeball_sim.replay_proof import build_replay_proof, event_detail, event_l
 from dodgeball_sim.game_loop import (
     current_week,
     recompute_regular_season_standings,
+    season_sort_key,
     simulate_scheduled_match,
 )
 from dodgeball_sim.development import calculate_potential_tier
@@ -1077,15 +1078,16 @@ def get_history_my_program(club_id: str, conn = Depends(get_db)):
     rosters = load_all_rosters(conn)
     current_roster = rosters.get(club_id, [])
 
-    # Hero: first and latest completed season for this club
+    # Hero: first and latest completed season for this club. season_id is a
+    # string ("season_10" < "season_2"), so order numerically in Python.
     all_seasons = conn.execute(
         """
         SELECT season_id, wins, losses, draws, points
         FROM season_standings WHERE club_id = ?
-        ORDER BY season_id ASC
         """,
         (club_id,),
     ).fetchall()
+    all_seasons = sorted(all_seasons, key=lambda row: season_sort_key(row["season_id"]))
 
     hero: dict = {}
     if all_seasons:
@@ -1125,16 +1127,19 @@ def get_history_my_program(club_id: str, conn = Depends(get_db)):
     # Timeline events
     timeline = []
 
-    # First win
-    first_win = conn.execute(
+    # First win (numerically earliest season, then week — not string order)
+    win_rows = conn.execute(
         """
         SELECT season_id, week FROM match_records
         WHERE winner_club_id = ?
-        ORDER BY season_id ASC, week ASC
-        LIMIT 1
         """,
         (club_id,),
-    ).fetchone()
+    ).fetchall()
+    first_win = (
+        min(win_rows, key=lambda row: (season_sort_key(row["season_id"]), row["week"]))
+        if win_rows
+        else None
+    )
     if first_win:
         timeline.append({
             "season": first_win["season_id"],
@@ -1213,24 +1218,26 @@ def get_history_my_program(club_id: str, conn = Depends(get_db)):
             "proof_stat": proof_stat,
         })
 
-    # Build last_club_map: player_id -> last club_id they played for
-    last_club_rows = conn.execute(
-        """
-        SELECT ps.player_id, ps.club_id
-        FROM player_season_stats ps
-        INNER JOIN (
-            SELECT player_id, MAX(season_id) AS max_season
-            FROM player_season_stats
-            GROUP BY player_id
-        ) latest ON ps.player_id = latest.player_id AND ps.season_id = latest.max_season
-        """
-    ).fetchall()
-    last_club_map = {row["player_id"]: row["club_id"] for row in last_club_rows}
-
-    # Hall of Fame inductees from this club
-    for entry in conn.execute(
-        "SELECT player_id, induction_season FROM hall_of_fame ORDER BY induction_season"
+    # Build last_club_map: player_id -> last club_id they played for.
+    # SQL MAX(season_id) is a string max (season_9 > season_10), so pick the
+    # numerically latest season per player in Python.
+    last_club_map: dict[str, str] = {}
+    last_club_season: dict[str, tuple] = {}
+    for row in conn.execute(
+        "SELECT player_id, club_id, season_id FROM player_season_stats"
     ).fetchall():
+        key = season_sort_key(row["season_id"])
+        if row["player_id"] not in last_club_season or key > last_club_season[row["player_id"]]:
+            last_club_season[row["player_id"]] = key
+            last_club_map[row["player_id"]] = row["club_id"]
+
+    # Hall of Fame inductees from this club (numeric season order)
+    hof_entries = conn.execute(
+        "SELECT player_id, induction_season FROM hall_of_fame"
+    ).fetchall()
+    for entry in sorted(
+        hof_entries, key=lambda e: (season_sort_key(e["induction_season"]), e["player_id"])
+    ):
         if last_club_map.get(entry["player_id"]) == club_id or entry["player_id"] in current_ids:
             # find player name
             player_name = entry["player_id"]
@@ -1263,8 +1270,8 @@ def get_history_my_program(club_id: str, conn = Depends(get_db)):
                 "weight": "record",
             })
 
-    # Sort timeline by season then week (None last in week)
-    timeline.sort(key=lambda e: (e["season"], e["week"] or 999))
+    # Sort timeline by season then week (None last in week); numeric season order
+    timeline.sort(key=lambda e: (season_sort_key(e["season"]), e["week"] or 999))
 
     # Alumni (retired players whose last known club was this one)
     alumni = []
@@ -1309,7 +1316,7 @@ def get_history_my_program(club_id: str, conn = Depends(get_db)):
                 "season": row["season_id"],
                 "label": label_map[row["award_type"]],
             })
-    banners.sort(key=lambda b: b["season"])
+    banners.sort(key=lambda b: season_sort_key(b["season"]))
 
     from .persistence import load_program_trajectories
     return {
@@ -1337,17 +1344,21 @@ def get_history_league(conn = Depends(get_db)):
         if t["trophy_type"] == "championship":
             trophy_counts[t["club_id"]] = trophy_counts.get(t["club_id"], 0) + 1
 
-    # Longest win streak per club from match_records
+    # Longest win streak per club from match_records (numeric season order —
+    # a string ORDER BY scrambles streaks from season 10 onward)
     streak_map: dict = {}
     for c_id in clubs:
         rows = conn.execute(
             """
-            SELECT winner_club_id FROM match_records
+            SELECT winner_club_id, season_id, week, match_id FROM match_records
             WHERE home_club_id = ? OR away_club_id = ?
-            ORDER BY season_id, week
             """,
             (c_id, c_id),
         ).fetchall()
+        rows = sorted(
+            rows,
+            key=lambda r: (season_sort_key(r["season_id"]), r["week"], r["match_id"]),
+        )
         best = cur = 0
         for row in rows:
             if row["winner_club_id"] == c_id:

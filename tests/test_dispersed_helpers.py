@@ -1313,8 +1313,12 @@ def test_conduct_recruitment_round_uses_prepared_ai_offer_and_records_snipe():
         selected_player_id=target.player_id,
     )
 
-    assert result.snipes
-    assert result.signings[0].club_id == "lunar"
+    # V16: conduct_recruitment_round returns a ContestedPickOutcome wrapping
+    # the round result, plus the user-facing snipe context.
+    assert result.result.snipes
+    assert result.user_won is False
+    assert result.winning_club_id == "lunar"
+    assert result.result.signings[0].club_id == "lunar"
     assert load_recruitment_signings(conn, "season_1")[0].club_id == "lunar"
     assert any(player.id == target.player_id for player in load_all_rosters(conn)["lunar"])
 
@@ -1350,7 +1354,7 @@ def test_conduct_recruitment_round_advances_after_resolved_round():
         selected_player_id=next_target.player_id,
     )
 
-    assert result.round_number == 2
+    assert result.result.round_number == 2
     assert load_recruitment_round(conn, "season_1", 2)["status"] == "resolved"
     assert {signing.round_number for signing in load_recruitment_signings(conn, "season_1")} == {1, 2}
 
@@ -1373,7 +1377,15 @@ def test_conduct_recruitment_round_user_club_not_in_ai_offers():
         selected_player_id=target.player_id,
     )
     offers = load_recruitment_offers(conn, "season_1", 1)
-    assert all(offer.club_id != "aurora" for offer in offers)
+    # The user club never receives an AI-prepared offer...
+    ai_offers = [offer for offer in offers if offer.source == "ai"]
+    assert all(offer.club_id != "aurora" for offer in ai_offers)
+    # ...but V16 persists the user's own bid (source='user') so the class
+    # report can tell a snipe apart from a never-courted rival signing.
+    user_offers = [offer for offer in offers if offer.source == "user"]
+    assert [offer.club_id for offer in user_offers] == ["aurora"]
+
+
 def test_load_offseason_state_rows_reports_corrupt_json():
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row

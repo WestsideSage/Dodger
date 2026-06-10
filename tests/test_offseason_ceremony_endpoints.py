@@ -54,6 +54,18 @@ def test_offseason_ceremony_payload():
         app.dependency_overrides.clear()
 
 
+def _disable_rival_bids(monkeypatch) -> None:
+    """These endpoint tests assert the signing FLOW (counters, transitions),
+    not contested-round odds: remove rival bidders entirely so every pick is
+    STRUCTURALLY guaranteed to land, independent of balance constants (snipe
+    odds are pinned in test_contested_offseason.py)."""
+    from dodgeball_sim import recruitment
+
+    monkeypatch.setattr(
+        recruitment, "_eligible_ai_offer_clubs", lambda *args, **kwargs: set()
+    )
+
+
 def _enter_recruitment_state(conn: sqlite3.Connection) -> None:
     season_id = get_state(conn, "active_season_id")
     season = load_season(conn, season_id)
@@ -74,12 +86,13 @@ def _enter_recruitment_state(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def test_offseason_recruit_endpoint_allows_multiple_signings_then_skip():
+def test_offseason_recruit_endpoint_allows_multiple_signings_then_skip(monkeypatch):
     conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.row_factory = sqlite3.Row
     create_schema(conn)
     initialize_curated_manager_career(conn, "aurora", root_seed=20260426)
     _enter_recruitment_state(conn)
+    _disable_rival_bids(monkeypatch)
 
     def override_db():
         yield conn
@@ -107,12 +120,13 @@ def test_offseason_recruit_endpoint_allows_multiple_signings_then_skip():
     assert skipped.json()["can_begin_season"] is True
 
 
-def test_offseason_recruit_endpoint_completes_after_third_signing():
+def test_offseason_recruit_endpoint_completes_after_third_signing(monkeypatch):
     conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.row_factory = sqlite3.Row
     create_schema(conn)
     initialize_curated_manager_career(conn, "aurora", root_seed=20260426)
     _enter_recruitment_state(conn)
+    _disable_rival_bids(monkeypatch)
     roster_before = len(load_all_rosters(conn)["aurora"])
 
     def override_db():

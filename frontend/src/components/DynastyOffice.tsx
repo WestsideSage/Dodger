@@ -468,7 +468,7 @@ function RecruitBoard({
                     ? 'Sort by Fit score (how well this prospect matches your program)'
                     : key === 'interest'
                       ? 'Sort by Interest % (how interested the prospect is in your program)'
-                      : 'Sort by Pipeline Tier (1–5; higher tiers close more easily)'
+                      : 'Sort by Pipeline Tier (1–5; higher tiers start warmer, strengthening your Signing Day offer)'
                 }
               >
                 {key === 'fit' ? 'Fit' : key === 'interest' ? 'Interest' : 'Pipeline'}
