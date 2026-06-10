@@ -135,6 +135,58 @@ Redo the development math so the displayed ceiling is an honest promise:
   - Determinism pins hold (`TestDynastyLoopDeterminism`).
 - Update displayed-growth copy only if the math makes existing copy false.
 
+### Task 2 measurements (2026-06-10 — SHIPPED)
+
+**Implementation** (`development.py`, offseason math only — no engine, no
+career_setup): growth is budgeted directly in OVR points (1 OVR = 5 stat
+points) as a fraction of remaining OVR headroom per fully-repped season
+(`_HEADROOM_CLOSE_RATE = 0.40`), with an arrival floor
+(`_FINISH_FLOOR_OVR = 3.0`) that terminates the old geometric asymptote. The
+budget is spent on the five OVR skills gap-proportionally (the only
+allocation that can deliver, since every stat caps at potential and OVR is
+their mean), biased toward archetype primaries while they have room
+(`_PRIMARY_BIAS = 0.5`). Identity stats close their own gap at half pace on
+a parallel track (`_IDENTITY_CLOSE_SHARE = 0.5`). Focus multipliers keep
+their old semantics (uniform part scales pace, relative part shifts
+distribution); trajectory/staff scale the close rate, capped at
+`_MAX_CLOSE_RATE = 0.85`. Decline path unchanged. RNG stream feeding the
+dev-trait upgrade branch unchanged (same 9 noise rolls, same order).
+
+**Gate results** (same probe config as the BEFORE table):
+
+| Gate | Result |
+|---|---|
+| Mean peak within 2 OVR of eff. ceiling | ✅ engaged user shortfall **0.0** (was 9.6); AI 0.2–0.3 (was 10.3); passive user 0.5 (was 6.3) |
+| ≥ 70% of starters peak within 2 | ✅ engaged **100%**, AI 95–97%, passive 90% (was 6% / 9–10% / 21%) |
+| Headroom closure ≥ 85% | ✅ engaged **100%**, AI 96–98% (was 34% / 20%); passive user 81% is bench-composition (its actual starters: 90% within-2), not math |
+| AI symmetry control | ✅ AI clubs deliver 96–98% on the same math — no asymmetry |
+| `TestDynastyHealthGate` (CI config) | ✅ green (title share, AI floor, distinct champions, churn, snipes) |
+| Determinism pins | ✅ green; full `python -m pytest -q` green at the final constants |
+| New permanent gates | `tests/test_v18_ceiling_delivery.py`: delivery by peak-end at ages 18/21/24 × 3 archetypes, archetype-independence ≤ 2 OVR band, zero-headroom stasis, bench gating with the floor |
+| Engaged OVR-edge "does not grow materially" | ❌ **NOT MET by dev math — structural, escalated** (below) |
+
+**The engaged snowball is recruiting-structural, not a dev defect.** With
+ceilings delivering, the engaged sweep (8×10, `--signings 3
+--optimize-lineup`) goes from 17.5% → **41.2%** user title share, OVR-edge
+peaking **+4.5** at S5–S6 and self-correcting to ~+1 by S10 as AI ceilings
+deliver and the roster cap saturates. A pace experiment
+(`_HEADROOM_CLOSE_RATE` 0.40 vs 0.35, both sweeps re-run) produced the SAME
+edge curve (+4.5 peak) and statistically indistinguishable title share
+(41.2% vs 48.8% on 80 binomial trials) — **global dev pace does not couple
+to the snowball.** The hump is the V16 structural asymmetry (user signs up
+to 3 prospects/offseason and keeps 12; AI clubs sign 1 and are trimmed to 9)
+that broken development used to mask. Dev math must stay club-symmetric (no
+hidden boosts), so the fix lives in recruiting volume/roster parity — V16
+plan D3 ("AI volume = 1/club/offseason") was an unconfirmed
+recommended-default and is now the binding lever. **OPEN owner item:**
+raise AI offseason signing volume / revisit trim-to-9 vs user-12, or accept
+the engaged hump as the reward for maximal engagement. Passive title share
+is 5.0% (auto-pilot never rotates its aging lineup — the known lineup trap,
+worth a separate auto-pilot fix note for V19).
+
+Mortality is unchanged (first retirement S9 on all seeds) — that is Task 3's
+job, as planned.
+
 ## Task 3 — Vet seeding + mortality (career_setup + retirement gates)
 
 - Seed curated rosters with a vet/rising-star/prodigy age mix (owner-cited

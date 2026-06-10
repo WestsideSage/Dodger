@@ -20,9 +20,20 @@ commit `e235326`); Task 1 catch-economy retune (`2dfc4a0`) and Task 2
 WT-20 enforcement + draw texture (`bb07fda`) are on main with the
 verification sweep (`a6165fa`, pushed; retro:
 `docs/retrospectives/2026-06-10-v17-official-engine-truth-retrospective.md`).
-Next milestone per the sequencing plan: **V18 Development & Mortality**
-(dev-ceiling overhaul, vet seeding, Monte Carlo re-run; sprint plan:
-`docs/specs/2026-06-10-v18-development-mortality-sprint-plan.md`).
+**V18 Development & Mortality is IN PROGRESS** (sprint plan + BEFORE
+baseline + Task 2 dev-ceiling overhaul shipped 2026-06-10; sprint plan with
+all measurements:
+`docs/specs/2026-06-10-v18-development-mortality-sprint-plan.md`). Task 2:
+full-time starters now deliver their displayed ceilings (headroom closure
+20-34% → 96-100%, shortfall ~10 OVR → ≤0.5, archetype-independent, AI
+symmetric; gated by `tests/test_v18_ceiling_delivery.py`). OPEN owner item
+from its measurement: with ceilings delivering, the engaged user's
+structural recruiting volume (3 signings/offseason vs AI 1, roster 12 vs
+trimmed 9) produces a 41% title share S4-S8 hump that dev pace provably
+does not control — the lever is AI signing volume / roster parity (V16 plan
+D3 revisit). Remaining: Task 3 vet seeding + mortality (first retirement is
+still season 9 on every probed seed), Task 4 Monte Carlo AFTER re-run,
+Task 5 sweep + retro.
 
 ## Current Phase
 
