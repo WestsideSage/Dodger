@@ -40,13 +40,13 @@ from dodgeball_sim.persistence import (
 # Seeds where the TOP prospect (by public estimate) is contested hard enough
 # that the uncourted user offer loses the round, while the courted offer wins
 # it. Found by tools/contested_offer_probe.py (witness list, 2026-06-10
-# post-V18 re-derivation: the vet-mix seeding moved club profiles, so BASE was
-# re-tuned 90.0 -> 85.0; probe now reads uncourted 43% sniped, courted +32
-# 12%, interest-100 0%); pinned here as the cause->effect proof that interest
-# is a real consumer. If these fail after an RNG-stream or balance change,
-# re-run the probe and pick fresh witnesses from its printed list.
+# post-V19-scarcity re-derivation: the scarcer pool moved rival offers, so
+# BASE was re-tuned 85.0 -> 79.0; probe reads uncourted 54% sniped, courted
+# +32 12%, interest-100 2%); pinned here as the cause->effect proof that
+# interest is a real consumer. If these fail after an RNG-stream or balance
+# change, re-run the probe and pick fresh witnesses from its printed list.
 WITNESS_SEED = 7
-WITNESS_SEEDS = (7, 13)
+WITNESS_SEEDS = (7, 11)
 _REDERIVE = "re-derive witnesses with tools/contested_offer_probe.py"
 
 

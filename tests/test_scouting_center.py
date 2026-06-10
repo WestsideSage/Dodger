@@ -77,10 +77,12 @@ def test_default_scouting_config_has_documented_defaults():
     assert cfg.trait_sense_multipliers == {"LOW": 0.70, "MEDIUM": 1.00, "HIGH": 1.30}
     assert cfg.jitter_min == 0.90
     assert cfg.jitter_max == 1.10
+    # V19 ceiling scarcity (owner, 2026-06-10): labeled trajectories are the
+    # scarce ceiling tiers — STAR ~0.75/class, GENERATIONAL ~1 per 4 classes.
     assert cfg.trajectory_rates == {
-        "NORMAL": 0.70,
-        "IMPACT": 0.22,
-        "STAR": 0.07,
+        "NORMAL": 0.86,
+        "IMPACT": 0.10,
+        "STAR": 0.03,
         "GENERATIONAL": 0.01,
     }
     assert cfg.public_archetype_mislabel_rate == 0.15

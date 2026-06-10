@@ -39,11 +39,20 @@ Gated by `tests/test_v18_ceiling_delivery.py` +
 `tests/test_v18_mortality_seeding.py`. The S5 seeded-vet
 retirement cohort wave was smoothed same-day (`9c79ae1`, owner-delegated:
 Captain band 30-34, Anchor 27-31; mortality now spreads S2-S10).
-**V19 Decision Wiring is PLANNED** — sprint plan (split into V19a engine
-consumers / V19b management lanes, incl. the auto-pilot lineup default and
-the ceiling-scarcity/OVR-integrity tune with the owner's roster-building
-philosophy):
-`docs/specs/2026-06-10-v19-decision-wiring-sprint-plan.md`.
+**V19 Decision Wiring is IN PROGRESS** — sprint plan (split V19a engine
+consumers / V19b management lanes):
+`docs/specs/2026-06-10-v19-decision-wiring-sprint-plan.md`. **Tasks 8 + 9
+SHIPPED 2026-06-10** (owner-decided, rode early per the plan): the lineup
+auto-reorder toggle (CFB26 depth-chart pattern — default ON, manual save
+flips hands-on, one-shot Auto-Assign; Lineup Editor UI; gated by
+`tests/test_v19_lineup_auto_reorder.py`; browser-verified) and ceiling
+scarcity (trajectory-gated elite tiers: Elite 0.75/class, Generational ~1
+per 4-6 classes and the label IS the ≥96 guarantee; NORMAL-72 and
+conversion-70 floors removed; league S10 mean OVR 88.9 → 82.6 with delivery
+still 96-100%; contested BASE re-tuned 85 → 79, witnesses 7/11; gated by
+`tests/test_v19_ceiling_scarcity.py`). Remaining: V19a engine consumers
+(slot roles, stamina, tactical_iq, rec rush targeting), V19b staff/orders,
+promises, week-1 scouting intel.
 
 ## Current Phase
 

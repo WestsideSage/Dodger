@@ -768,6 +768,37 @@ def update_lineup(payload: dict[str, Any], conn = Depends(get_db)) -> dict[str, 
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@app.post("/api/lineup/auto-reorder", response_model=dict[str, Any])
+def set_lineup_auto_reorder(payload: dict[str, Any], conn = Depends(get_db)) -> dict[str, Any]:
+    """V19 Task 8: the set-and-forget switch (CFB26 depth-chart pattern).
+
+    Body: ``{"enabled": true|false}``. ON = the offseason re-seats the
+    fielded six automatically; OFF = hands-on (the offseason only repairs
+    retirements, never re-ranks a chosen seat). A manual ``/api/lineup``
+    save flips it OFF implicitly.
+    """
+    from dodgeball_sim.web_status_service import set_lineup_auto_reorder_payload
+
+    enabled = payload.get("enabled")
+    if not isinstance(enabled, bool):
+        raise HTTPException(status_code=400, detail="enabled must be a boolean")
+    return set_lineup_auto_reorder_payload(conn, enabled)
+
+
+@app.post("/api/lineup/auto-assign", response_model=dict[str, Any])
+def auto_assign_lineup(conn = Depends(get_db)) -> dict[str, Any]:
+    """V19 Task 8: one-shot Auto-assign — seat the optimal six right now.
+
+    A manual tool: it does not change the auto-reorder toggle.
+    """
+    from dodgeball_sim.web_status_service import auto_assign_lineup_payload
+
+    try:
+        return auto_assign_lineup_payload(conn)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @app.post("/api/command-center/simulate", response_model=CommandCenterSimResponse)
 def simulate_command_center_week(update: WeeklyCommandPlanUpdate | None = None, conn = Depends(get_db)) -> CommandCenterSimResponse:
     from dodgeball_sim.lineup import LineupViolation

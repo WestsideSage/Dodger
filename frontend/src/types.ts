@@ -55,6 +55,9 @@ export interface RosterResponse {
     club_id: string;
     roster: Player[];
     default_lineup: string[];
+    /** V19 Task 8: ON = the offseason re-seats the fielded six automatically;
+     *  OFF = hands-on (a manual lineup save flips this off implicitly). */
+    lineup_auto_reorder?: boolean;
 }
 
 export type Approach = 'aggressive' | 'patient' | 'mixed';
