@@ -4,9 +4,9 @@ Canonical snapshot of what is actually built and what is still open. When code
 state changes materially, update this file in the same pass. If this file and
 the source disagree, the source wins - then fix this file.
 
-Last updated: 2026-06-10. `main` / `origin/main` are at the **V16 Task 0
-sweep commit** (direct child of `6bfc775` `feat(design): full-app UX
-elevation + Command Center redesign`), which landed the six 2026-06-09 audit
+Last updated: 2026-06-10. `main` / `origin/main` are at `2969271`
+(`feat: land six 2026-06-09 audit passes + V16 plan (Task 0 sweep)`, direct
+child of `6bfc775`), which landed the six 2026-06-09 audit
 passes (trust audit, first-hour, watchability, systems balance, dynasty
 retention, UI/UX v2 - the "Task 0 sweep" entries below) plus the V16 sprint
 plan, the 2026-06-10 owner decision log, and the stale-save/screenshot purge
