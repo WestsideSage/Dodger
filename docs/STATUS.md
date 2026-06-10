@@ -36,10 +36,14 @@ Task 2 snowball escalation: engaged title share 41.2% → 22.5% (parity
 `CONTESTED_USER_OFFER_BASE` re-tuned 90 → 85 (the vet mix moved rival
 offers; V16 contested targets restored at 43% uncourted / 12% courted).
 Gated by `tests/test_v18_ceiling_delivery.py` +
-`tests/test_v18_mortality_seeding.py`. V19-queued from measurement: the
-passive lineup cliff (one offseason lineup-optimize click separates 22.5%
-from 2.5% title share — auto-pilot lineup default needs a product call).
-Next milestone per the sequencing plan: **V19 Decision Wiring**.
+`tests/test_v18_mortality_seeding.py`. The S5 seeded-vet
+retirement cohort wave was smoothed same-day (`9c79ae1`, owner-delegated:
+Captain band 30-34, Anchor 27-31; mortality now spreads S2-S10).
+**V19 Decision Wiring is PLANNED** — sprint plan (split into V19a engine
+consumers / V19b management lanes, incl. the auto-pilot lineup default and
+the ceiling-scarcity/OVR-integrity tune with the owner's roster-building
+philosophy):
+`docs/specs/2026-06-10-v19-decision-wiring-sprint-plan.md`.
 
 ## Current Phase
 
