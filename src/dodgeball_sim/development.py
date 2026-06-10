@@ -9,11 +9,42 @@ from .rng import DeterministicRNG
 from .stats import PlayerMatchStats
 
 
-# Fraction of a player's remaining headroom (potential - current OVR) converted
-# toward their ceiling each offseason, before the dev-trait rate scaling. Tuned
-# so an elite-potential young player gains several OVR a season and approaches
-# their potential over a multi-season arc rather than in one jump.
-_HEADROOM_CLOSE_RATE = 0.9
+# Fraction of a player's remaining OVR headroom (potential - current OVR)
+# closed per fully-repped growth season (V18). Growth is budgeted directly in
+# OVR points and spent on the five OVR skills, so this rate is the honest
+# closure dynamic: n full seasons close 1-(1-rate)^n of the gap. The finish
+# floor below terminates the geometric tail so the last few points actually
+# arrive instead of asymptoting ~10 short of the displayed ceiling (V18
+# BEFORE table: full-time starters closed only 20-34% of promised headroom).
+# Pace is NOT a snowball knob: 0.40 and 0.35 were both probed on the engaged
+# 8x10 sweep and produced the same user-vs-best-AI OVR-edge curve (+4.5 peak)
+# and statistically indistinguishable title shares (41% / 49%) — the engaged
+# hump is the structural recruiting asymmetry (3 user signings/offseason vs
+# AI's 1, roster 12 vs trimmed 9) expressing through delivered ceilings, and
+# is dispositioned as an owner item in the V18 sprint plan, not tuned here.
+_HEADROOM_CLOSE_RATE = 0.40
+
+# Minimum OVR gain per fully-repped growth season while headroom remains
+# (scaled by reps, capped by remaining headroom).
+_FINISH_FLOOR_OVR = 3.0
+
+# Trajectory/staff/focus accelerate arrival; they may never teleport a player
+# to their ceiling in a single season.
+_MAX_CLOSE_RATE = 0.85
+
+# Identity stats (no OVR weight) close their own gap to potential at this
+# share of the OVR closure rate — steady, capped growth until V19 wires their
+# match consumers.
+_IDENTITY_CLOSE_SHARE = 0.5
+
+# Archetype primaries grow ahead of the curve (V6 identity flavor): their
+# allocation weight is biased by 1 + _PRIMARY_BIAS x primary_weight. Gap-
+# proportional allocation redirects the budget as primaries cap out, so the
+# bias shapes the arc without breaking ceiling delivery.
+_PRIMARY_BIAS = 0.5
+
+_OVR_STATS = ("accuracy", "power", "dodge", "catch", "stamina")
+_IDENTITY_STATS = ("tactical_iq", "catch_courage", "throw_selection_iq", "conditioning_curve")
 
 _TRAJECTORY_GROWTH_MULTIPLIER = {
     None: 1.00,
@@ -99,9 +130,14 @@ def apply_season_development(
     matches_played: int | None = None,
     club_matches: int | None = None,
 ) -> Player:
-    """Apply one offseason of deterministic development to a player using V6 Reps-based formula.
+    """Apply one offseason of deterministic development to a player.
 
-    Growth is gated by playing time (Reps), modulated by potential and dev_focus.
+    V18 growth model: each season closes a fraction of the player's remaining
+    OVR headroom (effective potential - current OVR), budgeted directly in OVR
+    points and spent on the five OVR skills gap-proportionally, so a full-time
+    starter actually reaches the ceiling the UI displays by the end of their
+    peak window. Growth is gated by playing time (Reps) and modulated by
+    trajectory, dev_focus, and staff.
 
     Reps signal: when ``matches_played`` and ``club_matches`` are provided, the
     gate is the fraction of the club's recorded matches the player appeared in
@@ -123,14 +159,17 @@ def apply_season_development(
     peak_start, peak_end = _peak_window(growth_curve)
     facility_modifiers = apply_facility_effects(player, season_stats, facility_set)
 
-    # 1. Base Growth: headroom-proportional.
-    # Growth is a fraction of the gap between the player's current OVR and their
-    # potential ("dev trait"). High-ceiling players develop the most — even from
-    # a low current OVR — and growth tapers smoothly to zero as they approach
-    # their potential, so it can never overshoot the ceiling. A player already
-    # at or above their potential has no headroom and barely moves, which also
-    # means low-potential players grow ~0 by construction (no special-casing).
-    headroom = max(0.0, potential - float(player.overall_skill()))
+    # 1. OVR headroom, in true (unrounded) OVR points. The "Ceiling" the UI
+    # displays is potential on the OVR scale, so growth is budgeted directly
+    # in OVR terms and spent on the five OVR skills (V18). The old pool spread
+    # 40% of growth across all nine rated stats while OVR averages five, so
+    # 18-48% of every season's growth — depending on archetype primaries —
+    # never moved OVR, and full-time starters stalled ~10 OVR short of the
+    # displayed ceiling.
+    ovr_now = sum(float(getattr(player.ratings, stat)) for stat in _OVR_STATS) / float(
+        len(_OVR_STATS)
+    )
+    headroom = max(0.0, potential - ovr_now)
 
     # Reps gate: young players develop through practice even without match
     # minutes; older players need real playing time to keep improving.
@@ -146,17 +185,6 @@ def apply_season_development(
     else:
         # Legacy fallback for callers without appearance counts.
         reps_factor = min(1.0, float(season_stats.minutes_played) / 1000.0)
-
-    # The dev trait also sets the *rate* the gap is closed, so a higher-ceiling
-    # player climbs toward their potential faster than a modest one at the same
-    # headroom. Tuned so an elite-potential young player gains several OVR a
-    # season and reaches their ceiling over a multi-season arc.
-    gap_close_rate = _HEADROOM_CLOSE_RATE * (potential / 100.0)
-    base_growth = headroom * gap_close_rate * reps_factor
-
-    # Potential is fully expressed through headroom + gap_close_rate above, so
-    # the pool no longer needs a separate potential multiplier.
-    potential_modifier = 1.0
 
     # 3. Focus Multipliers
     multipliers = {
@@ -188,40 +216,104 @@ def apply_season_development(
         multipliers["dodge"] = 0.8
         multipliers["catch"] = 0.8
 
-    # 4. Final Allocation weighting
-    pool = base_growth * potential_modifier * growth_multiplier
+    # 4. Allocation. Per-stat noise is rolled in the legacy stat order so the
+    # RNG stream feeding the dev-trait upgrade branch is unchanged.
     effective_staff_modifier = max(0.0, staff_development_modifier)
-    flat_bonus = effective_staff_modifier * 20.0
-    pool = pool * (1.0 + effective_staff_modifier) + flat_bonus
-    
-    primary_stats = _primary_stats_for_archetype(player.archetype, player.ratings)
-    total_primary_weight = sum(weight for _, weight in primary_stats)
-    base_weight = 0.4 / len(multipliers)
-    weights = {s: base_weight for s in multipliers}
-    for stat_name, stat_weight in primary_stats:
-        weights[stat_name] += 0.6 * (stat_weight / max(total_primary_weight, 1e-9))
-
     ratings = player.ratings
-    deltas = {}
-    for stat in multipliers:
-        slice_amount = pool * weights[stat] * multipliers[stat]
-        noise = rng.roll(-0.35, 0.35)
-        f_bonus = _facility_bonus(stat, facility_modifiers)
-        
-        if player.age > peak_end:
-            decline_years = player.age - peak_end
-            performance = _performance_signal(season_stats)
-            # Decline mitigated by performance, facility, and staff
-            delta_f = -0.5 * decline_years + performance * 0.5 + f_bonus * 0.5 + noise * 0.5 + (effective_staff_modifier * 2.0)
+    noise = {stat: rng.roll(-0.35, 0.35) for stat in multipliers}
+    deltas: dict[str, int] = {}
+
+    if player.age > peak_end:
+        # Decline path (unchanged by V18): mitigated by performance, facility,
+        # and staff.
+        performance = _performance_signal(season_stats)
+        decline_years = player.age - peak_end
+        for stat in multipliers:
+            f_bonus = _facility_bonus(stat, facility_modifiers)
+            delta_f = (
+                -0.5 * decline_years
+                + performance * 0.5
+                + f_bonus * 0.5
+                + noise[stat] * 0.5
+                + (effective_staff_modifier * 2.0)
+            )
             delta = int(round(delta_f))
             # Don't let it be positive from mitigation alone unless performance was great
             if delta > 0 and performance < 0.5:
                 delta = 0
+            deltas[stat] = delta
+    else:
+        # Growth path (V18): close a fraction of the remaining OVR headroom
+        # each season, with an arrival floor so the final points land instead
+        # of asymptoting. The budget (in stat points: 1 OVR = 5 points) is
+        # split across the five OVR skills proportionally to each stat's own
+        # gap to potential — the only allocation that can deliver the ceiling,
+        # since every stat caps at potential and OVR is their mean — biased
+        # toward archetype primaries while they still have room.
+        ovr_gaps = {s: max(0.0, potential - float(getattr(ratings, s))) for s in _OVR_STATS}
+        primary_bias = {s: 1.0 for s in multipliers}
+        for stat_name, stat_weight in _primary_stats_for_archetype(
+            player.archetype, player.ratings
+        ):
+            primary_bias[stat_name] = 1.0 + _PRIMARY_BIAS * stat_weight
+        weights = {
+            s: ovr_gaps[s] * multipliers[s] * primary_bias[s] for s in _OVR_STATS
+        }
+        weight_total = sum(weights.values())
+        gap_total = sum(ovr_gaps.values())
+        # Focus multipliers scale the season's pace (their uniform part) and
+        # shift its distribution (their relative part), preserving the old
+        # slice semantics: YOUTH_ACCELERATION speeds the whole season up,
+        # STRENGTH_AND_CONDITIONING trades accuracy/dodge/catch pace for
+        # power/stamina emphasis.
+        focus_scale = (
+            sum(ovr_gaps[s] * multipliers[s] for s in _OVR_STATS) / gap_total
+            if gap_total > 0
+            else 1.0
+        )
+        close_rate = min(
+            _MAX_CLOSE_RATE,
+            _HEADROOM_CLOSE_RATE
+            * growth_multiplier
+            * focus_scale
+            * (1.0 + effective_staff_modifier),
+        )
+        if headroom > 0.0 and weight_total > 0.0:
+            target_ovr_gain = (
+                min(headroom, max(headroom * close_rate, _FINISH_FLOOR_OVR)) * reps_factor
+            )
+            budget = target_ovr_gain * len(_OVR_STATS) + effective_staff_modifier * 20.0
         else:
-            delta_f = slice_amount + f_bonus + noise
-            delta = int(round(delta_f))
-            
-        deltas[stat] = delta
+            budget = 0.0
+        for stat in _OVR_STATS:
+            share = weights[stat] / weight_total if weight_total > 0 else 0.0
+            delta = int(
+                round(budget * share + _facility_bonus(stat, facility_modifiers) + noise[stat])
+            )
+            deltas[stat] = max(0, delta)
+        # Identity stats (no OVR weight) close their own gap on a parallel
+        # track at half pace — capped at potential like everything else.
+        for stat in _IDENTITY_STATS:
+            gap = max(0.0, potential - float(getattr(ratings, stat)))
+            identity_rate = (
+                min(
+                    _MAX_CLOSE_RATE,
+                    _HEADROOM_CLOSE_RATE
+                    * multipliers[stat]
+                    * primary_bias[stat]
+                    * growth_multiplier
+                    * (1.0 + effective_staff_modifier),
+                )
+                * _IDENTITY_CLOSE_SHARE
+            )
+            delta = int(
+                round(
+                    gap * identity_rate * reps_factor
+                    + _facility_bonus(stat, facility_modifiers)
+                    + noise[stat]
+                )
+            )
+            deltas[stat] = max(0, delta)
 
     next_ratings = PlayerRatings(
         accuracy=_apply_delta(ratings.accuracy, deltas["accuracy"], potential),
