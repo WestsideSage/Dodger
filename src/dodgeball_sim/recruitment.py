@@ -9,8 +9,6 @@ from .models import Player, PlayerArchetype, PlayerRatings, PlayerTraits
 from .rng import DeterministicRNG
 from .scouting_center import Prospect, Trajectory
 from typing import Any, Dict, Optional, Tuple
-from typing import Any, Dict, Optional, Tuple
-from typing import Any, Dict, Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -228,8 +226,14 @@ def generate_prospect_pool(
 
         true_ovr = sum(ratings.values()) / len(ratings)
         half_width = config.public_baseline_band_half_width
-        public_low = max(0, int(round(true_ovr - half_width)))
-        public_high = min(100, int(round(true_ovr + half_width)))
+        # The public read is an ESTIMATE: jitter the band center so the
+        # midpoint does not encode the hidden true overall. Scouting narrows
+        # the band around the public estimate; the verified OVR is only
+        # revealed at signing (V16 Task 1).
+        jitter = config.public_band_center_jitter
+        band_center = true_ovr + rng.roll(-jitter, jitter)
+        public_low = max(0, int(round(band_center - half_width)))
+        public_high = min(100, int(round(band_center + half_width)))
         if public_high - public_low != 2 * half_width:
             public_low = max(0, public_high - 2 * half_width)
             public_high = min(100, public_low + 2 * half_width)
@@ -435,6 +439,34 @@ def _next_recruitment_round_number(conn: sqlite3.Connection, season_id: str) -> 
     ).fetchone()
     return int(max_round["max_round"] or 0) + 1
 
+def _eligible_ai_offer_clubs(
+    conn: sqlite3.Connection,
+    season_id: str,
+    user_club_id: Optional[str],
+) -> set[str]:
+    """AI clubs allowed to bid this round: under the per-offseason signing cap
+    (D3) and below the Signing Day roster ceiling. The user club never bids
+    through this path."""
+    from .config import AI_OFFSEASON_MAX_ROSTER, AI_OFFSEASON_SIGNINGS_PER_CLUB
+    from .persistence import load_all_rosters, load_recruitment_signings
+
+    signings_per_club: dict[str, int] = {}
+    for signing in load_recruitment_signings(conn, season_id):
+        if signing.source == "ai":
+            signings_per_club[signing.club_id] = signings_per_club.get(signing.club_id, 0) + 1
+
+    eligible: set[str] = set()
+    for club_id, roster in load_all_rosters(conn).items():
+        if user_club_id is not None and club_id == user_club_id:
+            continue
+        if signings_per_club.get(club_id, 0) >= AI_OFFSEASON_SIGNINGS_PER_CLUB:
+            continue
+        if len(roster) >= AI_OFFSEASON_MAX_ROSTER:
+            continue
+        eligible.add(club_id)
+    return eligible
+
+
 def _ensure_recruitment_prepared(
     conn: sqlite3.Connection,
     root_seed: int,
@@ -442,6 +474,7 @@ def _ensure_recruitment_prepared(
     class_year: int,
     user_club_id: Optional[str] = None,
     round_number: int = 1,
+    eligible_club_ids: Optional[set[str]] = None,
 ) -> Tuple[Any, ...]:
     from .persistence import (
         load_all_rosters,
@@ -479,6 +512,8 @@ def _ensure_recruitment_prepared(
     active_profiles = []
     for club_id in sorted(rosters):
         if user_club_id is not None and club_id == user_club_id:
+            continue
+        if eligible_club_ids is not None and club_id not in eligible_club_ids:
             continue
         profile = profiles.get(club_id)
         if profile is None:
@@ -577,6 +612,72 @@ def build_recruitment_day_summary(
         "current_round": _next_recruitment_round_number(conn, season_id),
     }
 
+@dataclass(frozen=True)
+class ContestedPickOutcome:
+    """The resolved Signing Day round from the user's perspective."""
+
+    result: Any  # RecruitmentRoundResult
+    user_won: bool
+    signed_player: Optional[Any]  # Player when the user won
+    user_offer_strength: float
+    interest: int
+    actions_taken: int
+    winning_club_id: Optional[str]
+    winning_offer_strength: Optional[float]
+    # Best opposing bid on the user's pick (None when uncontested).
+    rival_club_id: Optional[str] = None
+    rival_offer_strength: Optional[float] = None
+
+
+def _apply_round_signings(
+    conn: sqlite3.Connection,
+    result,
+    class_year: int,
+    user_club_id: Optional[str],
+):
+    """Convert round signings into roster players, with honest lineup care.
+
+    The user's manual lineup default must survive a signing (raw
+    ``sign_prospect_to_club`` rewrites it to roster order); AI clubs get their
+    lineup re-optimized, matching the offseason convention.
+    """
+    from .lineup import optimize_ai_lineup
+    from .persistence import (
+        load_all_rosters,
+        load_clubs,
+        load_lineup_default,
+        load_prospect_pool,
+        save_lineup_default,
+    )
+
+    prospects_by_id = {p.player_id: p for p in load_prospect_pool(conn, class_year)}
+    clubs = load_clubs(conn)
+    signed_players: dict[str, Any] = {}
+    for signing in result.signings:
+        if signing.club_id not in clubs or _is_already_signed(conn, class_year, signing.player_id):
+            continue
+        prospect = prospects_by_id.get(signing.player_id)
+        if prospect is None:
+            continue
+        if user_club_id is not None and signing.club_id == user_club_id:
+            from .offseason_ceremony import _lineup_default_after_signing
+
+            prior_default = load_lineup_default(conn, user_club_id)
+            player = sign_prospect_to_club(conn, prospect, signing.club_id, class_year)
+            roster = list(load_all_rosters(conn).get(user_club_id, []))
+            save_lineup_default(
+                conn,
+                user_club_id,
+                _lineup_default_after_signing(prior_default, roster, player.id),
+            )
+        else:
+            player = sign_prospect_to_club(conn, prospect, signing.club_id, class_year)
+            roster = list(load_all_rosters(conn).get(signing.club_id, []))
+            save_lineup_default(conn, signing.club_id, optimize_ai_lineup(roster))
+        signed_players[signing.player_id] = player
+    return signed_players
+
+
 def conduct_recruitment_round(
     conn: sqlite3.Connection,
     root_seed: int,
@@ -584,18 +685,32 @@ def conduct_recruitment_round(
     class_year: int,
     user_club_id: str,
     selected_player_id: str,
-):
+) -> ContestedPickOutcome:
+    """Resolve the user's Signing Day pick as a contested round (V16 Task 3).
+
+    Eligible AI clubs bid on their own board targets in the same round — the
+    user's pick can be sniped, and AI winners sign for real (league churn).
+    Interest built through in-season courtship strengthens the user's offer.
+    """
+    from .config import (
+        CONTESTED_USER_OFFER_BASE,
+        CONTESTED_USER_OFFER_INTEREST_WEIGHT,
+    )
     from .persistence import (
-        load_clubs,
+        load_command_history_all_seasons,
         load_json_state,
         load_prospect_pool,
         load_recruitment_offers,
+        save_recruitment_offers,
         save_recruitment_round,
         save_recruitment_signings,
     )
+    from .recruiting_actions import current_interest
+    from .recruiting_office import _credibility_score
     from .recruitment_domain import RecruitmentOffer, resolve_recruitment_round
 
     round_number = _next_recruitment_round_number(conn, season_id)
+    eligible = _eligible_ai_offer_clubs(conn, season_id, user_club_id)
     _ensure_recruitment_prepared(
         conn,
         root_seed,
@@ -603,39 +718,32 @@ def conduct_recruitment_round(
         class_year,
         user_club_id=user_club_id,
         round_number=round_number,
+        eligible_club_ids=eligible,
     )
     prepared_offers = load_recruitment_offers(conn, season_id, round_number)
     prospect = next((p for p in load_prospect_pool(conn, class_year) if p.player_id == selected_player_id), None)
     if prospect is None:
         raise ValueError(f"Unknown prospect: {selected_player_id}")
-    # The recruiting actions the user invested in (contact/visit) build a
-    # persisted interest value; it strengthens the Signing Day offer on top of
-    # the strong base. NOTE (2026-06-09 audit): this round system currently has
-    # no production caller — the shipping web flow signs via the offseason
-    # picker (offseason_ceremony.sign_chosen_rookie), which ignores interest.
-    # Kept correct for when a contested Signing Day is wired in.
-    from .recruiting_actions import current_interest
     actions = load_json_state(conn, "prospect_recruitment_actions_json", {})
-    # Use the REAL program credibility, not a hardcoded 50: for an untouched
-    # prospect current_interest falls back to base_interest(credibility), and
-    # a hardcoded value would silently disagree with the interest the recruit
-    # board displayed for the same prospect.
-    from .persistence import load_command_history
-    from .recruiting_office import _credibility_score
-
-    history = load_command_history(conn, season_id)
+    # Career-wide credibility, matching what the in-season recruit board shows
+    # for the same prospect (Audit 7.4: credibility is a career number).
+    history = load_command_history_all_seasons(conn)
     credibility = _credibility_score(conn, season_id, user_club_id, history)
+    prospect_actions = actions.get(selected_player_id, {})
     interest = current_interest(
-        actions.get(selected_player_id, {}),
+        prospect_actions,
         pipeline_tier=prospect.pipeline_tier,
         credibility_score=credibility,
+    )
+    user_strength = round(
+        CONTESTED_USER_OFFER_BASE + interest * CONTESTED_USER_OFFER_INTEREST_WEIGHT, 4
     )
     user_offer = RecruitmentOffer(
         season_id=season_id,
         round_number=round_number,
         club_id=user_club_id,
         player_id=selected_player_id,
-        offer_strength=100.0 + interest * 0.2,
+        offer_strength=user_strength,
         source="user",
         need_score=5.0,
         playing_time_pitch=0.5,
@@ -658,13 +766,108 @@ def conduct_recruitment_round(
         "resolved",
         {"signing_count": len(result.signings), "snipe_count": len(result.snipes)},
     )
-    prospects_by_id = {p.player_id: p for p in load_prospect_pool(conn, class_year)}
-    clubs = load_clubs(conn)
-    for signing in result.signings:
-        if signing.club_id not in clubs or _is_already_signed(conn, class_year, signing.player_id):
-            continue
-        sign_prospect_to_club(conn, prospects_by_id[signing.player_id], signing.club_id, class_year)
-    return result
+    # Persist the user's bid too (after resolution, so a crashed round retries
+    # cleanly): the Signing Day class report needs to know which rival
+    # signings actually beat a user offer.
+    save_recruitment_offers(conn, [user_offer])
+    signed_players = _apply_round_signings(conn, result, class_year, user_club_id)
+
+    winner = next(
+        (s for s in result.signings if s.player_id == selected_player_id), None
+    )
+    user_won = winner is not None and winner.club_id == user_club_id
+    actions_taken = sum(
+        1 for flag in ("scouted", "contacted", "visited") if prospect_actions.get(flag)
+    )
+    rival = max(
+        (o for o in prepared_offers if o.player_id == selected_player_id),
+        key=lambda o: o.offer_strength,
+        default=None,
+    )
+    return ContestedPickOutcome(
+        result=result,
+        user_won=user_won,
+        signed_player=signed_players.get(selected_player_id) if user_won else None,
+        user_offer_strength=user_strength,
+        interest=interest,
+        actions_taken=actions_taken,
+        winning_club_id=winner.club_id if winner else None,
+        winning_offer_strength=round(winner.offer_strength, 4) if winner else None,
+        rival_club_id=rival.club_id if rival else None,
+        rival_offer_strength=round(rival.offer_strength, 4) if rival else None,
+    )
+
+
+def run_ai_offseason_signings(
+    conn: sqlite3.Connection,
+    root_seed: int,
+    season_id: str,
+    class_year: int,
+    user_club_id: Optional[str],
+):
+    """AI-only Signing Day rounds: every eligible AI club pursues its top
+    board target until each has signed (cap D3) or the pool runs dry.
+
+    Deterministic: all draws derive from ``root_seed`` via the existing
+    recruitment namespaces keyed on (season, round, club, prospect).
+    Returns the tuple of AI signings made by this sweep.
+    """
+    from .persistence import (
+        load_recruitment_offers,
+        save_recruitment_round,
+        save_recruitment_signings,
+    )
+    from .recruitment_domain import resolve_recruitment_round
+
+    swept: list = []
+    # Bounded: each iteration either signs at least one prospect or stops.
+    for _ in range(16):
+        eligible = _eligible_ai_offer_clubs(conn, season_id, user_club_id)
+        if not eligible:
+            break
+        if not _available_unsigned_prospects(conn, season_id, class_year):
+            break
+        round_number = _next_recruitment_round_number(conn, season_id)
+        _ensure_recruitment_prepared(
+            conn,
+            root_seed,
+            season_id,
+            class_year,
+            user_club_id=user_club_id,
+            round_number=round_number,
+            eligible_club_ids=eligible,
+        )
+        offers = load_recruitment_offers(conn, season_id, round_number)
+        if not offers:
+            save_recruitment_round(conn, season_id, round_number, "resolved", {"signing_count": 0})
+            break
+        result = resolve_recruitment_round(season_id, round_number, offers)
+        save_recruitment_signings(conn, result.signings)
+        save_recruitment_round(
+            conn,
+            season_id,
+            round_number,
+            "resolved",
+            {"signing_count": len(result.signings), "snipe_count": 0},
+        )
+        _apply_round_signings(conn, result, class_year, user_club_id)
+        swept.extend(result.signings)
+        if not result.signings:
+            break
+    return tuple(swept)
+
+
+def _available_unsigned_prospects(
+    conn: sqlite3.Connection, season_id: str, class_year: int
+) -> list:
+    from .persistence import load_prospect_pool, load_recruitment_signings
+
+    already = {s.player_id for s in load_recruitment_signings(conn, season_id)}
+    return [
+        p
+        for p in load_prospect_pool(conn, class_year)
+        if p.player_id not in already and not _is_already_signed(conn, class_year, p.player_id)
+    ]
 
 
 

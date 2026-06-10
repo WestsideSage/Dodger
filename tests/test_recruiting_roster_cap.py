@@ -60,13 +60,25 @@ def _enter_recruitment_state(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def test_full_created_roster_can_still_recruit():
+def _disable_rival_bids(monkeypatch) -> None:
+    """This file tests the roster-CAP gate, not contested-round odds: remove
+    rival bidders so every pick lands by construction, independent of balance
+    constants (snipe odds are pinned in test_contested_offseason.py)."""
+    from dodgeball_sim import recruitment
+
+    monkeypatch.setattr(
+        recruitment, "_eligible_ai_offer_clubs", lambda *args, **kwargs: set()
+    )
+
+
+def test_full_created_roster_can_still_recruit(monkeypatch):
     conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.row_factory = sqlite3.Row
     create_schema(conn)
     initialize_curated_manager_career(conn, "aurora", root_seed=20260426)
     _pad_user_roster_to(conn, 10)  # the creation maximum
     _enter_recruitment_state(conn)
+    _disable_rival_bids(monkeypatch)
     player_club_id = get_state(conn, "player_club_id")
     roster_before = len(load_all_rosters(conn)[player_club_id])
     assert roster_before == 10

@@ -21,17 +21,19 @@ def classify_outcome_kind(
     signing_club_id: str,
     player_club_id: str,
     actions: Mapping[str, Any] | None,
+    user_bid: bool = False,
 ) -> str:
     """Return one of: "my_signing", "rival_signing", "surprise".
 
     A surprise is a rival signing of a prospect the user invested in
-    (contacted or visited). Pure-info rival signings are "rival_signing".
+    (contacted or visited) — or one the user actually BID on at Signing Day
+    and lost (a snipe). Pure-info rival signings are "rival_signing".
     """
     is_user_signing = signing_club_id == player_club_id and bool(player_club_id)
     if is_user_signing:
         return "my_signing"
     actions = actions or {}
-    if actions.get("contacted") or actions.get("visited"):
+    if user_bid or actions.get("contacted") or actions.get("visited"):
         return "surprise"
     return "rival_signing"
 
@@ -41,6 +43,7 @@ def reason_line(
     outcome_kind: str,
     actions: Mapping[str, Any] | None,
     signing_club_name: str,
+    user_bid: bool = False,
 ) -> str:
     """Return a single-line reason tying the outcome to user interactions.
 
@@ -83,6 +86,13 @@ def reason_line(
         investment = _investment_phrase()
         if locked_out:
             return f"Locked out before signing day — went to {signing_club_name} despite {investment}."
+        if user_bid:
+            if investment:
+                return (
+                    f"{signing_club_name}'s offer beat yours on Signing Day "
+                    f"despite {investment}."
+                )
+            return f"{signing_club_name}'s offer beat yours on Signing Day."
         if investment:
             return f"Lost to {signing_club_name} despite {investment}."
         return f"Signed with {signing_club_name} — a surprise destination."
@@ -104,6 +114,7 @@ def build_signing_card(
     club_name: str,
     player_club_id: str,
     actions: Mapping[str, Any] | None,
+    user_bid: bool = False,
 ) -> dict[str, Any]:
     """Assemble a single signing-day card record.
 
@@ -116,6 +127,7 @@ def build_signing_card(
         signing_club_id=signing.club_id,
         player_club_id=player_club_id,
         actions=actions,
+        user_bid=user_bid,
     )
     name = None
     ovr: Optional[int] = None
@@ -153,6 +165,7 @@ def build_signing_card(
             outcome_kind=outcome_kind,
             actions=actions,
             signing_club_name=club_name,
+            user_bid=user_bid,
         ),
         "round_number": int(getattr(signing, "round_number", 0) or 0),
     }
@@ -166,9 +179,16 @@ def build_signing_cards(
     clubs: Mapping[str, Any],
     player_club_id: str,
     actions_by_player: Mapping[str, Mapping[str, Any]] | None,
+    user_bid_player_ids: set[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Build the full list of signing cards for the signing-day beat."""
+    """Build the full list of signing cards for the signing-day beat.
+
+    ``user_bid_player_ids``: prospects the user made a Signing Day offer on
+    (V16 contested rounds) — a rival signing of one of these is a snipe and
+    must say so, not "never on your board".
+    """
     actions_by_player = actions_by_player or {}
+    user_bid_player_ids = user_bid_player_ids or set()
 
     def _find_player(player_id: str):
         for roster in rosters.values():
@@ -192,6 +212,7 @@ def build_signing_cards(
             club_name=_club_name(signing.club_id),
             player_club_id=player_club_id,
             actions=actions_by_player.get(signing.player_id),
+            user_bid=signing.player_id in user_bid_player_ids,
         )
         cards.append(card)
     return cards

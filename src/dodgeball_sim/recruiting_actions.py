@@ -10,15 +10,12 @@ whether any of them did anything. This module makes each action mutate a
   durable, not cosmetic.
 - **Contact / Visit** raise a persisted ``interest`` value (0-100).
 
-HONESTY (2026-06-09 audit): interest currently has NO consumer in the shipping
-signing flow. The only production signing path is the offseason recruitment
-picker (``offseason_ceremony.sign_chosen_rookie``), which signs the player's
-choice directly — ``recruitment.conduct_recruitment_round`` (where interest
-strengthens the user offer) exists but has no production caller, and the
-``/api/recruiting/sign`` endpoint is a dead stub (it guards on a career state
-value that does not exist). Until a contested Signing Day ships, interest is a
-courtship tracker, and every player-facing string here and in the term
-registry must avoid claiming it changes signing odds.
+CONSUMER (V16 Contested Offseason): interest is mechanical. The offseason
+picker resolves prospect picks through ``recruitment.conduct_recruitment_round``
+where the user's offer = ``CONTESTED_USER_OFFER_BASE + interest *
+CONTESTED_USER_OFFER_INTEREST_WEIGHT`` against real AI bids — courted
+prospects are measurably harder to snipe (tools/contested_offer_probe.py).
+Player-facing strings here and in the term registry may (and should) say so.
 
 The module is pure -- it takes the prospect's current action state plus its base
 public band and returns a new state and a :class:`RecruitingActionResult`. No
@@ -166,15 +163,21 @@ def _headline(
 
 
 def _next_step(state: dict[str, Any], interest: int) -> str:
-    # Copy honesty: never promise a signing-odds effect (interest has no
-    # consumer in the shipping signing flow — see the module docstring).
+    # Interest feeds the contested Signing Day offer (see module docstring),
+    # so the copy may honestly promise signing odds.
     if not state.get("scouted"):
         return "Scout to tighten the OVR read before you commit a visit slot."
     if interest < 50:
-        return "Interest is lukewarm — a contact call or visit builds your standing."
+        return (
+            "Interest is lukewarm — a contact call or visit strengthens your "
+            "Signing Day offer."
+        )
     if not state.get("visited"):
-        return "Strong interest. A campus visit caps off the courtship."
-    return "You've done the work — keep this prospect at the top of your offseason shortlist."
+        return "Strong interest. A campus visit makes your Signing Day offer hard to beat."
+    return (
+        "You've done the work — this prospect is near-safe from Signing Day "
+        "snipes. Keep them atop your shortlist."
+    )
 
 
 def _clamp_int(value: float, low: int, high: int) -> int:

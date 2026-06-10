@@ -51,10 +51,10 @@ export function CredibilityStrip({
           Tier {grade} · Regional
         </h2>
         <p className="do-cred-blurb">
-          Your recruiting reputation. Higher credibility draws better prospects
-          and makes closes easier. It rises with wins, youth development, and
-          your club's long-term{' '}
-          <TermTip term="program.prestige">prestige</TermTip>.
+          Your recruiting reputation. Higher credibility starts every prospect
+          warmer, and that interest strengthens your contested Signing Day
+          offer. It rises with wins, youth development, and your club's
+          long-term <TermTip term="program.prestige">prestige</TermTip>.
         </p>
 
         <div className="do-cred-progress" role="group" aria-label={`Program credibility score ${score} of 100`}>

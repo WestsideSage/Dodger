@@ -27,6 +27,7 @@ from .persistence import (
     load_prospect_pool,
     load_recruitment_signings,
     load_retired_players,
+    load_user_bid_player_ids,
     load_season,
     load_season_outcome,
     load_standings,
@@ -295,12 +296,16 @@ def build_beat_payload(
         # the prospect's role, and a one-line reason tying the outcome to
         # those interactions.
         signing_cards: list = []
+        other_signings: list = []
         if season is not None:
             try:
                 signings = load_recruitment_signings(conn, season.season_id)
             except Exception:
                 signings = ()
-            class_year = (season_number or 1) + 1
+            # Signings reference the CURRENT class pool — the same class the
+            # picker signs from (the previous +1 join predated the contested
+            # flow and could never resolve a prospect).
+            class_year = season_number or 1
             try:
                 pool = load_prospect_pool(conn, class_year)
             except Exception:
@@ -309,6 +314,10 @@ def build_beat_payload(
             actions_by_player = load_json_state(
                 conn, "prospect_recruitment_actions_json", {}
             ) or {}
+            try:
+                user_bids = load_user_bid_player_ids(conn, season.season_id)
+            except Exception:
+                user_bids = set()
             signing_cards = build_signing_cards(
                 signings=signings,
                 rosters=rosters,
@@ -316,11 +325,34 @@ def build_beat_payload(
                 clubs=clubs,
                 player_club_id=player_club_id,
                 actions_by_player=actions_by_player,
+                user_bid_player_ids=user_bids,
             )
+            # Rival Signing Day moves, for surfaces that render the compact
+            # list instead of the card grid.
+            for signing in signings:
+                if signing.club_id == player_club_id:
+                    continue
+                signed = next(
+                    (
+                        p
+                        for p in rosters.get(signing.club_id, [])
+                        if p.id == signing.player_id
+                    ),
+                    None,
+                )
+                club = clubs.get(signing.club_id)
+                other_signings.append(
+                    {
+                        "name": signed.name if signed else signing.player_id,
+                        "ovr": signed.overall_skill() if signed else 0,
+                        "age": signed.age if signed else None,
+                        "club_name": club.name if club else signing.club_id,
+                    }
+                )
 
         return {
             "player_signing": player_signing,
-            "other_signings": [],
+            "other_signings": other_signings,
             "signings": signing_cards,
             "available_prospects": available_recruitment_choices(conn, season_number),
             "signed_count": signed_count,

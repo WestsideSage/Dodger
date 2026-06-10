@@ -19,7 +19,9 @@ test('standings rows expand into an inline club history lane', async ({ page, re
   await auroraRow.click();
 
   await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
-  await expect(page.getByText('Archive Through')).toBeVisible();
-  await expect(page.getByText('Current Record')).toBeVisible();
+  // Glance labels per the 2026-06-09 UI/UX v2 pass (the prior
+  // 'Archive Through' / 'Current Record' copy was renamed).
+  await expect(page.getByText('Season Range')).toBeVisible();
+  await expect(page.getByText(/All-Time Record|Latest Season Record/)).toBeVisible();
   await expect(page.getByText('Program Identity', { exact: true })).toBeVisible();
 });

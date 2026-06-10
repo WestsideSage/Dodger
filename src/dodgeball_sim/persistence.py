@@ -1363,17 +1363,27 @@ def save_program_trajectory(conn: sqlite3.Connection, traj: dict) -> None:
     )
 
 
+def _season_order(season_id: str) -> tuple[int, str]:
+    """Numeric-aware season ordering ("season_10" after "season_2").
+
+    Deferred import: game_loop imports persistence at module level, so the
+    canonical season_sort_key is only reachable at call time from here.
+    """
+    from .game_loop import season_sort_key
+
+    return season_sort_key(season_id)
+
+
 def load_program_trajectories(conn: sqlite3.Connection, club_id: str) -> list[dict]:
     cursor = conn.execute(
         """
         SELECT * FROM program_trajectory
         WHERE club_id = ?
-        ORDER BY season_id ASC
         """,
         (club_id,),
     )
     results = []
-    for row in cursor.fetchall():
+    for row in sorted(cursor.fetchall(), key=lambda r: _season_order(r["season_id"])):
         results.append({
             "club_id": row["club_id"],
             "season_id": row["season_id"],
@@ -2103,11 +2113,16 @@ def load_signature_moments(conn: sqlite3.Connection, player_id: str) -> List[Dic
         SELECT moment_id, player_id, season_id, match_id, moment_type, description
         FROM signature_moments
         WHERE player_id = ?
-        ORDER BY season_id, moment_id
         """,
         (player_id,),
     )
-    return [dict(row) for row in cursor.fetchall()]
+    return [
+        dict(row)
+        for row in sorted(
+            cursor.fetchall(),
+            key=lambda r: (_season_order(r["season_id"]), r["moment_id"]),
+        )
+    ]
 
 
 def save_hall_of_fame_entry(
@@ -2130,8 +2145,11 @@ def load_hall_of_fame(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
         """
         SELECT player_id, induction_season, career_summary_json
         FROM hall_of_fame
-        ORDER BY induction_season, player_id
         """
+    )
+    rows = sorted(
+        cursor.fetchall(),
+        key=lambda r: (_season_order(r["induction_season"]), r["player_id"]),
     )
     return [
         {
@@ -2139,7 +2157,7 @@ def load_hall_of_fame(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
             "induction_season": row["induction_season"],
             "career_summary": json.loads(row["career_summary_json"]),
         }
-        for row in cursor.fetchall()
+        for row in rows
     ]
 
 
@@ -2262,9 +2280,12 @@ def load_news_headlines(
             """
             SELECT headline_id, season_id, week, category, headline_text, entity_ids_json
             FROM news_headlines
-            ORDER BY season_id DESC, week DESC, headline_id
             """
         )
+        # Newest season/week first, headline_id ascending within a week —
+        # numeric season order, then a stable descending re-sort.
+        rows = sorted(cursor.fetchall(), key=lambda r: r["headline_id"])
+        rows.sort(key=lambda r: (_season_order(r["season_id"]), r["week"]), reverse=True)
     else:
         cursor = conn.execute(
             """
@@ -2275,6 +2296,7 @@ def load_news_headlines(
             """,
             (season_id,),
         )
+        rows = cursor.fetchall()
     return [
         {
             "headline_id": row["headline_id"],
@@ -2284,7 +2306,7 @@ def load_news_headlines(
             "headline_text": row["headline_text"],
             "entity_ids": json.loads(row["entity_ids_json"]),
         }
-        for row in cursor.fetchall()
+        for row in rows
     ]
 
 
@@ -2394,7 +2416,6 @@ def load_all_meta_patches(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
         """
         SELECT patch_id, season_id, name, description, modifiers_json, ruleset_overrides_json
         FROM meta_patches
-        ORDER BY season_id
         """
     )
     return [
@@ -2406,7 +2427,10 @@ def load_all_meta_patches(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
             "modifiers": json.loads(row["modifiers_json"]),
             "ruleset_overrides": json.loads(row["ruleset_overrides_json"]),
         }
-        for row in cursor.fetchall()
+        for row in sorted(
+            cursor.fetchall(),
+            key=lambda r: (_season_order(r["season_id"]), r["patch_id"]),
+        )
     ]
 
 
@@ -2492,10 +2516,15 @@ def load_club_trophies(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
         """
         SELECT club_id, trophy_type, season_id
         FROM club_trophies
-        ORDER BY season_id, club_id, trophy_type
         """
     )
-    return [dict(row) for row in cursor.fetchall()]
+    return [
+        dict(row)
+        for row in sorted(
+            cursor.fetchall(),
+            key=lambda r: (_season_order(r["season_id"]), r["club_id"], r["trophy_type"]),
+        )
+    ]
 
 
 def load_department_heads(conn: sqlite3.Connection) -> List[Dict[str, Any]]:
@@ -2624,12 +2653,11 @@ def load_command_history_all_seasons(conn: sqlite3.Connection) -> List[Dict[str,
 
     Audit 7.4: credibility must reflect career performance, not just the active season.
     """
-    rows = conn.execute(
-        """
-        SELECT * FROM command_history
-        ORDER BY season_id, week, history_id
-        """
-    ).fetchall()
+    rows = conn.execute("SELECT * FROM command_history").fetchall()
+    rows = sorted(
+        rows,
+        key=lambda r: (_season_order(r["season_id"]), r["week"], r["history_id"]),
+    )
     return [
         {
             "history_id": int(row["history_id"]),
@@ -3462,6 +3490,20 @@ def save_recruitment_offers(conn: sqlite3.Connection, offers: Iterable[Recruitme
         ],
     )
     conn.commit()
+
+
+def load_user_bid_player_ids(conn: sqlite3.Connection, season_id: str) -> set:
+    """Prospects the user made a Signing Day offer on this season (V16) —
+    used by the class report to tell a snipe apart from a never-courted
+    rival signing."""
+    rows = conn.execute(
+        """
+        SELECT DISTINCT player_id FROM recruitment_offer
+        WHERE season_id = ? AND source = 'user'
+        """,
+        (season_id,),
+    ).fetchall()
+    return {row["player_id"] for row in rows}
 
 
 def load_recruitment_offers(

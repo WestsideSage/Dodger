@@ -92,3 +92,64 @@ def test_history_my_program_all_time_record_sums_every_season():
     assert hero["all_time"] == {"wins": 8, "losses": 1, "draws": 2, "seasons": 3}
     # The latest-season snapshot keeps its own meaning.
     assert (hero["current"]["wins"], hero["current"]["losses"], hero["current"]["draws"]) == (1, 0, 0)
+
+
+def _make_six_player_roster() -> list[Player]:
+    return [
+        Player(
+            id=f"p_{i}", name=f"Player {i}", age=20, club_id="sea", newcomer=True,
+            ratings=PlayerRatings(50, 50, 50, 50, 50, 50, 50, 50, 50),
+            archetype="thrower", traits=PlayerTraits(50, 50, 50, 50),
+        )
+        for i in range(1, 7)
+    ]
+
+
+def test_history_my_program_season_10_sorts_after_season_2():
+    # season_id is a string ("season_10" < "season_2" lexicographically), so a
+    # string ORDER BY picks the wrong "latest" season from season 10 onward.
+    # hero.current must be the numerically latest season and hero.season_1 the
+    # numerically earliest; First Win must come from the numerically earliest
+    # winning season, not the lexicographically smallest.
+    conn = connect(":memory:")
+    club = Club("sea", "Seattle", "blue, green", "Seattle", 2026)
+    initialize_curated_manager_career(
+        conn, "sea", 1, custom_club=club, custom_roster=_make_six_player_roster()
+    )
+
+    conn.execute("DELETE FROM season_standings WHERE club_id = 'sea'")
+    for season_id, wins in (("season_2", 3), ("season_10", 7)):
+        conn.execute(
+            """
+            INSERT INTO season_standings (season_id, club_id, wins, losses, draws, points)
+            VALUES (?, ?, ?, 0, 0, ?)
+            """,
+            (season_id, "sea", wins, wins * 3),
+        )
+    for match_id, season_id, week in (
+        ("m_s10_w1", "season_10", 1),
+        ("m_s2_w5", "season_2", 5),
+    ):
+        conn.execute(
+            """
+            INSERT INTO match_records (
+                match_id, season_id, week, home_club_id, away_club_id,
+                winner_club_id, home_roster_hash, away_roster_hash,
+                config_version, ruleset_version, seed,
+                event_log_hash, final_state_hash
+            ) VALUES (?, ?, ?, 'sea', 'opp', 'sea', 'h', 'a', 'v1', 'r1', 1, 'e', 'f')
+            """,
+            (match_id, season_id, week),
+        )
+    conn.commit()
+
+    payload = get_history_my_program("sea", conn)
+    hero = payload["hero"]
+
+    assert hero["season_1"]["season_label"] == "season_2"
+    assert hero["current"]["season_label"] == "season_10"
+    assert hero["current"]["wins"] == 7
+
+    first_win = [e for e in payload["timeline"] if e["label"] == "First Win"]
+    assert len(first_win) == 1
+    assert (first_win[0]["season"], first_win[0]["week"]) == ("season_2", 5)

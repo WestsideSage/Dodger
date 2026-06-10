@@ -54,7 +54,7 @@ broadcast labels must be re-numbered before becoming active milestone specs.
 | V13   | Broadcast and Presentation Layer                | Shipped (2026-05-24)         | `docs/archive/specs/v13/2026-05-24-v13-broadcast-presentation/design.md`          | Re-slotted from the roadmap's former V12 label. Matchup preview framing, highlight packages, playoff overlays, commentary inserts, and proof-backed ceremony cards are live. Outcomes unchanged; raw proof remains. |
 | V14   | First Season Retention and Sim Legibility       | Shipped (2026-05-28)         | `docs/specs/2026-05-28-v14-first-season-retention-sim-legibility/sprint-plan.md` | Translates existing simulation math into legible, proof-backed feedback (Aftermath Primary Factor, tactical matchup diff, attribute/staff visibility, liability tags) so first-season players can see why they win or lose. A 2026-05-28 fresh-player playtest pass then fixed the decision-traceability bugs underneath those surfaces: locked tactics now drive the sim and recap, recruiting can sign for rosters built at the creation cap, the in-season recruiting board targets the class the offseason actually signs (so interest transfers), offseason development is headroom-proportional so the dev trait visibly matters, and archetype display names replaced raw enum keys in player-facing copy. |
 | V15   | Systems Legibility                              | Shipped (2026-05-31)         | `docs/archive/specs/v15/2026-05-30-v15-systems-legibility/implementation-index.md` | Phase 0 traceability bug pass + Phase 1 legibility toolkit (terms, proof chips, fog-of-war primitives) + frontend integration into Recruit Board, Roster, Lineup Editor, Standings, Dynasty Office, and App Shell. |
-| V16   | Contested Offseason                             | Planned (2026-06-09)         | `docs/specs/2026-06-09-v16-contested-offseason-sprint-plan.md`        | AI offseason signings (static-league/snowball fix), scouted-band Signing Day (closes the true-OVR picker leak), contested user pick via the dormant V2-B round system; recruiting terms become mechanical again. No match-engine changes. |
+| V16   | Contested Offseason                             | Shipped (2026-06-10)         | `docs/specs/2026-06-09-v16-contested-offseason-sprint-plan.md`        | AI offseason signings (static-league/snowball fix: 0 → 5.0 AI signings/offseason), scouted-band Signing Day with off-center bands (closes the true-OVR picker leak AND the invertible-band leak), contested user pick via the formerly dormant V2-B round (uncourted star picks sniped 54%, courted near-safe); interest/pipeline/credibility mechanical again. No match-engine changes. Retro: `docs/retrospectives/2026-06-10-v16-contested-offseason-retrospective.md`. |
 ---
 
 ## How To Use This Index
@@ -77,6 +77,7 @@ For adding a new milestone:
 For shipping a milestone:
 
 1. Update the status to `Shipped (YYYY-MM-DD)` in the table above.
-2. Add a retrospective under `docs/archive/retrospectives/`.
-3. Add learnings under `docs/archive/learnings/`.
+2. Add a retrospective under `docs/retrospectives/` (per root `AGENTS.md`
+   Document Destinations — not `docs/archive/`, which is for later archival).
+3. Add learnings under `docs/learnings/`.
 4. Reference both from the next-milestone spec's "Relation to Prior Specs" section.

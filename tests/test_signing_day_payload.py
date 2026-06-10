@@ -52,6 +52,36 @@ def test_surprise_when_user_invested_but_rival_won():
     ) == "surprise"
 
 
+def test_lost_bid_is_a_surprise_even_without_courtship():
+    """V16: a rival signing of a prospect the user actually BID on at Signing
+    Day is a snipe — never a plain 'never on your board' rival signing."""
+    assert classify_outcome_kind(
+        signing_club_id="rival",
+        player_club_id="user",
+        actions=None,
+        user_bid=True,
+    ) == "surprise"
+
+
+def test_lost_bid_reason_names_the_beaten_offer():
+    line = reason_line(
+        outcome_kind="surprise",
+        actions=None,
+        signing_club_name="Lunar Syndicate",
+        user_bid=True,
+    )
+    assert line == "Lunar Syndicate's offer beat yours on Signing Day."
+    courted = reason_line(
+        outcome_kind="surprise",
+        actions={"visited": True},
+        signing_club_name="Lunar Syndicate",
+        user_bid=True,
+    )
+    assert courted == (
+        "Lunar Syndicate's offer beat yours on Signing Day despite a campus visit."
+    )
+
+
 def test_scout_only_is_not_a_surprise():
     """Scouting alone is information-gathering, not investment — losing a
     scouted-only prospect to a rival is a plain rival_signing, not a surprise."""

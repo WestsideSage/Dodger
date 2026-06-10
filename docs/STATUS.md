@@ -4,20 +4,18 @@ Canonical snapshot of what is actually built and what is still open. When code
 state changes materially, update this file in the same pass. If this file and
 the source disagree, the source wins - then fix this file.
 
-Last updated: 2026-06-10. `main` / `origin/main` are at `2969271`
-(`feat: land six 2026-06-09 audit passes + V16 plan (Task 0 sweep)`, direct
-child of `6bfc775`), which landed the six 2026-06-09 audit
-passes (trust audit, first-hour, watchability, systems balance, dynasty
-retention, UI/UX v2 - the "Task 0 sweep" entries below) plus the V16 sprint
-plan, the 2026-06-10 owner decision log, and the stale-save/screenshot purge
-(2,443 local saves and 191 tracked playtest artifacts removed).
+Last updated: 2026-06-10. `main` / `origin/main` are at the **V16 ship
+commit** (child of `5668471`, which followed the `2969271` Task 0 sweep that
+landed the six 2026-06-09 audit passes — the "Task 0 sweep" entries below).
 Master-roadmap Phases 0-7 are on main. Section 4 (the Phase 8 desktop-first
 visual implementation, briefs 4.1-4.8) is **implemented on main** and was
 **browser-verified 2026-06-09** - see the "Shipped And Verified" entries.
-The active milestone is **V16 Contested Offseason**
-(`docs/specs/2026-06-09-v16-contested-offseason-sprint-plan.md`): Task 0 is
-complete; Task 1 (Signing Day payload truth) is next. The focus remains
-refinement and gameplay optimization, not unrelated new systems.
+**V16 Contested Offseason is SHIPPED (2026-06-10)** — all seven plan tasks
+(`docs/specs/2026-06-09-v16-contested-offseason-sprint-plan.md`; retro:
+`docs/retrospectives/2026-06-10-v16-contested-offseason-retrospective.md`).
+The focus remains refinement and gameplay optimization, not unrelated new
+systems; the next milestone comes from the greenlit post-V16 backlog in
+`docs/fable/2026-06-10-owner-decision-log.md`.
 
 ## Current Phase
 
@@ -48,6 +46,30 @@ before implementation.
 
 ## Shipped And Verified
 
+- **V16 — Contested Offseason** (2026-06-10) - the offseason class is a
+  market: prospect picks resolve through the contested V2-B round
+  (`recruitment.conduct_recruitment_round`, first production caller), where
+  interest built by in-season courtship strengthens the user offer (config
+  `CONTESTED_USER_OFFER_BASE 90.0 + interest × 0.18`, tuned against
+  `tools/contested_offer_probe.py`: uncourted star picks sniped 54%,
+  contact+visit 22%, full courtship 7%); snipes are honest outcomes with
+  offer-number explanations, never errors. The picker exposes the SCOUTED
+  public band instead of `true_overall()` (field, fit_score, sort order, and
+  the auto-pick path all moved to public estimates), generated bands are now
+  center-jittered so the midpoint no longer encodes the hidden truth, and
+  signing reveals "Scouted L–H → verified OVR N". AI clubs sign real
+  prospects (1/club/offseason cap, roster ceiling 10): league churn went
+  from zero to 5.0 AI signings per offseason, user title share 41.7% → 12.5%
+  on the probe sweep, AI rosters off the 6-player floor to 10, six distinct
+  champions across 24 probed seasons — **the static-league and
+  solved-recruiting findings from the 2026-06-09 dynasty/balance reports are
+  closed.** Interest/pipeline/credibility flipped to mechanical in the term
+  registry (fit stays honest flavor); the `season_id` string-sort family was
+  fixed across all history queries; `TestDynastyHealthGate` pins title share
+  ≤ 0.35, AI roster floor, distinct champions, per-offseason AI churn, and a
+  ≥1-snipe contested-ness tripwire. No match-engine changes (invariance pins
+  and golden logs untouched). Retro:
+  `docs/retrospectives/2026-06-10-v16-contested-offseason-retrospective.md`.
 - **UI/UX visual refinement pass v2 — report-informed** (2026-06-09, landed
   in the 2026-06-10 Task 0 sweep) - closes every open *UI-owned* item from the five 2026-06-09
   cross-disciplinary reports; handoff with the full action matrix in
@@ -400,20 +422,18 @@ before implementation.
    fatigue trade-offs) and marked the term-registry entries `flavor`.
    **DECIDED 2026-06-10: wire real effects** — staff must stop being
    meaningless (`docs/fable/2026-06-10-owner-decision-log.md` §1.3).
-7. **V16 Contested Offseason is the planned next milestone** (2026-06-09
-   product-director pass; plan:
-   `docs/specs/2026-06-09-v16-contested-offseason-sprint-plan.md`). Task 0
-   (landing the six 2026-06-09 passes) **completed 2026-06-10**; Task 1
-   (Signing Day payload truth) is next. Core scope: AI offseason signings (the measured static-league/snowball fix),
-   scouted-band Signing Day (closes the `true_overall()` picker leak), and a
-   contested user pick consuming the dormant V2-B round system so
-   interest/credibility become mechanical again. Plan decision D1 (scouted
-   band, no true-OVR leak) is **owner-confirmed 2026-06-10**. Out of V16
-   scope but now all owner-greenlit as post-V16 backlog: WT-20 (item 1
-   above), catch-economy retune, promises revival (#5), department-order
-   effects (#6), development-ceiling overhaul, role/stat hookups, replay
-   intent frames, and the language/dedup/no-floats passes — full dispositions
-   in `docs/fable/2026-06-10-owner-decision-log.md`.
+7. **V16 Contested Offseason SHIPPED 2026-06-10** (all seven plan tasks —
+   see the top Shipped entry and
+   `docs/retrospectives/2026-06-10-v16-contested-offseason-retrospective.md`).
+   The owner-greenlit post-V16 backlog awaits its next product-director
+   sequencing pass: WT-20 (item 1 above), catch-economy retune, promises
+   revival (#5), department-order effects (#6), development-ceiling
+   overhaul, role/stat hookups, replay intent frames, and the
+   language/dedup/no-floats passes — full dispositions in
+   `docs/fable/2026-06-10-owner-decision-log.md`. One V16 tuning note for
+   real playtests: a passive auto-pilot career now finishes BELOW the AI
+   curve (by design — engaged play buys the edge); soften via
+   `AI_OFFSEASON_SIGNINGS_PER_CLUB` / `AI_OFFSEASON_MAX_ROSTER` if needed.
 
 ## Sources Of Truth
 

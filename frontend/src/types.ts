@@ -1077,13 +1077,42 @@ export interface RookieClassPreviewBeatPayload {
 export interface RecruitmentProspectChoice {
     prospect_id: string;
     name: string;
-    overall: number;
+    /** Verified OVR — present for free agents only (league veterans with
+        public history). Prospects carry public_ovr_band instead (V16). */
+    overall?: number;
     age: number;
     hometown: string;
     archetype: string;
     kind: 'prospect' | 'free_agent';
     pipeline_tier?: number;
     fit_score?: number;
+    /** Scouted public OVR band [low, high] — prospects only. */
+    public_ovr_band?: number[];
+    scouted?: boolean;
+    contacted?: boolean;
+    visited?: boolean;
+    /** Courtship interest (%): strengthens the contested Signing Day offer. */
+    interest?: number;
+}
+
+/** Resolution of a Signing Day pick through the contested round (V16). */
+export interface SigningOutcome {
+    kind: 'signed' | 'sniped' | 'free_agent_signed';
+    prospect_id: string;
+    prospect_name: string;
+    explanation: string;
+    winning_club_id?: string;
+    winning_club_name?: string;
+    winning_offer?: number;
+    your_offer?: number;
+    your_interest?: number;
+    actions_taken?: number;
+    rival_club_name?: string | null;
+    rival_offer?: number | null;
+    /** Pre-signing scouted band, for the post-signing reveal line. */
+    scouted_band?: number[];
+    /** "Scouted L–H → verified OVR N." — present on contested wins. */
+    reveal?: string;
 }
 
 export interface SigningCard {
@@ -1178,6 +1207,9 @@ interface OffseasonBeatBase {
     can_begin_season: boolean;
     signed_player_id: string;
     signed_player?: { id: string; name: string; overall: number; age: number } | null;
+    /** Rides on the POST /api/offseason/recruit response (the beat replaces
+        state wholesale, so the contested outcome must travel with it). */
+    signing_outcome?: SigningOutcome | null;
 }
 
 // Discriminated union — `key` is the discriminant

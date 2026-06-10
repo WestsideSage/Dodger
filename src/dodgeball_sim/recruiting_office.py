@@ -161,7 +161,7 @@ def _prospect_rows(
             "interest_evidence": [
                 f"Public range {low}-{high}{' (scouted)' if scouted else ''}.",
                 f"Pipeline Tier {prospect.pipeline_tier} base interest.",
-                f"Interest {interest}% — contact and visits build it.",
+                f"Interest {interest}% strengthens your Signing Day offer — contact and visits build it.",
                 f"Credibility grade {credibility['grade']} contributes to interest.",
             ],
             "pipeline_tier": prospect.pipeline_tier,

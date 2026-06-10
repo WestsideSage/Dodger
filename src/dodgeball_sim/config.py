@@ -48,6 +48,10 @@ class ScoutingBalanceConfig:
     trajectory_rates: Dict[str, float]
     public_archetype_mislabel_rate: float
     public_baseline_band_half_width: int
+    # Max distance between the public band's center and the hidden true
+    # overall. A symmetric band (jitter 0) would put the truth exactly at the
+    # midpoint, making the fog of war invertible (V16 Task 1).
+    public_band_center_jitter: float
     prospect_class_size: int
     hidden_gem_ovr_floor: int
 
@@ -98,9 +102,27 @@ DEFAULT_SCOUTING_CONFIG = ScoutingBalanceConfig(
     },
     public_archetype_mislabel_rate=0.15,
     public_baseline_band_half_width=25,
+    public_band_center_jitter=8.0,
     prospect_class_size=25,
     hidden_gem_ovr_floor=8,
 )
+
+
+# --- V16 Contested Offseason (config layer; engine rule: balance constants
+# do not live in engine logic) ------------------------------------------------
+# The user's Signing Day offer = BASE + interest * WEIGHT. Measured rival
+# offers on the TOP prospect (tools/contested_offer_probe.py, 60 seeds):
+# min 84.9 / median 99.0 / max 111.7, with uncourted interest ~38-52. These
+# values put the uncourted star pick right at the rival median (genuinely
+# losable, ~half the time), contact+visit (~+32 interest) clearly ahead
+# (~15% risk), and full courtship (interest 100 -> 108.0) near-safe.
+CONTESTED_USER_OFFER_BASE = 90.0
+CONTESTED_USER_OFFER_INTEREST_WEIGHT = 0.18
+# D3: at most this many prospect signings per AI club per offseason.
+AI_OFFSEASON_SIGNINGS_PER_CLUB = 1
+# AI clubs at or above this roster size sit out Signing Day offers entirely
+# (the next offseason's trim-to-9 still creates churn for clubs below it).
+AI_OFFSEASON_MAX_ROSTER = 10
 
 
 def get_config(version: str | None = None) -> BalanceConfig:
@@ -114,7 +136,11 @@ def get_config(version: str | None = None) -> BalanceConfig:
 
 
 __all__ = [
+    "AI_OFFSEASON_MAX_ROSTER",
+    "AI_OFFSEASON_SIGNINGS_PER_CLUB",
     "BalanceConfig",
+    "CONTESTED_USER_OFFER_BASE",
+    "CONTESTED_USER_OFFER_INTEREST_WEIGHT",
     "DifficultyProfile",
     "ScoutingBalanceConfig",
     "CONFIG_REGISTRY",

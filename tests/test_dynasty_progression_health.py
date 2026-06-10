@@ -386,12 +386,21 @@ class TestRosterFloorSkipGuard:
         payload = recruit_offseason_payload(conn, "skip")
         assert payload["signed_player"] is None
 
-    def test_signing_up_to_six_then_skip_succeeds(self):
+    def test_signing_up_to_six_then_skip_succeeds(self, monkeypatch):
         conn = self._career_at_recruitment()
         clubs = load_clubs(conn)
         roster = load_all_rosters(conn)["aurora"]
         save_club(conn, clubs["aurora"], roster[:4])
         conn.commit()
+        # This test asserts the roster-floor FLOW, not contested-round odds:
+        # remove rival bidders so every auto-pick lands by construction,
+        # independent of balance constants (snipe odds are pinned in
+        # test_contested_offseason.py).
+        from dodgeball_sim import recruitment
+
+        monkeypatch.setattr(
+            recruitment, "_eligible_ai_offer_clubs", lambda *args, **kwargs: set()
+        )
 
         recruit_offseason_payload(conn, None)  # sign best available (5)
         with pytest.raises(OffseasonError):
@@ -420,9 +429,96 @@ class TestDynastyLoopDeterminism:
         ]
         assert [s.user_six_ovr for s in a.seasons] == [s.user_six_ovr for s in b.seasons]
         assert [s.signings for s in a.seasons] == [s.signings for s in b.seasons]
+        # V16: league-wide AI Signing Day moves and user snipes are part of the
+        # same deterministic stream — same seed, same market.
+        assert [s.ai_signings for s in a.seasons] == [s.ai_signings for s in b.seasons]
+        assert [s.user_snipes for s in a.seasons] == [s.user_snipes for s in b.seasons]
         # Structural floors the dynasty loop must hold.
         for snap in a.seasons:
             assert snap.champion_club_id, "every season must crown a champion"
             assert all(size >= 6 for size in snap.ai_roster_sizes), (
                 f"AI club fell below the playable floor: {snap.ai_roster_sizes}"
             )
+
+
+# ---------------------------------------------------------------------------
+# 7. Dynasty-health CI gate (V16 Task 6) — owner-tunable bounds
+# ---------------------------------------------------------------------------
+
+# Owner-tunable gate bounds (V16 acceptance + dynasty report scale-downs).
+GATE_SEED_COUNT = 4
+GATE_SEASONS = 6
+# Evidence-based: the PRE-V16 solved-recruiting config measured 41.7% title
+# share on this exact sweep (10/24); post-V16 measured 12.5% (3/24). The
+# bound sits between them with ~3x headroom over the healthy value, so a
+# contested-round revert FAILS this gate instead of slipping under a loose
+# ceiling.
+GATE_USER_TITLE_SHARE_MAX = 0.35
+GATE_AI_ROSTER_FLOOR = 6
+GATE_MIN_DISTINCT_CHAMPIONS_PER_RUN = 2  # scale of the report's >=3 per 10
+GATE_MIN_AI_SIGNINGS_PER_OFFSEASON = 1   # while the prospect pool is non-empty
+# Across 24 probed offseasons the uncourted auto-pick is sniped ~5 times; a
+# revert to uncontested signing produces exactly zero snipes, so a floor of 1
+# is a direct tripwire on contested-ness itself.
+GATE_MIN_TOTAL_USER_SNIPES = 1
+
+
+class TestDynastyHealthGate:
+    """Pins the dynasty probe's small config so the static-league and
+    solved-recruiting failures cannot silently return."""
+
+    @pytest.fixture(scope="class")
+    def sweep(self):
+        from tools.dynasty_health_probe import default_seed_set, run_dynasty_sweep
+
+        return run_dynasty_sweep(
+            seeds=default_seed_set(count=GATE_SEED_COUNT),
+            seasons=GATE_SEASONS,
+            signings_per_offseason=3,
+        )
+
+    def test_engaged_user_title_share_is_bounded(self, sweep):
+        titles = sum(1 for run in sweep.runs for s in run.seasons if s.champion_is_user)
+        total = sum(len(run.seasons) for run in sweep.runs)
+        assert titles / total <= GATE_USER_TITLE_SHARE_MAX, (
+            f"user title share {titles}/{total} exceeds the snowball bound"
+        )
+
+    def test_ai_rosters_never_fall_below_the_floor(self, sweep):
+        for run in sweep.runs:
+            for snap in run.seasons:
+                assert all(size >= GATE_AI_ROSTER_FLOOR for size in snap.ai_roster_sizes), (
+                    f"seed {run.root_seed} S{snap.season_number}: {snap.ai_roster_sizes}"
+                )
+
+    def test_each_run_crowns_multiple_champions(self, sweep):
+        for run in sweep.runs:
+            champions = {s.champion_club_id for s in run.seasons}
+            assert len(champions) >= GATE_MIN_DISTINCT_CHAMPIONS_PER_RUN, (
+                f"seed {run.root_seed}: only {champions} won across "
+                f"{len(run.seasons)} seasons — the league looks solved"
+            )
+
+    def test_contested_rounds_actually_contest(self, sweep):
+        # The user's picks must be genuinely losable: across the sweep at
+        # least one auto-pick gets sniped by a rival offer. An uncontested
+        # revert (sign_chosen_rookie signing directly) produces zero snipes
+        # and fails here even though title share alone might stay bounded.
+        total_snipes = sum(
+            snap.user_snipes for run in sweep.runs for snap in run.seasons
+        )
+        assert total_snipes >= GATE_MIN_TOTAL_USER_SNIPES, (
+            "no user pick was ever sniped across the sweep — Signing Day "
+            "does not look contested"
+        )
+
+    def test_league_moves_every_offseason(self, sweep):
+        # The class pool (25) comfortably exceeds user picks (<=3) + AI cap
+        # (1 per club), so the pool is never empty and every offseason must
+        # produce AI churn.
+        for run in sweep.runs:
+            for snap in run.seasons:
+                assert len(snap.ai_signings) >= GATE_MIN_AI_SIGNINGS_PER_OFFSEASON, (
+                    f"seed {run.root_seed} S{snap.season_number}: the league "
+                    f"did not move (AI signings: {snap.ai_signings})"
+                )

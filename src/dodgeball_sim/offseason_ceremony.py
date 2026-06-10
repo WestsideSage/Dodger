@@ -681,32 +681,83 @@ def _available_prospect_players(conn: sqlite3.Connection, class_year: int) -> li
     ]
 
 
+def _picker_credibility_score(conn: sqlite3.Connection) -> int:
+    """Program credibility for picker interest/fit — same math as the board.
+
+    Falls back to the neutral baseline (50) when no career context exists yet
+    (the ceremony payload builders must tolerate an empty save).
+    """
+    from .persistence import load_command_history_all_seasons
+    from .recruiting_office import _credibility_score
+
+    season_id = get_state(conn, "active_season_id")
+    player_club_id = get_state(conn, "player_club_id")
+    if not season_id or not player_club_id:
+        return 50
+    return _credibility_score(
+        conn, season_id, player_club_id, load_command_history_all_seasons(conn)
+    )
+
+
+def _scouted_band(prospect, action_state: Mapping[str, Any]) -> tuple[int, int]:
+    """The public OVR band the player is entitled to see — board and picker
+    must compute it identically (base public band, narrowed once if scouted)."""
+    from .recruiting_actions import narrow_band
+
+    return narrow_band(
+        tuple(prospect.public_ratings_band["ovr"]),
+        scouted=bool(action_state.get("scouted")),
+    )
+
+
 def available_recruitment_choices(
     conn: sqlite3.Connection, season_number: int
 ) -> list[dict[str, Any]]:
     """Every prospect and free agent the player may sign this offseason.
 
-    Prospects are listed first (highest rated first), then free agents.
+    Prospects expose the SCOUTED public band — never ``true_overall()``: not
+    as a field, not via ``fit_score``, not via sort order (V16 Task 1).
+    Free agents are league veterans with public history, so their verified
+    OVR stays. Prospects are listed first (best public estimate first), then
+    free agents.
     """
+    from .recruiting_actions import current_interest
+
     class_year = season_number or 1
+    actions = load_json_state(conn, "prospect_recruitment_actions_json", {})
+    credibility = _picker_credibility_score(conn)
+
     choices: list[dict[str, Any]] = []
-    for prospect in sorted(
-        _available_prospect_players(conn, class_year),
-        key=lambda p: (-p.true_overall(), p.player_id),
-    ):
+    for prospect in _available_prospect_players(conn, class_year):
+        state = actions.get(prospect.player_id, {})
+        low, high = _scouted_band(prospect, state)
         choices.append(
             {
                 "prospect_id": prospect.player_id,
                 "name": prospect.name,
-                "overall": prospect.true_overall(),
                 "age": prospect.age,
                 "hometown": prospect.hometown,
                 "archetype": prospect.public_archetype_guess,
                 "kind": "prospect",
                 "pipeline_tier": prospect.pipeline_tier,
-                "fit_score": round(prospect.true_overall() * 0.8 + prospect.pipeline_tier * 4.0),
+                "public_ovr_band": [low, high],
+                "scouted": bool(state.get("scouted")),
+                "contacted": bool(state.get("contacted")),
+                "visited": bool(state.get("visited")),
+                "interest": current_interest(
+                    state,
+                    pipeline_tier=prospect.pipeline_tier,
+                    credibility_score=credibility,
+                ),
+                "fit_score": round((low + high) / 2.0 + credibility * 0.12),
             }
         )
+    choices.sort(
+        key=lambda c: (
+            -(c["public_ovr_band"][0] + c["public_ovr_band"][1]),
+            c["prospect_id"],
+        )
+    )
     for free_agent in sorted(
         load_free_agents(conn), key=lambda p: (-p.overall_skill(), p.id)
     ):
@@ -771,6 +822,151 @@ def _commit_free_agent_signing(
     return signed
 
 
+def sign_chosen_rookie_contested(
+    conn: sqlite3.Connection,
+    player_club_id: str,
+    season_number: int,
+    prospect_id: str,
+) -> tuple[Optional[Player], Optional[dict[str, Any]]]:
+    """Sign the player's pick through the contested Signing Day round.
+
+    Prospects resolve via ``recruitment.conduct_recruitment_round``: eligible
+    AI clubs bid in the same round, so the pick can be sniped — that is a
+    legitimate ``(None, snipe_dict)`` outcome, not an error. Free agents are
+    uncontested (league veterans signing directly). Returns ``(None, None)``
+    when the id matches nothing.
+    """
+    from .recruitment import conduct_recruitment_round
+
+    class_year = season_number or 1
+    chosen = next(
+        (
+            prospect
+            for prospect in _available_prospect_players(conn, class_year)
+            if prospect.player_id == prospect_id
+        ),
+        None,
+    )
+    if chosen is None:
+        free_agents = load_free_agents(conn)
+        chosen_fa = next((p for p in free_agents if p.id == prospect_id), None)
+        if chosen_fa is None:
+            return None, None
+        signed_fa = _commit_free_agent_signing(
+            conn, chosen_fa, free_agents, player_club_id, season_number
+        )
+        return signed_fa, {
+            "kind": "free_agent_signed",
+            "prospect_id": signed_fa.id,
+            "prospect_name": signed_fa.name,
+            "explanation": (
+                f"{signed_fa.name} signed directly — free agents are league "
+                "veterans, not contested prospects."
+            ),
+        }
+
+    season_id = get_state(conn, "active_season_id") or f"season_{class_year}"
+    actions = load_json_state(conn, "prospect_recruitment_actions_json", {})
+    scouted_low, scouted_high = _scouted_band(chosen, actions.get(chosen.player_id, {}))
+    outcome = conduct_recruitment_round(
+        conn,
+        stored_root_seed(conn),
+        season_id,
+        class_year,
+        player_club_id,
+        prospect_id,
+    )
+    clubs = load_clubs(conn)
+    if outcome.user_won:
+        set_state(conn, "offseason_draft_signed_player_id", outcome.signed_player.id)
+        conn.commit()
+        if outcome.rival_club_id is not None:
+            rival_club = clubs.get(outcome.rival_club_id)
+            rival_name = rival_club.name if rival_club else outcome.rival_club_id
+            win_line = (
+                f"Your offer {outcome.user_offer_strength:.1f} beat "
+                f"{rival_name}'s {outcome.rival_offer_strength:.1f} — interest "
+                f"{outcome.interest}% strengthened it."
+            )
+        else:
+            win_line = (
+                f"No rival club bid on {chosen.name} this round — your offer "
+                f"{outcome.user_offer_strength:.1f} stood alone."
+            )
+        verified_ovr = outcome.signed_player.overall_skill()
+        return outcome.signed_player, {
+            "kind": "signed",
+            "prospect_id": chosen.player_id,
+            "prospect_name": chosen.name,
+            "your_offer": outcome.user_offer_strength,
+            "your_interest": outcome.interest,
+            "rival_club_name": (
+                clubs[outcome.rival_club_id].name
+                if outcome.rival_club_id in clubs
+                else None
+            ),
+            "rival_offer": outcome.rival_offer_strength,
+            "scouted_band": [scouted_low, scouted_high],
+            "reveal": (
+                f"Scouted {scouted_low}–{scouted_high} → verified OVR {verified_ovr}."
+            ),
+            "explanation": win_line,
+        }
+
+    winning_club = clubs.get(outcome.winning_club_id)
+    winning_club_name = winning_club.name if winning_club else (outcome.winning_club_id or "Another club")
+    action_label = (
+        f"{outcome.actions_taken} recruiting action{'s' if outcome.actions_taken != 1 else ''}"
+    )
+    snipe = {
+        "kind": "sniped",
+        "prospect_id": chosen.player_id,
+        "prospect_name": chosen.name,
+        "winning_club_id": outcome.winning_club_id,
+        "winning_club_name": winning_club_name,
+        "winning_offer": outcome.winning_offer_strength,
+        "your_offer": outcome.user_offer_strength,
+        "your_interest": outcome.interest,
+        "actions_taken": outcome.actions_taken,
+        "explanation": (
+            f"{winning_club_name} signed {chosen.name} — their offer "
+            f"{outcome.winning_offer_strength:.1f} beat yours "
+            f"{outcome.user_offer_strength:.1f}. Your interest was "
+            f"{outcome.interest}%, built from {action_label}."
+        ),
+    }
+    conn.commit()
+    return None, snipe
+
+
+def ensure_ai_offseason_signings(conn: sqlite3.Connection) -> None:
+    """Run the AI Signing Day sweep once per offseason (idempotent).
+
+    Called when recruitment closes (skip, cap, roster-full, advance) and as a
+    safety net before the next season begins, so the league moves every
+    offseason regardless of how the user finished theirs.
+    """
+    from .recruitment import run_ai_offseason_signings
+
+    season_id = get_state(conn, "active_season_id")
+    if not season_id:
+        return
+    if get_state(conn, "offseason_ai_signings_done_for") == season_id:
+        return
+    player_club_id = get_state(conn, "player_club_id")
+    digits = "".join(ch for ch in season_id if ch.isdigit())
+    class_year = int(digits) if digits else 1
+    run_ai_offseason_signings(
+        conn,
+        stored_root_seed(conn),
+        season_id,
+        class_year,
+        player_club_id,
+    )
+    set_state(conn, "offseason_ai_signings_done_for", season_id)
+    conn.commit()
+
+
 def sign_chosen_rookie(
     conn: sqlite3.Connection,
     player_club_id: str,
@@ -806,14 +1002,22 @@ def sign_best_rookie(
     player_club_id: str,
     season_number: int,
 ) -> Optional[Player]:
-    """Sign the highest-rated available prospect or free agent to the player's club."""
+    """Sign the best available signee BY PUBLIC ESTIMATE to the player's club.
+
+    "Best" for prospects means the scouted band midpoint — the same order the
+    picker displays — never the hidden true overall (auto-pick must not leak
+    truth through behavior). Free agents have public ratings.
+    """
     class_year = season_number or 1
     available_prospects = _available_prospect_players(conn, class_year)
     if available_prospects:
-        selected_prospect = sorted(
-            available_prospects,
-            key=lambda prospect: (-prospect.true_overall(), prospect.player_id),
-        )[0]
+        actions = load_json_state(conn, "prospect_recruitment_actions_json", {})
+
+        def _public_estimate_key(prospect):
+            low, high = _scouted_band(prospect, actions.get(prospect.player_id, {}))
+            return (-(low + high), prospect.player_id)
+
+        selected_prospect = sorted(available_prospects, key=_public_estimate_key)[0]
         return _commit_prospect_signing(conn, selected_prospect, player_club_id, class_year)
     free_agents = load_free_agents(conn)
     if not free_agents:
@@ -833,6 +1037,11 @@ def begin_next_season(
     """Create next season, wire scouting, advance cursor to SEASON_ACTIVE_PRE_MATCH."""
     from .config import DEFAULT_SCOUTING_CONFIG
     from .scouting_center import initialize_scouting_for_career
+
+    # Safety net: whatever path closed recruitment, the AI clubs make their
+    # Signing Day moves before the league rolls into the next season
+    # (idempotent — usually already done at recruitment close).
+    ensure_ai_offseason_signings(conn)
 
     active_season_id = get_state(conn, "active_season_id")
     season = load_season(conn, active_season_id) if active_season_id else None
