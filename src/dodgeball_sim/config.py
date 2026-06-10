@@ -110,19 +110,28 @@ DEFAULT_SCOUTING_CONFIG = ScoutingBalanceConfig(
 
 # --- V16 Contested Offseason (config layer; engine rule: balance constants
 # do not live in engine logic) ------------------------------------------------
-# The user's Signing Day offer = BASE + interest * WEIGHT. Measured rival
-# offers on the TOP prospect (tools/contested_offer_probe.py, 60 seeds):
-# min 84.9 / median 99.0 / max 111.7, with uncourted interest ~38-52. These
-# values put the uncourted star pick right at the rival median (genuinely
-# losable, ~half the time), contact+visit (~+32 interest) clearly ahead
-# (~15% risk), and full courtship (interest 100 -> 108.0) near-safe.
-CONTESTED_USER_OFFER_BASE = 90.0
+# The user's Signing Day offer = BASE + interest * WEIGHT. Re-measured after
+# the V18 vet-mix seeding moved club profiles (tools/contested_offer_probe.py,
+# 60 seeds, 2026-06-10 post-V18 run): rival max offers on the TOP prospect
+# min 83.7 / median 92.6 / max 102.2, uncourted interest ~38-52. BASE was
+# re-tuned 90.0 -> 85.0 to keep the V16 design targets: the uncourted star
+# pick sits at the rival median (genuinely losable, ~half the time),
+# contact+visit (~+32 interest) clearly ahead, and full courtship
+# (interest 100 -> 103.0) near-safe.
+CONTESTED_USER_OFFER_BASE = 85.0
 CONTESTED_USER_OFFER_INTEREST_WEIGHT = 0.18
-# D3: at most this many prospect signings per AI club per offseason.
-AI_OFFSEASON_SIGNINGS_PER_CLUB = 1
+# D3 (owner-confirmed 2026-06-10, V18): AI clubs get the SAME Signing Day
+# plays as the user — up to 3 prospect signings per offseason (the user
+# picker's cap in offseason_service.recruit_offseason_payload) against the
+# same 12-player ceiling (offseason_presentation.MAX_USER_ROSTER). Signing
+# fewer is a board decision, not a rule. The V16 launch default (1 signing,
+# ceiling 10) let the engaged user's recruiting volume snowball into a 41%
+# title share once V18 made development deliver ceilings — measured in the
+# V18 sprint plan's Task 2 section.
+AI_OFFSEASON_SIGNINGS_PER_CLUB = 3
 # AI clubs at or above this roster size sit out Signing Day offers entirely
-# (the next offseason's trim-to-9 still creates churn for clubs below it).
-AI_OFFSEASON_MAX_ROSTER = 10
+# (the offseason trim-to-9 then frees slots, mirroring the user's 12-cap).
+AI_OFFSEASON_MAX_ROSTER = 12
 
 
 def get_config(version: str | None = None) -> BalanceConfig:

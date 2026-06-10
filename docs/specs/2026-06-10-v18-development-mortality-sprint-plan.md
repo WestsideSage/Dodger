@@ -215,6 +215,80 @@ the user auto-pilot does too, so any persistent engaged-mode edge is
 structural recruiting/lineup, not dev asymmetry). Record AFTER vs BEFORE in
 this doc and flag any snowball drift for the V19 planning pass.
 
+### Task 3 + owner D3 measurements (2026-06-10 — SHIPPED)
+
+**Owner decision (2026-06-10), resolving Task 2's escalated item:** AI clubs
+get the SAME Signing Day plays as the player — "the AI should be able to
+make the same plays as the player… you are competing against them."
+Implemented as `AI_OFFSEASON_SIGNINGS_PER_CLUB` 1 → 3 (= the user picker's
+cap) and `AI_OFFSEASON_MAX_ROSTER` 10 → 12 (= `MAX_USER_ROSTER`, so the
+volume is actually reachable). League churn: 5.0 → **15.0 AI prospect
+signings per offseason**.
+
+**Task 3 implementation:**
+
+- `career_setup.build_curated_roster`: role-banded ages — Captain 31–33
+  (vet), Anchor 28–31, Striker 26–29, Runner 22–25, Utility 19–23, Rookie
+  18–20 — replacing the uniform 18–29 draw. One `rng.unit()` per player, so
+  every other rolled value (names, ratings, traits) is stream-identical.
+- Synthetic prior careers: seeded players carry
+  `seasons_played_prior = age − 19` in `career_summary_json`.
+  `should_retire` counts recorded + prior; **`seasons_played`, HoF cases,
+  records, and every display surface keep recorded-only history** — no
+  fabricated careers render. `_update_career_summaries` carries the prior
+  across rewrites.
+- Stale-recent truth fix: `recent_eliminations` now means the season being
+  finalized — a vet benched all season reads 0, not the count from their
+  last fielded season (which kept declining vets permanently above the <4
+  retirement gate).
+- Knock-on re-tune (measured): the vet-mix moved club recruitment profiles,
+  collapsing the uncourted top-pick snipe rate 54% → 16%.
+  `CONTESTED_USER_OFFER_BASE` re-tuned 90.0 → 85.0 against
+  `tools/contested_offer_probe.py` (60 seeds): uncourted **43%** sniped,
+  courted +32 **12%**, interest-100 0% — the V16 design targets restored.
+  Witness seeds re-derived per the pinned procedure (7, 13).
+- New gates: `tests/test_v18_mortality_seeding.py` (age mix per club,
+  prior-career consistency, recorded-history honesty, retirement-gate
+  cause→effect, benched-recent truth).
+
+**Task 3/4 gate results** (8 seeds × 10 seasons, official_foam, final
+constants — this is the milestone AFTER state):
+
+| Gate | Result |
+|---|---|
+| First league retirement ≤ S3 (mean) | ✅ engaged **3.0** (S3 on 8/8 seeds), passive **3.1** (BEFORE: 9.0 on 8/8) |
+| Visible mortality without cratering | ✅ **1.80 retirements/season** league-wide (BEFORE 0.68, all S9–10); league mean OVR still grows 67 → 89; AI rosters at 12; HoF cadence revived (≤5.8 inducted by S10) |
+| Ceiling delivery intact | ✅ engaged user 100%/100% shortfall 0.0; AI 95–99% (symmetry control holds) |
+| Engaged snowball (Task 2 escalation) | ✅ **RESOLVED**: title share 41.2% → **22.5%** (parity baseline 16.7%), OVR-edge peak +4.5 → **+2.9**, and the AI league overtakes the engaged user by S8 (edge −1.6 by S10); six distinct champions |
+| Contested-ness | ✅ 17–19 user snipes per sweep; `TestDynastyHealthGate` green |
+| Determinism + full suite | ✅ dynasty determinism pins green; full `python -m pytest -q` green |
+
+**AFTER table — title share & OVR-edge curves** (compare §BEFORE):
+
+| Season | S1 | S2 | S3 | S4 | S5 | S6 | S7 | S8 | S9 | S10 | Total |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Engaged titles /8 | 2 | 0 | 1 | 4 | 4 | 1 | 1 | 2 | 2 | 1 | **18/80 (22.5%)** |
+| Engaged OVR-edge | −0.1 | +0.8 | +2.1 | +2.5 | +2.9 | +2.1 | +0.9 | −0.5 | −1.3 | −1.6 | |
+| Passive titles /8 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **2/80 (2.5%)** |
+| Retirements/season (league) | 0.0 | 0.0 | 1.4 | 1.4 | 5.1 | 1.4 | 2.8 | 2.5 | 1.9 | 1.7 | mean **1.80** |
+
+**Flagged for V19 planning:**
+
+1. **The passive lineup cliff.** The only difference between 22.5% and 2.5%
+   title share is the one-click offseason lineup re-optimize. With the
+   league now recruiting and developing at parity, a fast-forward player who
+   never opens the Lineup Editor finishes rank ~6.0 from S7 on. The
+   auto-pilot default (creation lineup order, signings seated at slot 6) is
+   the V19 candidate: fast-forward should re-seat the fielded six (or
+   disclose that it won't).
+2. **S5 retirement cohort wave** (~5/league in one offseason): the seeded
+   31–33 vets age out together in a fresh league. It washes out by S6 and
+   only affects new careers' first cycle; acceptable texture, noted.
+3. **League OVR inflation watch**: with everyone delivering, league mean
+   fielded OVR converges high-80s by S10 (prospect pool mean potential ~87).
+   Zero-sum match outcomes are unaffected, but stat/records cadence on an
+   all-elite league is a V20/V21 presentation consideration.
+
 ## Task 5 — Verification sweep + retro
 
 Full `python -m pytest -q`; `npm run build` + `npm run lint` if any frontend

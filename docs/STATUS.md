@@ -20,20 +20,26 @@ commit `e235326`); Task 1 catch-economy retune (`2dfc4a0`) and Task 2
 WT-20 enforcement + draw texture (`bb07fda`) are on main with the
 verification sweep (`a6165fa`, pushed; retro:
 `docs/retrospectives/2026-06-10-v17-official-engine-truth-retrospective.md`).
-**V18 Development & Mortality is IN PROGRESS** (sprint plan + BEFORE
-baseline + Task 2 dev-ceiling overhaul shipped 2026-06-10; sprint plan with
-all measurements:
-`docs/specs/2026-06-10-v18-development-mortality-sprint-plan.md`). Task 2:
-full-time starters now deliver their displayed ceilings (headroom closure
+**V18 Development & Mortality is SHIPPED (2026-06-10)** — sprint plan with
+all BEFORE/AFTER measurements:
+`docs/specs/2026-06-10-v18-development-mortality-sprint-plan.md`; retro:
+`docs/retrospectives/2026-06-10-v18-development-mortality-retrospective.md`.
+Full-time starters deliver their displayed ceilings (headroom closure
 20-34% → 96-100%, shortfall ~10 OVR → ≤0.5, archetype-independent, AI
-symmetric; gated by `tests/test_v18_ceiling_delivery.py`). OPEN owner item
-from its measurement: with ceilings delivering, the engaged user's
-structural recruiting volume (3 signings/offseason vs AI 1, roster 12 vs
-trimmed 9) produces a 41% title share S4-S8 hump that dev pace provably
-does not control — the lever is AI signing volume / roster parity (V16 plan
-D3 revisit). Remaining: Task 3 vet seeding + mortality (first retirement is
-still season 9 on every probed seed), Task 4 Monte Carlo AFTER re-run,
-Task 5 sweep + retro.
+symmetric); curated rosters seed a vet/prime/rising/prodigy age mix with
+synthetic prior careers consumed only by retirement biology (first league
+retirement S9 → S3 on every probed seed, ~1.8 retirements/season, HoF
+cadence revived); and the owner-decided recruiting parity (AI clubs sign up
+to 3/offseason vs a 12 ceiling — the same plays as the player) resolved the
+Task 2 snowball escalation: engaged title share 41.2% → 22.5% (parity
+16.7%), with the AI league overtaking a non-improving user by S8.
+`CONTESTED_USER_OFFER_BASE` re-tuned 90 → 85 (the vet mix moved rival
+offers; V16 contested targets restored at 43% uncourted / 12% courted).
+Gated by `tests/test_v18_ceiling_delivery.py` +
+`tests/test_v18_mortality_seeding.py`. V19-queued from measurement: the
+passive lineup cliff (one offseason lineup-optimize click separates 22.5%
+from 2.5% title share — auto-pilot lineup default needs a product call).
+Next milestone per the sequencing plan: **V19 Decision Wiring**.
 
 ## Current Phase
 
@@ -551,10 +557,13 @@ before implementation.
    revival (#5), department-order effects (#6), development-ceiling
    overhaul, role/stat hookups, replay intent frames, and the
    language/dedup/no-floats passes — full dispositions in
-   `docs/fable/2026-06-10-owner-decision-log.md`. One V16 tuning note for
-   real playtests: a passive auto-pilot career now finishes BELOW the AI
-   curve (by design — engaged play buys the edge); soften via
-   `AI_OFFSEASON_SIGNINGS_PER_CLUB` / `AI_OFFSEASON_MAX_ROSTER` if needed.
+   `docs/fable/2026-06-10-owner-decision-log.md`. Tuning note updated for
+   V18: the owner-decided recruiting parity (2026-06-10) set
+   `AI_OFFSEASON_SIGNINGS_PER_CLUB = 3` / `AI_OFFSEASON_MAX_ROSTER = 12` —
+   the same plays as the player — so a fully passive auto-pilot career now
+   finishes LAST (2.5% title share vs 22.5% engaged; the offseason
+   lineup-optimize click is the difference). That cliff is a V19 auto-pilot
+   product call, not a constants problem; do not soften parity to mask it.
 
 ## Sources Of Truth
 

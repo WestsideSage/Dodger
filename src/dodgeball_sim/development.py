@@ -342,9 +342,18 @@ def apply_season_development(
 
 
 def should_retire(player: Player, career_stats: Mapping[str, float] | None) -> bool:
-    """Return whether a player should retire based on age and decline signals."""
+    """Return whether a player should retire based on age and decline signals.
+
+    Career length counts the recorded sim seasons PLUS the synthetic
+    `seasons_played_prior` seeded for curated veterans (V18 Task 3) — a
+    33-year-old seeded at career creation has played ~14 seasons of dodgeball
+    even though the save recorded none of them. Display surfaces never read
+    the prior; only this biology does.
+    """
     stats = dict(career_stats or {})
-    seasons_played = int(stats.get("seasons_played", 0))
+    seasons_played = int(stats.get("seasons_played", 0)) + int(
+        stats.get("seasons_played_prior", 0)
+    )
     recent_eliminations = float(stats.get("recent_eliminations", stats.get("total_eliminations", 0.0)))
     overall = player.overall_skill()
 

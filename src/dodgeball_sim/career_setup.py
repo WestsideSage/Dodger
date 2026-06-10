@@ -173,17 +173,24 @@ def _curated_potential_ceiling(raw_potential: float, ovr: int, age: int) -> int:
 
 def build_curated_roster(club_id: str, club_name: str, seed: int, count: int = 6) -> List[Player]:
     rng = DeterministicRNG(seed)
+    # V18 Task 3 (owner-approved 2026-06-10): each role carries an age band so
+    # every curated club seeds the vet / prime / rising / prodigy texture the
+    # owner cited from Teamfight Manager 2, instead of the old uniform 18-29
+    # draw that left the league with zero retirement-age players until ~S9.
+    # The band draw consumes exactly ONE rng.unit() per player — the same
+    # count as the old draw — so every other rolled value (names, ratings,
+    # traits) is byte-identical to the previous seeding.
     roles = [
-        ("Captain", (76, 72, 62, 58)),
-        ("Striker", (70, 78, 58, 52)),
-        ("Anchor", (61, 62, 64, 76)),
-        ("Runner", (64, 58, 78, 60)),
-        ("Rookie", (60, 61, 62, 63)),
-        ("Utility", (66, 65, 65, 65)),
+        ("Captain", (76, 72, 62, 58), (31, 33)),   # proven veteran leader
+        ("Striker", (70, 78, 58, 52), (26, 29)),   # prime scorer
+        ("Anchor", (61, 62, 64, 76), (28, 31)),    # late-prime stabilizer
+        ("Runner", (64, 58, 78, 60), (22, 25)),    # rising starter
+        ("Rookie", (60, 61, 62, 63), (18, 20)),    # prodigy
+        ("Utility", (66, 65, 65, 65), (19, 23)),   # young depth
     ]
     roster: List[Player] = []
     names = _unique_roster_names(rng, count)
-    for index, (label, base) in enumerate(roles[:count], 1):
+    for index, (label, base, (age_lo, age_hi)) in enumerate(roles[:count], 1):
         accuracy, power, dodge, catch = (
             _clamp(value + rng.gauss(0, 4), 35, 95) for value in base
         )
@@ -211,7 +218,7 @@ def build_curated_roster(club_id: str, club_name: str, seed: int, count: int = 6
                 consistency=int(round(_clamp(rng.gauss(50, 12), 10, 90))),
                 pressure=int(round(_clamp(rng.gauss(50, 12), 10, 90))),
             ),
-            age=18 + int(rng.unit() * 12),
+            age=age_lo + int(rng.unit() * (age_hi - age_lo + 1)),
             club_id=club_id,
             newcomer=index >= 5,
         )
@@ -293,6 +300,35 @@ def initialize_curated_manager_career(
         # Validate by constructing the enum.
         RulesetSelection(ruleset_selection)
         set_state(conn, "ruleset_selection", ruleset_selection)
+
+    # V18 Task 3: seeded players carry a synthetic prior-career length
+    # consistent with their age (turned pro at 19), under the dedicated
+    # `seasons_played_prior` key. Only retirement biology
+    # (development.should_retire) reads it — `seasons_played`, HoF cases,
+    # records, and every display surface keep the RECORDED sim history, so
+    # no fabricated careers ever render. Without this, should_retire's
+    # seasons_played >= 8-10 gates are unreachable before sim-season 8 and a
+    # seeded 33-year-old cannot retire until age 40 (V18 BEFORE table:
+    # first league retirement was season 9 on every probed seed).
+    from .persistence import save_player_career_stats
+
+    for roster in rosters.values():
+        for player in roster:
+            prior_seasons = max(0, int(player.age) - 19)
+            if prior_seasons <= 0:
+                continue
+            save_player_career_stats(
+                conn,
+                player.id,
+                {
+                    "player_id": player.id,
+                    "player_name": player.name,
+                    "club_id": player.club_id or "",
+                    "seasons_played": 0,
+                    "seasons_played_prior": prior_seasons,
+                },
+            )
+
     cursor = CareerStateCursor(state=CareerState.SEASON_ACTIVE_PRE_MATCH, season_number=1, week=1)
     save_career_state_cursor(conn, cursor)
     initialize_scouting_for_career(conn, root_seed=root_seed, config=DEFAULT_SCOUTING_CONFIG)
