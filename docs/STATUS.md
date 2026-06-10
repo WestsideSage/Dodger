@@ -4,9 +4,10 @@ Canonical snapshot of what is actually built and what is still open. When code
 state changes materially, update this file in the same pass. If this file and
 the source disagree, the source wins - then fix this file.
 
-Last updated: 2026-06-10. `main` / `origin/main` are at the **V16 ship
-commit** (child of `5668471`, which followed the `2969271` Task 0 sweep that
-landed the six 2026-06-09 audit passes — the "Task 0 sweep" entries below).
+Last updated: 2026-06-10. `main` / `origin/main` are at `0c9bf28`
+(`feat: V16 Contested Offseason`, child of `5668471`, which followed the
+`2969271` Task 0 sweep that landed the six 2026-06-09 audit passes — the
+"Task 0 sweep" entries below).
 Master-roadmap Phases 0-7 are on main. Section 4 (the Phase 8 desktop-first
 visual implementation, briefs 4.1-4.8) is **implemented on main** and was
 **browser-verified 2026-06-09** - see the "Shipped And Verified" entries.
