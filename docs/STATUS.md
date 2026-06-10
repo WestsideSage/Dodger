@@ -18,7 +18,7 @@ post-V16 backlog was sequenced into milestones V17–V21
 (`docs/specs/2026-06-10-post-v16-greenlit-backlog-sequencing-plan.md`,
 commit `e235326`); Task 1 catch-economy retune (`2dfc4a0`) and Task 2
 WT-20 enforcement + draw texture (`bb07fda`) are on main with the
-verification sweep (retro:
+verification sweep (`a6165fa`, pushed; retro:
 `docs/retrospectives/2026-06-10-v17-official-engine-truth-retrospective.md`).
 Next milestone per the sequencing plan: **V18 Development & Mortality**
 (dev-ceiling overhaul, vet seeding, Monte Carlo re-run).
