@@ -58,8 +58,15 @@ def _catch_thresholds(policy: CoachPolicy) -> tuple[float, float]:
     # official_resolution._PLAY_SAFE_EVASION_BONUS for the other half of the
     # tradeoff). GO_FOR_CATCHES / OPPORTUNISTIC pairs are numerically unchanged,
     # so every non-play_safe match replays byte-identical.
+    # V17/WT-20 retune note: GO_FOR was (0.20, -0.30) under the old economy,
+    # where even a weak catcher's attempt beat the brutal no-attempt dodge
+    # roll. After the V17 catch retune (weak catchers land ~17-25% of
+    # attempts) and WT-20 blocking (holders have real counterplay), that
+    # threshold forced terrible attempts and GO_FOR measured as a -15pp trap
+    # option. 0.35/-0.25 keeps GO_FOR clearly the most aggressive posture
+    # while letting its weakest catchers decline throws they cannot catch.
     if policy.catch_posture == CatchPosture.GO_FOR_CATCHES:
-        return 0.20, -0.30
+        return 0.35, -0.25
     if policy.catch_posture == CatchPosture.PLAY_SAFE:
         return 0.65, -0.05
     return 0.50, -0.15
@@ -139,17 +146,43 @@ class CatchDecision:
     normalized_dodge: float
 
 
+# WT-20: a defender holding a ball has the block in their back pocket, so a
+# marginal catch attempt is no longer their only counterplay — holders demand
+# this much extra catch skill before attempting (added to the BINDING attempt
+# bar). Without it, GO_FOR_CATCHES forced weak-catch holders to trade a block
+# for a ~17-25% catch and the posture measured as a -15pp trap option
+# post-blocking (2026-06-10 probe). 0.12 over-suppressed the catch economy of
+# defensive roster shapes (champion-parity probe: Power Throwers spiked to
+# 73.8% of matched-OVR titles); 0.06 keeps weak catchers declining while
+# capable catchers stay in the catch game.
+_HOLDER_BLOCK_PREFERENCE = 0.06
+
+
 def decide_catch_attempt(
-    *, target: OfficialPlayerState, player_lookup: Dict[str, Player], policy: CoachPolicy
+    *,
+    target: OfficialPlayerState,
+    player_lookup: Dict[str, Player],
+    policy: CoachPolicy,
+    holds_ball: bool = False,
 ) -> CatchDecision:
-    """Mirrors engine._should_attempt_catch."""
+    """Mirrors engine._should_attempt_catch.
+
+    ``holds_ball`` raises the attempt bar (WT-20): a ball-holding defender can
+    block instead, so only clearly catchable throws are worth the attempt.
+    """
 
     player = player_lookup[target.player_id]
     normalized_catch = player.ratings.normalized_catch()
     normalized_dodge = player.ratings.normalized_dodge()
     threshold, dodge_guard_offset = _catch_thresholds(policy)
     dodge_guard = normalized_dodge + dodge_guard_offset
-    attempt = normalized_catch >= max(threshold, dodge_guard)
+    # The holder bump raises the BINDING bar, not just the posture threshold —
+    # for the weak-catch/high-dodge players the dodge guard is what binds, and
+    # bumping only the threshold left the trap intact (measured 2026-06-10).
+    attempt_bar = max(threshold, dodge_guard)
+    if holds_ball:
+        attempt_bar += _HOLDER_BLOCK_PREFERENCE
+    attempt = normalized_catch >= attempt_bar
     return CatchDecision(
         attempt=attempt,
         threshold=threshold,

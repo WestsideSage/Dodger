@@ -115,18 +115,20 @@ def _t(home: str, function: str) -> NamedTest:
 #     the catch queue core return, and the elimination -> winner sequence.
 #
 #   * ANNOUNCED_ONLY rows are activated/surfaced but never consulted by
-#     resolution: No Blocking (activated at official_engine ~:593, mode set,
-#     event emitted, but ``resolve_contact_with_held_ball`` is never called) and
-#     the throw-clock *penalty path* (``foam_failure_forfeit`` /
-#     ``cloth_play_n_failure`` exist + are unit-tested, but the live loop never
-#     invokes them; ``throw_clock_seconds`` only rides the replay config
-#     snapshot). The 24-core entering-player / held-ball-in-queue micro-fouls
-#     are likewise module-level only.
+#     resolution. After WT-20 (2026-06-10) the remaining announced-only
+#     surface is: the throw-clock *penalty path* (``foam_failure_forfeit`` /
+#     ``cloth_play_n_failure`` exist + are unit-tested, but the autonomous
+#     loop throws every <=6s tick whenever a side controls a ball, so the
+#     10s/5s failure windows are unreachable by construction — there is
+#     nothing for the live loop to enforce) and the 24-core entering-player
+#     micro-fouls other than the held-ball forfeiture (which WT-20 wired).
 #
-#   * ABSENT: opening-rush activation is not in the official engine.
-#
-# Making these announced-only/absent rows honest is WT-19's job; *wiring* them
-# into the engine is the deferred WT-20 milestone -- do NOT do that here.
+#   * WT-20 (2026-06-10, owner-greenlit) wired: No Blocking resolution (the
+#     held-ball block branch in official_resolution is disabled while
+#     active; balls do not reset; match-end source), Section 24-core
+#     held-ball forfeiture on outs + loose-ball retrieval, and opening-rush
+#     initiative/holder ordering (disclosed sim-design — opening rush is NOT
+#     a sourced USAD rule).
 # ---------------------------------------------------------------------------
 LEDGER: Tuple[SectionLedgerEntry, ...] = (
     SectionLedgerEntry(
@@ -170,9 +172,9 @@ LEDGER: Tuple[SectionLedgerEntry, ...] = (
         ),
         note=(
             "Engine advances the game clock and resolves the cloth clock-expiry "
-            "decision (decide_cloth_game_by_active_count). NOTE: the foam/no-sting "
-            "no-blocking *trigger* fires here but its *resolution* is announced-only "
-            "(see section 27)."
+            "decision (decide_cloth_game_by_active_count). The foam/no-sting "
+            "no-blocking trigger fires here and its resolution is ENFORCED as of "
+            "WT-20 (see section 27)."
         ),
     ),
     SectionLedgerEntry(
@@ -359,14 +361,16 @@ LEDGER: Tuple[SectionLedgerEntry, ...] = (
             ),
         ),
         note=(
-            "ANNOUNCED-ONLY at the live-engine level. The core queue RETURN (sections "
-            "22/23) is enforced, but the 24-core micro-fouls -- a queued player holding "
-            "a ball (queue_player_holds_ball_forfeit), entering-player illegal contact "
-            "before live (entering_player_touches_ball_before_live), out-of-order entry "
-            "(out_of_order_entry), and the 5s entering window (tick_entering) -- are "
-            "module-level helpers with passing unit tests that run_autonomous_game never "
-            "invokes (it only reads queue.entering for the replay snapshot). Wiring these "
-            "into the live loop is WT-20 scope."
+            "SPLIT (WT-20, 2026-06-10). The held-ball-in-queue forfeiture IS now "
+            "live: run_autonomous_game invokes queue_player_holds_ball_forfeit for "
+            "every ball an out player still controls, and a loose-ball retrieval "
+            "pass re-enters forfeited/free balls each tick "
+            "(test_wt20_live_rules.py::test_out_players_forfeit_held_balls_and_loose_balls_reenter). "
+            "Still announced-only: entering-player illegal contact before live "
+            "(entering_player_touches_ball_before_live), out-of-order entry "
+            "(out_of_order_entry), and the 5s entering window (tick_entering) -- "
+            "module-level helpers with passing unit tests the live loop never "
+            "invokes."
         ),
     ),
     SectionLedgerEntry(
@@ -386,27 +390,39 @@ LEDGER: Tuple[SectionLedgerEntry, ...] = (
         section="27",
         title="No Blocking (held ball becomes a body extension)",
         scope="must-have",
-        state=_ANNOUNCED,
+        state=_ENFORCED,
         named_tests=(
             _t(
                 "test_official_no_blocking.py",
                 "test_no_blocking_activation_logs_section_27_and_source",
             ),
             _t(
-                "test_official_no_blocking.py",
-                "test_held_ball_becomes_body_extension_under_no_blocking",
+                "test_wt20_live_rules.py",
+                "test_no_blocking_disables_the_block_branch",
+            ),
+            _t(
+                "test_wt20_live_rules.py",
+                "test_no_blocking_activation_says_balls_do_not_reset",
+            ),
+            _t(
+                "test_wt20_live_rules.py",
+                "test_match_clock_expiry_activates_match_end_no_blocking",
             ),
         ),
         note=(
-            "ANNOUNCED-ONLY. The live engine ACTIVATES No Blocking (official_engine "
-            "~:593: activate_no_blocking, emits the section-27 event, sets "
-            "game_state.mode = NO_BLOCKING) but NEVER calls "
-            "resolve_contact_with_held_ball, so the body-extension outcome never "
-            "happens -- the no_blocking_state is dead after activation and the mode "
-            "only rides the replay payload. The trigger + terminal match-end game are "
-            "primary-source confirmed; the reduced-blocking *resolution* parameter is "
-            "OPEN. Enforcing it (the real tie/decisiveness mechanism) is the deferred "
-            "WT-20 keystone -- do NOT wire it here."
+            "ENFORCED (WT-20, 2026-06-10, owner-greenlit). Regulation play models "
+            "held-ball blocking (official_resolution: a ball-holding catch-decliner "
+            "blocks at p~0.74 even-ratings); while No Blocking is active the block "
+            "branch is DISABLED, so the held ball genuinely stops protecting. "
+            "Activation now carries the SOURCED 'balls do not reset' (the old "
+            "three_per_side contradicted the primary source) and the SOURCED "
+            "match-end source (match clock expiry -> the current game becomes a "
+            "match-end No Blocking game and plays on). HONESTY NOTE: the trigger, "
+            "terminal game, and no-reset are primary-source confirmed; what reduced "
+            "blocking changes in *resolution* is NOT specified by the source — the "
+            "shipped 'remove block protection, change nothing else' resolution is "
+            "disclosed sim-design measured in the V17 retro, not a USAD fidelity "
+            "claim (Workflow-0 keystone row)."
         ),
     ),
 )
@@ -422,14 +438,25 @@ NON_SECTION_ENFORCEMENT_NOTES: Tuple[Tuple[str, EnforcementState, str], ...] = (
     (
         "throw-clock penalties",
         _ANNOUNCED,
-        "throw_clock_seconds is threaded into the replay config snapshot only; the "
-        "live loop has no penalty path. (See section 14 for the burden-side detail.)",
+        "The penalty paths (foam_failure_forfeit / cloth_play_n_failure) remain "
+        "module-level, and deliberately so: the autonomous loop throws every "
+        "<=6s tick whenever a side controls a ball, so the sourced 10s/5s "
+        "failure windows are unreachable by construction — the clock is "
+        "satisfied structurally, and wiring a penalty that can never fire would "
+        "be enforcement theater. Re-examine if the loop ever gains a stalling "
+        "action. (WT-20 disposition, 2026-06-10; see section 14 for the "
+        "burden-side detail.)",
     ),
     (
         "opening-rush activation",
-        _ABSENT,
-        "Not present in the official engine. rec-engine proximity_modifier is a "
-        "separate surface; official opening-rush activation is WT-20 scope.",
+        _ENFORCED,
+        "ENFORCED as DISCLOSED SIM-DESIGN (WT-20, 2026-06-10) — opening rush is "
+        "NOT a sourced USAD rule, and the player-facing copy must not present "
+        "it as official-rules fidelity. rush_target orders which players "
+        "secure the designated balls; rush_commit shades the opening-exchange "
+        "catch economy both ways (harder-to-catch rushed throws vs weaker "
+        "rushed catch readiness). First offense is a seeded coin flip. "
+        "test_wt20_live_rules.py::test_rush_knobs_change_official_outcomes_same_seed.",
     ),
 )
 

@@ -140,19 +140,26 @@ def throw_inactive_ball_marks_thrower_out(
 
 
 def queue_player_holds_ball_forfeit(
-    ball: OfficialBall, *, queued_player_id: str, match_id: str, opponent_team_id: str
+    ball: OfficialBall,
+    *,
+    queued_player_id: str,
+    match_id: str,
+    opponent_team_id: str,
+    event_id_suffix: str = "",
 ) -> OfficialEvent:
     """Section 24-core: queued players cannot hold balls.
 
     Returns a deterministic forfeiture event. The ball is awarded to the
-    opponent and marked forfeited.
+    opponent and marked forfeited. ``event_id_suffix`` lets repeat callers
+    (the WT-20 autonomous loop forfeits on every out) keep event ids unique
+    when the same player re-enters, re-holds, and is ruled out again.
     """
 
     ball.state = BallState.FORFEITED
     ball.controller_player_id = None
     ball.side = opponent_team_id
     return OfficialEvent(
-        event_id=f"queueball-{ball.ball_id}-{queued_player_id}",
+        event_id=f"queueball-{ball.ball_id}-{queued_player_id}{event_id_suffix}",
         kind=OfficialEventKind.BALL,
         match_id=match_id,
         ball_ids=(ball.ball_id,),

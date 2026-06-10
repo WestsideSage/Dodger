@@ -188,7 +188,19 @@ def resolve_sequence(seq: SequenceOfPlay) -> SequenceFinalRuling:
         deduped_saves.append(pid)
 
     if not summary_parts:
-        summary_parts.append("Sequence resolved with no outs.")
+        if any(c.kind == SequenceContactKind.BLOCK for c in seq.contacts):
+            # WT-20: a held-ball block kills the throw — no outs, no catch.
+            blocker = next(
+                (c.player_id for c in seq.contacts if c.kind == SequenceContactKind.BLOCK),
+                None,
+            )
+            summary_parts.append(
+                f"Throw blocked by {blocker}'s held ball; no outs."
+                if blocker
+                else "Throw blocked by a held ball; no outs."
+            )
+        else:
+            summary_parts.append("Sequence resolved with no outs.")
 
     seq.final = SequenceFinalRuling(
         outs=tuple(deduped_outs),
@@ -247,6 +259,20 @@ def sequence_event(seq: SequenceOfPlay) -> OfficialEvent:
             "catches": [c.catcher_id for c in seq.final.catches],
             "thrower_out": seq.final.thrower_out,
             "clock_expired_at_release": seq.clock_expired_at_release,
+            # WT-20: a held-ball block killed the throw (no outs, no catch).
+            # The translator surfaces this as the "blocked" outcome so the
+            # replay never narrates a block as a miss.
+            "blocked": any(
+                c.kind == SequenceContactKind.BLOCK for c in seq.contacts
+            ),
+            "blocker_id": next(
+                (
+                    c.player_id
+                    for c in seq.contacts
+                    if c.kind == SequenceContactKind.BLOCK and c.player_id
+                ),
+                None,
+            ),
             # Replay metadata: when the throw was released (the autonomous
             # loop sets this to engine_tick * 100), so moment events — which
             # carry per-game engine ticks — can be anchored to the sequence.

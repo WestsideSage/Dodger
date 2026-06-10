@@ -476,9 +476,10 @@ def _format_report(result: ParityResult, *, cap: float | None = None) -> str:
             f"max<=cap({cap:.2f}) {'PASS' if result.max_share <= cap else 'FAIL'}"
         )
     lines.append(
-        "  NOTE: matched OVR != matched strength — every engine rewards defense "
-        "(dodge+catch) over offense, so the Defensive Specialist shape leads. This "
-        "is a diversity guard, not a parity claim."
+        "  NOTE: matched OVR != matched strength — the economy always favors some "
+        "shape (pre-V17: Defensive ~65%; post-WT-20: Power Throwers ~64%, since "
+        "full-length matches express the throw-quality economy). This is a "
+        "diversity guard, not a parity claim; shape parity is a V19 design item."
     )
     return "\n".join(lines)
 
