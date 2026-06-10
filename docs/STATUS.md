@@ -21,7 +21,8 @@ WT-20 enforcement + draw texture (`bb07fda`) are on main with the
 verification sweep (`a6165fa`, pushed; retro:
 `docs/retrospectives/2026-06-10-v17-official-engine-truth-retrospective.md`).
 Next milestone per the sequencing plan: **V18 Development & Mortality**
-(dev-ceiling overhaul, vet seeding, Monte Carlo re-run).
+(dev-ceiling overhaul, vet seeding, Monte Carlo re-run; sprint plan:
+`docs/specs/2026-06-10-v18-development-mortality-sprint-plan.md`).
 
 ## Current Phase
 
