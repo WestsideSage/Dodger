@@ -150,7 +150,8 @@ def _curated_potential_ceiling(raw_potential: float, ovr: int, age: int) -> int:
     reach: development closes the (potential - OVR) headroom gap, the roster
     page renders it as "Ceiling", and potential tiers bucket the absolute
     value. Every other player source already seeds it on that scale
-    (recruitment rolls 55-96; prospect conversion floors at 70). This curated
+    (V19 scarcity: bottom-weighted prospect rolls capped at 88, signed
+    ceiling = best hidden rating + 8, elite tiers trajectory-gated). This curated
     draw predates that contract, so half a fresh takeover roster used to carry
     a "ceiling" below its current OVR — zero headroom, zero development, and a
     first offseason where every starter moved +0. Read the same deterministic
@@ -298,6 +299,10 @@ def initialize_curated_manager_career(
     set_state(conn, "active_season_id", season.season_id)
     set_state(conn, "player_club_id", selected_club_id)
     set_state(conn, "difficulty", "pro")
+    # V19 Task 8: lineup auto-reorder defaults ON for new careers (CFB26
+    # depth-chart pattern — set-and-forget). A manual lineup save flips it
+    # off; the Lineup Editor toggle controls it thereafter.
+    set_state(conn, "lineup_auto_reorder", "1")
     # V11: ruleset selection is set at career creation only and persists
     # for the lifetime of the career. Existing saves stay on generic.
     if ruleset_selection:

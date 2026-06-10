@@ -485,13 +485,19 @@ export function Roster() {
         <LineupEditor
           roster={data.roster}
           defaultLineup={data.default_lineup}
+          autoReorder={data.lineup_auto_reorder ?? true}
           onClose={() => setLineupEditorOpen(false)}
           onSaved={(orderedPlayerIds) => {
             // Splice the server-returned order into the cached roster
             // payload so the Roster screen reflects the resolved starting
-            // six immediately — both for manual saves and Reset-to-Auto.
-            setData({ ...data, default_lineup: orderedPlayerIds });
+            // six immediately — both for manual saves and Auto-Assign.
+            // Functional update: a manual save fires onAutoReorderChange in
+            // the same tick, so a captured `data` would clobber its field.
+            setData((prev) => (prev ? { ...prev, default_lineup: orderedPlayerIds } : prev));
           }}
+          onAutoReorderChange={(enabled) =>
+            setData((prev) => (prev ? { ...prev, lineup_auto_reorder: enabled } : prev))
+          }
         />
       )}
     </div>

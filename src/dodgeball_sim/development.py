@@ -54,9 +54,15 @@ _TRAJECTORY_GROWTH_MULTIPLIER = {
     "GENERATIONAL": 1.75,
 }
 
+# V19 ceiling scarcity: a NORMAL trajectory promises nothing — the player's
+# ceiling is their own rolled potential (the old 72.0 floor handed every
+# scouted prospect a Mid+ ceiling and, once V18 delivery landed, converged
+# the league to high-80s OVR). The labeled tiers ARE the promise: scouting
+# reveals the trajectory, so finding an IMPACT/STAR/GENERATIONAL prospect is
+# exactly the "rare but findable if you scout hard" economy.
 _TRAJECTORY_POTENTIAL_FLOOR = {
     None: None,
-    "NORMAL": 72.0,
+    "NORMAL": None,
     "IMPACT": 82.0,
     "STAR": 90.0,
     "GENERATIONAL": 96.0,

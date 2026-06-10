@@ -1056,6 +1056,8 @@ def begin_next_season(
     # (idempotent — usually already done at recruitment close).
     ensure_ai_offseason_signings(conn)
 
+    _maintain_user_lineup_for_new_season(conn)
+
     active_season_id = get_state(conn, "active_season_id")
     season = load_season(conn, active_season_id) if active_season_id else None
     if season is None:
@@ -1087,6 +1089,45 @@ def begin_next_season(
     )
     conn.commit()
     return new_cursor
+
+
+def _maintain_user_lineup_for_new_season(conn: sqlite3.Connection) -> None:
+    """V19 Task 8 (owner-decided toggle, CFB26 depth-chart pattern).
+
+    At season rollover the user lineup is either RE-SEATED (auto-reorder ON —
+    the set-and-forget mode, default for new careers: the fielded six is
+    re-optimized exactly the way AI clubs manage theirs, so signings and
+    developed players enter the six instead of rotting at slot 6) or
+    REPAIRED only (auto-reorder OFF — the hands-on mode a manual lineup save
+    selects: the player's saved order is respected exactly; retired/departed
+    players are removed and the order back-filled by OVR so the lineup is
+    always fieldable, but no seat the player chose is ever re-ranked).
+    """
+    from .lineup import optimize_ai_lineup
+    from .web_status_service import lineup_auto_reorder_enabled
+
+    player_club_id = get_state(conn, "player_club_id")
+    if not player_club_id:
+        return
+    roster = load_all_rosters(conn).get(player_club_id, [])
+    if not roster:
+        return
+    if lineup_auto_reorder_enabled(conn):
+        save_lineup_default(conn, player_club_id, optimize_ai_lineup(roster))
+        # Disclosure flag: the season-start surface can state the staff
+        # re-seated the lineup (the Lineup Editor always shows the result).
+        set_state(conn, "offseason_lineup_reordered", "1")
+        return
+    set_state(conn, "offseason_lineup_reordered", "0")
+    roster_ids = {player.id for player in roster}
+    default = load_lineup_default(conn, player_club_id) or []
+    kept = [pid for pid in default if pid in roster_ids]
+    if not default or len(kept) != len(default) or len(kept) < len(roster):
+        backfill = sorted(
+            (player for player in roster if player.id not in set(kept)),
+            key=lambda player: (-player.overall_skill(), player.id),
+        )
+        save_lineup_default(conn, player_club_id, kept + [p.id for p in backfill])
 
 
 def apply_scouting_carry_forward(conn: sqlite3.Connection, prior_class_year: int) -> None:

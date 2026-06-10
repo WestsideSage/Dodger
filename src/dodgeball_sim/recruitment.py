@@ -203,7 +203,13 @@ def generate_prospect_pool(
             used_last_names=used_last_names,
             fallback_tag=f"#{index + 1}",
         )
-        potential_ceiling = rng.roll(55.0, 96.0)
+        # V19 ceiling scarcity: bottom-weighted natural ceilings capped at 88
+        # (one rng.unit() draw, same stream position as the old uniform
+        # 55-96 roll). Most prospects are honest Low/Mid projects; Elite
+        # (90+) and Generational (96+) effective ceilings come almost
+        # exclusively from the rare STAR/GENERATIONAL trajectory floors,
+        # which scouting reveals — rare, but findable if you do the work.
+        potential_ceiling = 55.0 + 33.0 * (rng.unit() ** 2)
         ratings = {
             "accuracy": int(round(rng.roll(35.0, potential_ceiling - 4.0))),
             "power": int(round(rng.roll(35.0, potential_ceiling - 4.0))),
@@ -339,7 +345,12 @@ def sign_prospect_to_club(
         ratings=ratings,
         archetype=derive_archetype(ratings),
         traits=PlayerTraits(
-            potential=min(100.0, max(70.0, max(prospect.hidden_ratings.values()) + 8.0)),
+            # V19 ceiling scarcity: the signed ceiling is the prospect's own
+            # natural headroom (best hidden rating + 8) — the old hard floor
+            # of 70 handed every signing a Mid-tier ceiling regardless of
+            # talent. Trajectory floors (IMPACT/STAR/GENERATIONAL) still
+            # raise the effective ceiling for the labeled tiers.
+            potential=min(100.0, max(prospect.hidden_ratings.values()) + 8.0),
             growth_curve=50.0,
             consistency=0.5,
             pressure=0.5,
@@ -382,7 +393,11 @@ def _stamina_roll(rng: DeterministicRNG) -> float:
 
 
 def _potential_roll(rng: DeterministicRNG) -> float:
-    return round(rng.roll(70.0, 96.0), 2)
+    # V19 ceiling scarcity: the rookie/free-agent refill pool follows the
+    # same bottom-weighted shape as the prospect pool (one rng.unit() draw,
+    # same stream position as the old uniform 70-96 roll). Emergency refills
+    # are journeymen, not hidden superstars.
+    return round(58.0 + 30.0 * (rng.unit() ** 2), 2)
 
 
 __all__ = [

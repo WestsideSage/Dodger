@@ -187,15 +187,31 @@ export const commandApi = {
   saveTactics: (body: CoachPolicy) =>
     apiPost<CoachPolicy>('/api/tactics', body),
   saveLineup: (starterIds: string[]) =>
-    apiPost<{ status: string; ordered_player_ids: string[]; warnings: string[] }>(
-      '/api/lineup',
-      { starter_ids: starterIds },
-    ),
+    apiPost<{
+      status: string;
+      ordered_player_ids: string[];
+      warnings: string[];
+      lineup_auto_reorder?: boolean;
+    }>('/api/lineup', { starter_ids: starterIds }),
   clearLineup: () =>
     apiPost<{ status: string; ordered_player_ids: string[]; warnings: string[] }>(
       '/api/lineup',
       { starter_ids: null },
     ),
+  // V19 Task 8 (CFB26 depth-chart pattern): the set-and-forget switch and
+  // the one-shot optimal-seat tool.
+  setLineupAutoReorder: (enabled: boolean) =>
+    apiPost<{ status: string; lineup_auto_reorder: boolean }>(
+      '/api/lineup/auto-reorder',
+      { enabled },
+    ),
+  autoAssignLineup: () =>
+    apiPost<{
+      status: string;
+      ordered_player_ids: string[];
+      warnings: string[];
+      lineup_auto_reorder: boolean;
+    }>('/api/lineup/auto-assign', {}),
   skipSeasonPreview: (skipped: boolean) =>
     apiPost<CommandCenterResponse>('/api/command-center/season-preview/skip', { skipped }),
   scoutOpponent: () =>

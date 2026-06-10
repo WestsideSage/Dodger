@@ -11,8 +11,12 @@ const ROLE_LABELS = ['Captain', 'Striker', 'Anchor', 'Runner', 'Rookie', 'Utilit
 type Props = {
   roster: Player[];
   defaultLineup: string[];
+  /** V19 Task 8: current state of the offseason auto-reorder toggle. */
+  autoReorder: boolean;
   onClose: () => void;
   onSaved: (orderedPlayerIds: string[]) => void;
+  /** Reflect toggle changes (explicit or implicit via manual save) upward. */
+  onAutoReorderChange: (enabled: boolean) => void;
 };
 
 function reasonToMessage(reason: string): string {
@@ -28,7 +32,14 @@ function reasonToMessage(reason: string): string {
   }
 }
 
-export function LineupEditor({ roster, defaultLineup, onClose, onSaved }: Props) {
+export function LineupEditor({
+  roster,
+  defaultLineup,
+  autoReorder,
+  onClose,
+  onSaved,
+  onAutoReorderChange,
+}: Props) {
   const rosterById = useMemo(() => {
     const map = new Map<string, Player>();
     roster.forEach((player) => map.set(player.id, player));
@@ -93,7 +104,14 @@ export function LineupEditor({ roster, defaultLineup, onClose, onSaved }: Props)
       .saveLineup(nextStarters)
       .then((result) => {
         setStarters(nextStarters);
-        setStatusNote('Saved.');
+        // A manual save flips the offseason auto-reorder off server-side —
+        // say so the first time it actually changes, never silently.
+        if (result.lineup_auto_reorder === false && autoReorder) {
+          setStatusNote('Saved. Auto-reorder turned off — your lineup is hands-on now.');
+          onAutoReorderChange(false);
+        } else {
+          setStatusNote('Saved.');
+        }
         onSaved(result.ordered_player_ids);
       })
       .catch((err: unknown) => {
@@ -138,22 +156,44 @@ export function LineupEditor({ roster, defaultLineup, onClose, onSaved }: Props)
     commit(next, slotIdx);
   }
 
-  function handleReset() {
+  function handleAutoAssign() {
+    // V19 Task 8: one-shot CFB26-style Auto-assign — seats the optimal six
+    // using the SAME optimizer the offseason auto-reorder runs, then leaves
+    // the editor open for tweaks. A tool, not a mode change: the toggle is
+    // untouched.
     if (saving) return;
     setSaving(true);
     setError(null);
     setErrorSlot(null);
     setStatusNote(null);
     commandApi
-      .clearLineup()
+      .autoAssignLineup()
       .then((result) => {
-        setStatusNote('Reset to auto-pick.');
-        // Server returns the freshly-resolved auto-fill ordering so the
-        // parent can update its cached roster view immediately.
+        setStarters(result.ordered_player_ids.slice(0, STARTERS_COUNT));
+        setStatusNote('Optimal six seated. Adjust freely — this was a one-shot.');
         onSaved(result.ordered_player_ids ?? []);
-        onClose();
       })
-      .catch(() => setError('Failed to clear lineup override.'))
+      .catch(() => setError('Failed to auto-assign the lineup.'))
+      .finally(() => setSaving(false));
+  }
+
+  function handleToggleAutoReorder() {
+    if (saving) return;
+    const next = !autoReorder;
+    setSaving(true);
+    setError(null);
+    setStatusNote(null);
+    commandApi
+      .setLineupAutoReorder(next)
+      .then((result) => {
+        onAutoReorderChange(result.lineup_auto_reorder);
+        setStatusNote(
+          result.lineup_auto_reorder
+            ? 'Auto-reorder ON — each offseason re-seats your best six.'
+            : 'Auto-reorder OFF — your seats are yours; offseasons only remove retired players.',
+        );
+      })
+      .catch(() => setError('Failed to update the auto-reorder setting.'))
       .finally(() => setSaving(false));
   }
 
@@ -421,13 +461,37 @@ export function LineupEditor({ roster, defaultLineup, onClose, onSaved }: Props)
             {error && <span style={{ color: '#ef4444' }}>{error}</span>}
             {!error && statusNote && <span style={{ color: '#22d3ee' }}>{statusNote}</span>}
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <label
+              title="ON: each offseason re-seats your fielded six with the optimal lineup (set-and-forget). OFF: hands-on — offseasons only remove retired players and never re-rank a seat you chose. Saving a manual lineup turns this off automatically."
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                color: autoReorder ? '#22d3ee' : '#94a3b8',
+                cursor: saving ? 'wait' : 'pointer',
+                whiteSpace: 'nowrap',
+                userSelect: 'none',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={autoReorder}
+                onChange={handleToggleAutoReorder}
+                disabled={saving}
+                aria-label="Auto-reorder lineup each offseason"
+                style={{ accentColor: '#22d3ee', cursor: 'inherit' }}
+              />
+              Auto-reorder each offseason
+            </label>
             <button
               type="button"
-              onClick={handleReset}
+              onClick={handleAutoAssign}
               disabled={saving}
-              title="Let the lineup resolver pick the best six automatically. You can manually adjust after."
-              aria-label="Auto-Pick: let lineup resolver choose the starting six"
+              title="Seat the optimal six right now — the same logic the offseason auto-reorder uses. One-shot: doesn't change the toggle."
+              aria-label="Auto-Assign: seat the optimal starting six now"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -455,7 +519,7 @@ export function LineupEditor({ roster, defaultLineup, onClose, onSaved }: Props)
                 (e.currentTarget as HTMLButtonElement).style.color = '#94a3b8';
               }}
             >
-              ⚙ Auto-Pick
+              ⚙ Auto-Assign
             </button>
             <ActionButton onClick={onClose}>Done</ActionButton>
           </div>

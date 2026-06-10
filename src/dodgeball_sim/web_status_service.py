@@ -32,6 +32,7 @@ from .persistence import (
     load_weekly_command_plan,
     save_club,
     save_lineup_default,
+    set_state,
 )
 from .playoffs import PLAYOFF_FIELD_SIZE, playoff_stage_label
 from .view_models import build_schedule_rows, build_wire_items
@@ -187,6 +188,50 @@ def build_roster_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         "club_id": player_club_id,
         "roster": enriched,
         "default_lineup": lineup,
+        "lineup_auto_reorder": lineup_auto_reorder_enabled(conn),
+    }
+
+
+# V19 Task 8 (owner-decided 2026-06-10, CFB26 depth-chart pattern): the
+# lineup is either hands-on (manual saves, one-shot Auto-assign) or
+# set-and-forget (auto-reorder each offseason). Default ON for new careers —
+# the V18 sweeps measured the silent stale-lineup default costing a passive
+# career 20pp of title share. A manual lineup save flips it OFF (hands-on
+# intent); the editor toggle flips it back any time.
+LINEUP_AUTO_REORDER_STATE_KEY = "lineup_auto_reorder"
+
+
+def lineup_auto_reorder_enabled(conn: sqlite3.Connection) -> bool:
+    return (get_state(conn, LINEUP_AUTO_REORDER_STATE_KEY) or "1") == "1"
+
+
+def set_lineup_auto_reorder_payload(conn: sqlite3.Connection, enabled: bool) -> dict[str, Any]:
+    set_state(conn, LINEUP_AUTO_REORDER_STATE_KEY, "1" if enabled else "0")
+    conn.commit()
+    return {"status": "saved", "lineup_auto_reorder": enabled}
+
+
+def auto_assign_lineup_payload(conn: sqlite3.Connection) -> dict[str, Any]:
+    """One-shot CFB26-style Auto-assign: seat the optimal six right now.
+
+    A manual TOOL, not a mode change — it does not touch the auto-reorder
+    toggle, so a hands-on manager can auto-assign and keep tweaking.
+    """
+    from .lineup import check_lineup_liabilities, optimize_ai_lineup
+
+    player_club_id = get_state(conn, "player_club_id")
+    if not player_club_id:
+        raise ValueError("No player club assigned")
+    roster = load_club_roster(conn, player_club_id)
+    ordered = optimize_ai_lineup(roster)
+    save_lineup_default(conn, player_club_id, ordered)
+    conn.commit()
+    warnings = check_lineup_liabilities(roster, ordered[:6])
+    return {
+        "status": "saved",
+        "ordered_player_ids": ordered,
+        "warnings": warnings,
+        "lineup_auto_reorder": lineup_auto_reorder_enabled(conn),
     }
 
 
@@ -243,6 +288,10 @@ def update_manual_lineup_payload(
     bundle = SimpleNamespace(club_id=player_club_id, roster=roster)
     result = apply_manual_lineup(bundle, starters=starter_ids)
     save_lineup_default(conn, player_club_id, result.ordered_player_ids)
+    # V19 Task 8: a manual save IS the hands-on signal — flip auto-reorder
+    # off so the offseason never overwrites a deliberately set lineup. The
+    # editor toggle turns it back on explicitly.
+    set_state(conn, LINEUP_AUTO_REORDER_STATE_KEY, "0")
     conn.commit()
 
     warnings = check_lineup_liabilities(roster, [s.player_id for s in result.starters])
@@ -250,6 +299,7 @@ def update_manual_lineup_payload(
         "status": "saved",
         "ordered_player_ids": result.ordered_player_ids,
         "warnings": warnings,
+        "lineup_auto_reorder": False,
     }
 
 

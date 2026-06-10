@@ -94,10 +94,19 @@ DEFAULT_SCOUTING_CONFIG = ScoutingBalanceConfig(
     trait_sense_multipliers={"LOW": 0.70, "MEDIUM": 1.00, "HIGH": 1.30},
     jitter_min=0.90,
     jitter_max=1.10,
+    # V19 ceiling scarcity (owner philosophy 2026-06-10: "OVR should be a
+    # reward and monument to the effort it took to build the roster").
+    # Elite ceilings are trajectory-gated: STAR (floor 90) ~0.75/class —
+    # very rare but findable if you scout hard; GENERATIONAL (floor 96, a
+    # guaranteed future Hall of Famer arc) ~1 per 4 classes. IMPACT (floor
+    # 82) is the scarce "High" tier; NORMAL promises nothing beyond the
+    # prospect's own rolled ceiling. Pre-V19 rates (0.70/0.22/0.07/0.01)
+    # put ~7.5 prospects/class at an effective 82+ ceiling and converged
+    # the whole league to high-80s OVR once V18 made development deliver.
     trajectory_rates={
-        "NORMAL": 0.70,
-        "IMPACT": 0.22,
-        "STAR": 0.07,
+        "NORMAL": 0.86,
+        "IMPACT": 0.10,
+        "STAR": 0.03,
         "GENERATIONAL": 0.01,
     },
     public_archetype_mislabel_rate=0.15,
@@ -111,14 +120,15 @@ DEFAULT_SCOUTING_CONFIG = ScoutingBalanceConfig(
 # --- V16 Contested Offseason (config layer; engine rule: balance constants
 # do not live in engine logic) ------------------------------------------------
 # The user's Signing Day offer = BASE + interest * WEIGHT. Re-measured after
-# the V18 vet-mix seeding moved club profiles (tools/contested_offer_probe.py,
-# 60 seeds, 2026-06-10 post-V18 run): rival max offers on the TOP prospect
-# min 83.7 / median 92.6 / max 102.2, uncourted interest ~38-52. BASE was
-# re-tuned 90.0 -> 85.0 to keep the V16 design targets: the uncourted star
+# the V19 ceiling-scarcity tune moved the prospect pool
+# (tools/contested_offer_probe.py, 60 seeds, 2026-06-10 post-scarcity run):
+# rival max offers on the TOP prospect min 76.1 / median 87.0 / max 98.0,
+# uncourted interest ~38-52. BASE re-tuned 90.0 -> 85.0 (V18 vet mix) ->
+# 79.0 (V19 scarcity) to keep the V16 design targets: the uncourted star
 # pick sits at the rival median (genuinely losable, ~half the time),
 # contact+visit (~+32 interest) clearly ahead, and full courtship
-# (interest 100 -> 103.0) near-safe.
-CONTESTED_USER_OFFER_BASE = 85.0
+# (interest 100 -> 97.0) near-safe.
+CONTESTED_USER_OFFER_BASE = 79.0
 CONTESTED_USER_OFFER_INTEREST_WEIGHT = 0.18
 # D3 (owner-confirmed 2026-06-10, V18): AI clubs get the SAME Signing Day
 # plays as the user — up to 3 prospect signings per offseason (the user

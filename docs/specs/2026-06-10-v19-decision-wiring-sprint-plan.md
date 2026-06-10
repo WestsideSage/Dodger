@@ -98,29 +98,43 @@ Order within the milestone: V19a first (engine settles, one pin churn),
 then V19b measured against it. V19b items 5–7 may land in any order; 8 and
 9 are independent and may ride early.
 
-## Task 8 design — auto-pilot lineup default
+## Task 8 — lineup auto-reorder toggle (SHIPPED 2026-06-10)
 
 V18 measured the cliff: one offseason lineup-optimize click separates 22.5%
 from 2.5% title share, because the auto-pilot keeps the creation lineup
-order and seats every signing at slot 6 forever. The product decision
-(recommended default, implement unless the owner objects):
+order and seats every signing at slot 6 forever.
 
-- At season rollover (`begin_next_season`), the user lineup default is
-  **repaired or re-seated**:
-  - If it references retired/departed players → always repaired (it is
-    mechanically broken).
-  - If the user has NEVER manually saved a lineup (no `/api/lineup` save on
-    record — add a `user_lineup_customized` state marker set by the manual
-    save path) → re-seat via the same optimizer the AI uses. Riding the
-    beats without ever opening the Lineup Editor means delegating the
-    lineup, the same way auto-piloted weeks delegate tactics.
-  - If the user HAS saved a custom lineup of still-active players → respect
-    it exactly, even if suboptimal. Their decision is the product.
-- Disclosed: the offseason flow states when the staff re-seated the lineup
-  (one honest line; no silent changes), and the Lineup Editor reflects it.
-- Measurement: re-run the passive 8×10 sweep — passive title share should
-  move from 2.5% toward the engaged curve; the engaged sweep must not
-  change (it already optimizes).
+**Owner decision (2026-06-10, superseding the repair/re-seat/respect
+heuristic drafted at planning):** make it a TOGGLE, CFB26 depth-chart
+pattern — manual control always available, plus "auto-reorder each
+offseason" for set-and-forget, plus a one-shot Auto-assign button.
+
+**Implemented:**
+
+- `lineup_auto_reorder` career state, **default ON for new careers**
+  (`career_setup`); exposed on the roster payload.
+- Season rollover (`offseason_ceremony._maintain_user_lineup_for_new_season`,
+  called from `begin_next_season`): ON → the fielded six is re-seated by the
+  same `optimize_ai_lineup` the AI clubs use; OFF → the player's saved order
+  is respected EXACTLY — retired/departed ids are removed and backfilled by
+  OVR so the lineup is always fieldable, but no chosen seat is ever
+  re-ranked.
+- A manual `/api/lineup` save flips the toggle OFF (hands-on intent),
+  disclosed in the editor status line; the Lineup Editor checkbox flips it
+  either way (`POST /api/lineup/auto-reorder`).
+- One-shot **Auto-Assign** (`POST /api/lineup/auto-assign`): seats the
+  optimal six now using the same optimizer the offseason runs; a tool, not
+  a mode change — the toggle is untouched. (Replaces the editor's old
+  Auto-Pick clear-override behavior with the consistent optimizer.)
+- Gates: `tests/test_v19_lineup_auto_reorder.py` (8 tests: default-ON,
+  manual-save flip, toggle round-trip, tool-not-mode, ON re-seat, OFF
+  respect, OFF repair, end-to-end offseason). Live browser walk on the prod
+  server: toggle ON→OFF→ON with honest status notes, Auto-Assign one-shot,
+  zero console errors, zero failed requests (verification save purged).
+- League measurement note: the dynasty probe's passive config crosses
+  `begin_next_season`, so post-Task-8 "passive" inherits the default
+  reorder — by construction it converges to the engaged curve (the probe's
+  `--optimize-lineup` flag is now redundant on default-toggle careers).
 
 ## Task 9 design — ceiling scarcity / OVR integrity (owner philosophy)
 
@@ -155,6 +169,52 @@ Measured tune of the prospect-pool potential distribution (config layer:
 - Trap (V18 lesson, twice): ANY change to seeded/generated player
   distributions moves the contested market — re-derive witnesses in the
   same change.
+
+### Task 9 measurements (2026-06-10 — SHIPPED)
+
+**Owner spec:** elite players "very rare but not unfindable if you scout
+hard enough"; Generational a tier above Elite — "literally a guaranteed
+future hall of famer… only 1 or 2 every few years"; most rosters must NOT
+converge to high OVR without Elite+ players — "clubs who actually put in
+the REAL work in ALL aspects shine and the trash tier clubs stay trash."
+
+**Implemented:** trajectory shares 0.70/0.22/0.07/0.01 →
+**0.86/0.10/0.03/0.01** (NORMAL/IMPACT/STAR/GENERATIONAL); the NORMAL
+trajectory floor of 72 REMOVED (the everyone-gets-Mid+ leak) — the labeled
+tiers ARE the scarce promise, and scouting reveals the trajectory, making
+"rare but findable through scouting" literal; the signing-conversion floor
+of 70 removed (signed ceiling = best hidden rating + 8); natural ceiling
+rolls bottom-weighted and capped at 88 (`55 + 33·u²`, one RNG draw — Elite
+90+ effective ceilings come almost exclusively from STAR/GEN floors);
+free-agent/refill `_potential_roll` reshaped to match (58 + 30·u²).
+
+**Measured** (12 seeded classes = 300 prospects; sweeps 8×10 official_foam):
+
+| Metric | BEFORE | AFTER |
+|---|---|---|
+| Mean effective ceiling (pool) | ~85–87 (signed) | **69.2**; signed 76.7 |
+| Prospects below 80 ceiling | minority | **77%** |
+| Elite+ (90+) per class | ~2+ | **0.75** (3 per 4 classes) |
+| Generational (96+) | 1 per 4 classes (floor inflated others) | **2 per 12 classes**, all GENERATIONAL-trajectory (the label = the guarantee, pinned) |
+| League mean fielded OVR at S10 | 88.9 | **82.6** |
+| Ceiling delivery (untouchable gate) | 100%/95–97% | **100%/94–96%** ✅ |
+| Mortality / dynasty gates | — | unchanged (first retirement 3.2–3.4) ✅ |
+| Engaged title share | 22.5–30% | **20.0%**, six champions ✅ |
+| Contested market | 43%/12% | re-tuned BASE 85→**79** → **54%/12%/2%** (witnesses re-derived: 7, 11) |
+
+Gates: `tests/test_v19_ceiling_scarcity.py` (6 distributional pins, incl.
+"GENERATIONAL label means ≥96 effective" and "every sweep still has 82+
+ceilings worth scouting").
+
+**Honest note on the S10 differentiation target:** best-vs-mean AI spread
+measured 2.8 (target was ~4). The probe's AI clubs run identical board
+logic, so they converge by construction — club-to-club differentiation is a
+DECISION-VARIANCE property, not a scarcity property, and arrives with V19a/b
+wiring (boards, courtship, staff). Scarcity's real effect is visible
+elsewhere: the no-courtship probe user now slides to a NEGATIVE late-game
+edge (−3.5 by S10) because winning contested rounds for the rare elites is
+what builds a monument roster — exactly the owner's intent. Not re-tuned
+further.
 
 ## Verification matrix
 
