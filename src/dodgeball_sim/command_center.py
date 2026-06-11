@@ -473,6 +473,17 @@ def _attach_tactical_diff(
     has_prior_meeting = bool(
         last_meeting and not str(last_meeting).lower().startswith("first meeting")
     )
+    # V19b: a scout report also reads the opponent ARCHETYPE's playbook — the
+    # same base policy ai_tactics.get_ai_tactics derives their weekly plan
+    # from — so week-1 scouting (zero tape) yields real, honestly-labelled
+    # information instead of "0/5 tendency reads".
+    playbook = None
+    opponent = state.get("opponent")
+    archetype = getattr(opponent, "program_archetype", None) if opponent else None
+    if scouted and archetype:
+        from .ai_tactics import get_ai_tactics
+
+        playbook = get_ai_tactics(str(archetype), "Balanced")
     matchup_details["tactical_diff"] = build_tactical_diff(
         player_policy=tactics,
         adaptation_summary=matchup_details.get("adaptation_summary"),
@@ -481,6 +492,7 @@ def _attach_tactical_diff(
         scouted=scouted,
         observed_tendencies=dict(state.get("opponent_tape") or {}) if scouted else None,
         cold_start_intel=dict(state.get("cold_start_intel") or {}) if scouted else None,
+        archetype_playbook=playbook,
     )
 
 

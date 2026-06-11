@@ -963,6 +963,15 @@ export function PreSimDashboard({
                                 Unscouted
                               </span>
                             )}
+                            {row.opponent_known && row.opponent_source === 'playbook' && (
+                              <span
+                                data-testid="tactical-diff-playbook-meta"
+                                title="Their program identity's playbook default — real intel before any tape exists, but weekly intent can shift it. Tape reads replace this as games are recorded."
+                                style={{ marginLeft: '0.4rem', fontSize: '0.58rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}
+                              >
+                                playbook
+                              </span>
+                            )}
                             {row.opponent_known && row.opponent_source === 'tape' && (
                               <span
                                 data-testid="tactical-diff-tape-meta"
