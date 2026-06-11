@@ -245,7 +245,7 @@ function PromisesPanel({
             <div key={`open-${p.player_id}`} style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', fontSize: '0.76rem' }}>
               <span className="dm-badge dm-badge-cyan">OPEN</span>
               <span style={{ color: '#e2e8f0' }}>
-                {nameById.get(p.player_id) ?? p.player_id}: {PROMISE_LABELS[p.promise_type]?.label ?? p.promise_type}
+                {p.player_name ?? nameById.get(p.player_id) ?? p.player_id}: {PROMISE_LABELS[p.promise_type]?.label ?? p.promise_type}
               </span>
               <span style={{ color: '#64748b' }}>
                 — {PROMISE_LABELS[p.promise_type]?.meaning ?? ''}
@@ -258,7 +258,7 @@ function PromisesPanel({
                 {p.status === 'fulfilled' ? 'KEPT' : 'BROKEN'}
               </span>
               <span style={{ color: '#94a3b8' }}>
-                {nameById.get(p.player_id) ?? p.player_id}: {PROMISE_LABELS[p.promise_type]?.label ?? p.promise_type}
+                {p.player_name ?? nameById.get(p.player_id) ?? p.player_id}: {PROMISE_LABELS[p.promise_type]?.label ?? p.promise_type}
               </span>
               <span style={{ color: '#64748b' }}>— {p.evidence}</span>
             </div>

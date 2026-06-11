@@ -1283,6 +1283,9 @@ export interface DynastyOfficeResponse {
         };
         active_promises: Array<{
             player_id: string;
+            /** Stored at promise time so the name survives the prospect
+                leaving the board (V21 loss-walk fix). Older promises lack it. */
+            player_name?: string;
             promise_type: string;
             status: string;
             evidence: string;

@@ -505,6 +505,7 @@ export function MatchWeek({
               homeGamePoints={aftermath.match_card.home_game_points}
               awayGamePoints={aftermath.match_card.away_game_points}
               games={aftermath.match_card.games}
+              isPlayoff={Boolean(aftermath.playoff_resolution)}
             />
             {/* The verdict is a fallback explanation only — when primary_factor
                 is present it is the canonical "why", so the verdict is not
