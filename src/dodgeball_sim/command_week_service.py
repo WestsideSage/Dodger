@@ -26,6 +26,7 @@ from .persistence import (
     load_command_history,
     load_completed_match_ids,
     load_latest_weekly_plan_intent,
+    load_latest_weekly_plan_orders,
     load_season,
     load_season_outcome,
     load_standings,
@@ -61,6 +62,19 @@ def command_center_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     if not existing:
         prior_intent = load_latest_weekly_plan_intent(conn, state["season_id"], state["week"], state["player_club_id"])
         plan = build_default_weekly_plan(state, intent=prior_intent or "Balanced")
+        # Codex playtest issue 21: dev focus / staff focus are season-spanning
+        # decisions — carry them into the fresh week like the intent, instead
+        # of silently resetting to Balanced every Monday (a manager re-picked
+        # Tactical drills on title week only because they happened to look).
+        prior_orders = load_latest_weekly_plan_orders(
+            conn, state["season_id"], state["week"], state["player_club_id"]
+        )
+        if prior_orders:
+            carried = dict(plan["department_orders"])
+            for key in ("dev_focus", "focus_department"):
+                if key in carried and prior_orders.get(key):
+                    carried[key] = prior_orders[key]
+            plan["department_orders"] = carried
     else:
         plan = existing
     plan = refresh_weekly_plan_context(plan, state)
@@ -162,9 +176,18 @@ def _build_plan_briefing(
     clubs = load_clubs(conn)
     completed = load_completed_match_ids(conn, season_id)
 
+    # Same composite tiebreak as week_briefing._build_form / the standings
+    # screen (Codex issue 16): officials break on game-point fields, legacy
+    # on survivor differential — the inert keys are zero on the other ruleset.
     standings_rows = sorted(
         load_standings(conn, season_id),
-        key=lambda r: (-r.points, -r.elimination_differential, r.club_id),
+        key=lambda r: (
+            -r.points,
+            -getattr(r, "total_game_points_scored", 0),
+            -getattr(r, "game_point_differential", 0),
+            -r.elimination_differential,
+            r.club_id,
+        ),
     )
     leader = clubs.get(standings_rows[0].club_id) if standings_rows else None
     league_leader = leader.name if leader else None
@@ -220,6 +243,22 @@ def save_command_center_plan_payload(conn: sqlite3.Connection, update: dict[str,
         plan["intent"] = new_intent
     else:
         plan = build_default_weekly_plan(state, intent=new_intent)
+        # Codex playtest issue 7: switching intent resets TACTICS to that
+        # intent's preset — its documented meaning — but it used to also
+        # silently wipe the department orders (dev focus, staff focus) and
+        # the saved lineup, which are independent decisions. A manager
+        # mid-promise ("run focused dev 3+ weeks") lost their dev focus just
+        # by touching the intent. Carry both over from the saved plan.
+        if existing is not None:
+            prior_orders = existing.get("department_orders") or {}
+            if prior_orders:
+                carried = dict(plan["department_orders"])
+                for key, value in prior_orders.items():
+                    if key in carried:
+                        carried[key] = value
+                plan["department_orders"] = carried
+            if existing.get("lineup"):
+                plan["lineup"] = existing["lineup"]
 
     department_orders = update.get("department_orders")
     if department_orders:

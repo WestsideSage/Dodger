@@ -46,6 +46,24 @@ export function LineupEditor({
     return map;
   }, [roster]);
 
+  // Codex playtest issue 20: flag a stale six — the best benched player
+  // out-rating the weakest fielded starter (common right after offseason
+  // growth when auto-reorder is off).
+  const staleNote = useMemo(() => {
+    const fielded = defaultLineup.slice(0, STARTERS_COUNT)
+      .map((id) => rosterById.get(id))
+      .filter((p): p is Player => Boolean(p));
+    if (fielded.length < STARTERS_COUNT) return null;
+    const bench = roster.filter((p) => !defaultLineup.slice(0, STARTERS_COUNT).includes(p.id));
+    if (bench.length === 0) return null;
+    const weakest = [...fielded].sort((a, b) => a.overall - b.overall)[0];
+    const best = [...bench].sort((a, b) => b.overall - a.overall)[0];
+    if (best.overall > weakest.overall) {
+      return `${best.name} (OVR ${best.overall}) is benched behind ${weakest.name} (OVR ${weakest.overall}) — Auto-Assign to re-seat the best six.`;
+    }
+    return null;
+  }, [roster, defaultLineup, rosterById]);
+
   // Seed the starter slots from the resolved default lineup, dropping any
   // ids that have fallen off the roster. If the default is short, backfill
   // by highest OVR so the editor always opens with a legal 6.
@@ -460,6 +478,13 @@ export function LineupEditor({
           >
             {error && <span style={{ color: '#ef4444' }}>{error}</span>}
             {!error && statusNote && <span style={{ color: '#22d3ee' }}>{statusNote}</span>}
+            {/* Codex playtest issue 20: after offseason growth a hands-on
+                lineup can silently go stale (a developed bench player
+                out-rating a fielded starter). Persistent, computed warning —
+                not a transient toast — so the player always knows. */}
+            {!error && !statusNote && staleNote && (
+              <span data-testid="lineup-stale-note" style={{ color: '#fbbf24' }}>{staleNote}</span>
+            )}
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
             <label

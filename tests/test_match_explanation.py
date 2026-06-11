@@ -182,7 +182,44 @@ def test_decisive_set_loss_with_no_factor_is_not_inconclusive():
     assert exp.primary_factor.code == UPSET_VARIANCE
     sentence = exp.primary_factor.sentence.lower()
     assert "stayed close" not in sentence
-    assert "wasn't close" in sentence or "outclassed" in exp.primary_factor.title.lower()
+    # Codex issue 19: with no OVR edge supplied, the copy must neither claim
+    # squad strength nor "stayed close" — it points at the named performers.
+    assert "edged" in exp.primary_factor.title.lower()
+    assert "squad strength" not in sentence
+
+
+def test_decisive_loss_as_favorite_blames_execution_not_squad_strength():
+    # Codex issue 19: a +20 starter-OVR favorite that loses decisively must
+    # not be told "the fix is squad strength" — that contradicts the
+    # pre-match matchup read the game itself displayed.
+    exp = _base(
+        result="Loss",
+        player_survivors=3,
+        opponent_survivors=4,
+        player_catches=0,
+        opponent_catches=0,
+        point_margin=4,
+        ovr_edge=20,
+    )
+    assert exp.primary_factor.code == UPSET_VARIANCE
+    assert "talent edge" in exp.primary_factor.title.lower()
+    assert "execution" in exp.primary_factor.sentence.lower()
+    assert any("OVR edge +20" in chip for chip in exp.primary_factor.evidence_chips)
+
+
+def test_decisive_loss_as_underdog_keeps_squad_strength_diagnosis():
+    exp = _base(
+        result="Loss",
+        player_survivors=3,
+        opponent_survivors=4,
+        player_catches=0,
+        opponent_catches=0,
+        point_margin=4,
+        ovr_edge=-30,
+    )
+    assert exp.primary_factor.code == UPSET_VARIANCE
+    assert "outclassed" in exp.primary_factor.title.lower()
+    assert "squad strength" in exp.primary_factor.sentence.lower()
 
 
 def test_decisive_set_loss_with_a_weak_factor_surfaces_it():

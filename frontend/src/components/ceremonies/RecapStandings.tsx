@@ -97,7 +97,7 @@ export function RecapStandings({
                     <span>Club</span>
                     <span style={{ textAlign: 'center' }}>W-L-D</span>
                     <span style={{ textAlign: 'right' }}>Pts</span>
-                    <span style={{ textAlign: 'right' }} title="Elimination differential: players eliminated minus players lost">Elim ±</span>
+                    <span style={{ textAlign: 'right' }} title={beat.payload.diff_kind === 'game_points' ? 'Game-point differential: game points scored minus conceded' : 'Elimination differential: players eliminated minus players lost'}>{beat.payload.diff_kind === 'game_points' ? 'GP ±' : 'Elim ±'}</span>
                 </div>
 
                 {standings.map((row) => (

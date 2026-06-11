@@ -262,7 +262,24 @@ def _build_form(
     any_games = any(
         (row.wins + row.losses + row.draws) > 0 for row in standings_rows
     )
-    ordered = sorted(standings_rows, key=lambda r: r.points, reverse=True)
+    # Codex playtest issue 16: this used to sort by points ALONE, so on level
+    # points the Command Center's rank could disagree with the Standings
+    # screen (Codex saw "#4 / outside" here while Standings honestly showed
+    # #3, in playoff position). Rank with the SAME tiebreakers the standings
+    # use: official careers break on total game points then game-point
+    # differential; legacy on the survivor differential. Game-point fields
+    # are zero on legacy rows and the survivor differential is zero on
+    # officials, so one composite key serves both rulesets.
+    ordered = sorted(
+        standings_rows,
+        key=lambda r: (
+            -r.points,
+            -getattr(r, "total_game_points_scored", 0),
+            -getattr(r, "game_point_differential", 0),
+            -r.elimination_differential,
+            r.club_id,
+        ),
+    )
     rank: int | None = None
     # Three-part W-L-D so this matches the standings table verbatim; a
     # two-part record silently folds draws into the loss column and reads as a

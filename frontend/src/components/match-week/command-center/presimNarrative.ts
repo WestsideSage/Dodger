@@ -67,11 +67,13 @@ export function stakesLine(
   // In the playoffs there is no "N regular-season games to play" framing —
   // every match is win-or-go-home, so name the round directly.
   if (playoffStage) {
-    if (/final/i.test(playoffStage)) {
-      return 'The Final. Win it and the banner is yours — there is no next week.';
-    }
+    // Codex playtest issue 17: "final" is a SUBSTRING of "semifinal", so the
+    // semifinal must be checked first or it gets the title-match copy.
     if (/semifinal/i.test(playoffStage)) {
       return 'A Semifinal. Win and the Final is one step away; lose and the season ends here.';
+    }
+    if (/final/i.test(playoffStage)) {
+      return 'The Final. Win it and the banner is yours — there is no next week.';
     }
     return `${playoffStage}. Win or the season ends here.`;
   }
@@ -91,13 +93,15 @@ export function stakesLine(
     if (phase === 'early') return 'Early lead at the top — too soon to relax, plenty to prove.';
     return 'Top of the table. Every week is now about holding the standard.';
   }
-  if (rank <= 3) {
-    if (phase === 'early') return 'Top-three out of the gate — banking points early shapes the seeding race.';
-    if (phase === 'late') return 'In the thick of the race — a win here is a statement to the contenders.';
-    return 'Hovering near the top — these are the matches that decide seeding.';
+  // Codex playtest issue 16: the playoff line is the TOP FOUR — "outside the
+  // top three" told a #4 club (safely in playoff position) it was outside.
+  if (rank <= 4) {
+    if (phase === 'early') return 'In the playoff places out of the gate — banking points early shapes the seeding race.';
+    if (phase === 'late') return 'In playoff position — a win here is a statement to the contenders.';
+    return 'In the playoff places — these are the matches that decide seeding.';
   }
   if (phase === 'late') {
-    return `Outside the top three with ${gamesRemaining} to play — the margin for error is gone.`;
+    return `Outside the playoff line (top 4) with ${gamesRemaining} to play — the margin for error is gone.`;
   }
   if (phase === 'early') {
     return 'Slow start — time to find an early identity before the table firms up.';
