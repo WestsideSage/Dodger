@@ -64,8 +64,23 @@ invariance-pinned. Dead-attribute pins INVERTED to consumer pins
 watchability (13-0/13), highlights fixture, rec sanity probe, and the
 WT-20 No-Blocking activation fixture re-derived as a documented
 intentional outcome change (V19 sprint plan has all BEFORE/AFTER
-matrices). Remaining: V19b staff/orders, promises revive, week-1
-scouting intel.
+matrices). **V19b + V20 + V21 SHIPPED 2026-06-10** (owner-directed
+completion pass; retro:
+`docs/retrospectives/2026-06-10-v19b-v21-decision-wiring-completion-retrospective.md`):
+staff focus (one real weekly staff decision — tactics/conditioning match
+preps riding the V19a consumers, training credits into offseason dev,
++1 scout slot, +25% courtship; medical removed; AI symmetric), promises
+revived with the credibility→interest→contested-offer consumer plus a
+Dynasty Office panel and prospect-card action, week-1 scouting playbook
+reads (0/5 → 5/5, fog fence proven harder), stats truth (catch returns +
+real revivals_caused), All-Time Record completed-seasons-only,
+live-per-event replay SETS strip, GAME PLANS intent context on official
+replays, records career-milestone middle tier, and the zero-floats sweep.
+Verified: full pytest green (real exit code), build+lint clean, live
+prod-server first-playthrough walk with zero console errors (walk save
+purged). Honest remainders listed in the retro: survivors-column cleanup,
+save-boundary flake, app-wide voice/dedup passes, Class Brief further
+redesign, Dynasty Office budget-panel refetch polish.
 
 ## Current Phase
 
