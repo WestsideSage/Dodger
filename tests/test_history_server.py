@@ -55,9 +55,11 @@ def test_history_my_program_award_proof():
     assert award_event["proof_stat"] == "45 elims across 12 matches that season."
 
 
-def test_history_my_program_all_time_record_sums_every_season():
-    # The glance cell labeled "All-Time Record" must be the career total, not
-    # the latest season snapshot (hero.current) it used to render.
+def test_history_my_program_all_time_record_sums_completed_seasons_only():
+    # The glance cell labeled "All-Time Record" must be the career total over
+    # COMPLETED seasons only (owner decision §6.7, V20): a season counts once
+    # its outcome is ratified, so the cell never mixes a half-played season
+    # into a career number.
     conn = connect(":memory:")
 
     club = Club("sea", "Seattle", "blue, green", "Seattle", 2026)
@@ -75,7 +77,7 @@ def test_history_my_program_all_time_record_sums_every_season():
     for season_id, wins, losses, draws in (
         ("season_1", 3, 1, 1),
         ("season_2", 4, 0, 1),
-        ("season_3", 1, 0, 0),  # in-progress season counts too
+        ("season_3", 1, 0, 0),  # in-progress: must NOT count toward all-time
     ):
         conn.execute(
             """
@@ -84,14 +86,45 @@ def test_history_my_program_all_time_record_sums_every_season():
             """,
             (season_id, "sea", wins, losses, draws, wins * 3 + draws),
         )
+    # Ratify outcomes for seasons 1-2 only; season_3 is mid-flight.
+    for season_id in ("season_1", "season_2"):
+        conn.execute(
+            """
+            INSERT INTO season_outcomes
+                (season_id, champion_club_id, champion_source, final_match_id,
+                 runner_up_club_id, payload_json)
+            VALUES (?, 'sea', 'playoff', NULL, NULL, '{}')
+            """,
+            (season_id,),
+        )
     conn.commit()
 
     payload = get_history_my_program("sea", conn)
     hero = payload["hero"]
 
-    assert hero["all_time"] == {"wins": 8, "losses": 1, "draws": 2, "seasons": 3}
-    # The latest-season snapshot keeps its own meaning.
+    assert hero["all_time"] == {"wins": 7, "losses": 1, "draws": 2, "seasons": 2}
+    # The latest-season snapshot keeps its own meaning (the live season).
     assert (hero["current"]["wins"], hero["current"]["losses"], hero["current"]["draws"]) == (1, 0, 0)
+
+
+def test_history_my_program_all_time_absent_until_a_season_completes():
+    conn = connect(":memory:")
+    club = Club("sea", "Seattle", "blue, green", "Seattle", 2026)
+    initialize_curated_manager_career(
+        conn, "sea", 1, custom_club=club, custom_roster=_make_six_player_roster()
+    )
+    conn.execute("DELETE FROM season_standings WHERE club_id = 'sea'")
+    conn.execute(
+        """
+        INSERT INTO season_standings (season_id, club_id, wins, losses, draws, points)
+        VALUES ('season_1', 'sea', 2, 1, 0, 6)
+        """
+    )
+    conn.commit()
+    hero = get_history_my_program("sea", conn)["hero"]
+    # Season 1 mid-flight: no completed season yet, so no all-time cell — the
+    # frontend falls back to the honest "Latest Season Record" label.
+    assert "all_time" not in hero
 
 
 def _make_six_player_roster() -> list[Player]:
