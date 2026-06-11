@@ -45,6 +45,12 @@ export function NextBestImprovementPanel({
         }}
       >
         Next best improvement
+        {/* Codex issue 6: this panel is computed at the final whistle and
+            does not track later front-office work — say so instead of
+            looking unaware of actions taken since. */}
+        <span style={{ marginLeft: '0.45rem', fontWeight: 600, letterSpacing: '0.04em', color: '#64748b', textTransform: 'none' }}>
+          — postgame read; desk work since then isn't reflected
+        </span>
       </div>
       <div style={{ display: 'grid', gap: '0.5rem' }}>
         {panel.map((item) => (

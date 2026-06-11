@@ -272,6 +272,7 @@ function App() {
                 : postSimThisSession ? 'post-sim'
                 : 'pre-sim'
               }
+              onPlanWeek={setCurrentWeek}
               onSimComplete={(payload) => {
                 setPostSimResult(payload);
                 setPostSimThisSession(true);

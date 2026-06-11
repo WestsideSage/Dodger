@@ -356,10 +356,13 @@ const GameSegmentStrip = ({
           </button>
         );
       })}
+      {/* Codex issue 4: during playback this is the CURRENT-moment tally,
+          which sits right under the final-score header — label it "so far"
+          so it never reads as contradicting the full-time score. */}
       <span className="mr-set-running" data-testid="replay-set-running">
-        {lastRevealed
-          ? `${lastRevealed.home_running_points}–${lastRevealed.away_running_points} on game points`
-          : '0–0 on game points'}
+        {liveMode
+          ? `${lastRevealed ? `${lastRevealed.home_running_points}–${lastRevealed.away_running_points}` : '0–0'} on game points so far`
+          : `${lastRevealed ? `${lastRevealed.home_running_points}–${lastRevealed.away_running_points}` : '0–0'} on game points`}
       </span>
     </div>
   );

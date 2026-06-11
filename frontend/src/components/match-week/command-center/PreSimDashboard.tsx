@@ -897,8 +897,16 @@ export function PreSimDashboard({
                           className={`cc-intel-meter${allRevealed ? ' is-open' : revealedCount > 0 ? ' is-partial' : ''}`}
                           data-testid="tactical-diff-intel-meter"
                           title={
+                            /* Codex issue 3: when the reads came from the
+                               identity playbook (week 1, no tape), saying
+                               "revealed from tape" contradicted the no-tape
+                               note two lines below. Name the real source. */
                             allRevealed
-                              ? 'All tendency reads revealed from tape.'
+                              ? (details.tactical_diff.tape_axes_revealed ?? diffRows.length) === 0
+                                ? 'All reads revealed from their identity playbook — no match tape yet. Tape reads replace these as games are recorded.'
+                                : (details.tactical_diff.playbook_axes_revealed ?? 0) > 0
+                                  ? 'All reads revealed — observed tape where it exists, their identity playbook on the rest.'
+                                  : 'All tendency reads revealed from tape.'
                               : 'Locked intel — scouting reveals their observed tendencies row by row.'
                           }
                         >
@@ -969,7 +977,7 @@ export function PreSimDashboard({
                                 title="Their program identity's playbook default — real intel before any tape exists, but weekly intent can shift it. Tape reads replace this as games are recorded."
                                 style={{ marginLeft: '0.4rem', fontSize: '0.58rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}
                               >
-                                playbook
+                                · playbook
                               </span>
                             )}
                             {row.opponent_known && row.opponent_source === 'tape' && (

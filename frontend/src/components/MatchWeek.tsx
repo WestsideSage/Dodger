@@ -150,6 +150,7 @@ export function MatchWeek({
   onSimComplete,
   onAdvanceWeek,
   onOffseasonBeatChange,
+  onPlanWeek,
 }: {
   onOpenReplay?: (matchId: string) => void;
   mode: MatchWeekMode;
@@ -157,6 +158,10 @@ export function MatchWeek({
   onSimComplete?: (result: CommandCenterSimResponse) => void;
   onAdvanceWeek?: () => void;
   onOffseasonBeatChange?: (title: string | null) => void;
+  /** Codex issue 9: the banner must show the week being PLANNED. On bye
+      weeks the career cursor already points at the next match week, so the
+      shell needs the plan's own week to stay consistent with the panels. */
+  onPlanWeek?: (week: number) => void;
 }) {
   const { data, setData, error, setError, loading, setLoading } = useApiResource<CommandCenterResponse>('/api/command-center');
   const [localIntent, setLocalIntent] = useState<string | undefined>(undefined);
@@ -169,6 +174,10 @@ export function MatchWeek({
   const [previewDismissed, setPreviewDismissed] = useState(false);
 
   const selectedIntent = localIntent ?? data?.plan.intent ?? 'Balanced';
+
+  useEffect(() => {
+    if (mode === 'pre-sim' && typeof data?.week === 'number') onPlanWeek?.(data.week);
+  }, [data?.week, mode, onPlanWeek]);
 
   const load = (showLoading = false) => {
     if (showLoading) setLoading(true);

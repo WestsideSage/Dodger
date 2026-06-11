@@ -687,6 +687,8 @@ export interface TacticalDiff {
   scouted?: boolean;
   intel_revealed?: boolean;
   tape_axes_revealed?: number;
+  /** V19b: reads filled from the opponent archetype's playbook (no tape yet). */
+  playbook_axes_revealed?: number;
   cold_start?: TacticalDiffColdStart | null;
   note: string;
 }
