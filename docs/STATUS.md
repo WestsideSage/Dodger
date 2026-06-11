@@ -78,9 +78,13 @@ live-per-event replay SETS strip, GAME PLANS intent context on official
 replays, records career-milestone middle tier, and the zero-floats sweep.
 Verified: full pytest green (real exit code), build+lint clean, live
 prod-server first-playthrough walk with zero console errors (walk save
-purged). Honest remainders listed in the retro: survivors-column cleanup,
-save-boundary flake, app-wide voice/dedup passes, Class Brief further
-redesign, Dynasty Office budget-panel refetch polish.
+purged). **Leftovers pass (same day, `27a58eb`..`ddb7508`): every
+remainder CLOSED** — survivors cleanup (three official surfaces were
+falsifying scores/diffs; all branch on scoring_model, standings show GP
+Diff), save-boundary flake (conftest shared-state fence), voice/dedup +
+Class Brief redesign, loss/scenario coverage walk (playoff-draw footer
+truth + promise-name fixes found live), budget-panel refetch. V20 and V21
+are COMPLETE — no deferred items remain from the V17–V21 sequence.
 
 **Single-ruleset standardization (owner decision 2026-06-10,
 `docs/specs/2026-06-10-single-ruleset-standardization.md`):** foam-official
