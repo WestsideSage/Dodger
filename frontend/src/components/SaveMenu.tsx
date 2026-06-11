@@ -59,10 +59,44 @@ function formatTimeAgo(timestamp?: number): string {
 // engine-supported (conformance ledger, tests, legacy saves) — depth kept,
 // decision removed. Title reuses the canonical `full` form from
 // `frontend/src/legibility/rulesetNames.ts` (WT-5).
+// Glance list + expandable full breakdown (owner 2026-06-10: nobody reads a
+// giant paragraph — key rules at a glance, everything else behind a click).
+// Numbers verified against rulesets.py FOAM_OPEN (6 balls, burden majority 4,
+// 5s throw clock, 180s game clock) and official_engine.run_autonomous_match
+// (24-minute match window; 30 in semifinals, 40 in the final).
 const standardRuleset = {
   title: "USA Dodgeball 2026.1 — Foam",
-  desc: "Every career plays under the official foam division: six balls in play and the official catch rule (a catch eliminates the thrower and resurrects a teammate). A match is decided over multiple games, and a game point is earned only by fully eliminating the opponent. No Blocking is enforced: held balls block throws in regulation, and once a game passes the three-minute line that protection is stripped until someone wins. Modeled as a deterministic abstraction of the official rules.",
-  bullet: "• 6v6 Format · 6 balls (3 per side) · Catch outs thrower + resurrects · 1 game point per elimination win",
+  tagline: "Six balls. Real catches. Three-minute games. Modeled on the official foam rulebook.",
+  keyRules: [
+    { label: "6v6 · SIX BALLS", text: "Each side fields six players and starts with three balls. Hit someone with a throw — they're out." },
+    { label: "CATCHES FLIP GAMES", text: "Catch a throw and the thrower is OUT — and one of your eliminated teammates runs back on." },
+    { label: "WIPE-OUT TO SCORE", text: "A game point is earned ONLY by eliminating all six opponents. No wipe-out, no point." },
+    { label: "3-MINUTE LINE", text: "Held balls block throws in regulation. Past 3:00 that protection is stripped — No Blocking, sudden death until someone wins." },
+    { label: "SHOT-CLOCK PRESSURE", text: "Hold most of the balls (4 of 6) and you must attack within 5 seconds or the refs make the call." },
+    { label: "MANY GAMES, ONE MATCH", text: "Games run back-to-back inside a 24-minute match window. Most game points wins — draws are real." },
+  ],
+  fullBreakdown: [
+    {
+      heading: "The court and the rush",
+      body: "Six starters per side from a roster of up to twelve. Six foam balls are in play — three per side — and every game opens with a rush for them. Your weekly tactics decide how hard your club commits to that rush and where it aims.",
+    },
+    {
+      heading: "Getting players out",
+      body: "A live throw that hits an opponent eliminates them. Targets can dodge, block with a held ball (in regulation), or catch. A clean catch is the biggest swing in the sport: the thrower is eliminated AND one of your eliminated teammates re-enters from the catch queue.",
+    },
+    {
+      heading: "Scoring and the clocks",
+      body: "A game point is earned only by fully eliminating the opposing six. Each game has a 3-minute regulation window; once it passes the three-minute line, No Blocking is enforced — held balls no longer block throws, and the game runs until someone closes it out. Games repeat inside the match window (24 minutes in the regular season, 30 in semifinals, 40 in the final). Most game points at full time wins the match — draws are a real result.",
+    },
+    {
+      heading: "The burden rule",
+      body: "Hold the ball majority (4 of the 6) and your side is on the clock: attack within 5 seconds or the officials make the call. Every call in a match replay carries its USA Dodgeball rulebook reference, so you can always see exactly which rule fired.",
+    },
+    {
+      heading: "What's honestly modeled",
+      body: "The sim is a deterministic abstraction of the official USA Dodgeball 2026.1 foam rules: ball counts, the catch rule, burden and throw clocks, No Blocking, and per-game set scoring are all enforced. Ball material, throw velocity, and sting are real-world distinctions the sim does not separately model — and the game never pretends otherwise.",
+    },
+  ],
 };
 
 interface SaveMenuProps {
@@ -557,15 +591,60 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                     padding: '0.75rem 1rem',
                     borderRadius: '0 4px 4px 0',
                   }}>
-                    <h4 style={{ margin: '0 0 0.25rem 0', fontSize: '0.875rem', fontWeight: 700, color: '#f8fafc' }}>
+                    <h4 style={{ margin: '0 0 0.2rem 0', fontSize: '0.875rem', fontWeight: 700, color: '#f8fafc' }}>
                       {standardRuleset.title}
                     </h4>
-                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
-                      {standardRuleset.desc}
+                    <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.75rem', color: '#22d3ee', fontWeight: 600 }}>
+                      {standardRuleset.tagline}
                     </p>
-                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#22d3ee', fontWeight: 600 }}>
-                      {standardRuleset.bullet}
-                    </p>
+                    {/* Key rules at a glance — short label + one-liner per row. */}
+                    <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.45rem' }} data-testid="ruleset-key-rules">
+                      {standardRuleset.keyRules.map((rule) => (
+                        <li key={rule.label} style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline' }}>
+                          <span style={{
+                            flex: '0 0 9.5rem',
+                            fontSize: '0.62rem',
+                            fontFamily: 'var(--font-display)',
+                            fontWeight: 800,
+                            letterSpacing: '0.06em',
+                            color: '#22d3ee',
+                            whiteSpace: 'nowrap',
+                          }}>
+                            {rule.label}
+                          </span>
+                          <span style={{ fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                            {rule.text}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    {/* The deep dive, for the players who DO want to read
+                        everything — native details/summary, keyboard friendly. */}
+                    <details style={{ marginTop: '0.85rem' }} data-testid="ruleset-full-breakdown">
+                      <summary style={{
+                        cursor: 'pointer',
+                        fontSize: '0.7rem',
+                        fontFamily: 'var(--font-display)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.08em',
+                        color: '#64748b',
+                        fontWeight: 700,
+                      }}>
+                        Full rulebook breakdown
+                      </summary>
+                      <div style={{ marginTop: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        {standardRuleset.fullBreakdown.map((section) => (
+                          <div key={section.heading}>
+                            <h5 style={{ margin: '0 0 0.15rem 0', fontSize: '0.74rem', fontWeight: 700, color: '#e2e8f0' }}>
+                              {section.heading}
+                            </h5>
+                            <p style={{ margin: 0, fontSize: '0.74rem', color: '#94a3b8', lineHeight: 1.5 }}>
+                              {section.body}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
                   </div>
                 </div>
 
@@ -795,7 +874,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                     {standardRuleset.title}
                   </p>
                   <p style={{ fontSize: '0.6875rem', color: '#64748b', margin: '0.375rem 0 0' }}>
-                    {standardRuleset.bullet}
+                    {standardRuleset.tagline}
                   </p>
                 </div>
 
