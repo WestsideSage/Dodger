@@ -551,11 +551,11 @@ def team_snapshot(team: Team) -> str:
     top = sorted(team.players, key=lambda player: player.overall_skill(), reverse=True)[:3]
     lines = [
         f"{team.name}",
-        f"Overall {team_overall(team):.1f} | Chemistry {team.chemistry:.2f}",
+        f"Overall {round(team_overall(team))} | Chemistry {round(team.chemistry * 100)}%",
         "Top Rotation:",
     ]
     for player in top:
-        lines.append(f"  {player.name} - {player_role(player)} ({player.overall_skill():.1f})")
+        lines.append(f"  {player.name} - {player_role(player)} ({round(player.overall_skill())})")
     return "\n".join(lines)
 
 def friendly_preview_text(setup: MatchSetup) -> str:

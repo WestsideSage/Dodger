@@ -419,12 +419,12 @@ def build_player_profile_details(
         f"Age: {player.age} | Status: {status}",
         "",
         "Ratings",
-        f"  OVR: {player.overall_skill():.1f}",
-        f"  Accuracy: {ratings.accuracy:.1f}",
-        f"  Power: {ratings.power:.1f}",
-        f"  Dodge: {ratings.dodge:.1f}",
-        f"  Catch: {ratings.catch:.1f}",
-        f"  Stamina: {ratings.stamina:.1f}",
+        f"  OVR: {round(player.overall_skill())}",
+        f"  Accuracy: {round(ratings.accuracy)}",
+        f"  Power: {round(ratings.power)}",
+        f"  Dodge: {round(ratings.dodge)}",
+        f"  Catch: {round(ratings.catch)}",
+        f"  Stamina: {round(ratings.stamina)}",
         "",
         "Current Season",
     ]
@@ -440,7 +440,7 @@ def build_player_profile_details(
                 f"  Dodges: {season_stats.dodges_successful}",
                 f"  Times Eliminated: {season_stats.times_eliminated}",
                 f"  Plus/Minus: {season_stats.elimination_plus_minus:+}",
-                f"  MVP Score: {_score_player(season_stats):.1f}",
+                f"  MVP Score: {round(_score_player(season_stats))}",
             ]
         )
 
