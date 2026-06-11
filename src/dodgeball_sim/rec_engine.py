@@ -172,6 +172,9 @@ class _MatchRuntime:
     opening_rush_by_team: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     # V19a: per-player slot-role fit bonuses (lineup.role_fit_bonuses).
     role_fit: Dict[str, float] = field(default_factory=dict)
+    # V19b: per-team staff-focus match preps (tactics read sharpening /
+    # conditioning stamina relief), from DriverMatchInput.config.
+    prep: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
 
 class RecTier1Driver:
@@ -303,6 +306,10 @@ class RecTier1Driver:
             role_fit=role_fit_bonuses(
                 (mi.starters_a, mi.starters_b), mi.player_lookup
             ),
+            prep={
+                mi.team_a_id: dict(mi.config.get("prep_a") or {}),
+                mi.team_b_id: dict(mi.config.get("prep_b") or {}),
+            },
             opening_rush_by_team={
                 mi.team_a_id: self._opening_rush(
                     team_id=mi.team_a_id,
@@ -525,9 +532,7 @@ class RecTier1Driver:
                 if rt.tick == 0 and p.player_id not in opening_sprinters:
                     continue
                 player = mi.player_lookup[p.player_id]
-                eff = effectiveness(
-                    rt.fatigue[p.player_id], stamina=player.ratings.stamina
-                )
+                eff = self._effectiveness_for(rt, mi, p.player_id, team_id)
                 expected_value = (player.ratings.accuracy / 100.0) * eff
                 if not _should_throw_under_iq(
                     iq=player.ratings.throw_selection_iq,
@@ -544,6 +549,16 @@ class RecTier1Driver:
                 throw_cap = _OPENING_RUSH_THROW_CAP[policy.rush_commit]
             result[team_id] = candidates[:throw_cap]
         return result
+
+    def _effectiveness_for(
+        self, rt: _MatchRuntime, mi: DriverMatchInput, pid: str, team_id: str
+    ) -> float:
+        """V19a stamina-aware effectiveness, with the V19b conditioning-focus
+        relief applied to the fatigue DEFICIT (relief 0.5 halves the drag)."""
+        player = mi.player_lookup[pid]
+        eff = effectiveness(rt.fatigue[pid], stamina=player.ratings.stamina)
+        relief = float(rt.prep.get(team_id, {}).get("stamina_relief", 1.0))
+        return 1.0 - (1.0 - eff) * relief
 
     def _resolve_throw(
         self,
@@ -566,14 +581,23 @@ class RecTier1Driver:
 
         offense_policy = self._policy_for_team(mi, thrower_team_id)
         thrower = mi.player_lookup[thrower_id]
+        # V19b: a "tactics" focus week raises the thrower's EFFECTIVE
+        # tactical IQ (film prep = smarter throws on every IQ channel).
+        effective_tiq = min(
+            100.0,
+            thrower.ratings.tactical_iq
+            + float(rt.prep.get(thrower_team_id, {}).get("targeting_read_bonus", 0.0)),
+        )
         target_scores = self._target_scores(
             defense_states=opp_active,
             player_lookup=mi.player_lookup,
             policy=offense_policy,
             ball_holder_ids=self._ball_holder_ids(rt, opp_team),
             recent_targets=rt.recent_targets_by_team.get(opp_team, []),
-            # V19a: the thrower's tactical IQ sets their court-read quality.
-            thrower_tactical_iq=thrower.ratings.tactical_iq,
+            # V19a: the thrower's tactical IQ sets their court-read quality;
+            # V19b: a "tactics" staff focus week raises the effective IQ on
+            # every IQ channel (read + timing + catch-timing below).
+            thrower_tactical_iq=effective_tiq,
             rng=rt.rng,
         )
         target_state = target_scores[0][2]
@@ -588,13 +612,12 @@ class RecTier1Driver:
             ],
         ][:6]
 
-        # V19a: stamina governs how much fatigue degrades performance.
-        thrower_eff = effectiveness(
-            rt.fatigue[thrower_id], stamina=thrower.ratings.stamina
-        )
-        target_eff = effectiveness(
-            rt.fatigue[target_state.player_id],
-            stamina=mi.player_lookup[target_state.player_id].ratings.stamina,
+        # V19a: stamina governs how much fatigue degrades performance;
+        # V19b: a "conditioning" staff focus relieves the drag (see
+        # _effectiveness_for).
+        thrower_eff = self._effectiveness_for(rt, mi, thrower_id, thrower_team_id)
+        target_eff = self._effectiveness_for(
+            rt, mi, target_state.player_id, target_state.team_id
         )
         rush_context = self._rush_context_for_throw(rt, mi, thrower_team_id, thrower_id)
         sync_context = {
@@ -652,8 +675,9 @@ class RecTier1Driver:
         # V19a tactical_iq timing (mirrors official_resolution._TIQ_TIMING_SLOPE
         # at rec scale): a high-IQ thrower releases into the right window.
         # Probe iterations: 0.10 left +12 IQ inside the baseline CI; 0.22
-        # separates it as a real secondary stat.
-        tiq_timing = 0.22 * (thrower.ratings.normalized_tactical_iq() - 0.5)
+        # separates it as a real secondary stat. effective_tiq carries the
+        # V19b tactics-week bonus.
+        tiq_timing = 0.22 * (effective_tiq / 100.0 - 0.5)
         accuracy = min(
             1.0,
             (thrower.ratings.accuracy / 100.0) * thrower_eff
@@ -664,14 +688,15 @@ class RecTier1Driver:
         dodge = min(1.0, (target.ratings.dodge / 100.0) * target_eff + target_fit)
         # V19a: a well-timed throw is also harder to CATCH (the unambiguous
         # +EV channel — a caught throw outs the thrower), mirroring
-        # official_resolution._TIQ_TIMING_CATCH at rec scale.
+        # official_resolution._TIQ_TIMING_CATCH at rec scale. effective_tiq
+        # carries the V19b tactics-week bonus.
         catch_skill = max(
             0.0,
             min(
                 1.0,
                 (target.ratings.catch / 100.0) * target_eff
                 + target_fit
-                - 0.25 * (thrower.ratings.normalized_tactical_iq() - 0.5),
+                - 0.25 * (effective_tiq / 100.0 - 0.5),
             ),
         )
 

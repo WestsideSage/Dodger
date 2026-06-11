@@ -2565,6 +2565,30 @@ def save_weekly_command_plan(conn: sqlite3.Connection, plan: Dict[str, Any]) -> 
     )
 
 
+def count_staff_focus_weeks(
+    conn: sqlite3.Connection,
+    season_id: str,
+    club_id: str,
+    focus: str,
+) -> int:
+    """How many of this club's saved weekly plans ran the given V19b staff
+    focus this season (e.g. 'training' weeks feed offseason practice credits)."""
+    rows = conn.execute(
+        "SELECT plan_json FROM weekly_command_plans WHERE season_id = ? AND club_id = ?",
+        (season_id, club_id),
+    ).fetchall()
+    count = 0
+    for row in rows:
+        try:
+            plan = json.loads(row["plan_json"])
+        except (TypeError, ValueError):
+            continue
+        orders = dict((plan or {}).get("department_orders") or {})
+        if str(orders.get("focus_department") or "").strip().lower() == focus:
+            count += 1
+    return count
+
+
 def load_weekly_command_plan(
     conn: sqlite3.Connection,
     season_id: str,

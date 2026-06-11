@@ -191,12 +191,15 @@ def apply_recruiting_action(
     player_club_id: str,
     root_seed: int,
     history: list[dict[str, Any]],
+    interest_gain_multiplier: float = 1.0,
 ) -> dict[str, Any]:
     """Apply a scout/contact/visit to a prospect and return the visible delta.
 
     Persists the updated per-prospect action state (flags + interest) and
     returns a ``RecruitingActionResult`` dict so the caller can show the player
     exactly what changed. See :mod:`recruiting_actions` for the effect model.
+    ``interest_gain_multiplier`` is the V19b "culture" staff-focus bonus
+    (contact/visit gains land warmer during a culture week).
     """
     class_year = _class_year_from_season(season_id)
     persisted = load_prospect_pool(conn, class_year)
@@ -220,6 +223,7 @@ def apply_recruiting_action(
         base_band=base_band,
         pipeline_tier=prospect.pipeline_tier,
         credibility_score=credibility_score,
+        gain_multiplier=interest_gain_multiplier,
     )
     actions[prospect_id] = new_state
     set_state(conn, "prospect_recruitment_actions_json", json.dumps(actions))

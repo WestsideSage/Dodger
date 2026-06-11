@@ -119,6 +119,8 @@ def simulate_match(
     home_lineup_override: Optional[List[str]] = None,
     away_lineup_override: Optional[List[str]] = None,
     ruleset_selection: str | None = None,
+    home_prep: Optional[dict] = None,
+    away_prep: Optional[dict] = None,
 ) -> Tuple[MatchRecord, SeasonResult]:
     """Run one match and produce a MatchRecord + SeasonResult. Pure computation.
 
@@ -142,7 +144,13 @@ def simulate_match(
         selection = RulesetSelection(ruleset_selection)
         if selection.is_official():
             adapter = OfficialEngineAdapter(selection)
-            result = adapter.run_generic(setup, seed=match_seed, match_id=str(scheduled.match_id))
+            result = adapter.run_generic(
+                setup,
+                seed=match_seed,
+                match_id=str(scheduled.match_id),
+                prep_a=home_prep,
+                prep_b=away_prep,
+            )
         else:
             from .rec_adapter import RecEngineAdapter
 
@@ -152,6 +160,8 @@ def simulate_match(
                 seed=match_seed,
                 match_id=str(scheduled.match_id),
                 difficulty=difficulty,
+                prep_a=home_prep,
+                prep_b=away_prep,
             )
     else:
         from .rec_adapter import RecEngineAdapter
@@ -162,6 +172,8 @@ def simulate_match(
             seed=match_seed,
             match_id=str(scheduled.match_id),
             difficulty=difficulty,
+            prep_a=home_prep,
+            prep_b=away_prep,
         )
 
     home_hash = _hash_players(home_roster)

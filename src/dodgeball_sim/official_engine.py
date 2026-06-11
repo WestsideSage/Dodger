@@ -533,6 +533,8 @@ def run_autonomous_game(
     game_number: int = 1,
     elapsed_match_seconds: int = 0,
     match_clock_limit: int = 0,
+    prep_a: dict | None = None,
+    prep_b: dict | None = None,
 ) -> AutonomousGameResult:
     """Run a full official game with autonomous tactics.
 
@@ -645,9 +647,16 @@ def run_autonomous_game(
 
     # V19a performance shades: role fit (static per game) minus stamina
     # erosion (grows with match progress; the closure reads the live clock).
+    # V19b: a club's weekly STAFF FOCUS may carry a disclosed match prep —
+    # "conditioning" relieves the stamina erosion (deficit halved), "tactics"
+    # sharpens the targeting read (see the select_target call). Symmetric:
+    # AI clubs run the same focus system through their weekly plans.
     from .lineup import role_fit_bonuses
 
     role_fit = role_fit_bonuses((starters_a, starters_b), player_lookup)
+    preps = {team_a_id: dict(prep_a or {}), team_b_id: dict(prep_b or {})}
+    team_of = {pid: team_a_id for pid in starters_a}
+    team_of.update({pid: team_b_id for pid in starters_b})
 
     def _shade_for(pid: str) -> float:
         progress = min(
@@ -656,7 +665,14 @@ def run_autonomous_game(
         )
         stamina_norm = max(0.0, min(1.0, player_lookup[pid].ratings.stamina / 100.0))
         erosion = _STAMINA_EROSION_MAX * progress * (1.0 - stamina_norm)
-        return role_fit.get(pid, 0.0) - erosion
+        relief = float(preps.get(team_of.get(pid, ""), {}).get("stamina_relief", 1.0))
+        return role_fit.get(pid, 0.0) - erosion * relief
+
+    def _read_iq_for(pid: str) -> float:
+        bonus = float(
+            preps.get(team_of.get(pid, ""), {}).get("targeting_read_bonus", 0.0)
+        )
+        return min(100.0, player_lookup[pid].ratings.tactical_iq + bonus)
 
     while ticks < max_ticks and active_a > 0 and active_b > 0:
         controller_teams = _ball_controller_teams(balls, players)
@@ -821,8 +837,9 @@ def run_autonomous_game(
             policy=policies[offense_team],
             recent_pressure_player_id=recent_pressure_by_team[offense_team],
             rng=rng,
-            # V19a: the thrower's tactical IQ sets their court-read quality.
-            thrower_tactical_iq=player_lookup[thrower_state.player_id].ratings.tactical_iq,
+            # V19a: the thrower's tactical IQ sets their court-read quality;
+            # V19b: a "tactics" staff focus week sharpens the read.
+            thrower_tactical_iq=_read_iq_for(thrower_state.player_id),
         )
         if target_state is None:
             break
@@ -880,6 +897,11 @@ def run_autonomous_game(
             # V19a: role fit + stamina erosion shade each side's action stats.
             thrower_shade=_shade_for(thrower_state.player_id),
             target_shade=_shade_for(target_state.player_id),
+            # V19b: a "tactics" focus week raises the thrower's effective IQ
+            # on every IQ channel (read noise is handled in select_target).
+            thrower_tiq_bonus=float(
+                preps.get(offense_team, {}).get("targeting_read_bonus", 0.0)
+            ),
         )
         ruling = ledger.close_sequence(seq.sequence_id)
         events.append(sequence_event(seq))
@@ -1132,10 +1154,14 @@ def run_autonomous_match(
     policy_a: CoachPolicy,
     policy_b: CoachPolicy,
     seed: int,
+    prep_a: dict | None = None,
+    prep_b: dict | None = None,
 ) -> AutonomousMatchResult:
     """Simulate a full official match containing a series of timed games.
 
     Preserves run_autonomous_game as a single-game primitive by calling it repeatedly.
+    ``prep_a``/``prep_b`` are the V19b staff-focus match preps (see
+    run_autonomous_game).
     """
     # Order matters: "final" is a substring of "semifinal", so check the
     # narrower label first.
@@ -1205,6 +1231,8 @@ def run_autonomous_match(
             game_number=game_number,
             elapsed_match_seconds=elapsed_match_seconds,
             match_clock_limit=match_clock_limit,
+            prep_a=prep_a,
+            prep_b=prep_b,
         )
 
         last_game_res = game_res
@@ -1382,6 +1410,9 @@ class OfficialMatchEngineDriver:
             policy_a=match_input.policy_a,
             policy_b=match_input.policy_b,
             seed=match_input.seed,
+            # V19b staff-focus match preps ride the free-form config channel.
+            prep_a=match_input.config.get("prep_a"),
+            prep_b=match_input.config.get("prep_b"),
         )
         score = res.official_match_score
         return DriverMatchOutput(

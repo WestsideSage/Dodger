@@ -31,6 +31,18 @@ DEFAULT_RECRUITMENT_BUDGET = {
     "visit": [0, 1],
 }
 
+def staff_focus_for_week(conn: sqlite3.Connection, season_id: str, week: int) -> str:
+    """The user club's V19b staff focus for this week ('' when unset)."""
+    from .persistence import get_state, load_weekly_command_plan
+
+    club_id = get_state(conn, "player_club_id")
+    if not club_id:
+        return ""
+    plan = load_weekly_command_plan(conn, season_id, int(week), club_id)
+    orders = dict((plan or {}).get("department_orders") or {})
+    return str(orders.get("focus_department") or "").strip().lower()
+
+
 def get_current_recruiting_budget(conn: sqlite3.Connection, season_id: str, week: int) -> dict[str, list[int]]:
     from .persistence import get_state
     budget = {
@@ -38,6 +50,9 @@ def get_current_recruiting_budget(conn: sqlite3.Connection, season_id: str, week
         "contact": [0, 5],
         "visit": [0, 1],
     }
+    # V19b: a "scouting" staff focus week buys one extra Scout action.
+    if staff_focus_for_week(conn, season_id, week) == "scouting":
+        budget["scout"][1] += 1
     # Load used slots from db
     raw = get_state(conn, f"recruiting_slots_used_{season_id}_{week}")
     if raw:
@@ -57,6 +72,10 @@ def deduct_recruiting_slot(conn: sqlite3.Connection, season_id: str, week: int, 
     used = __import__("json").loads(raw) if raw else {}
     current_used = used.get(verb, 0)
     max_allowed = DEFAULT_RECRUITMENT_BUDGET[verb][1]
+    # V19b: the scouting staff focus raises the Scout cap (mirrors
+    # get_current_recruiting_budget so the UI and the guard agree).
+    if verb == "scout" and staff_focus_for_week(conn, season_id, week) == "scouting":
+        max_allowed += 1
 
     if current_used >= max_allowed:
         raise ValueError(f"No {verb} slots remaining this week")

@@ -553,6 +553,18 @@ def initialize_manager_offseason(
             0.0, (_dev_head["rating_primary"] - 50.0) / 50.0 * _max_mod
         )
 
+    # V19b training credits: each TRAINING staff-focus week this season earns
+    # the club +0.2 OVR of offseason practice growth (cap 8 weeks = +1.6),
+    # headroom-capped per player in apply_season_development. Symmetric: AI
+    # clubs' persisted weekly plans count the same way (Development Factory
+    # archetypes run training focuses, so their youth actually benefit).
+    from .persistence import count_staff_focus_weeks
+
+    practice_credit_by_club = {
+        club_id: 0.2 * min(8, count_staff_focus_weeks(conn, season.season_id, club_id, "training"))
+        for club_id in rosters
+    }
+
     for club_id, roster in rosters.items():
         next_roster: List[Player] = []
         is_player_club = club_id == get_state(conn, "player_club_id")
@@ -568,6 +580,7 @@ def initialize_manager_offseason(
                 staff_development_modifier=_staff_dev_modifier if is_player_club else 0.0,
                 matches_played=matches_by_player.get(player.id, 0),
                 club_matches=club_match_counts.get(club_id, 0),
+                practice_credit_ovr=practice_credit_by_club.get(club_id, 0.0),
             )
             aged = replace(developed, age=developed.age + 1)
             delta = aged.overall_skill() - player.overall_skill()

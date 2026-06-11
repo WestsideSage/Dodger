@@ -48,4 +48,29 @@ def get_ai_department_orders(archetype: str, intent: str) -> dict[str, str]:
             orders["dev_focus"] = "BALANCED"
         orders["scouting"] = "prospect scouting"
 
+    # V19b staff focus: the ONE department this club's staff concentrates on
+    # this week — the same mechanical system the user's Department Orders
+    # modal drives (game_loop.match_prep_from_plan + the training/scouting/
+    # culture hooks), so AI clubs play with the identical staff toolkit (no
+    # user-only buffs). Archetype-flavored, intent-aware.
+    if archetype == "Contender":
+        focus = "tactics"
+    elif archetype == "Development Factory":
+        focus = "training"
+    elif archetype == "Aging Veterans":
+        focus = "conditioning"
+    elif archetype == "Balanced Rebuild":
+        focus = "scouting"
+    elif archetype == "Defensive Specialist":
+        focus = "tactics"
+    elif archetype == "Power Throwers":
+        focus = "conditioning"
+    else:
+        focus = "tactics"
+    if intent == "Preserve Health":
+        focus = "conditioning"
+    elif intent == "Develop Youth" and archetype != "Contender":
+        focus = "training"
+    orders["focus_department"] = focus
+
     return orders

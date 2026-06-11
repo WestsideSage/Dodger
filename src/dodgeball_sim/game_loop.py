@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from typing import Mapping, Sequence
+from typing import Any, Mapping, Sequence
 
 from .franchise import MatchRecord, extract_match_stats, simulate_match
 from .league import Club
@@ -30,6 +30,26 @@ def current_week(conn: sqlite3.Connection, season: Season) -> int | None:
     return None
 
 
+# V19b staff focus: the ONE department a club's staff concentrates on this
+# week (plan.department_orders.focus_department). Two of the five focuses are
+# MATCH preps consumed by both engines; the other three (training credits,
+# scouting slot, culture courtship) land outside the match. A genuine weekly
+# decision: one room gets the week, the others run standard.
+_MATCH_PREP_BY_FOCUS: dict[str, dict] = {
+    # Film week: throwers read the court like +18 Tactical IQ (V19a consumer).
+    "tactics": {"targeting_read_bonus": 18.0},
+    # Recovery week: fatigue/stamina drag on action stats is halved.
+    "conditioning": {"stamina_relief": 0.5},
+}
+
+
+def match_prep_from_plan(plan: Mapping[str, Any] | None) -> dict:
+    """Derive the engine-facing match prep from a club's weekly plan."""
+    orders = dict((plan or {}).get("department_orders") or {})
+    focus = str(orders.get("focus_department") or "").strip().lower()
+    return dict(_MATCH_PREP_BY_FOCUS.get(focus, {}))
+
+
 def simulate_scheduled_match(
     conn: sqlite3.Connection,
     *,
@@ -44,8 +64,16 @@ def simulate_scheduled_match(
     away_default = load_lineup_default(conn, scheduled.away_club_id)
     home_override = load_match_lineup_override(conn, scheduled.match_id, scheduled.home_club_id)
     away_override = load_match_lineup_override(conn, scheduled.match_id, scheduled.away_club_id)
-    from .persistence import get_state
+    from .persistence import get_state, load_weekly_command_plan
     ruleset_selection = get_state(conn, "ruleset_selection")
+    # V19b: both clubs' staff-focus preps, symmetrically from their persisted
+    # weekly plans (the user's plan and the AI plans share the same table).
+    home_prep = match_prep_from_plan(
+        load_weekly_command_plan(conn, scheduled.season_id, scheduled.week, scheduled.home_club_id)
+    )
+    away_prep = match_prep_from_plan(
+        load_weekly_command_plan(conn, scheduled.season_id, scheduled.week, scheduled.away_club_id)
+    )
     record, _ = simulate_match(
         scheduled=scheduled,
         home_club=clubs[scheduled.home_club_id],
@@ -59,6 +87,8 @@ def simulate_scheduled_match(
         home_lineup_override=home_override,
         away_lineup_override=away_override,
         ruleset_selection=ruleset_selection,
+        home_prep=home_prep or None,
+        away_prep=away_prep or None,
     )
     persist_match_record(
         conn,

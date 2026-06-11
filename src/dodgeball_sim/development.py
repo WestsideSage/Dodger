@@ -135,8 +135,15 @@ def apply_season_development(
     staff_development_modifier: float = 0.0,
     matches_played: int | None = None,
     club_matches: int | None = None,
+    practice_credit_ovr: float = 0.0,
 ) -> Player:
     """Apply one offseason of deterministic development to a player.
+
+    ``practice_credit_ovr`` (V19b): extra OVR-points of growth earned by the
+    club's TRAINING staff-focus weeks during the season (game_loop staff
+    focus; capped by the caller). Practice happens off-court, so it is not
+    reps-gated — bench players benefit too — but it can never push past the
+    headroom cap.
 
     V18 growth model: each season closes a fraction of the player's remaining
     OVR headroom (effective potential - current OVR), budgeted directly in OVR
@@ -285,9 +292,12 @@ def apply_season_development(
             * (1.0 + effective_staff_modifier),
         )
         if headroom > 0.0 and weight_total > 0.0:
-            target_ovr_gain = (
+            base_gain = (
                 min(headroom, max(headroom * close_rate, _FINISH_FLOOR_OVR)) * reps_factor
             )
+            # V19b training credits add on top (not reps-gated — practice is
+            # off-court) but never push past the remaining headroom.
+            target_ovr_gain = min(headroom, base_gain + max(0.0, practice_credit_ovr))
             budget = target_ovr_gain * len(_OVR_STATS) + effective_staff_modifier * 20.0
         else:
             budget = 0.0

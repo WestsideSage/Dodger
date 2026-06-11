@@ -156,6 +156,7 @@ def compute_throw_probabilities(
     target: Player,
     thrower_shade: float = 0.0,
     target_shade: float = 0.0,
+    thrower_tiq_bonus: float = 0.0,
 ) -> ThrowProbabilities:
     """Return the on-target and catch probabilities for one throw.
 
@@ -172,8 +173,13 @@ def compute_throw_probabilities(
     power_eff = _shaded(thrower.ratings.normalized_power(), thrower_shade)
 
     # On-target: accuracy beats dodge; power slightly helps; tactical IQ
-    # times the release window (V19a — see _TIQ_TIMING_SLOPE).
-    tiq_centered = thrower.ratings.normalized_tactical_iq() - 0.5
+    # times the release window (V19a — see _TIQ_TIMING_SLOPE). A V19b
+    # "tactics" staff-focus week raises the thrower's effective IQ on every
+    # IQ channel (film prep = smarter throws, not just better reads).
+    tiq_centered = (
+        min(1.0, thrower.ratings.normalized_tactical_iq() + max(0.0, thrower_tiq_bonus) / 100.0)
+        - 0.5
+    )
     p_on_target = _sigmoid(
         3.0 * (accuracy_eff - dodge_eff)
         + 0.5 * power_eff
@@ -210,6 +216,7 @@ def resolve_throw(
     opening_catch_factor: float = 1.0,
     thrower_shade: float = 0.0,
     target_shade: float = 0.0,
+    thrower_tiq_bonus: float = 0.0,
 ) -> Tuple[ThrowProbabilities, str]:
     """Resolve one throw against one primary target and mutate the sequence.
 
@@ -233,6 +240,7 @@ def resolve_throw(
         target=target,
         thrower_shade=thrower_shade,
         target_shade=target_shade,
+        thrower_tiq_bonus=thrower_tiq_bonus,
     )
 
     on_target = rng.random() <= probs.p_on_target
