@@ -206,6 +206,7 @@ def derive_match_explanation(
     final_tick: int = 0,
     name_map: Mapping[str, str] | None = None,
     point_margin: int = 0,
+    ovr_edge: int = 0,
 ) -> MatchExplanation:
     """Rank supported factors and return the dominant one (or a soft fallback).
 
@@ -285,6 +286,7 @@ def derive_match_explanation(
             opponent_survivors=opponent_survivors,
             decisive=decisive,
             point_margin=point_margin,
+            ovr_edge=ovr_edge,
         )
         considered = tuple([c.factor for c in candidates[:3]])
         return MatchExplanation(primary_factor=primary, considered=considered)
@@ -540,6 +542,7 @@ def _upset_variance_factor(
     opponent_survivors: int,
     decisive: bool = False,
     point_margin: int = 0,
+    ovr_edge: int = 0,
 ) -> PrimaryFactor:
     margin = abs(player_survivors - opponent_survivors)
     chips: tuple[str, ...] = (
@@ -559,11 +562,33 @@ def _upset_variance_factor(
                 "across the sets and closed out a clear result."
             )
         elif result == "Loss":
-            title = "Outclassed across the sets"
-            sentence = (
-                "No single moment decided it — you were edged in set after set. "
-                "The result wasn't close, so the fix is squad strength, not luck."
-            )
+            # Codex playtest issue 19: telling a manager who fielded the
+            # STRONGER six that "the fix is squad strength" contradicts the
+            # pre-match matchup read the game itself showed. Diagnose by the
+            # actual starter-OVR edge.
+            if ovr_edge >= 10:
+                title = "Outplayed despite the talent edge"
+                sentence = (
+                    f"You fielded the stronger six (+{ovr_edge} starter OVR) and were "
+                    "still edged in set after set. The talent was there — look at "
+                    "their named performers for where it actually swung; the fix "
+                    "is execution, not squad strength."
+                )
+                chips = chips + (f"Starter OVR edge +{ovr_edge}",)
+            elif ovr_edge <= -10:
+                title = "Outclassed across the sets"
+                sentence = (
+                    "No single moment decided it — you were edged in set after set. "
+                    "The result wasn't close, so the fix is squad strength, not luck."
+                )
+                chips = chips + (f"Starter OVR edge {ovr_edge}",)
+            else:
+                title = "Edged across the sets"
+                sentence = (
+                    "No single moment decided it — an evenly-matched opponent beat "
+                    "you set after set. Check the named performers for where it "
+                    "swung; there is no one lever this result proves."
+                )
         else:
             title = "No dominant factor"
             sentence = (

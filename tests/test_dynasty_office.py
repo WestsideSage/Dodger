@@ -153,10 +153,14 @@ def test_promise_early_playing_time_fulfilled_when_six_match_appearances():
     state = build_dynasty_office_state(conn)
     season_id = state["season_id"]
     club_id = state["player_club_id"]
-    prospect_id = state["recruiting"]["prospects"][0]["player_id"]
+    # Codex issue 15 lifecycle: promises grade only once the target is ON
+    # the roster — promise a rostered player so grading happens this season.
+    from dodgeball_sim.persistence import load_all_rosters
+    rosters = load_all_rosters(conn)
+    target_id = min(rosters[club_id], key=lambda pl: pl.age).id
 
-    save_recruiting_promise(conn, prospect_id, "early_playing_time")
-    _make_match_stats_row(conn, season_id, prospect_id, club_id, n_matches=6)
+    save_recruiting_promise(conn, target_id, "early_playing_time")
+    _make_match_stats_row(conn, season_id, target_id, club_id, n_matches=6)
 
     evaluate_season_promises(conn, season_id, club_id)
 
@@ -165,7 +169,7 @@ def test_promise_early_playing_time_fulfilled_when_six_match_appearances():
             "SELECT value FROM dynasty_state WHERE key = 'program_promises_json'"
         ).fetchone()["value"]
     )
-    match = next(p for p in promises if p["player_id"] == prospect_id)
+    match = next(p for p in promises if p["player_id"] == target_id)
     assert match["result"] == "fulfilled"
     assert match["status"] == "fulfilled"
     assert match["result_season_id"] == season_id
@@ -178,10 +182,14 @@ def test_promise_early_playing_time_broken_when_fewer_than_six():
     state = build_dynasty_office_state(conn)
     season_id = state["season_id"]
     club_id = state["player_club_id"]
-    prospect_id = state["recruiting"]["prospects"][0]["player_id"]
+    # Codex issue 15 lifecycle: promises grade only once the target is ON
+    # the roster — promise a rostered player so grading happens this season.
+    from dodgeball_sim.persistence import load_all_rosters
+    rosters = load_all_rosters(conn)
+    target_id = min(rosters[club_id], key=lambda pl: pl.age).id
 
-    save_recruiting_promise(conn, prospect_id, "early_playing_time")
-    _make_match_stats_row(conn, season_id, prospect_id, club_id, n_matches=3)
+    save_recruiting_promise(conn, target_id, "early_playing_time")
+    _make_match_stats_row(conn, season_id, target_id, club_id, n_matches=3)
 
     evaluate_season_promises(conn, season_id, club_id)
 
@@ -190,7 +198,7 @@ def test_promise_early_playing_time_broken_when_fewer_than_six():
             "SELECT value FROM dynasty_state WHERE key = 'program_promises_json'"
         ).fetchone()["value"]
     )
-    match = next(p for p in promises if p["player_id"] == prospect_id)
+    match = next(p for p in promises if p["player_id"] == target_id)
     assert match["result"] == "broken"
     assert match["status"] == "broken"
 
@@ -201,10 +209,14 @@ def test_promise_evaluation_is_idempotent():
     state = build_dynasty_office_state(conn)
     season_id = state["season_id"]
     club_id = state["player_club_id"]
-    prospect_id = state["recruiting"]["prospects"][0]["player_id"]
+    # Codex issue 15 lifecycle: promises grade only once the target is ON
+    # the roster — promise a rostered player so grading happens this season.
+    from dodgeball_sim.persistence import load_all_rosters
+    rosters = load_all_rosters(conn)
+    target_id = min(rosters[club_id], key=lambda pl: pl.age).id
 
-    save_recruiting_promise(conn, prospect_id, "early_playing_time")
-    _make_match_stats_row(conn, season_id, prospect_id, club_id, n_matches=6)
+    save_recruiting_promise(conn, target_id, "early_playing_time")
+    _make_match_stats_row(conn, season_id, target_id, club_id, n_matches=6)
 
     evaluate_season_promises(conn, season_id, club_id)
     evaluate_season_promises(conn, season_id, club_id)  # second call must be idempotent
@@ -225,9 +237,11 @@ def test_promise_contender_path_fulfilled_from_playoff_bracket():
     state = build_dynasty_office_state(conn)
     season_id = state["season_id"]
     club_id = state["player_club_id"]
-    prospect_id = state["recruiting"]["prospects"][0]["player_id"]
+    from dodgeball_sim.persistence import load_all_rosters
+    rosters = load_all_rosters(conn)
+    target_id = min(rosters[club_id], key=lambda pl: pl.age).id
 
-    save_recruiting_promise(conn, prospect_id, "contender_path")
+    save_recruiting_promise(conn, target_id, "contender_path")
 
     # Seed a playoff bracket that includes the player's club
     conn.execute(
@@ -247,7 +261,7 @@ def test_promise_contender_path_fulfilled_from_playoff_bracket():
             "SELECT value FROM dynasty_state WHERE key = 'program_promises_json'"
         ).fetchone()["value"]
     )
-    match = next(p for p in promises if p["player_id"] == prospect_id)
+    match = next(p for p in promises if p["player_id"] == target_id)
     assert match["result"] == "fulfilled"
 
 
@@ -323,7 +337,7 @@ def test_promise_development_priority_broken_when_insufficient_focused_weeks():
     assert match["status"] == "broken"
 
 
-def test_promise_development_priority_broken_when_player_not_on_roster():
+def test_promise_to_rival_rostered_player_is_voided_not_broken():
     from dodgeball_sim.dynasty_office import evaluate_season_promises
     from dodgeball_sim.persistence import load_all_rosters
 
@@ -332,8 +346,9 @@ def test_promise_development_priority_broken_when_player_not_on_roster():
     season_id = state["season_id"]
     club_id = state["player_club_id"]
 
-    # Pick a real player on some other club's roster: input passes validation,
-    # but evaluation still reports "not on the user's active roster".
+    # Codex issue 13 lifecycle: a target on ANOTHER club's roster is out of
+    # the manager's hands — the promise VOIDS (no credibility effect)
+    # instead of counting as the manager breaking their word.
     rosters = load_all_rosters(conn)
     other_player_id = next(
         player.id
@@ -352,8 +367,9 @@ def test_promise_development_priority_broken_when_player_not_on_roster():
         ).fetchone()["value"]
     )
     match = next(p for p in promises if p["player_id"] == other_player_id)
-    assert match["result"] == "broken"
-    assert match["status"] == "broken"
+    assert match["result"] == "void"
+    assert match["status"] == "void"
+    assert "signed them before you could deliver" in match["evidence"]
 
 
 def test_offseason_ceremony_evaluates_promises_during_dev_beat():
@@ -366,10 +382,11 @@ def test_offseason_ceremony_evaluates_promises_during_dev_beat():
     state = build_dynasty_office_state(conn)
     season_id = state["season_id"]
     club_id = state["player_club_id"]
-    prospect_id = state["recruiting"]["prospects"][0]["player_id"]
+    rosters_before = load_all_rosters(conn)
+    target_id = min(rosters_before[club_id], key=lambda pl: pl.age).id
 
-    save_recruiting_promise(conn, prospect_id, "early_playing_time")
-    _make_match_stats_row(conn, season_id, prospect_id, club_id, n_matches=6)
+    save_recruiting_promise(conn, target_id, "early_playing_time")
+    _make_match_stats_row(conn, season_id, target_id, club_id, n_matches=6)
 
     season = load_season(conn, season_id)
     clubs = load_clubs(conn)
@@ -381,7 +398,7 @@ def test_offseason_ceremony_evaluates_promises_during_dev_beat():
             "SELECT value FROM dynasty_state WHERE key = 'program_promises_json'"
         ).fetchone()["value"]
     )
-    match = next((p for p in promises if p["player_id"] == prospect_id), None)
+    match = next((p for p in promises if p["player_id"] == target_id), None)
     assert match is not None
     assert match["result"] == "fulfilled"
 
@@ -393,18 +410,21 @@ def test_evaluated_promises_no_longer_count_against_open_promise_cap():
     state = build_dynasty_office_state(conn)
     season_id = state["season_id"]
     club_id = state["player_club_id"]
-    prospects = state["recruiting"]["prospects"]
-    for prospect in prospects[:3]:
-        save_recruiting_promise(conn, prospect["player_id"], "early_playing_time")
+    from dodgeball_sim.persistence import load_all_rosters
+    rosters = load_all_rosters(conn)
+    roster_ids = [pl.id for pl in rosters[club_id]]
+    for player_id in roster_ids[:3]:
+        save_recruiting_promise(conn, player_id, "early_playing_time")
 
     evaluate_season_promises(conn, season_id, club_id)
-    updated = save_recruiting_promise(conn, prospects[3]["player_id"], "early_playing_time")
+    prospects = state["recruiting"]["prospects"]
+    updated = save_recruiting_promise(conn, prospects[0]["player_id"], "early_playing_time")
 
     open_promises = [
         promise for promise in updated["recruiting"]["active_promises"]
         if promise["status"] == "open"
     ]
-    assert [promise["player_id"] for promise in open_promises] == [prospects[3]["player_id"]]
+    assert [promise["player_id"] for promise in open_promises] == [prospects[0]["player_id"]]
 
 
 def test_training_staff_rating_changes_user_club_offseason_development():
@@ -610,3 +630,55 @@ def test_build_staff_market_state_returns_expected_keys():
     assert "current_staff" in result
     assert "candidates" in result
     assert "recent_actions" in result
+
+
+def test_promise_to_pool_prospect_defers_until_first_rostered_season():
+    """Codex issue 15: Noor's early-playing-time promise 'broke' with 0
+    appearances before she was even signed. A promise whose target is still
+    on the recruiting board DEFERS — open, with pending evidence — instead
+    of grading against a season they never played in."""
+    from dodgeball_sim.dynasty_office import evaluate_season_promises
+
+    conn = _career_conn()
+    state = build_dynasty_office_state(conn)
+    season_id = state["season_id"]
+    club_id = state["player_club_id"]
+    prospect_id = state["recruiting"]["prospects"][0]["player_id"]
+
+    save_recruiting_promise(conn, prospect_id, "early_playing_time")
+    evaluate_season_promises(conn, season_id, club_id)
+
+    promises = _json.loads(
+        conn.execute(
+            "SELECT value FROM dynasty_state WHERE key = 'program_promises_json'"
+        ).fetchone()["value"]
+    )
+    match = next(p for p in promises if p["player_id"] == prospect_id)
+    assert match["status"] == "open"
+    assert match["result"] is None
+    assert "Awaiting their first season" in match["evidence"]
+
+
+def test_voided_promises_do_not_touch_credibility():
+    """Codex issue 13: a sniped target must not cost credibility."""
+    import json as j
+
+    from dodgeball_sim.recruiting_office import PROMISE_STATE_KEY, _credibility
+    from dodgeball_sim.persistence import set_state
+
+    conn = _career_conn()
+    state = build_dynasty_office_state(conn)
+    season_id = state["season_id"]
+    club_id = state["player_club_id"]
+
+    base = int(_credibility(conn, season_id, club_id, history=[])["score"])
+    set_state(conn, PROMISE_STATE_KEY, j.dumps([
+        {
+            "player_id": "gone_prospect", "promise_type": "development_priority",
+            "status": "void", "result": "void", "result_season_id": season_id,
+            "evidence": "Voided — Lunar Syndicate signed them before you could deliver. No credibility effect.",
+        }
+    ]))
+    conn.commit()
+    after = int(_credibility(conn, season_id, club_id, history=[])["score"])
+    assert after == base

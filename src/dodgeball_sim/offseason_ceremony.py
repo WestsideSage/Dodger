@@ -757,10 +757,19 @@ def available_recruitment_choices(
     free agents.
     """
     from .recruiting_actions import current_interest
+    from .recruiting_office import PROMISE_STATE_KEY
 
     class_year = season_number or 1
     actions = load_json_state(conn, "prospect_recruitment_actions_json", {})
     credibility = _picker_credibility_score(conn)
+    # Codex playtest issue 13: surface which board targets carry an OPEN
+    # promise, so the Signing Day UI can warn that rivals sign between your
+    # picks and a promised target can be lost.
+    promised_ids = {
+        str(p.get("player_id"))
+        for p in load_json_state(conn, PROMISE_STATE_KEY, [])
+        if p.get("status") == "open"
+    }
 
     choices: list[dict[str, Any]] = []
     for prospect in _available_prospect_players(conn, class_year):
@@ -785,6 +794,7 @@ def available_recruitment_choices(
                     credibility_score=credibility,
                 ),
                 "fit_score": round((low + high) / 2.0 + credibility * 0.12),
+                "promised": prospect.player_id in promised_ids,
             }
         )
     choices.sort(

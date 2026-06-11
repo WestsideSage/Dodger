@@ -32,6 +32,13 @@ from .rng import DeterministicRNG, derive_seed
 from .staff_market import STAFF_ACTION_STATE_KEY, build_staff_market_state
 from typing import Dict, List, Mapping, Optional
 from statistics import mean
+
+# Codex playtest issue 15: evidence shown on a promise that is deferred
+# because the target hasn't had a rostered season yet.
+_PROMISE_PENDING_EVIDENCE = (
+    "Awaiting their first season on your roster — graded after they have a "
+    "real chance to deliver."
+)
 from dataclasses import dataclass
 from .models import Player, Team
 from .stats import PlayerMatchStats
@@ -196,6 +203,14 @@ def evaluate_season_promises(
         return
 
     changed = False
+    rosters = load_all_rosters(conn)
+    club_of: dict[str, str] = {
+        getattr(player, "id", ""): roster_club
+        for roster_club, roster in rosters.items()
+        for player in roster
+    }
+    pool_ids = {prospect.player_id for prospect in _current_prospect_pool(conn)}
+
     for promise in promises:
         if promise.get("result_season_id") == season_id:
             continue  # already evaluated this season — idempotent
@@ -208,6 +223,44 @@ def evaluate_season_promises(
             promise["status"] = "broken"
             promise["result_season_id"] = season_id
             promise["evidence"] = "Legacy promise — player identity not recorded."
+            changed = True
+            continue
+
+        # Codex playtest issues 13/15: promises made to PROSPECTS used to be
+        # graded against a season the target never played in (Noor's
+        # early-playing-time promise "broke" with 0 appearances before she
+        # was even signed), and a target sniped by a rival on Signing Day
+        # counted as the manager breaking their word. Honest lifecycle:
+        #   - target still on the recruiting board (no roster) -> DEFER; the
+        #     promise is graded after their first rostered season.
+        #   - target signed by ANOTHER club -> VOID, no credibility effect
+        #     (the manager never got the chance to deliver).
+        #   - target gone entirely (class rolled over unsigned) -> VOID.
+        target_club = club_of.get(str(player_id))
+        if target_club is None:
+            if player_id in pool_ids:
+                if promise.get("evidence") != _PROMISE_PENDING_EVIDENCE:
+                    promise["evidence"] = _PROMISE_PENDING_EVIDENCE
+                    changed = True
+                continue  # still recruitable — defer, stays open
+            promise["result"] = "void"
+            promise["status"] = "void"
+            promise["result_season_id"] = season_id
+            promise["evidence"] = (
+                "Voided — the player never joined your roster (signed elsewhere "
+                "or left the board). No credibility effect."
+            )
+            changed = True
+            continue
+        if target_club != club_id:
+            club_name = getattr(load_clubs(conn).get(target_club), "name", target_club)
+            promise["result"] = "void"
+            promise["status"] = "void"
+            promise["result_season_id"] = season_id
+            promise["evidence"] = (
+                f"Voided — {club_name} signed them before you could deliver. "
+                "No credibility effect."
+            )
             changed = True
             continue
 

@@ -517,14 +517,28 @@ def _load_championship(
     opponent_club_id = record.away_club_id if player_is_home else record.home_club_id
     opponent_club = clubs.get(opponent_club_id)
     player_club = clubs.get(player_club_id)
-    player_score = home_survivors if player_is_home else away_survivors
-    opponent_score = away_survivors if player_is_home else home_survivors
 
     row = conn.execute(
-        "SELECT decided_by FROM match_records WHERE match_id = ?",
+        """
+        SELECT decided_by, scoring_model, home_game_points, away_game_points
+        FROM match_records WHERE match_id = ?
+        """,
         (match_id,),
     ).fetchone()
     decided_by = (row["decided_by"] if row is not None else None) or "regulation"
+
+    # Codex playtest issue 22: the champion banner read its score from the
+    # survivors columns, which on official matches hold only the final
+    # game's living counts — a 13-12 title win displayed as "0-0 over
+    # Lunar Syndicate". Officials score in GAME POINTS; same branch every
+    # other scoreline surface uses.
+    if row is not None and (row["scoring_model"] or "legacy") != "legacy":
+        home_score = int(row["home_game_points"] or 0)
+        away_score = int(row["away_game_points"] or 0)
+    else:
+        home_score, away_score = home_survivors, away_survivors
+    player_score = home_score if player_is_home else away_score
+    opponent_score = away_score if player_is_home else home_score
 
     return {
         "champion_name": player_club.name if player_club is not None else "Your club",
@@ -1094,6 +1108,24 @@ def _build_aftermath(
                     int(official_meta.get("team_a_game_points", 0))
                     - int(official_meta.get("team_b_game_points", 0))
                 )
+                # Codex playtest issue 19: feed the actual fielded-OVR edge so
+                # a favored loss is never diagnosed as "squad strength".
+                # Computed from the same roster snapshots the replay uses
+                # (mean of the five OVR stats per fielded player, summed).
+                def _fielded_ovr_total(players: list[dict[str, Any]]) -> float:
+                    total = 0.0
+                    for p in players[:6]:
+                        r = p.get("ratings", {}) or {}
+                        total += sum(
+                            float(r.get(k, 0) or 0)
+                            for k in ("accuracy", "power", "dodge", "catch", "stamina")
+                        ) / 5.0
+                    return total
+
+                ovr_edge = round(
+                    _fielded_ovr_total(snapshots.get(player_club_id, []))
+                    - _fielded_ovr_total(snapshots.get(opponent_club_id, []))
+                )
                 explanation = derive_match_explanation(
                     result=result_pf,
                     player_survivors=int(box[player_club_id]["totals"]["living"]),
@@ -1108,6 +1140,7 @@ def _build_aftermath(
                     final_tick=int(getattr(record.result, "final_tick", 0) or 0),
                     name_map=name_map_pf,
                     point_margin=point_margin,
+                    ovr_edge=ovr_edge,
                 )
                 aftermath["primary_factor"] = explanation.primary_factor.as_dict()
 

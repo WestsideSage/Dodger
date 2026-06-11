@@ -2624,6 +2624,38 @@ def load_latest_weekly_plan_intent(
     return row["intent"] if row else None
 
 
+def load_latest_weekly_plan_orders(
+    conn: sqlite3.Connection,
+    season_id: str,
+    before_week: int,
+    club_id: str,
+) -> Dict[str, Any]:
+    """Department orders from the most recent saved plan before ``before_week``.
+
+    Codex playtest issue 21: dev focus is a season-long strategy (the
+    offseason grades the focus run across weeks, and promises can require
+    "3+ focused weeks"), yet every fresh week silently reset it to Balanced.
+    The set-and-forget orders (dev_focus, focus_department) carry forward
+    like the intent does; the player changes them when they mean to.
+    """
+    row = conn.execute(
+        """
+        SELECT plan_json FROM weekly_command_plans
+        WHERE season_id = ? AND week < ? AND club_id = ?
+        ORDER BY week DESC
+        LIMIT 1
+        """,
+        (season_id, int(before_week), club_id),
+    ).fetchone()
+    if not row:
+        return {}
+    try:
+        plan = json.loads(row["plan_json"])
+    except (TypeError, ValueError):
+        return {}
+    return dict((plan or {}).get("department_orders") or {})
+
+
 def save_command_history_record(conn: sqlite3.Connection, record: Dict[str, Any]) -> None:
     plan = dict(record["plan"])
     dashboard = dict(record["dashboard"])

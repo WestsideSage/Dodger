@@ -254,8 +254,10 @@ function PromisesPanel({
           ))}
           {resolved.map((p) => (
             <div key={`done-${p.player_id}-${p.result_season_id}`} style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', fontSize: '0.76rem' }}>
-              <span className={`dm-badge ${p.status === 'fulfilled' ? 'dm-badge-cyan' : 'dm-badge-orange'}`}>
-                {p.status === 'fulfilled' ? 'KEPT' : 'BROKEN'}
+              {/* 'void' = the target signed elsewhere / never joined — not the
+                  manager's failure, no credibility effect (Codex issue 13). */}
+              <span className={`dm-badge ${p.status === 'fulfilled' ? 'dm-badge-cyan' : p.status === 'void' ? 'dm-badge-slate' : 'dm-badge-orange'}`}>
+                {p.status === 'fulfilled' ? 'KEPT' : p.status === 'void' ? 'VOIDED' : 'BROKEN'}
               </span>
               <span style={{ color: '#94a3b8' }}>
                 {p.player_name ?? nameById.get(p.player_id) ?? p.player_id}: {PROMISE_LABELS[p.promise_type]?.label ?? p.promise_type}

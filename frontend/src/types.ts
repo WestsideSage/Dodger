@@ -1042,6 +1042,9 @@ export interface ChampionBeatPayload {
 }
 
 export interface RecapBeatPayload {
+    /** Which differential the table shows: game points on official careers
+        (the survivor diff is honestly zero there), survivors on legacy. */
+    diff_kind?: 'game_points' | 'survivors';
     standings: Array<{
         rank: number;
         club_name: string;
@@ -1104,6 +1107,9 @@ export interface RecruitmentProspectChoice {
     scouted?: boolean;
     contacted?: boolean;
     visited?: boolean;
+    /** Codex issue 13: an OPEN promise rides on this target — sign them
+        before a rival's between-picks turn can take them. */
+    promised?: boolean;
     /** Courtship interest (%): strengthens the contested Signing Day offer. */
     interest?: number;
 }

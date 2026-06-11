@@ -246,7 +246,15 @@ def build_beat_payload(
         # banner (also seeded by this key) says they missed — one fact, two ways, on
         # one screen. Seeding the table here makes row rank == banner finish ==
         # playoff qualification by construction.
+        # Codex playtest issue 12: on official careers the survivor-based
+        # elimination differential is honestly zero (V20 §7.3 cleanup), so
+        # the recap's "Elim ±" column rendered 0 for every club — a column
+        # that reads as broken. Officials show the GAME-POINT differential
+        # (the stat that actually ranks them); diff_kind tells the UI which
+        # label to draw.
+        is_official_career = (get_state(conn, "ruleset_selection") or "").startswith("official")
         recap: dict[str, Any] = {
+            "diff_kind": "game_points" if is_official_career else "survivors",
             "standings": [
                 {
                     "rank": index + 1,
@@ -255,7 +263,11 @@ def build_beat_payload(
                     "losses": row.losses,
                     "draws": row.draws,
                     "points": row.points,
-                    "diff": row.elimination_differential,
+                    "diff": (
+                        row.game_point_differential
+                        if is_official_career
+                        else row.elimination_differential
+                    ),
                     "is_player_club": row.club_id == player_club_id,
                 }
                 for index, row in enumerate(sorted(standings, key=_playoff_seeding_key))

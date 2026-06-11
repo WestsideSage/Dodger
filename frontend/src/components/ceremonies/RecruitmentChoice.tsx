@@ -39,7 +39,14 @@ export function RecruitmentChoice({
       <PageHeader
         eyebrow={`Offseason Beat ${beat.beat_index + 1}/${beat.total_beats}`}
         title="Signing Day"
-        description={`Add up to ${signingLimit} players before next season. ${remainingSignings} signing${remainingSignings === 1 ? '' : 's'} remain.`}
+        // Codex issue 14: the binding limit is whichever is smaller — class
+        // slots or roster space. Say the real capacity up front instead of
+        // letting the player plan around three signings with two seats.
+        description={
+          rosterLimit - rosterSize < remainingSignings
+            ? `Add up to ${signingLimit} players before next season. ${remainingSignings} class slot${remainingSignings === 1 ? '' : 's'} remain, but your roster is ${rosterSize}/${rosterLimit} — room for ${Math.max(0, rosterLimit - rosterSize)}.`
+            : `Add up to ${signingLimit} players before next season. ${remainingSignings} signing${remainingSignings === 1 ? '' : 's'} remain.`
+        }
       />
 
       <article className="dm-panel command-offseason-feature">
@@ -55,7 +62,9 @@ export function RecruitmentChoice({
             Prospect ratings are scouted ranges — the verified OVR is revealed only when they
             sign. Rival clubs bid on prospects too: interest built through scouting, contact
             and visits strengthens your offer. Free agents are league veterans with public
-            ratings and sign uncontested.
+            ratings and sign uncontested. Rivals also sign BETWEEN your picks — a board
+            target can be gone by your next slot, so sign your must-haves (especially
+            promised players) first.
           </p>
         )}
         {signingOutcome && signingOutcome.kind === 'sniped' && (
@@ -186,6 +195,26 @@ export function RecruitmentChoice({
                   <div style={{ minWidth: 0 }}>
                     <p style={{ margin: 0, color: '#f1f5f9', fontWeight: 700 }}>
                       {prospect.name}
+                      {/* Codex issue 13: a target carrying an open promise is
+                          flagged so the manager signs them before rivals can. */}
+                      {prospect.promised && (
+                        <span
+                          data-testid="signing-promise-badge"
+                          style={{
+                            marginLeft: '0.45rem',
+                            fontSize: '0.6rem',
+                            fontWeight: 700,
+                            background: 'rgba(251,191,36,0.18)',
+                            color: '#fbbf24',
+                            borderRadius: '3px',
+                            padding: '1px 5px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                          }}
+                        >
+                          Promise at stake
+                        </span>
+                      )}
                       {prospect.kind === 'free_agent' && ' '}
                       {prospect.kind === 'free_agent' && (
                         <span
