@@ -44,8 +44,10 @@ def aurora_client():
         yield conn
 
     app.dependency_overrides[get_db] = _override
-    yield TestClient(app)
-    app.dependency_overrides.clear()
+    try:
+        yield TestClient(app)
+    finally:
+        app.dependency_overrides.clear()
 
 
 # ---------------------------------------------------------------------------

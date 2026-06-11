@@ -83,7 +83,8 @@ def build_matchup_details(
     meeting = conn.execute(
         """
         SELECT week, home_club_id, away_club_id, winner_club_id,
-               home_survivors, away_survivors
+               home_survivors, away_survivors, scoring_model,
+               home_game_points, away_game_points
         FROM match_records
         WHERE season_id = ?
           AND (
@@ -103,12 +104,21 @@ def build_matchup_details(
             result = "Win"
         elif meeting["winner_club_id"] == opponent_id:
             result = "Loss"
-        home_survivors = int(meeting["home_survivors"])
-        away_survivors = int(meeting["away_survivors"])
-        if meeting["home_club_id"] == player_club_id:
-            player_score, opp_score = home_survivors, away_survivors
+        # V20 §7.3 survivors cleanup: official matches score in GAME POINTS;
+        # the survivors columns hold the final game's living counts, which
+        # can contradict the recorded result (a 2-1 game-points win whose
+        # last game ended 0-3 would have read "Win 0-3" here). Same branch
+        # broadcast.py's last-meeting frame uses.
+        if (meeting["scoring_model"] or "legacy") != "legacy":
+            home_score = int(meeting["home_game_points"] or 0)
+            away_score = int(meeting["away_game_points"] or 0)
         else:
-            player_score, opp_score = away_survivors, home_survivors
+            home_score = int(meeting["home_survivors"])
+            away_score = int(meeting["away_survivors"])
+        if meeting["home_club_id"] == player_club_id:
+            player_score, opp_score = home_score, away_score
+        else:
+            player_score, opp_score = away_score, home_score
         last_meeting = (
             f"Week {int(meeting['week'])}: {result} "
             f"{player_score}-{opp_score}"

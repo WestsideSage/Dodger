@@ -18,7 +18,8 @@ def build_league_memory_state(
     recent_matches = conn.execute(
         """
         SELECT match_id, week, home_club_id, away_club_id, winner_club_id,
-               home_survivors, away_survivors
+               home_survivors, away_survivors, scoring_model,
+               home_game_points, away_game_points
         FROM match_records
         WHERE season_id = ?
         ORDER BY week DESC, match_id DESC
@@ -75,22 +76,39 @@ def recent_match_item(row: sqlite3.Row, clubs: dict[str, Any]) -> dict[str, Any]
     home = clubs.get(row["home_club_id"])
     away = clubs.get(row["away_club_id"])
     winner = clubs.get(row["winner_club_id"]) if row["winner_club_id"] else None
+    # V20 §7.3 survivors cleanup: official matches score in GAME POINTS; the
+    # survivors columns hold the final game's living counts, which can
+    # contradict the recorded result (a 2-1 game-points win whose last game
+    # ended 0-3 would have read "0-3" with the LOSER named winner here).
+    keys = row.keys() if hasattr(row, "keys") else []
+    is_official = (
+        "scoring_model" in keys and (row["scoring_model"] or "legacy") != "legacy"
+    )
+    if is_official:
+        home_score = int(row["home_game_points"] or 0)
+        away_score = int(row["away_game_points"] or 0)
+    else:
+        home_score = int(row["home_survivors"] or 0)
+        away_score = int(row["away_survivors"] or 0)
     return {
         "match_id": row["match_id"],
         "week": int(row["week"]),
         "summary": (
-            f"{home.name if home else row['home_club_id']} {row['home_survivors']}-"
-            f"{row['away_survivors']} {away.name if away else row['away_club_id']}"
+            f"{home.name if home else row['home_club_id']} {home_score}-"
+            f"{away_score} {away.name if away else row['away_club_id']}"
         ),
+        # The recorded winner_club_id is the single source of truth; the
+        # score comparison is only a fallback for rows recorded as draws by
+        # genuinely level scores.
         "winner_name": (
             winner.name
             if winner
             else (
                 (home.name if home else row["home_club_id"])
-                if row["home_survivors"] > row["away_survivors"]
+                if home_score > away_score
                 else (
                     (away.name if away else row["away_club_id"])
-                    if row["away_survivors"] > row["home_survivors"]
+                    if away_score > home_score
                     else "Draw"
                 )
             )

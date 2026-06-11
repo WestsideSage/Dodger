@@ -436,6 +436,10 @@ export interface StandingRow {
     draws: number;
     points: number;
     elimination_differential: number;
+    // V20 §7.3: the differential that actually ranks official careers
+    // (the survivor diff is a legacy/rec stat — noise on officials).
+    game_point_differential?: number;
+    total_game_points_scored?: number;
     is_user_club: boolean;
     latest_approach?: string | null;
     program_archetype?: string;
@@ -451,6 +455,8 @@ export interface StandingsResponse {
     user_games_remaining?: number;
     playoff_spots: number;
     is_offseason?: boolean;
+    // V20 §7.3: which differential ranks this career.
+    is_official_career?: boolean;
 }
 
 export interface RecentMatchSummary {

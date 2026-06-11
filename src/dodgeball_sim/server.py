@@ -369,6 +369,10 @@ class StandingItem(BaseModel):
     draws: int
     points: int
     elimination_differential: int
+    # V20 §7.3: the differential that actually ranks official careers.
+    # Declared or FastAPI strips them (WT-2/WT-3 bug family).
+    game_point_differential: int = 0
+    total_game_points_scored: int = 0
     is_user_club: bool
     latest_approach: str | None = None
     program_archetype: str | None = None
@@ -384,6 +388,8 @@ class StandingsResponse(BaseModel):
     user_games_remaining: int = 0
     is_offseason: bool = False
     playoff_spots: int = 4
+    # V20 §7.3: tells the standings UI which differential ranks this career.
+    is_official_career: bool = False
 
 
 class ScheduleItem(BaseModel):
