@@ -218,9 +218,11 @@ export function MatchScoreHero({
             lineHeight: 1.45,
           }}
         >
+          {/* Owner §6.5: keep the mechanics, lose the flatness — a draw is a
+              story beat (neither side blinked), not a ledger entry. */}
           {isOfficial
-            ? 'Level on game points at full time. A drawn match awards one standings point to each club.'
-            : 'Level at full time. A drawn match awards one standings point to each club.'}
+            ? 'Neither side blinked — level on game points when the clock ran out. Both clubs walk away with a standings point.'
+            : 'Neither side blinked — dead level at full time. Both clubs walk away with a standings point.'}
         </p>
       )}
     </section>

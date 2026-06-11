@@ -375,11 +375,9 @@ function StaffBrief({ staff }: { staff: DynastyOfficeResponse['staff_market']['c
 function RecruitingContext({
   budget,
   prospectCount,
-  week,
 }: {
   budget: DynastyOfficeResponse['recruiting']['budget'];
   prospectCount: number;
-  week: number;
 }) {
   const scoutRemaining = Math.max(0, budget.scout[1] - budget.scout[0]);
   const contactRemaining = Math.max(0, budget.contact[1] - budget.contact[0]);
@@ -404,7 +402,7 @@ function RecruitingContext({
       <div className="do-cred-rank" style={{ flex: '1 1 8rem', minWidth: '8rem' }}>
         <span className="lbl">Board</span>
         <div className="val"><b>{prospectCount}</b> <span>prospects</span></div>
-        <span className="trend dim">Week {String(week).padStart(2, '0')} board</span>
+        <span className="trend dim">Sorted by program fit</span>
       </div>
       <div className="do-cred-rank" style={{ flex: '1 1 9rem', minWidth: '9rem' }}>
         <span className="lbl">Reach Remaining</span>
@@ -827,7 +825,6 @@ export function DynastyOffice() {
             <RecruitingContext
               budget={data.recruiting.budget}
               prospectCount={sortedProspects.length}
-              week={data.week}
             />
             <PromisesPanel
               promises={data.recruiting.active_promises}
