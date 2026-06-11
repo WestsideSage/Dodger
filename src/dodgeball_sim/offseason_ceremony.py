@@ -597,13 +597,22 @@ def initialize_manager_offseason(
                     }
                 )
                 continue
+            # V21 §4.2 voice: the old notes were vague exclamations
+            # ("Outstanding offseason growth!", "Signs of regression.").
+            # Say the number and what drove it — both are already computed.
             staff_notes = []
             if aged.traits.potential > player.traits.potential:
-                staff_notes.append("Potential upgraded by great coaching & performance!")
+                staff_notes.append(
+                    f"Ceiling raised to {round(aged.traits.potential)} on the year's coaching and performance."
+                )
             if delta > 3:
-                staff_notes.append("Outstanding offseason growth!")
+                staff_notes.append(
+                    f"Jumped +{round(delta)} OVR this offseason — a leap year."
+                )
             elif delta < 0:
-                staff_notes.append("Signs of regression.")
+                staff_notes.append(
+                    f"Slipped {round(delta)} OVR — age is collecting its tax."
+                )
             # Phase 5 — Growth legibility: per-attribute deltas (presentation only).
             # Computed from before (player) and after (aged) ratings so the dev beat
             # can show which attributes moved beneath the composite +N OVR headline.
@@ -1341,12 +1350,35 @@ def build_offseason_ceremony_beat(
         if class_size == 0 and free_agent_count == 0:
             body = "No incoming class data is available yet."
         else:
-            lines = [f"Incoming class size: {class_size}"]
-            lines.append(f"Top prospects (70+ OVR): {top_band_depth}")
-            lines.append(f"Veteran free agents available: {free_agent_count}")
+            # V21 §4.6 Class Brief redesign (owner: "formatted as if the
+            # information matters — structured, scannable, useful"). Every
+            # line is payload-backed; the deep/thin reading is derived from
+            # the same archetype_distribution the old comma-run-on showed,
+            # reorganized so a manager can act on it at a glance.
+            lines = [
+                f"{class_size} prospect{'s' if class_size != 1 else ''} enter the board this offseason."
+            ]
+            lines.append("")
+            lines.append("The class at a glance:")
+            lines.append(
+                f"Top of the class: {top_band_depth} scout 70+ OVR"
+                if top_band_depth
+                else "Top of the class: nobody scouts 70+ — a thin year up top"
+            )
+            lines.append(
+                f"Veteran market: {free_agent_count} free agent{'s' if free_agent_count != 1 else ''} available"
+            )
             if archetype_distribution:
                 ordered = sorted(archetype_distribution.items(), key=lambda item: (-item[1], item[0]))
-                lines.append("Archetype distribution: " + ", ".join(f"{name} {count}" for name, count in ordered))
+                lines.append("")
+                lines.append("Where the class runs deep:")
+                for name, count in ordered[:3]:
+                    lines.append(f"- {name}: {count}")
+                if len(ordered) > 3:
+                    thin_name, thin_count = ordered[-1]
+                    lines.append(
+                        f"- Thinnest: {thin_name} ({thin_count}) — plan around the scarcity"
+                    )
             if storylines:
                 lines.append("")
                 lines.append("Market storylines:")

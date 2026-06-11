@@ -287,8 +287,8 @@ export function Standings() {
                 : playoffsActive
                   ? `REG. SEASON FINAL · #${us.rank} SEED`
                   : us.rank <= playoffLine
-                    ? `IN PLAYOFF POSITION — WEEK ${String(data.current_week).padStart(2, '0')}`
-                    : `OUTSIDE PLAYOFF LINE — WEEK ${String(data.current_week).padStart(2, '0')}`}
+                    ? 'IN PLAYOFF POSITION'
+                    : 'OUTSIDE PLAYOFF LINE'}
             </div>
           </div>
 
@@ -336,8 +336,8 @@ export function Standings() {
             <div>
               <span className="dm-kicker">League Office</span>
               <h2 className="ls-table-title">
-                {playoffsActive ? 'Final Regular-Season Table' : 'Season Standings'}{' '}
-                <span className="ls-subtle">{playoffsActive ? 'Playoffs live above' : 'Regular season'}</span>
+                {playoffsActive ? 'Final Regular-Season Table' : 'Season Standings'}
+                {playoffsActive && <>{' '}<span className="ls-subtle">Playoffs live above</span></>}
               </h2>
             </div>
             <div className="ls-table-meta">
