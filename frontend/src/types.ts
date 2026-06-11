@@ -634,12 +634,13 @@ export interface TacticalDiffRow {
   player_value: string;
   opponent_value: string | null;
   opponent_known: boolean;
-  // WT-30: present only on axes revealed from past tape after scouting. The
-  // opponent value is an observed tendency (frequency over completed games),
-  // never the hidden upcoming plan.
-  opponent_source?: 'tape';
-  confidence?: number;
-  confidence_label?: 'strong' | 'leans' | 'mixed';
+  // WT-30: present only on axes revealed after scouting. 'tape' = an observed
+  // tendency (frequency over completed games); 'playbook' (V19b) = the
+  // opponent archetype's base policy — real week-1 intel before tape exists.
+  // Never the hidden upcoming plan.
+  opponent_source?: 'tape' | 'playbook';
+  confidence?: number | null;
+  confidence_label?: 'strong' | 'leans' | 'mixed' | 'playbook lean';
   sample?: number;
 }
 

@@ -383,9 +383,43 @@ def test_cold_start_enrichment_holds_fog_of_war_no_upcoming_policy_leak():
     cold = after["cold_start"]
     assert cold is not None  # cold-start facts present with zero tape
 
-    # No tape yet → no per-axis opponent reveal at all.
+    # No tape yet → no per-axis TAPE reveal. V19b: the axes are instead
+    # filled from the opponent ARCHETYPE's playbook (the sanctioned generator
+    # their staff actually plans from), honestly labelled as such — week-1
+    # scouting yields real information instead of "0/5 reads".
     assert after["tape_axes_revealed"] == 0
-    assert all(row["opponent_known"] is False for row in after["player_plan"])
+    assert after["playbook_axes_revealed"] == 5
+    for row in after["player_plan"]:
+        assert row["opponent_known"] is True
+        assert row["opponent_source"] == "playbook"
+
+    # FENCE PROOF: every revealed value must come from the archetype playbook
+    # generator, never from the live upcoming policy we planted above. The
+    # playbook may genuinely coincide with the live plan on some axes (the AI
+    # plans FROM its playbook) — the fence requirement is that where the two
+    # DIFFER, the revealed value is the playbook's, not the live plan's.
+    from dodgeball_sim.ai_tactics import get_ai_tactics
+
+    archetype = str(clubs[opponent_id].program_archetype)
+    playbook = get_ai_tactics(archetype, "Balanced")
+
+    def _humanize(value: str) -> str:
+        return value.replace("_", " ")
+
+    diverging_axes = [
+        axis for axis, value in playbook.items() if value != live_policy.get(axis)
+    ]
+    assert diverging_axes, (
+        "fixture too weak: the planted live policy equals the playbook on every "
+        "axis — re-plant a policy that differs so the fence is actually exercised"
+    )
+    by_axis = {row["axis"]: row for row in after["player_plan"]}
+    for axis in playbook:
+        assert by_axis[axis]["opponent_value"].lower() == _humanize(playbook[axis]).lower()
+    for axis in diverging_axes:
+        assert by_axis[axis]["opponent_value"].lower() != _humanize(live_policy[axis]).lower(), (
+            f"live upcoming plan leaked into the {axis} reveal"
+        )
 
     # The serialized cold_start block must not contain any live-plan axis value.
     serialized_cold = json.dumps(cold).lower()

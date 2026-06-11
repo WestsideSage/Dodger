@@ -66,6 +66,7 @@ def build_tactical_diff(
     scouted: bool = False,
     observed_tendencies: Mapping[str, Mapping[str, Any]] | None = None,
     cold_start_intel: Mapping[str, Any] | None = None,
+    archetype_playbook: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the tactical diff payload from the player's policy and allowed intel.
 
@@ -89,11 +90,21 @@ def build_tactical_diff(
         Optional mapping of always-derivable, already-player-facing opponent
         facts (``program_archetype``, ``roster_shape``, ``threat``). Surfaced
         only when ``scouted``; anchors the reveal when there is no tape yet.
+    archetype_playbook:
+        Optional mapping ``axis -> value`` of the opponent ARCHETYPE's base
+        policy — the same generator their staff actually plans from
+        (``ai_tactics.get_ai_tactics(archetype, "Balanced")``). V19b: a scout
+        report fills tape-less axes from this playbook so week-1 scouting
+        yields real information, honestly labelled as a playbook lean (their
+        identity's default, before intent shifts it) rather than observed
+        tape. Ignored unless ``scouted``.
     """
     tendencies = dict(observed_tendencies or {}) if scouted else {}
+    playbook = dict(archetype_playbook or {}) if scouted else {}
 
     rows: list[dict[str, Any]] = []
     tape_axes_revealed = 0
+    playbook_axes_revealed = 0
     for axis in _AXIS_ORDER:
         row: dict[str, Any] = {
             "axis": axis,
@@ -116,6 +127,16 @@ def build_tactical_diff(
             row["confidence_label"] = _confidence_label(confidence)
             row["sample"] = sample
             tape_axes_revealed += 1
+        elif playbook.get(axis):
+            # V19b playbook lean: the archetype's base policy — real intel a
+            # scout can produce before any tape exists, honestly labelled.
+            row["opponent_value"] = _humanize(str(playbook[axis]))
+            row["opponent_known"] = True
+            row["opponent_source"] = "playbook"
+            row["confidence"] = None
+            row["confidence_label"] = "playbook lean"
+            row["sample"] = 0
+            playbook_axes_revealed += 1
         rows.append(row)
 
     intel: list[dict[str, str]] = []
@@ -136,17 +157,31 @@ def build_tactical_diff(
         or cold_start.get("threat")
     )
     # Whether scouting surfaced anything beyond the always-unscouted baseline.
-    intel_revealed = bool(scouted and (tape_axes_revealed or has_cold_start or intel))
+    intel_revealed = bool(
+        scouted and (tape_axes_revealed or playbook_axes_revealed or has_cold_start or intel)
+    )
 
     if not scouted:
         note = (
             "Opponent tendencies are unscouted. Scout to reveal what they have "
             "shown on tape — observed leans, not their hidden plan."
         )
+    elif tape_axes_revealed and playbook_axes_revealed:
+        note = (
+            "Opponent reads mix observed tape (weighted by confidence) with "
+            "their identity's playbook on axes without tape yet — leans, not "
+            "their hidden plan."
+        )
     elif tape_axes_revealed:
         note = (
             "Opponent reads are tendencies observed from past tape (not their "
             "hidden plan) — treat them as leans, weighted by confidence."
+        )
+    elif playbook_axes_revealed:
+        note = (
+            "No tape yet — these reads are the playbook their program identity "
+            "plans from (their default lean before weekly adjustments), not "
+            "their hidden plan."
         )
     elif has_cold_start:
         note = (
@@ -163,6 +198,7 @@ def build_tactical_diff(
         "scouted": bool(scouted),
         "intel_revealed": intel_revealed,
         "tape_axes_revealed": tape_axes_revealed,
+        "playbook_axes_revealed": playbook_axes_revealed,
         "cold_start": cold_start if has_cold_start else None,
         "note": note,
     }
