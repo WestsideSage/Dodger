@@ -47,7 +47,13 @@ export function Offseason({ onBeatChange }: { onBeatChange?: (title: string | nu
   if (!beat) return null;
 
   const advance = () => act('/api/offseason/advance');
-  const recruit = (prospectId: string) => act('/api/offseason/recruit', { prospect_id: prospectId });
+  // Playtest 3 F-8: at a full roster the pick rides with the named release
+  // (sign-over-cut); the release only commits when the contested pick lands.
+  const recruit = (prospectId: string, releasePlayerId?: string) =>
+    act('/api/offseason/recruit', {
+      prospect_id: prospectId,
+      ...(releasePlayerId ? { release_player_id: releasePlayerId } : {}),
+    });
   const beginSeason = () => act('/api/offseason/begin-season');
 
   let content = (

@@ -68,6 +68,27 @@ OFFSEASON_CEREMONY_BEATS = (
 AI_MIN_PLAYABLE_ROSTER_SIZE = 6
 PLAYER_FREE_AGENT_RESERVE = 6
 
+# V19b training credits, single source of truth (playtest 3 F-7: the numbers
+# are disclosed in Program Settings, so the dev beat must account for them
+# with the same constants the growth model actually uses).
+TRAINING_CREDIT_PER_WEEK = 0.2
+TRAINING_CREDIT_WEEK_CAP = 8
+
+
+def training_practice_credit(
+    conn: sqlite3.Connection, season_id: str, club_id: str
+) -> tuple[int, float]:
+    """(training-focus weeks run, OVR practice credit) for one club's season.
+
+    The credit is what ``initialize_manager_offseason`` feeds into
+    ``apply_season_development`` (headroom-capped per player there); the weeks
+    count is the raw input so disclosure surfaces can show both.
+    """
+    from .persistence import count_staff_focus_weeks
+
+    weeks = count_staff_focus_weeks(conn, season_id, club_id, "training")
+    return weeks, TRAINING_CREDIT_PER_WEEK * min(TRAINING_CREDIT_WEEK_CAP, weeks)
+
 
 def _parse_json_list(raw: Optional[str]) -> list:
     try:
@@ -81,16 +102,38 @@ def compute_active_beats(
     records_payload_json: Optional[str],
     hof_payload_json: Optional[str],
     retirement_rows: List[Dict[str, Any]],
+    development_rows: Optional[List[Dict[str, Any]]] = None,
+    player_club_id: str = "",
+    training_credit_weeks: int = 0,
 ) -> List[str]:
     """Return the ordered subset of OFFSEASON_CEREMONY_BEATS that have real content.
 
     Phase 7: records_ratified is always included so its honest empty-state
     ("no new records this season" / "book is empty") is always reachable.
+
+    Playtest 3 (owner-approved ceremony trim): a late-dynasty offseason where
+    zero of the player's roster changed OVR ran a full Development beat of
+    nothing — skip it when there is genuinely nothing to show (no nonzero
+    player-club delta AND no training-credit receipt). ``development_rows``
+    None means the caller has no dev data (legacy callers) — keep the beat.
     """
+
+    def _development_has_content() -> bool:
+        if development_rows is None:
+            return True
+        if training_credit_weeks > 0:
+            return True
+        return any(
+            str(row.get("club_id") or "") == player_club_id
+            and int(round(float(row.get("delta", 0) or 0))) != 0
+            for row in development_rows
+        )
+
     _CONDITIONAL = {
         # records_ratified is unconditional — always shows with honest empty-state
         "hof_induction": lambda: bool(_parse_json_list(hof_payload_json)),
         "retirements": lambda: bool(retirement_rows),
+        "development": _development_has_content,
     }
     return [
         beat for beat in OFFSEASON_CEREMONY_BEATS
@@ -558,10 +601,8 @@ def initialize_manager_offseason(
     # headroom-capped per player in apply_season_development. Symmetric: AI
     # clubs' persisted weekly plans count the same way (Development Factory
     # archetypes run training focuses, so their youth actually benefit).
-    from .persistence import count_staff_focus_weeks
-
     practice_credit_by_club = {
-        club_id: 0.2 * min(8, count_staff_focus_weeks(conn, season.season_id, club_id, "training"))
+        club_id: training_practice_credit(conn, season.season_id, club_id)[1]
         for club_id in rosters
     }
 
@@ -689,17 +730,30 @@ def initialize_manager_offseason(
     set_state(conn, "offseason_draft_signed_count", "0")
     ratify_records(conn, season.season_id)
     induct_hall_of_fame(conn, season.season_id)
-    next_class_year = (
-        int(season.season_id.rsplit("_", 1)[-1]) + 1
+    # Playtest 3: the preview must describe the class THIS ceremony's Signing
+    # Day signs from (class_year == season_number — the class the recruiting
+    # board courted all season). It used to point at next year's class, whose
+    # pool is not persisted until begin_next_season, so every preview fell to
+    # the free-agent fallback and reported "0 rookies at 70+" forever while
+    # labeled as the rookie class.
+    signing_class_year = (
+        int(season.season_id.rsplit("_", 1)[-1])
         if season.season_id.rsplit("_", 1)[-1].isdigit()
         else 1
     )
-    build_rookie_class_preview(conn, season.season_id, next_class_year)
+    build_rookie_class_preview(conn, season.season_id, signing_class_year)
     # Compute and store the active beat list for this offseason
     active_beats = compute_active_beats(
         records_payload_json=get_state(conn, "offseason_records_ratified_json"),
         hof_payload_json=get_state(conn, "offseason_hof_inducted_json"),
         retirement_rows=retirement_rows,
+        development_rows=development_rows,
+        player_club_id=player_club_id,
+        training_credit_weeks=training_practice_credit(
+            conn, season.season_id, player_club_id
+        )[0]
+        if player_club_id
+        else 0,
     )
     set_state(conn, "offseason_active_beats_json", json.dumps(active_beats))
     set_state(conn, "offseason_initialized_for", season.season_id)
@@ -775,6 +829,8 @@ def available_recruitment_choices(
     for prospect in _available_prospect_players(conn, class_year):
         state = actions.get(prospect.player_id, {})
         low, high = _scouted_band(prospect, state)
+        from .recruiting_office import _scouted_ceiling_label
+
         choices.append(
             {
                 "prospect_id": prospect.player_id,
@@ -786,6 +842,12 @@ def available_recruitment_choices(
                 "pipeline_tier": prospect.pipeline_tier,
                 "public_ovr_band": [low, high],
                 "scouted": bool(state.get("scouted")),
+                # Same scout-gated ceiling grade the in-season board shows —
+                # the picker must not know less than the board the player
+                # built their shortlist on (playtest 3 elite reveal).
+                "ceiling_label": _scouted_ceiling_label(
+                    prospect, bool(state.get("scouted"))
+                ),
                 "contacted": bool(state.get("contacted")),
                 "visited": bool(state.get("visited")),
                 "interest": current_interest(
@@ -1354,6 +1416,7 @@ def build_offseason_ceremony_beat(
         archetype_distribution: Dict[str, int] = dict(payload_dict.get("archetype_distribution", {}) or {})
         free_agent_count = int(payload_dict.get("free_agent_count", 0))
         top_band_depth = int(payload_dict.get("top_band_depth", 0))
+        ceiling_band_depth = int(payload_dict.get("ceiling_band_depth", 0))
         storylines = list(payload_dict.get("storylines", []) or [])
         source = str(payload_dict.get("source", "prospect_pool"))
 
@@ -1370,11 +1433,17 @@ def build_offseason_ceremony_beat(
             ]
             lines.append("")
             lines.append("The class at a glance:")
+            # Playtest 3: headline the class's UPSIDE (where bands top out),
+            # not the pessimistic floor count that read 0 every year.
             lines.append(
-                f"Top of the class: {top_band_depth} scout 70+ OVR"
-                if top_band_depth
-                else "Top of the class: nobody scouts 70+ — a thin year up top"
+                f"Top of the class: {ceiling_band_depth} scout a 70+ ceiling"
+                if ceiling_band_depth
+                else "Top of the class: nobody scouts a 70+ ceiling — a thin year up top"
             )
+            if top_band_depth:
+                lines.append(
+                    f"Sure things: {top_band_depth} scout a 70+ floor — already that good"
+                )
             lines.append(
                 f"Veteran market: {free_agent_count} free agent{'s' if free_agent_count != 1 else ''} available"
             )

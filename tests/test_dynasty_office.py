@@ -81,6 +81,8 @@ def test_recruiting_promises_are_limited_and_persisted_as_truth():
             # board (the graded promise outlives the class it came from).
             "player_name": prospect_name,
             "promise_type": "early_playing_time",
+            # Playtest 3 F-9: the ledger records when the words were said.
+            "made_season_id": state["season_id"],
             "status": "open",
             "result": None,
             "result_season_id": None,
@@ -657,6 +659,53 @@ def test_promise_to_pool_prospect_defers_until_first_rostered_season():
     assert match["status"] == "open"
     assert match["result"] is None
     assert "Awaiting their first season" in match["evidence"]
+
+
+def test_contender_promise_grades_on_schedule_even_for_unsigned_prospect():
+    """Playtest 3 F-9: "We'll contend" is a pure team outcome — it must
+    grade against the season it was made even when the target is still on
+    the recruiting board. Deferring it made the card's "this season" text
+    false and let a manager dodge every break by simply never signing."""
+    from dodgeball_sim.dynasty_office import evaluate_season_promises
+
+    conn = _career_conn()
+    state = build_dynasty_office_state(conn)
+    season_id = state["season_id"]
+    club_id = state["player_club_id"]
+    prospect_id = state["recruiting"]["prospects"][0]["player_id"]
+
+    save_recruiting_promise(conn, prospect_id, "contender_path")
+    # Fresh career: no playoff bracket exists, so the club did not reach
+    # the playoffs — the promise must BREAK now, not linger open.
+    evaluate_season_promises(conn, season_id, club_id)
+
+    promises = _json.loads(
+        conn.execute(
+            "SELECT value FROM dynasty_state WHERE key = 'program_promises_json'"
+        ).fetchone()["value"]
+    )
+    match = next(p for p in promises if p["player_id"] == prospect_id)
+    assert match["status"] == "broken"
+    assert match["result_season_id"] == season_id
+    assert "did not reach the playoffs" in match["evidence"]
+
+
+def test_promise_records_the_season_it_was_made():
+    """Playtest 3 F-9: the ledger needs the made-season so a deferred
+    promise's timeline is traceable."""
+    conn = _career_conn()
+    state = build_dynasty_office_state(conn)
+    prospect_id = state["recruiting"]["prospects"][0]["player_id"]
+
+    save_recruiting_promise(conn, prospect_id, "early_playing_time")
+
+    promises = _json.loads(
+        conn.execute(
+            "SELECT value FROM dynasty_state WHERE key = 'program_promises_json'"
+        ).fetchone()["value"]
+    )
+    match = next(p for p in promises if p["player_id"] == prospect_id)
+    assert match["made_season_id"] == state["season_id"]
 
 
 def test_voided_promises_do_not_touch_credibility():

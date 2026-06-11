@@ -642,3 +642,78 @@ def test_rookie_preview_free_agent_crop_storyline_fires_when_crop_is_lightest():
     assert crop[0].fact["current_count"] == 2
     assert crop[0].fact["prior_min"] == 5
     assert "Lightest free-agent crop" in crop[0].sentence
+
+
+# ---------------------------------------------------------------------------
+# Playtest 3: ceiling depth, modern "ovr" bands, and elite buzz
+# ---------------------------------------------------------------------------
+
+
+def _ovr_prospect(
+    player_id: str,
+    band: tuple,
+    trajectory: str = "NORMAL",
+    class_year: int = 2,
+) -> Prospect:
+    """A prospect shaped like recruitment.generate_prospect_pool emits them:
+    a single "ovr" public band and an UPPERCASE trajectory token."""
+    return Prospect(
+        player_id=player_id,
+        class_year=class_year,
+        name=f"Rookie {player_id}",
+        age=18,
+        hometown="Anywhere",
+        hidden_ratings={"accuracy": 55.0, "power": 55.0, "dodge": 55.0, "catch": 55.0, "stamina": 55.0},
+        hidden_trajectory=trajectory,
+        hidden_traits=[],
+        public_archetype_guess="Sharpshooter",
+        public_ratings_band={"ovr": band},
+    )
+
+
+def test_rookie_preview_handles_modern_ovr_only_bands():
+    """Playtest 3: modern pools carry a single "ovr" band; the per-rating
+    indexing raised KeyError on every real pool (masked only because the
+    preview pointed at a class whose pool never existed yet)."""
+    conn = _fresh_conn()
+    save_prospect_pool(conn, [
+        _ovr_prospect("m1", (50, 72)),   # ceiling 72 -> upside
+        _ovr_prospect("m2", (40, 60)),   # tops out below 70
+        _ovr_prospect("m3", (71, 85)),   # 71 floor AND 85 ceiling
+    ])
+
+    payload = build_rookie_class_preview(conn, "season_1", class_year=2)
+
+    assert payload.source == "prospect_pool"
+    assert payload.ceiling_band_depth == 2  # m1, m3
+    assert payload.top_band_depth == 1      # m3 only
+
+
+def test_rookie_preview_elite_buzz_fires_for_hidden_star_without_naming():
+    conn = _fresh_conn()
+    save_prospect_pool(conn, [
+        _ovr_prospect("m1", (40, 60), trajectory="NORMAL"),
+        _ovr_prospect("m2", (40, 60), trajectory="STAR"),
+        _ovr_prospect("m3", (40, 60), trajectory="IMPACT"),
+    ])
+
+    payload = build_rookie_class_preview(conn, "season_1", class_year=2)
+
+    buzz = [s for s in payload.storylines if s.template_id == "elite_buzz"]
+    assert len(buzz) == 1
+    assert buzz[0].fact == {"high_ceiling_count": 1}
+    # The buzz says SO without saying WHO — no name, id, or number leaks.
+    assert "m2" not in buzz[0].sentence
+    assert "Rookie" not in buzz[0].sentence
+
+
+def test_rookie_preview_no_elite_buzz_without_star_or_generational():
+    conn = _fresh_conn()
+    save_prospect_pool(conn, [
+        _ovr_prospect("m1", (40, 60), trajectory="NORMAL"),
+        _ovr_prospect("m2", (40, 60), trajectory="IMPACT"),
+    ])
+
+    payload = build_rookie_class_preview(conn, "season_1", class_year=2)
+
+    assert all(s.template_id != "elite_buzz" for s in payload.storylines)

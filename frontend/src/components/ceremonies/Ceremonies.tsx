@@ -308,7 +308,10 @@ export function Graduation({ beat, onComplete, acting }: { beat: RetirementsBeat
                   {r.ovr_final ? <span>{Math.round(r.ovr_final)} OVR final</span> : null}
                   <span>{r.career_elims} career elims</span>
                   <span>{r.championships} {r.championships === 1 ? 'title' : 'titles'}</span>
-                  <span>{r.seasons_played} seasons</span>
+                  {/* Playtest 3 F-10: career length includes pre-league seasons
+                      seeded for curated veterans — "3 seasons" on a 33-year-old
+                      farewell card read as a mislabel. */}
+                  <span>{r.career_seasons ?? r.seasons_played} seasons</span>
                 </div>
                 <div className="farewell-tier" style={{ color: tierColor }}>
                   {r.potential_tier} potential

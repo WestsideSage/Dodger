@@ -66,6 +66,47 @@ def _minimal_conn(tmp_path):
     conn.commit()
     return conn
 
+
+def test_ceiling_label_is_scout_gated_and_trajectory_true():
+    """Playtest 3 elite reveal: the Scout action reveals the prospect's
+    growth-arc grade — hidden until scouted, and when revealed it must be the
+    exact coarse label of the hidden trajectory the development engine uses
+    (the exact tier itself is never leaked)."""
+    import json
+
+    from dodgeball_sim.persistence import load_prospect_pool, set_state
+    from dodgeball_sim.scouting_center import ceiling_label_for_trajectory
+
+    conn = _minimal_conn(None)
+    state = build_dynasty_office_state(conn)
+    prospects = state["recruiting"]["prospects"]
+    assert prospects, "career fixture should expose a prospect board"
+    # Nothing scouted yet -> every grade hidden.
+    assert all(row["ceiling_label"] is None for row in prospects)
+
+    target_id = prospects[0]["player_id"]
+    set_state(
+        conn,
+        "prospect_recruitment_actions_json",
+        json.dumps({target_id: {"scouted": True}}),
+    )
+    conn.commit()
+
+    refreshed = build_dynasty_office_state(conn)["recruiting"]["prospects"]
+    scouted_row = next(row for row in refreshed if row["player_id"] == target_id)
+    pool = {p.player_id: p for p in load_prospect_pool(conn, 1)}
+    expected = ceiling_label_for_trajectory(pool[target_id].hidden_trajectory)
+    assert scouted_row["ceiling_label"] == expected
+    assert scouted_row["ceiling_label"] in {"HIGH_CEILING", "SOLID", "STANDARD"}
+    # The raw trajectory tier must not ride along anywhere in the row.
+    assert "trajectory" not in json.dumps(scouted_row).lower()
+    # Unscouted prospects stay hidden.
+    assert all(
+        row["ceiling_label"] is None
+        for row in refreshed
+        if row["player_id"] != target_id
+    )
+
 def test_credibility_evidence_plain_language(tmp_path):
     """Evidence strings use plain language — no internal jargon like 'command week'."""
     conn = _minimal_conn(tmp_path)

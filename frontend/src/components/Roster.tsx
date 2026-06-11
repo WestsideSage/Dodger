@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Player, RosterResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
+import { rosterApi } from '../api/client';
 import { StatusMessage } from './ui';
 import { PlayerDetailModal } from './PlayerDetailModal';
 import { LineupEditor } from './lineup/LineupEditor';
@@ -479,7 +480,35 @@ export function Roster() {
       </div>
       
       {selectedPlayer && (
-        <PlayerDetailModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />
+        <PlayerDetailModal
+          player={selectedPlayer}
+          onClose={() => setSelectedPlayer(null)}
+          // Playtest 3 F-8: the release control lives on the player card —
+          // the journal searched every screen for a cut/waive action and
+          // found none. Blocked (not hidden) at the 6-player floor so the
+          // rule is visible.
+          releaseBlockedReason={
+            data.roster.length <= 6
+              ? 'Roster is at the 6-player floor — sign someone before releasing.'
+              : null
+          }
+          hasOpenPromise={(data.open_promise_player_ids ?? []).includes(selectedPlayer.id)}
+          onRelease={() =>
+            rosterApi.release(selectedPlayer.id).then((body) => {
+              setData((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      roster: body.roster,
+                      default_lineup: body.default_lineup,
+                      open_promise_player_ids: body.open_promise_player_ids,
+                    }
+                  : prev,
+              );
+              setSelectedPlayer(null);
+            })
+          }
+        />
       )}
       {lineupEditorOpen && data && (
         <LineupEditor

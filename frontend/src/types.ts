@@ -58,6 +58,18 @@ export interface RosterResponse {
     /** V19 Task 8: ON = the offseason re-seats the fielded six automatically;
      *  OFF = hands-on (a manual lineup save flips this off implicitly). */
     lineup_auto_reorder?: boolean;
+    /** Playtest 3 F-8: ids carrying an OPEN promise — the Release control
+        warns that cutting them breaks your word. */
+    open_promise_player_ids?: string[];
+}
+
+/** POST /api/roster/release — the refreshed roster plus the move's facts. */
+export interface RosterReleaseResponse extends RosterResponse {
+    release_outcome: {
+        released_player: { id: string; name: string; overall: number; age: number };
+        roster_size: number;
+        broken_promise: { promise_type?: string; evidence?: string } | null;
+    };
 }
 
 export type Approach = 'aggressive' | 'patient' | 'mixed';
@@ -1010,6 +1022,9 @@ export interface OffseasonRetiree {
     career_elims: number;
     championships: number;
     seasons_played: number;
+    /** Full career length: recorded sim seasons + the prior seasons seeded
+        for curated veterans (playtest 3 F-10). Optional for older payloads. */
+    career_seasons?: number;
     potential_tier: string;
 }
 
@@ -1082,11 +1097,24 @@ export interface DevelopmentPlayer {
 
 export interface DevelopmentBeatPayload {
     players: DevelopmentPlayer[];
+    /** Playtest 3 F-7: visible accounting for the disclosed TRAINING
+        staff-focus credit (+0.2 OVR/week, cap 8) banked this season. */
+    training_credit?: {
+        weeks: number;
+        credited_weeks: number;
+        week_cap: number;
+        per_week_ovr: number;
+        credit_ovr: number;
+    } | null;
 }
 
 export interface RookieClassPreviewBeatPayload {
     class_size: number;
     top_prospects: number;
+    /** Playtest 3: prospects whose scouted band tops out at 70+ — the class's
+        upside headline. top_prospects (the 70+ FLOOR count) stays as the
+        "sure things" secondary stat. Absent on older payloads. */
+    ceiling_prospects?: number;
     free_agents: number;
     archetypes: Array<{ name: string; count: number }>;
     storylines: string[];
@@ -1107,6 +1135,10 @@ export interface RecruitmentProspectChoice {
     /** Scouted public OVR band [low, high] — prospects only. */
     public_ovr_band?: number[];
     scouted?: boolean;
+    /** Scout-revealed growth-arc grade (playtest 3 elite reveal):
+        HIGH_CEILING (90+ floor) / SOLID (82+ floor) / STANDARD. Null until
+        the prospect has been scouted. */
+    ceiling_label?: 'HIGH_CEILING' | 'SOLID' | 'STANDARD' | null;
     contacted?: boolean;
     visited?: boolean;
     /** Codex issue 13: an OPEN promise rides on this target — sign them
@@ -1164,6 +1196,15 @@ export interface RecruitmentBeatPayload {
     remaining_signings: number;
     roster_size: number;
     roster_limit: number;
+    /** Playtest 3 F-8: the user's roster for the sign-over-cut release picker
+        (sorted weakest first), with open-promise warnings. */
+    user_roster?: Array<{
+        id: string;
+        name: string;
+        overall: number;
+        age: number;
+        promised: boolean;
+    }>;
 }
 
 export interface RatifiedRecordEntry {
@@ -1234,6 +1275,10 @@ interface OffseasonBeatBase {
     /** Rides on the POST /api/offseason/recruit response (the beat replaces
         state wholesale, so the contested outcome must travel with it). */
     signing_outcome?: SigningOutcome | null;
+    /** Playtest 3 F-8 sign-over-cut: who was released when a full-roster pick
+        landed (null on a snipe — the release only commits with the signing). */
+    released_player?: { id: string; name: string; overall: number; age: number } | null;
+    released_broken_promise?: { player_name?: string; promise_type?: string } | null;
 }
 
 // Discriminated union — `key` is the discriminant
@@ -1313,6 +1358,8 @@ export interface DynastyOfficeResponse {
             active_promise: { promise_type: string; status: string } | null;
             interest_evidence: string[];
             scouted?: boolean;
+            /** Scout-revealed growth-arc grade (playtest 3 elite reveal). */
+            ceiling_label?: 'HIGH_CEILING' | 'SOLID' | 'STANDARD' | null;
             contacted?: boolean;
             visited?: boolean;
             recruiting_status?: RecruitingStatus;

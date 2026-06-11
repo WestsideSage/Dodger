@@ -89,7 +89,7 @@ class InductionPayload:
 
 @dataclass(frozen=True)
 class RookieStoryline:
-    template_id: str       # one of: "archetype_demand", "top_band_depth", "ai_cluster", "free_agent_crop"
+    template_id: str       # one of: "archetype_demand", "top_band_depth", "ai_cluster", "free_agent_crop", "elite_buzz"
     sentence: str
     fact: Mapping[str, Any]  # source numeric fact backing the sentence
 
@@ -104,6 +104,10 @@ class RookiePreviewPayload:
     top_band_depth: int
     free_agent_count: int
     storylines: Tuple[RookieStoryline, ...]
+    # Playtest 3: prospects whose scouted band TOPS OUT at 70+ — the class's
+    # real upside signal. The floor metric above is pessimistic by design and
+    # reads ~0 in every class, which presented as "elite talent doesn't exist".
+    ceiling_band_depth: int = 0
 
 
 def _record_to_dict(record: RatifiedRecord) -> Dict[str, Any]:
@@ -440,14 +444,32 @@ def induct_hall_of_fame(
     return InductionPayload(season_id=season_id, new_inductees=inductees_tuple)
 
 
-def _prospect_band_low_mean(prospect) -> float:
-    """Mean of the low end of public_ratings_band across the 5 rating keys.
+def _prospect_band_end(prospect, end_index: int) -> float:
+    """One end of a prospect's public band (0 = floor, 1 = ceiling).
 
-    This is a *pessimistic* read: the scouted floor a prospect is confidently
-    worth. The Rookie Class Preview surfaces it as the "scouted 70+ floor"
-    count, so the label must not promise raw OVR (see B12).
+    Modern pools (recruitment.generate_prospect_pool) carry a single "ovr"
+    band; legacy fixtures carried per-rating bands. Indexing the five rating
+    keys unconditionally raised KeyError on every modern pool — which never
+    surfaced only because the preview was pointed at a class year whose pool
+    did not exist yet (playtest 3: the beat silently described free agents).
     """
-    return sum(prospect.public_ratings_band[key][0] for key in _PROSPECT_RATING_KEYS) / len(_PROSPECT_RATING_KEYS)
+    band = prospect.public_ratings_band
+    if "ovr" in band:
+        return float(band["ovr"][end_index])
+    values = [float(band[key][end_index]) for key in _PROSPECT_RATING_KEYS if key in band]
+    return sum(values) / len(values) if values else 0.0
+
+
+def _prospect_band_low_mean(prospect) -> float:
+    """The *pessimistic* read: the scouted floor a prospect is confidently
+    worth. The Rookie Class Preview surfaces it as the "scouted 70+ floor"
+    count, so the label must not promise raw OVR (see B12)."""
+    return _prospect_band_end(prospect, 0)
+
+
+def _prospect_band_high_mean(prospect) -> float:
+    """The *optimistic* read: where the scouted band tops out."""
+    return _prospect_band_end(prospect, 1)
 
 
 def _prior_top_band_history(conn: sqlite3.Connection, current_class_year: int) -> Tuple[int, int]:
@@ -484,6 +506,7 @@ def _payload_to_dict(payload: "RookiePreviewPayload") -> Dict[str, Any]:
         "class_size": payload.class_size,
         "archetype_distribution": dict(payload.archetype_distribution),
         "top_band_depth": payload.top_band_depth,
+        "ceiling_band_depth": payload.ceiling_band_depth,
         "free_agent_count": payload.free_agent_count,
         "storylines": [
             {
@@ -512,6 +535,7 @@ def _payload_from_dict(entry: Dict[str, Any]) -> "RookiePreviewPayload":
         class_size=int(entry["class_size"]),
         archetype_distribution={k: int(v) for k, v in entry.get("archetype_distribution", {}).items()},
         top_band_depth=int(entry["top_band_depth"]),
+        ceiling_band_depth=int(entry.get("ceiling_band_depth", 0)),
         free_agent_count=int(entry["free_agent_count"]),
         storylines=storylines,
     )
@@ -554,14 +578,43 @@ def build_rookie_class_preview(
         top_band_depth = sum(
             1 for p in prospects if _prospect_band_low_mean(p) >= _TOP_BAND_THRESHOLD
         )
+        # Playtest 3: the class's real upside — prospects whose scouted band
+        # TOPS OUT at 70+. The floor count above is pessimistic by design and
+        # is honestly ~0 most years, which read as "elite talent doesn't
+        # exist in this league".
+        ceiling_band_depth = sum(
+            1 for p in prospects if _prospect_band_high_mean(p) >= _TOP_BAND_THRESHOLD
+        )
     else:
         source = "legacy_free_agents"
         class_size = len(free_agents)
         archetype_distribution = {}
         top_band_depth = sum(1 for fa in free_agents if fa.overall_skill() >= _TOP_BAND_THRESHOLD)
+        ceiling_band_depth = top_band_depth
 
     # Step 4: build storylines
     storylines: List[RookieStoryline] = []
+
+    # Elite buzz (owner-approved, playtest 3): when the class hides STAR or
+    # GENERATIONAL trajectories, say SO without saying WHO — the chase target
+    # exists, and the Scout action is how you find them. Derived from the
+    # same hidden_trajectory the development engine consumes; no number or
+    # name is leaked.
+    if prospects:
+        high_ceiling_count = sum(
+            1 for p in prospects if p.hidden_trajectory in ("STAR", "GENERATIONAL")
+        )
+        if high_ceiling_count:
+            plural = high_ceiling_count != 1
+            storylines.append(RookieStoryline(
+                template_id="elite_buzz",
+                sentence=(
+                    f"Scouts are buzzing about {high_ceiling_count} high-ceiling "
+                    f"arc{'s' if plural else ''} hidden in this class — scouting "
+                    "reveals who"
+                ),
+                fact={"high_ceiling_count": high_ceiling_count},
+            ))
 
     if source == "prospect_pool":
         # --- archetype_demand and ai_cluster (both need club profiles) ---
@@ -658,6 +711,7 @@ def build_rookie_class_preview(
     class_summary = {
         "class_size": class_size,
         "top_band_depth": top_band_depth,
+        "ceiling_band_depth": ceiling_band_depth,
         "free_agent_count": free_agent_count,
     }
     set_state(conn, f"rookie_class_summary_{class_year}", json.dumps(class_summary))
@@ -670,6 +724,7 @@ def build_rookie_class_preview(
         class_size=class_size,
         archetype_distribution=archetype_distribution,
         top_band_depth=top_band_depth,
+        ceiling_band_depth=ceiling_band_depth,
         free_agent_count=free_agent_count,
         storylines=tuple(storylines),
     )

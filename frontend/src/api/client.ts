@@ -230,6 +230,14 @@ export const commandApi = {
     apiGet<Record<string, string>>(`/api/voice-register/${tier}`),
 };
 
+export const rosterApi = {
+  // Playtest 3 F-8: release a contracted player to free agency.
+  release: (playerId: string) =>
+    apiPost<import('../types').RosterReleaseResponse>('/api/roster/release', {
+      player_id: playerId,
+    }),
+};
+
 export const dynastyApi = {
   office: () => apiGet<DynastyOfficeResponse>('/api/dynasty-office'),
   scoutProspect: (prospectId: string) =>

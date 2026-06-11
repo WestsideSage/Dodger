@@ -13,7 +13,7 @@ frontend and pytest read the exact same shape. No SQLite, no I/O.
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 from .season import StandingsRow
 
@@ -36,22 +36,53 @@ def compute_staff_recommendation(
     *,
     recent_results: Sequence[str],
     at_risk_count: int,
+    opponent_reads: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """The staff's advisory call, derived purely from verifiable context.
 
-    It reads only recent results and squad health -- NEVER the player's
-    currently-selected plan. That independence is the whole point: a
-    recommendation that mirrors the active selection ("Keep current plan" no
-    matter what you pick) is meaningless feedback. Returns a stable shape:
-    ``action`` ("keep" | "change"), ``recommended_intent`` (intent label or
-    None), and a short ``reason``.
+    It reads recent results, squad health, and — when present — the SANCTIONED
+    opponent reads (``opponent_reads``: tactical-diff tape/playbook values the
+    player has already earned by scouting; never the hidden upcoming plan). It
+    NEVER reads the player's currently-selected plan. That independence is the
+    whole point: a recommendation that mirrors the active selection ("Keep
+    current plan" no matter what you pick) is meaningless feedback. Returns a
+    stable shape: ``action`` ("keep" | "change"), ``recommended_intent``
+    (intent label or None), a short ``reason``, and ``opportunity`` (a
+    counter-read note or None).
     """
+    reads = {k: str(v) for k, v in dict(opponent_reads or {}).items()}
+    # Playtest 3 F-1: vs an opponent whose revealed reads hunt catches, the
+    # blanket health advice (Preserve Health => "play safe" catch posture)
+    # concedes the catch-and-flip game — the one mechanic that lets an
+    # underdog swing a match. Both signals below are real engine levers the
+    # player can verify (catch posture drives catch volume; the policy editor
+    # discloses that an all-in rush's rushers catch worse on the counter).
+    catch_hungry = reads.get("catch_posture") in {"go_for_catches", "opportunistic"}
+    opportunity = None
+    if reads.get("rush_commit") == "all_in":
+        opportunity = (
+            "Scout read: their opening rush leans all-in — holding back the "
+            "rush and going for catches punishes it on the counter."
+        )
+
     # Squad health outranks form: depleted starters are the louder signal.
     # Copy honesty: there is no roster-health system to "protect" — Preserve
     # Health switches the plan to a patient, play-safe preset that asks less of
     # the squad in-match. Say what it does, not what it would do in a game
     # with persistent fatigue.
     if at_risk_count >= 2:
+        if catch_hungry:
+            return {
+                "action": "change",
+                "recommended_intent": "Balanced",
+                "reason": (
+                    f"{at_risk_count} starters have low stamina ratings, but "
+                    "the scout read shows a catch-hungry opponent — Preserve "
+                    "Health's play-safe posture would concede the catch game. "
+                    "Balanced stays catch-ready while asking less than Win Now."
+                ),
+                "opportunity": opportunity,
+            }
         return {
             "action": "change",
             "recommended_intent": _HEALTH_INTENT,
@@ -59,6 +90,7 @@ def compute_staff_recommendation(
                 f"{at_risk_count} starters have low stamina ratings; "
                 "Preserve Health shifts to a patient, play-safe plan."
             ),
+            "opportunity": opportunity,
         }
     last_two = [str(result).lower() for result in list(recent_results)[-2:]]
     if len(last_two) >= 2 and all(result.startswith("l") for result in last_two):
@@ -66,12 +98,32 @@ def compute_staff_recommendation(
             "action": "change",
             "recommended_intent": _AGGRESSIVE_INTENT,
             "reason": "Two straight losses; staff wants a Win Now push to break the skid.",
+            "opportunity": opportunity,
         }
     return {
         "action": "keep",
         "recommended_intent": None,
         "reason": "Recent form and squad health support the current approach.",
+        "opportunity": opportunity,
     }
+
+
+def _opponent_reads(plan: dict[str, Any]) -> dict[str, str]:
+    """Sanctioned opponent reads from the plan's tactical diff, axis -> value.
+
+    Only rows the diff marked ``opponent_known`` (observed tape or archetype
+    playbook, both revealed by scouting) are returned — the hidden upcoming
+    plan never reaches the diff, so it can never reach the staff call either.
+    Values are normalized to policy tokens (``"Go for catches"`` ->
+    ``"go_for_catches"``).
+    """
+    diff = (plan.get("matchup_details") or {}).get("tactical_diff") or {}
+    reads: dict[str, str] = {}
+    for row in diff.get("player_plan") or []:
+        if row.get("opponent_known") and row.get("opponent_value"):
+            axis = str(row.get("axis") or "")
+            reads[axis] = str(row["opponent_value"]).strip().lower().replace(" ", "_")
+    return reads
 
 
 def _starters(plan: dict[str, Any]) -> list[dict[str, Any]]:
@@ -321,19 +373,29 @@ def _build_recommendation(
             "advisory": True,
         }
 
+    # Playtest 3 F-1: surface the staff's counter-read opportunity (derived
+    # from sanctioned scouted reads only) — unless the player's current plan
+    # already holds the rush back, in which case the note is stale advice.
+    opportunity = staff.get("opportunity")
+    if opportunity and str((plan.get("tactics") or {}).get("rush_commit")) == "hold_back":
+        opportunity = None
+
     recommended_intent = staff.get("recommended_intent")
     if recommended_intent and plan.get("intent") != recommended_intent:
+        reason = staff["reason"]
+        if opportunity:
+            reason = f"{reason} {opportunity}"
         return {
             "verdict": "adjust",
             "advised_intent": recommended_intent,
-            "reason": staff["reason"],
+            "reason": reason,
             "advisory": True,
         }
 
     return {
         "verdict": "aligned",
         "advised_intent": None,
-        "reason": "Your plan fits the situation.",
+        "reason": opportunity or "Your plan fits the situation.",
         "advisory": True,
     }
 
@@ -356,6 +418,7 @@ def build_week_briefing(
     staff = compute_staff_recommendation(
         recent_results=recent_results,
         at_risk_count=int(fatigue["at_risk_count"]),
+        opponent_reads=_opponent_reads(plan),
     )
 
     return {

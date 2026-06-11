@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { dynastyApi } from '../../api/client';
 import type { DynastyOfficeResponse, RecruitingStatus } from '../../types';
 import { RecruitingBadge } from './RecruitingBadge';
-import { TermTip, PipelineEmblem, KnownValue } from '../../legibility';
+import { TermTip, PipelineEmblem, KnownValue, CeilingGrade } from '../../legibility';
 import type { PipelineTier, TermId } from '../../legibility';
 
 type RecruitingProspect = DynastyOfficeResponse['recruiting']['prospects'][number];
@@ -271,6 +271,9 @@ export function ProspectCard({
             value={`${low}–${high}`}
             hint={prospect.scouted ? undefined : 'Scout to narrow'}
           />
+          {/* Playtest 3 elite reveal: scouting also grades the growth arc.
+              Rendered only once revealed — the fog stays honest. */}
+          {prospect.ceiling_label && <CeilingGrade grade={prospect.ceiling_label} />}
         </div>
       </div>
 

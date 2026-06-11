@@ -196,18 +196,22 @@ function DoTabs({
 
 // V19b: plain-language promise vocabulary (the old "Promise Lane" label
 // failed owner comprehension — the term itself was the bug).
+// Playtest 3 F-9: these cards are shown for UNSIGNED prospects, so the two
+// roster-dependent promises must not say "this season" — they are graded
+// after the prospect's first season on your roster. "We'll contend" is a
+// team outcome and really does grade this season, signed or not.
 const PROMISE_LABELS: Record<string, { label: string; meaning: string }> = {
   early_playing_time: {
     label: 'Early playing time',
-    meaning: 'They appear in at least 6 matches this season.',
+    meaning: 'They appear in at least 6 matches in their first season on your roster.',
   },
   development_priority: {
     label: 'Development priority',
-    meaning: 'You run a focused dev plan at least 3 weeks and keep them rostered.',
+    meaning: 'In their first season on your roster, you run a focused dev plan at least 3 weeks and keep them rostered.',
   },
   contender_path: {
     label: "We'll contend",
-    meaning: 'The club reaches the playoffs this season.',
+    meaning: 'The club reaches the playoffs this season — graded whether or not they sign.',
   },
 };
 

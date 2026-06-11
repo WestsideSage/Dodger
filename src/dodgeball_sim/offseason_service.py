@@ -114,7 +114,9 @@ def advance_offseason_beat_payload(conn: sqlite3.Connection) -> dict[str, Any]:
 
 
 def recruit_offseason_payload(
-    conn: sqlite3.Connection, prospect_id: str | None = None
+    conn: sqlite3.Connection,
+    prospect_id: str | None = None,
+    release_player_id: str | None = None,
 ) -> dict[str, Any]:
     cursor = load_career_state_cursor(conn)
     if cursor.state != CareerState.SEASON_COMPLETE_RECRUITMENT_PENDING:
@@ -165,16 +167,37 @@ def recruit_offseason_payload(
     signed_count_str = get_state(conn, "offseason_draft_signed_count") or "0"
     signed_count = int(signed_count_str)
 
+    if signed_count >= 3:
+        raise OffseasonError("Already recruited 3 players this offseason.", status_code=409)
+
     rosters = load_all_rosters(conn)
     user_roster = rosters.get(player_club_id, [])
 
-    if len(user_roster) >= MAX_USER_ROSTER:
+    swap_required = len(user_roster) >= MAX_USER_ROSTER
+    if swap_required:
+        # Playtest 3 F-8: a full roster no longer dead-ends Signing Day — the
+        # pick goes through by releasing a named player to free agency
+        # (sign-over-cut). Without a release choice the request is rejected
+        # with the action the player must take, not a silent skip.
+        if not release_player_id:
+            raise OffseasonError(
+                f"Roster is full ({len(user_roster)}/{MAX_USER_ROSTER}). "
+                "Pick a player to release to make room, or finish Signing Day.",
+                status_code=409,
+            )
+        # Validate the releasee NOW, but commit the release only after the
+        # contested round is WON — a snipe must not cost the released player
+        # (transactional honesty: no action loses roster value for nothing).
+        if not any(p.id == release_player_id for p in user_roster):
+            raise OffseasonError(
+                f"Player {release_player_id} is not on your roster.",
+                status_code=404,
+            )
+    elif release_player_id:
         raise OffseasonError(
-            f"Roster is full (maximum {MAX_USER_ROSTER} players).", status_code=409
+            "Release-to-sign is only needed when the roster is full.",
+            status_code=409,
         )
-
-    if signed_count >= 3:
-        raise OffseasonError("Already recruited 3 players this offseason.", status_code=409)
 
     season_number = cursor.season_number or 1
     if prospect_id:
@@ -207,10 +230,25 @@ def recruit_offseason_payload(
         set_state(conn, "offseason_draft_signed_count", str(signed_count))
         set_state(conn, "offseason_draft_signed_player_id", signed.id)
 
+    # Commit the sign-over-cut release only now that the contested round is
+    # WON: the roster sat at cap+1 for the instant between commit and release;
+    # a snipe skips the release entirely and the roster is untouched.
+    released_outcome = None
+    if signed and swap_required and release_player_id:
+        from .roster_moves import RosterMoveError, release_player_to_free_agency
+
+        try:
+            released_outcome = release_player_to_free_agency(conn, release_player_id)
+        except RosterMoveError as exc:  # pre-validated above; defensive only
+            raise OffseasonError(exc.detail, status_code=exc.status_code) from exc
+
     rosters = load_all_rosters(conn)
     user_roster = rosters.get(player_club_id, [])
 
-    closed = signed_count >= 3 or len(user_roster) >= MAX_USER_ROSTER
+    # Playtest 3 F-8: a full roster no longer closes the beat — every signing
+    # at 12/12 is a release-to-sign swap, so the remaining class slots stay
+    # spendable. Only exhausting the slots ends recruitment automatically.
+    closed = signed_count >= 3
     if closed:
         cursor = state_advance(
             cursor,
@@ -235,6 +273,8 @@ def recruit_offseason_payload(
             else None
         ),
         "signing_outcome": signing_outcome,
+        "released_player": (released_outcome or {}).get("released_player"),
+        "released_broken_promise": (released_outcome or {}).get("broken_promise"),
     }
 
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { OffseasonBeat } from '../../types';
 import { KnownValue } from '../../legibility/KnownValue';
+import { CeilingGrade } from '../../legibility/CeilingGrade';
 import { ActionButton, PageHeader } from '../ui';
 
 
@@ -12,7 +13,7 @@ export function RecruitmentChoice({
   acting,
 }: {
   beat: RecruitmentBeat;
-  onSign: (prospectId: string) => void;
+  onSign: (prospectId: string, releasePlayerId?: string) => void;
   acting: boolean;
 }) {
   const prospects = beat.payload.available_prospects ?? [];
@@ -27,12 +28,20 @@ export function RecruitmentChoice({
     prospects[0]?.prospect_id ?? null,
   );
   const [confirmFinish, setConfirmFinish] = useState(false);
+  // Playtest 3 F-8 sign-over-cut: at a full roster the Sign action opens the
+  // release picker instead of firing immediately.
+  const [releasePickerOpen, setReleasePickerOpen] = useState(false);
+  const [releaseId, setReleaseId] = useState<string | null>(null);
   const selectedId = prospects.some(prospect => prospect.prospect_id === manualSelectedId)
     ? manualSelectedId
     : (prospects[0]?.prospect_id ?? null);
   const selected = prospects.find(prospect => prospect.prospect_id === selectedId) ?? null;
   const lastSigning = beat.payload.player_signing;
   const signingOutcome = beat.signing_outcome ?? null;
+  const releasedPlayer = beat.released_player ?? null;
+  const rosterFull = rosterSize >= rosterLimit;
+  const userRoster = beat.payload.user_roster ?? [];
+  const releaseChoice = userRoster.find(p => p.id === releaseId) ?? null;
 
   return (
     <section className="command-offseason-shell" data-testid="offseason-recruitment-action">
@@ -42,8 +51,12 @@ export function RecruitmentChoice({
         // Codex issue 14: the binding limit is whichever is smaller — class
         // slots or roster space. Say the real capacity up front instead of
         // letting the player plan around three signings with two seats.
+        // Playtest 3 F-8: a FULL roster no longer ends recruiting — every
+        // pick is a release-to-sign swap, so say that instead of "room for 0".
         description={
-          rosterLimit - rosterSize < remainingSignings
+          rosterFull
+            ? `Roster is full (${rosterSize}/${rosterLimit}) — signing a prospect releases a player you choose. ${remainingSignings} class slot${remainingSignings === 1 ? '' : 's'} remain.`
+            : rosterLimit - rosterSize < remainingSignings
             ? `Add up to ${signingLimit} players before next season. ${remainingSignings} class slot${remainingSignings === 1 ? '' : 's'} remain, but your roster is ${rosterSize}/${rosterLimit} — room for ${Math.max(0, rosterLimit - rosterSize)}.`
             : `Add up to ${signingLimit} players before next season. ${remainingSignings} signing${remainingSignings === 1 ? '' : 's'} remain.`
         }
@@ -89,6 +102,31 @@ export function RecruitmentChoice({
               {signingOutcome.explanation} Your signing slot was not used — pick from the
               remaining class.
             </p>
+          </div>
+        )}
+        {releasedPlayer && (
+          <div
+            data-testid="signing-release-banner"
+            style={{
+              margin: '0.6rem 0 0',
+              border: '1px solid rgba(148,163,184,0.35)',
+              borderLeft: '3px solid #94a3b8',
+              background: 'rgba(148,163,184,0.07)',
+              borderRadius: '4px',
+              padding: '0.7rem 0.8rem',
+            }}
+          >
+            <p style={{ margin: 0, fontSize: '0.68rem', color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Released
+            </p>
+            <p style={{ margin: '0.2rem 0 0', color: '#f8fafc', fontWeight: 700 }}>
+              {releasedPlayer.name} ({releasedPlayer.overall} OVR, age {releasedPlayer.age}) is now a free agent.
+            </p>
+            {beat.released_broken_promise && (
+              <p style={{ margin: '0.15rem 0 0', fontSize: '0.78rem', color: '#fb923c' }}>
+                Your open promise to them is BROKEN — that costs credibility.
+              </p>
+            )}
           </div>
         )}
         {signingOutcome && signingOutcome.kind === 'signed' && (
@@ -252,6 +290,13 @@ export function RecruitmentChoice({
                             Interest {prospect.interest}%
                           </div>
                         )}
+                        {/* Playtest 3 elite reveal: the same scout-gated
+                            growth-arc grade the in-season board shows. */}
+                        {prospect.ceiling_label && (
+                          <div style={{ marginTop: '0.2rem' }}>
+                            <CeilingGrade grade={prospect.ceiling_label} />
+                          </div>
+                        )}
                       </>
                     ) : (
                       <>
@@ -273,6 +318,109 @@ export function RecruitmentChoice({
           </div>
         )}
       </article>
+
+      {/* Playtest 3 F-8: the sign-over-cut release picker. Shown when the
+          roster is full and the player pressed Sign — the pick goes through
+          only with a named release, and the release only commits if the
+          contested pick lands (a snipe costs nobody). */}
+      {releasePickerOpen && selected && rosterFull && (
+        <div
+          data-testid="signing-release-picker"
+          style={{
+            margin: '0 0 0.5rem',
+            border: '1px solid rgba(34,211,238,0.35)',
+            borderLeft: '3px solid #22d3ee',
+            background: 'rgba(34,211,238,0.06)',
+            borderRadius: '4px',
+            padding: '0.7rem 0.9rem',
+          }}
+        >
+          <p style={{ margin: 0, fontWeight: 700, color: '#67e8f9' }}>
+            Roster is full — release someone to sign {selected.name}.
+          </p>
+          <p style={{ margin: '0.2rem 0 0.5rem', fontSize: '0.78rem', color: '#cbd5e1' }}>
+            The release happens only if you win the signing; a snipe costs you nobody.
+            The released player joins the free-agent pool.
+          </p>
+          <div style={{ display: 'grid', gap: '0.3rem', maxHeight: '220px', overflowY: 'auto' }}>
+            {userRoster.map(p => (
+              <label
+                key={p.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.35rem 0.5rem',
+                  background: releaseId === p.id ? 'rgba(34,211,238,0.12)' : '#0a1220',
+                  border: '1px solid #1e293b',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                  color: '#e2e8f0',
+                }}
+              >
+                <input
+                  type="radio"
+                  name="release-choice"
+                  checked={releaseId === p.id}
+                  onChange={() => setReleaseId(p.id)}
+                />
+                <span style={{ fontWeight: 700 }}>{p.name}</span>
+                <span style={{ color: '#94a3b8' }}>{p.overall} OVR · age {p.age}</span>
+                {p.promised && (
+                  <span
+                    style={{
+                      marginLeft: 'auto',
+                      fontSize: '0.6rem',
+                      fontWeight: 700,
+                      background: 'rgba(249,115,22,0.18)',
+                      color: '#fb923c',
+                      borderRadius: '3px',
+                      padding: '1px 5px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                    }}
+                  >
+                    Open promise — releasing breaks it
+                  </span>
+                )}
+              </label>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.55rem' }}>
+            <button
+              type="button"
+              disabled={acting || !releaseId}
+              onClick={() => {
+                if (selectedId && releaseId) {
+                  setReleasePickerOpen(false);
+                  onSign(selectedId, releaseId);
+                }
+              }}
+              style={{
+                background: releaseId ? '#0e7490' : '#1e293b', border: 'none', borderRadius: '4px',
+                color: '#fff', fontWeight: 700, padding: '0.4rem 0.9rem',
+                cursor: acting || !releaseId ? 'not-allowed' : 'pointer', fontSize: '0.8rem',
+              }}
+            >
+              {releaseChoice
+                ? `Release ${releaseChoice.name} & sign ${selected.name}`
+                : 'Pick a player to release'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setReleasePickerOpen(false); setReleaseId(null); }}
+              style={{
+                background: 'none', border: '1px solid #334155', borderRadius: '4px',
+                color: '#94a3b8', padding: '0.4rem 0.9rem',
+                cursor: 'pointer', fontSize: '0.8rem',
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {confirmFinish && remainingSignings > 0 && (
         <div
@@ -331,13 +479,24 @@ export function RecruitmentChoice({
         <div className="command-action-buttons">
           <ActionButton
             variant="primary"
-            onClick={() => { setConfirmFinish(false); onSign(selected?.prospect_id ?? ''); }}
+            onClick={() => {
+              setConfirmFinish(false);
+              // Playtest 3 F-8: a full roster routes through the release
+              // picker — the pick needs a named release to go through.
+              if (rosterFull) {
+                setReleasePickerOpen(true);
+                return;
+              }
+              onSign(selected?.prospect_id ?? '');
+            }}
             disabled={acting || prospects.length === 0 || !selected}
           >
             {acting
               ? 'Signing...'
               : selected
-              ? `Sign ${selected.name}`
+              ? rosterFull
+                ? `Sign ${selected.name} (release someone)`
+                : `Sign ${selected.name}`
               : 'Sign Best Available'}
           </ActionButton>
           {remainingSignings > 0 ? (

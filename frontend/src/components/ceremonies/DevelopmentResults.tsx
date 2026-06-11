@@ -26,6 +26,7 @@ export function DevelopmentResults({
     acting?: boolean;
 }) {
     const players = beat.payload.players.filter(p => p.delta !== 0);
+    const trainingCredit = beat.payload.training_credit;
 
     return (
         <section className="command-offseason-shell" data-testid="offseason-development">
@@ -153,6 +154,36 @@ export function DevelopmentResults({
                     })
                 )}
             </div>
+
+            {/* Playtest 3 F-7: the +0.2/week training credit is disclosed in
+                Program Settings, so the beat that spends it must show the
+                receipt — weeks run, credit banked, and the headroom caveat. */}
+            {trainingCredit && trainingCredit.weeks > 0 && (
+                <div
+                    style={{
+                        background: 'rgba(16, 185, 129, 0.05)',
+                        border: '1px solid rgba(16, 185, 129, 0.2)',
+                        borderRadius: '8px',
+                        padding: '0.85rem 1rem',
+                        margin: '1rem 0 0 0',
+                        fontSize: '0.8rem',
+                        color: '#94a3b8',
+                        lineHeight: 1.5,
+                    }}
+                    data-testid="training-credit-receipt"
+                >
+                    <strong style={{ color: '#10b981' }}>
+                        Training focus receipt:
+                    </strong>{' '}
+                    {trainingCredit.weeks} week{trainingCredit.weeks !== 1 ? 's' : ''} run
+                    {trainingCredit.weeks > trainingCredit.week_cap
+                        ? ` (${trainingCredit.credited_weeks} credited — cap ${trainingCredit.week_cap})`
+                        : ''}{' '}
+                    × +{trainingCredit.per_week_ovr} OVR = <strong style={{ color: '#e2e8f0' }}>
+                    +{trainingCredit.credit_ovr.toFixed(1)} OVR</strong> of practice growth folded
+                    into each player&apos;s development above (never past their ceiling).
+                </div>
+            )}
 
             <div style={{
                 background: 'rgba(34, 211, 238, 0.05)',

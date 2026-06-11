@@ -7,6 +7,8 @@ export { ProofChip } from './ProofChip';
 export { EmptyState } from './EmptyState';
 export { PipelineEmblem } from './PipelineEmblem';
 export type { PipelineTier } from './PipelineEmblem';
+export { CeilingGrade } from './CeilingGrade';
+export type { CeilingGradeToken } from './CeilingGrade';
 export { PLAYER_ARCHETYPE_TERM, CLUB_ARCHETYPE_TERM } from './archetypeMap';
 export { rulesetDisplayName } from './rulesetNames';
 export type { RulesetNameForm } from './rulesetNames';

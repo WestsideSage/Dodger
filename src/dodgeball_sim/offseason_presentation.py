@@ -181,6 +181,13 @@ def build_beat_payload(
                     "career_elims": int((career or {}).get("total_eliminations", 0)),
                     "championships": int((career or {}).get("championships", 0)),
                     "seasons_played": int((career or {}).get("seasons_played", 0)),
+                    # Playtest 3 F-10: the farewell card's career length must
+                    # include the synthetic prior seasons seeded for curated
+                    # veterans (V18 Task 3) — a 33-year-old retiree displayed
+                    # "3 seasons" because only recorded sim seasons counted.
+                    # Stats (elims) stay recorded-only; length is biography.
+                    "career_seasons": int((career or {}).get("seasons_played", 0))
+                    + int((career or {}).get("seasons_played_prior", 0)),
                     "potential_tier": calculate_potential_tier(potential),
                 }
             )
@@ -213,7 +220,29 @@ def build_beat_payload(
                     "potential_ceiling": row.get("potential_ceiling"),
                 }
             )
-        return {"players": players}
+        # Playtest 3 F-7: the TRAINING staff-focus credit (+0.2 OVR/week,
+        # cap 8) is disclosed in Program Settings but had no visible
+        # accounting in any results surface. Itemize the season's banked
+        # credit here, computed by the same helper the growth model uses.
+        training_credit = None
+        if season is not None and player_club_id:
+            from .offseason_ceremony import (
+                TRAINING_CREDIT_PER_WEEK,
+                TRAINING_CREDIT_WEEK_CAP,
+                training_practice_credit,
+            )
+
+            weeks, credit_ovr = training_practice_credit(
+                conn, season.season_id, player_club_id
+            )
+            training_credit = {
+                "weeks": weeks,
+                "credited_weeks": min(TRAINING_CREDIT_WEEK_CAP, weeks),
+                "week_cap": TRAINING_CREDIT_WEEK_CAP,
+                "per_week_ovr": TRAINING_CREDIT_PER_WEEK,
+                "credit_ovr": round(credit_ovr, 1),
+            }
+        return {"players": players, "training_credit": training_credit}
 
     if beat_key == "champion":
         if season_outcome and season_outcome.champion_club_id:
@@ -362,6 +391,25 @@ def build_beat_payload(
                     }
                 )
 
+        # Playtest 3 F-8: the sign-over-cut swap picker needs the user's
+        # roster (who could be released), with open-promise flags so cutting
+        # a promised player is a warned, deliberate choice.
+        from .roster_moves import open_promise_player_ids
+
+        promised_roster_ids = open_promise_player_ids(conn)
+        user_roster_rows = [
+            {
+                "id": player.id,
+                "name": player.name,
+                "overall": player.overall_skill(),
+                "age": player.age,
+                "promised": player.id in promised_roster_ids,
+            }
+            for player in sorted(
+                player_roster, key=lambda p: (p.overall_skill(), p.id)
+            )
+        ]
+
         return {
             "player_signing": player_signing,
             "other_signings": other_signings,
@@ -372,6 +420,7 @@ def build_beat_payload(
             "remaining_signings": max(0, signing_limit - signed_count),
             "roster_size": len(player_roster),
             "roster_limit": roster_limit,
+            "user_roster": user_roster_rows,
         }
 
     if beat_key == "schedule_reveal":
@@ -431,6 +480,10 @@ def build_beat_payload(
         return {
             "class_size": int(payload_dict.get("class_size", 0)),
             "top_prospects": int(payload_dict.get("top_band_depth", 0)),
+            # Playtest 3: the class's upside count (band tops out at 70+) —
+            # the headline metric. The floor count above stays as the
+            # "sure things" secondary stat.
+            "ceiling_prospects": int(payload_dict.get("ceiling_band_depth", 0)),
             "free_agents": int(payload_dict.get("free_agent_count", 0)),
             "archetypes": sorted(
                 [{"name": k, "count": v} for k, v in archetype_dist.items()],
@@ -552,10 +605,12 @@ def build_beat_response(conn: sqlite3.Connection, cursor) -> dict[str, Any]:
             )
             or (cursor.state == CareerState.NEXT_SEASON_READY and not is_last)
         ),
+        # Playtest 3 F-8: a full roster no longer turns Signing Day read-only —
+        # the picker stays live and a pick at 12/12 goes through the
+        # release-to-sign swap. Only spent class slots close recruiting.
         "can_recruit": (
             cursor.state == CareerState.SEASON_COMPLETE_RECRUITMENT_PENDING
             and int(get_state(conn, "offseason_draft_signed_count") or "0") < 3
-            and len(rosters.get(player_club_id, [])) < MAX_USER_ROSTER
         ),
         "can_begin_season": cursor.state == CareerState.NEXT_SEASON_READY,
         "signed_player_id": signed_player_id,

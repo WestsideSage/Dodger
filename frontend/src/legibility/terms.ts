@@ -130,7 +130,7 @@ export const TERMS = {
   'recruit.promise': {
     label: 'Promises',
     plain: 'A real commitment to a prospect or player, checked at season\'s end.',
-    why: 'Each promise is graded against what actually happened (matches played, dev weeks run, playoffs made). Kept promises build credibility; broken ones cost more — and credibility feeds every prospect\'s interest in you.',
+    why: 'Each promise is graded against what actually happened (matches played, dev weeks run, playoffs made). Playing-time and development promises to an unsigned prospect wait for their first season on your roster; "We\'ll contend" grades this season whether or not they sign. Kept promises build credibility; broken ones cost more — and credibility feeds every prospect\'s interest in you.',
     kind: 'mechanical',
   },
   'recruit.fit': {

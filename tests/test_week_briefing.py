@@ -273,18 +273,110 @@ def test_recommendation_never_claims_archetype_counter():
 
 
 def test_aligned_recommendation_reason_makes_no_opponent_claim():
-    # ADR-0002 faithfulness guard. On the aligned (keep-plan) path the staff
-    # recommendation is derived from recent form + squad health ALONE -- it
-    # never reads the opponent. Its ``reason`` is rendered verbatim in the
-    # pre-sim dashboard (PreSimDashboard.tsx scoutRead / planRead + the
-    # scouting-note callout), so it must not assert an opponent-profile
-    # comparison the staff never computed. Regression guard for the hardcoded
-    # "aligns with the opponent profile" copy removed 2026-06-01.
+    # ADR-0002 faithfulness guard. Without SANCTIONED scouted reads (the
+    # tactical diff's tape/playbook values) the staff recommendation is
+    # derived from recent form + squad health ALONE -- it never reads the
+    # opponent. Its ``reason`` is rendered verbatim in the pre-sim dashboard
+    # (PreSimDashboard.tsx scoutRead / planRead + the scouting-note callout),
+    # so it must not assert an opponent-profile comparison the staff never
+    # computed. Regression guard for the hardcoded "aligns with the opponent
+    # profile" copy removed 2026-06-01. (Playtest 3 F-1 later allowed the
+    # staff to consult scouted reads — but only when they exist; this plan
+    # has none, so the old contract still binds.)
     out = _briefing(plan=_plan(), recent_results=["Win"])
     rec = out["recommendation"]
     assert rec["verdict"] == "aligned"
     reason = rec["reason"].lower()
     assert "opponent" not in reason and "profile" not in reason, rec["reason"]
+
+
+# --- F-1: opponent-aware counter read (playtest 3) --------------------------
+
+def _diff_plan(opponent_values: dict[str, str], **plan_overrides: Any) -> dict[str, Any]:
+    """A plan whose tactical diff carries scouted opponent reads."""
+    plan = _plan(**plan_overrides)
+    plan["matchup_details"]["tactical_diff"] = {
+        "player_plan": [
+            {
+                "axis": axis,
+                "label": axis,
+                "player_value": "Mixed",
+                "opponent_value": value,
+                "opponent_known": True,
+                "opponent_source": "tape",
+            }
+            for axis, value in opponent_values.items()
+        ],
+    }
+    return plan
+
+
+def test_catch_hungry_read_overrides_play_safe_health_advice():
+    # Playtest 3 F-1: two tired starters used to force "Preserve Health"
+    # (play-safe posture) even vs a team whose revealed reads hunt catches —
+    # self-defeating advice (0 catches, swept). With the scouted read present
+    # the staff must keep the club catch-ready instead.
+    starters = (
+        [_starter(f"P{i}", 70) for i in range(4)]
+        + [_starter("A", 70, stamina=55), _starter("B", 70, stamina=50)]
+    )
+    # The player heeded the old advice (Preserve Health) — the staff must now
+    # steer them back to a catch-ready posture, not confirm the trap.
+    plan = _diff_plan(
+        {"catch_posture": "Go for catches"},
+        starters=starters,
+        intent="Preserve Health",
+    )
+    out = _briefing(plan=plan)
+    rec = out["recommendation"]
+    assert rec["verdict"] == "adjust"
+    assert rec["advised_intent"] == "Balanced"
+    assert "catch" in rec["reason"].lower()
+
+
+def test_unscouted_tired_squad_still_gets_health_advice():
+    # No reads revealed => the catch-hungry override must NOT fire; the
+    # health call stands exactly as before.
+    starters = (
+        [_starter(f"P{i}", 70) for i in range(4)]
+        + [_starter("A", 70, stamina=55), _starter("B", 70, stamina=50)]
+    )
+    out = _briefing(plan=_plan(starters=starters))
+    assert out["recommendation"]["advised_intent"] == "Preserve Health"
+
+
+def test_all_in_rush_read_surfaces_counter_opportunity():
+    # The policy editor discloses that an all-in rush's rushers catch worse on
+    # the counter; when the scouted read shows all-in, the staff must point at
+    # that real lever instead of staying silent.
+    plan = _diff_plan({"rush_commit": "All in"})
+    out = _briefing(plan=plan, recent_results=["Win"])
+    rec = out["recommendation"]
+    assert rec["verdict"] == "aligned"
+    assert "holding back" in rec["reason"].lower()
+
+
+def test_counter_opportunity_suppressed_when_already_holding_back():
+    # Advice the player has already taken is noise — the note must vanish
+    # once the plan's rush commit is hold_back.
+    plan = _diff_plan({"rush_commit": "All in"})
+    plan["tactics"] = {"rush_commit": "hold_back"}
+    out = _briefing(plan=plan, recent_results=["Win"])
+    assert "holding back" not in out["recommendation"]["reason"].lower()
+
+
+def test_staff_call_stays_selection_independent_with_reads():
+    # The reads come from the opponent column only — switching the player's
+    # selected intent must not change the staff call.
+    base = compute_staff_recommendation(
+        recent_results=["Win"],
+        at_risk_count=0,
+        opponent_reads={"rush_commit": "all_in"},
+    )
+    for intent in ("Balanced", "Win Now", "Preserve Health"):
+        plan = _diff_plan({"rush_commit": "All in"}, intent=intent)
+        out = _briefing(plan=plan, recent_results=["Win"])
+        assert out["staff_recommendation"] == base
 
 
 # --- staff recommendation is selection-independent ------------------------

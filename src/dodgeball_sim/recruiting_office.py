@@ -183,11 +183,30 @@ def _prospect_rows(
             ],
             "pipeline_tier": prospect.pipeline_tier,
             "scouted": scouted,
+            # Playtest 3 (owner-approved elite reveal): the Scout action also
+            # grades the prospect's growth arc — the coarse ceiling label the
+            # development engine's trajectory actually delivers (HIGH_CEILING
+            # = STAR/GENERATIONAL floor 90+, SOLID = IMPACT floor 82+,
+            # STANDARD = their natural ceiling only). Hidden until scouted;
+            # the exact trajectory tier is never leaked.
+            "ceiling_label": _scouted_ceiling_label(prospect, scouted),
             "contacted": bool(p_actions.get("contacted")),
             "visited": bool(p_actions.get("visited")),
             "recruiting_status": compute_recruiting_status(p_actions),
         })
     return rows
+
+
+def _scouted_ceiling_label(prospect, scouted: bool) -> str | None:
+    """The trajectory-gated ceiling grade, revealed only by the Scout action."""
+    if not scouted:
+        return None
+    from .scouting_center import ceiling_label_for_trajectory
+
+    try:
+        return ceiling_label_for_trajectory(prospect.hidden_trajectory)
+    except ValueError:
+        return None
 
 
 def _credibility_score(
