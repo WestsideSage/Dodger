@@ -47,41 +47,22 @@ function formatTimeAgo(timestamp?: number): string {
 }
 
 // Player-facing ruleset copy. FAITHFULNESS-FIRST (ADR 0002): every claim here
-// must be backed by what the engine actually models. The engine's
-// outcome-affecting per-ruleset differences are the ball count, the burden
-// majority threshold, the ball material (which changes the section-21
-// ricochet-save outcome — foam saves the hit player, cloth does not), and the
-// per-ruleset scoring model (foam earns a point on elimination only; cloth
-// scores 2/1/0) — see src/dodgeball_sim/rulesets.py and official_scoring.py —
-// plus the official catch resolution (catch outs the thrower and resurrects a
-// teammate). There is NO velocity / sting / damage / tempo model, so the copy
-// does not claim one.
+// must be backed by what the engine actually models — see
+// src/dodgeball_sim/rulesets.py and official_scoring.py. There is NO
+// velocity / sting / damage / tempo model, so the copy does not claim one.
 //
-// Official titles reuse the canonical `full` form from
-// `frontend/src/legibility/rulesetNames.ts` (WT-5) — do not invent variants.
-// `generic` keeps its friendlier non-official title (its canonical name maps to
-// "Legacy survivor scoring"), and carries no USA Dodgeball lineage line.
-const rulesetExplanations: Record<string, { title: string; desc: string; bullet: string }> = {
-  generic: {
-    title: "Classic Dodgeball Rules",
-    desc: "The original Dodger simulation: survivor-based scoring with classical catching dynamics. A balanced default that is not tied to the USA Dodgeball rule set.",
-    bullet: "• 6v6 Format · Survivor scoring · High comeback potential",
-  },
-  official_foam: {
-    title: "USA Dodgeball 2026.1 — Foam",
-    desc: "Officially-inspired foam division: six balls in play and the official catch rule (a catch eliminates the thrower and resurrects a teammate). A match is decided over multiple games, and a game point is earned only by fully eliminating the opponent. No Blocking is enforced: held balls block throws in regulation, and once a game passes the three-minute line that protection is stripped until someone wins. Modeled as a deterministic abstraction of the official rules.",
-    bullet: "• 6v6 Format · 6 balls (3 per side) · Catch outs thrower + resurrects · 1 game point per elimination win",
-  },
-  official_no_sting: {
-    title: "USA Dodgeball 2026.1 — No-Sting",
-    desc: "Same modeled rules as the Foam division — six balls, the official catch rule, a game point only on full elimination, and enforced No Blocking (held-ball protection strips after the three-minute line). The difference is the real-world ball material (low-sting); grip, possession control, and pacing are not separately simulated.",
-    bullet: "• 6v6 Format · 6 balls (3 per side) · Catch outs thrower + resurrects · 1 game point per elimination win",
-  },
-  official_cloth: {
-    title: "USA Dodgeball 2026.1 — Cloth",
-    desc: "Officially-inspired cloth division: five balls in play (two per side plus one neutral center), which lowers the burden majority to 3 and shifts how possession pressure builds. The official catch rule applies, and games are scored differently from foam — a win (elimination or the player majority at time expiry) is worth 2 game points, a tie 1 each. Throw velocity and hit severity are not separately modeled; this is a deterministic abstraction of the official rules.",
-    bullet: "• 6v6 Format · 5 balls (2 per side + 1 center) · Lower burden threshold · Win = 2 game points, tie = 1",
-  },
+// Single-ruleset standardization (owner decision 2026-06-10): every new
+// career plays under the foam-official ruleset. The No-Sting/Cloth/Generic
+// picker was removed from career creation — the divisions differ mainly by
+// real-world ball material, a distinction a player can't feel in a sim, and
+// the choice was newbie-hostile. The other ruleset profiles remain fully
+// engine-supported (conformance ledger, tests, legacy saves) — depth kept,
+// decision removed. Title reuses the canonical `full` form from
+// `frontend/src/legibility/rulesetNames.ts` (WT-5).
+const standardRuleset = {
+  title: "USA Dodgeball 2026.1 — Foam",
+  desc: "Every career plays under the official foam division: six balls in play and the official catch rule (a catch eliminates the thrower and resurrects a teammate). A match is decided over multiple games, and a game point is earned only by fully eliminating the opponent. No Blocking is enforced: held balls block throws in regulation, and once a game passes the three-minute line that protection is stripped until someone wins. Modeled as a deterministic abstraction of the official rules.",
+  bullet: "• 6v6 Format · 6 balls (3 per side) · Catch outs thrower + resurrects · 1 game point per elimination win",
 };
 
 interface SaveMenuProps {
@@ -123,11 +104,6 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
   // New save form state
   const [newName, setNewName] = useState('');
   const [newClubId, setNewClubId] = useState('aurora');
-  // V11: official-ruleset opt-in at career creation only.
-  // Phase 4b (D4): new careers default to the foam-official ruleset (real
-  // set-based scoring + the retuned, OVR-rewarding official engine). Generic
-  // stays selectable; existing legacy saves are unaffected.
-  const [rulesetSelection, setRulesetSelection] = useState<string>('official_foam');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   
@@ -204,7 +180,8 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
       await saveApi.create({
         name: newName.trim(),
         club_id: newClubId,
-        ruleset_selection: rulesetSelection === 'generic' ? null : rulesetSelection,
+        // Single-ruleset standardization: every new career is foam-official.
+        ruleset_selection: 'official_foam',
       });
       onSaveLoaded();
     } catch (e) {
@@ -225,7 +202,8 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
         coach_name: buildCoach.coach_name,
         coach_backstory: buildCoach.coach_backstory,
         roster_player_ids: rosterIds,
-        ruleset_selection: rulesetSelection === 'generic' ? null : rulesetSelection,
+        // Single-ruleset standardization: every new career is foam-official.
+        ruleset_selection: 'official_foam',
       });
       onSaveLoaded();
     } catch (e) {
@@ -558,9 +536,10 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
 
             {view === 'new' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                {/* Ruleset Selection Header & Selector */}
-                <div style={{ background: '#0b1329', border: '1px solid #1e293b', borderRadius: '8px', padding: '1.25rem' }}>
-                  <label style={{
+                {/* How it plays — single standard ruleset (no picker; owner
+                    decision 2026-06-10: foam-official is the one way to play) */}
+                <div style={{ background: '#0b1329', border: '1px solid #1e293b', borderRadius: '8px', padding: '1.25rem' }} data-testid="ruleset-standard-card">
+                  <span style={{
                     display: 'block',
                     fontSize: '0.75rem',
                     fontFamily: 'var(--font-display)',
@@ -570,46 +549,22 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                     marginBottom: '0.5rem',
                     fontWeight: 700,
                   }}>
-                    Select Career Ruleset
-                  </label>
-                  <select
-                    value={rulesetSelection}
-                    onChange={(e) => setRulesetSelection(e.target.value)}
-                    data-testid="ruleset-select-new"
-                    style={{
-                      width: '100%',
-                      borderRadius: '4px',
-                      border: '1px solid #334155',
-                      background: '#0f172a',
-                      padding: '0.625rem 0.75rem',
-                      fontSize: '0.875rem',
-                      color: '#e2e8f0',
-                      outline: 'none',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <option value="generic">Generic (Classic Dodger sim)</option>
-                    <option value="official_foam">USA Dodgeball 2026.1 — Foam</option>
-                    <option value="official_no_sting">USA Dodgeball 2026.1 — No-Sting</option>
-                    <option value="official_cloth">USA Dodgeball 2026.1 — Cloth</option>
-                  </select>
-
-                  {/* Dynamic Explanation Card */}
+                    How It Plays
+                  </span>
                   <div style={{
-                    marginTop: '1rem',
                     background: 'rgba(34, 211, 238, 0.04)',
                     borderLeft: '3px solid #22d3ee',
                     padding: '0.75rem 1rem',
                     borderRadius: '0 4px 4px 0',
                   }}>
                     <h4 style={{ margin: '0 0 0.25rem 0', fontSize: '0.875rem', fontWeight: 700, color: '#f8fafc' }}>
-                      {rulesetExplanations[rulesetSelection].title}
+                      {standardRuleset.title}
                     </h4>
                     <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
-                      {rulesetExplanations[rulesetSelection].desc}
+                      {standardRuleset.desc}
                     </p>
                     <p style={{ margin: 0, fontSize: '0.75rem', color: '#22d3ee', fontWeight: 600 }}>
-                      {rulesetExplanations[rulesetSelection].bullet}
+                      {standardRuleset.bullet}
                     </p>
                   </div>
                 </div>
@@ -823,9 +778,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                 </div>
 
                 <div>
-                  <label
-                    htmlFor="new-save-ruleset"
-                    style={{
+                  <span style={{
                     display: 'block',
                     fontSize: '0.6875rem',
                     fontFamily: 'var(--font-display)',
@@ -835,49 +788,14 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                     marginBottom: '0.25rem',
                   }}>
                     Ruleset
-                  </label>
-                  <select
-                    id="new-save-ruleset"
-                    value={rulesetSelection}
-                    onChange={(e) => setRulesetSelection(e.target.value)}
-                    data-testid="ruleset-select"
-                    style={{
-                      width: '100%',
-                      borderRadius: '4px',
-                      border: '1px solid #334155',
-                      background: '#0f172a',
-                      padding: '0.5rem 0.75rem',
-                      fontSize: '0.875rem',
-                      color: '#e2e8f0',
-                    }}
-                  >
-                    <option value="generic">Generic (Classic Dodger sim)</option>
-                    <option value="official_foam">USA Dodgeball 2026.1 — Foam</option>
-                    <option value="official_no_sting">USA Dodgeball 2026.1 — No-Sting</option>
-                    <option value="official_cloth">USA Dodgeball 2026.1 — Cloth</option>
-                  </select>
-
-                  {/* Dynamic Explanation Card */}
-                  <div style={{
-                    marginTop: '1rem',
-                    background: 'rgba(34, 211, 238, 0.04)',
-                    borderLeft: '3px solid #22d3ee',
-                    padding: '0.75rem 1rem',
-                    borderRadius: '0 4px 4px 0',
-                  }}>
-                    <h4 style={{ margin: '0 0 0.25rem 0', fontSize: '0.875rem', fontWeight: 700, color: '#f8fafc' }}>
-                      {rulesetExplanations[rulesetSelection].title}
-                    </h4>
-                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
-                      {rulesetExplanations[rulesetSelection].desc}
-                    </p>
-                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#22d3ee', fontWeight: 600 }}>
-                      {rulesetExplanations[rulesetSelection].bullet}
-                    </p>
-                  </div>
-
+                  </span>
+                  {/* Single standard ruleset — no picker (owner decision
+                      2026-06-10: every career is foam-official). */}
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#e2e8f0', fontWeight: 600 }}>
+                    {standardRuleset.title}
+                  </p>
                   <p style={{ fontSize: '0.6875rem', color: '#64748b', margin: '0.375rem 0 0' }}>
-                    Set at career creation only. Cannot be changed later.
+                    {standardRuleset.bullet}
                   </p>
                 </div>
 

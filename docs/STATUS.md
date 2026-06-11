@@ -82,6 +82,14 @@ purged). Honest remainders listed in the retro: survivors-column cleanup,
 save-boundary flake, app-wide voice/dedup passes, Class Brief further
 redesign, Dynasty Office budget-panel refetch polish.
 
+**Single-ruleset standardization (owner decision 2026-06-10,
+`docs/specs/2026-06-10-single-ruleset-standardization.md`):** foam-official
+is the one standard way to play. The Foam/No-Sting/Cloth/Generic picker is
+removed from career creation (both surfaces); creation always sends
+`official_foam`. Depth kept, decision removed: all engine ruleset profiles,
+the conformance ledger, ruleset-parameterized tests, the API contract, and
+legacy saves of any ruleset are unchanged.
+
 ## Current Phase
 
 Post-V11. The game is playable end to end: career creation, weekly command
