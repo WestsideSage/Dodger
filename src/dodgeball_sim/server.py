@@ -510,6 +510,10 @@ class MatchReplayResponse(BaseModel):
     # FastAPI strips it from the serialized response (WT-2/WT-3 bug family).
     game_segments: list[dict[str, Any]] | None = None
     report: dict[str, Any]
+    # V20 intent context: the locked match policies both clubs played under
+    # (club_id -> CoachPolicy dict). None for legacy/rec matches. Declared so
+    # FastAPI does not strip it (WT-2/WT-3 bug family).
+    team_policies: dict[str, dict[str, Any]] | None = None
     official_state: dict[str, Any] | None = None
     broadcast_frame: dict[str, Any] | None = None
     playoff_frame: dict[str, Any] | None = None
@@ -1147,16 +1151,23 @@ def get_history_my_program(club_id: str, conn = Depends(get_db)):
         current["avg_ovr"] = avg_ovr
         current["championships"] = champ_count
         hero["current"] = current
-        # The history glance "All-Time Record" cell previously rendered the
-        # latest season snapshot under an across-all-seasons label. Sum the
-        # same persisted rows so the number matches the claim (includes the
-        # in-progress season — season_standings carries it from week 1).
-        hero["all_time"] = {
-            "wins": sum(int(row["wins"]) for row in all_seasons),
-            "losses": sum(int(row["losses"]) for row in all_seasons),
-            "draws": sum(int(row["draws"]) for row in all_seasons),
-            "seasons": len(all_seasons),
+        # The history glance "All-Time Record" sums COMPLETED seasons only
+        # (owner decision §6.7, 2026-06-10): a season is completed when its
+        # outcome is ratified, so the cell never mixes a half-played season
+        # into a career total. With zero completed seasons the cell falls
+        # back to the latest-season record (the frontend's honest fallback).
+        completed_ids = {
+            row["season_id"]
+            for row in conn.execute("SELECT season_id FROM season_outcomes").fetchall()
         }
+        completed_rows = [row for row in all_seasons if row["season_id"] in completed_ids]
+        if completed_rows:
+            hero["all_time"] = {
+                "wins": sum(int(row["wins"]) for row in completed_rows),
+                "losses": sum(int(row["losses"]) for row in completed_rows),
+                "draws": sum(int(row["draws"]) for row in completed_rows),
+                "seasons": len(completed_rows),
+            }
 
     # Timeline events
     timeline = []

@@ -290,26 +290,44 @@ const PossessionBar = ({
 // Set-by-set story of an official match. Every value comes from the persisted
 // per-game official score; chips jump to the game's first event when the
 // event stream carries game metadata (newly simulated matches).
+//
+// V20 live strip: when the event stream carries game metadata, the strip is
+// LIVE-PER-EVENT during playback — a game's result is revealed only once
+// playback moves past it (the current game shows ▶, later games show ·), so
+// watching a replay never spoils the games you haven't reached. At the end
+// of playback (or on legacy streams without metadata, where currentGame is
+// null) the strip shows the full-time story as before.
 const GameSegmentStrip = ({
   segments,
   currentGame,
   onJump,
+  atEnd,
 }: {
   segments: ReplayGameSegment[];
   currentGame: number | null;
   onJump: (proofIndex: number) => void;
+  atEnd: boolean;
 }) => {
   if (segments.length === 0) return null;
+  const liveMode = !atEnd && currentGame != null;
+  const lastRevealed = liveMode
+    ? segments.filter((seg) => seg.game_number < (currentGame as number)).slice(-1)[0] ?? null
+    : segments[segments.length - 1];
   return (
     <div className="mr-set-strip" data-testid="replay-set-strip" aria-label="Game-by-game set results">
       <span className="mr-set-kicker">SETS</span>
       {segments.map((seg) => {
-        const result =
-          seg.home_points > seg.away_points ? 'home' : seg.away_points > seg.home_points ? 'away' : 'none';
         const isCurrent = currentGame === seg.game_number;
+        const revealed = !liveMode || seg.game_number < (currentGame as number);
+        const result = !revealed
+          ? 'none'
+          : seg.home_points > seg.away_points ? 'home' : seg.away_points > seg.home_points ? 'away' : 'none';
         const canJump = seg.first_proof_index != null;
-        const title =
-          seg.result_type === 'no_point'
+        const title = !revealed
+          ? isCurrent
+            ? `Game ${seg.game_number}: in progress — keep watching`
+            : `Game ${seg.game_number}: not played yet at this point of the replay`
+          : seg.result_type === 'no_point'
             ? `Game ${seg.game_number}: no point — neither side closed it out`
             : seg.result_type === 'tie'
               ? `Game ${seg.game_number}: tied`
@@ -327,13 +345,21 @@ const GameSegmentStrip = ({
           >
             <span className="g">G{seg.game_number}</span>
             <span className="pts">
-              {seg.result_type === 'no_point' ? '—' : `${seg.home_points}–${seg.away_points}`}
+              {!revealed
+                ? isCurrent
+                  ? '▶'
+                  : '·'
+                : seg.result_type === 'no_point'
+                  ? '—'
+                  : `${seg.home_points}–${seg.away_points}`}
             </span>
           </button>
         );
       })}
       <span className="mr-set-running" data-testid="replay-set-running">
-        {segments[segments.length - 1].home_running_points}–{segments[segments.length - 1].away_running_points} on game points
+        {lastRevealed
+          ? `${lastRevealed.home_running_points}–${lastRevealed.away_running_points} on game points`
+          : '0–0 on game points'}
       </span>
     </div>
   );
@@ -463,6 +489,24 @@ const OfficialRulesPanel = ({ data }: { data: MatchReplayResponse }) => {
         <span title="The burden team must attack before the throw clock expires.">BURDEN</span>
         <strong>{burden}</strong>
       </div>
+      {data.team_policies && (
+        <div>
+          <span title="The locked tactics each club actually played this match under — your weekly plan's policy and theirs, disclosed after the fact (the match is tape now).">GAME PLANS</span>
+          <div className="mr-official-ball-list">
+            {[data.home_club_id, data.away_club_id].map((clubId) => {
+              const policy = data.team_policies?.[clubId];
+              if (!policy) return null;
+              return (
+                <span key={clubId}>
+                  {(clubNameById[clubId] ?? clubId)}: {humanizeOfficialToken(String(policy.approach ?? '—'))} ·{' '}
+                  {humanizeOfficialToken(String(policy.catch_posture ?? '—'))} · targets{' '}
+                  {humanizeOfficialToken(String(policy.target_focus ?? '—')).toLowerCase()}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <div>
         <span title="Where each ball ended at the final whistle — held means in a player's hands, dead means loose on the floor.">BALL STATES</span>
         <div className="mr-official-ball-list">
@@ -871,6 +915,7 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
             segments={gameSegments}
             currentGame={currentGame}
             onJump={(proofIndex) => { setEventIndex(proofIndex); setIsPlaying(false); }}
+            atEnd={eventIndex >= data.proof_events.length - 1}
           />
         )}
         <PossessionBar
