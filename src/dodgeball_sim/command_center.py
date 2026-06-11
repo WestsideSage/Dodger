@@ -25,14 +25,22 @@ from .playoffs import playoff_stage_label
 
 INTENTS = ("Balanced", "Win Now", "Develop Youth", "Preserve Health", "Prepare For Playoffs")
 
+# V19b: `focus_department` is the ONE room the staff concentrates on this
+# week — the mechanical staff order (tactics = +18 targeting read next match,
+# conditioning = fatigue drag halved next match, training = practice credits
+# toward offseason development, scouting = +1 recruiting action this week,
+# culture = stronger courtship gains this week). The per-department strings
+# below remain the staff's descriptive notes for the chosen week ("medical"
+# was removed: injuries are not modeled, so there was nothing to order).
+# Default focus = tactics, matching the auto-pilot's competitive posture.
 DEFAULT_DEPARTMENT_ORDERS = {
     "tactics": "opponent prep",
     "training": "fundamentals",
     "conditioning": "balanced maintenance",
-    "medical": "injury prevention",
     "scouting": "next opponent",
     "culture": "pressure management",
     "dev_focus": "BALANCED",
+    "focus_department": "tactics",
 }
 
 

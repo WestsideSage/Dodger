@@ -104,11 +104,14 @@ def apply_action(
     base_band: tuple[int, int],
     pipeline_tier: int,
     credibility_score: int,
+    gain_multiplier: float = 1.0,
 ) -> tuple[dict[str, Any], RecruitingActionResult]:
     """Apply one action to a prospect's action state, returning new state + the delta.
 
     ``state`` is the per-prospect dict from ``prospect_recruitment_actions_json``.
     The returned state is a new dict (the input is not mutated).
+    ``gain_multiplier`` scales the interest gains (V19b: a "culture" staff
+    focus week makes contact/visits land warmer).
     """
     new_state = dict(state)
 
@@ -123,10 +126,14 @@ def apply_action(
         new_state["scouted"] = True
     elif action == "contact":
         new_state["contacted"] = True
-        interest_after = _clamp_int(interest_before + _CONTACT_GAIN, 0, 100)
+        interest_after = _clamp_int(
+            interest_before + int(round(_CONTACT_GAIN * gain_multiplier)), 0, 100
+        )
     elif action == "visit":
         new_state["visited"] = True
-        interest_after = _clamp_int(interest_before + _VISIT_GAIN, 0, 100)
+        interest_after = _clamp_int(
+            interest_before + int(round(_VISIT_GAIN * gain_multiplier)), 0, 100
+        )
     else:  # pragma: no cover - guarded by the Literal type at call sites
         raise ValueError(f"Unknown recruiting action: {action}")
 

@@ -191,47 +191,39 @@ export const TERMS = {
     why: 'Role fit is mechanical: a starter whose archetype fits their seat (slots 1-4) plays +3 on every action stat — bonus-only, a mismatch just forgoes it. Order also sets the opening rush: your first slots secure the designated balls when Rush Target is "Nearest" (other Target options re-order by power/overall). Swap a bench player in by clicking a slot, then a bench card.',
     kind: 'mechanical',
   },
-  // --- Department orders ---
-  // HONESTY (ADR 0002): apart from Dev Focus (its own pill on the Command
-  // Center), department orders have NO mechanical consumer — they are logged
-  // in the weekly debrief as staff color. These entries previously claimed
-  // kind:'mechanical' ("AFFECTS PLAY" badge) for injury/morale/scouting
-  // systems that do not exist. Keep them 'flavor' until a real hook ships.
+  // --- Staff focus (V19b: the department-order fiction became one real
+  // weekly decision — the staff concentrates on ONE room, each a disclosed
+  // mechanical effect; "medical" was REMOVED because injuries are not
+  // modeled and a decision with nothing to decide is a fiction). ---
   'dept.tactics': {
-    label: 'Tactics',
-    plain: 'Your staff\'s game-planning note this week — opponent prep, containment, or tempo.',
-    why: 'Flavor only — logged in your weekly debrief. Match tactics are set in the Policy Editor, which IS mechanical.',
-    kind: 'flavor',
+    label: 'Tactics Focus',
+    plain: 'A film week: your throwers play the next match smarter.',
+    why: 'Next match, every thrower gains +18 effective Tactical IQ — better target reads, better release timing, throws that beat the catch window.',
+    kind: 'mechanical',
   },
   'dept.training': {
-    label: 'Training',
-    plain: 'What your training staff emphasizes in practice this week.',
-    why: 'Flavor only — development is driven by the Dev Focus pill (Command Center) and match minutes, not this order.',
-    kind: 'flavor',
+    label: 'Training Focus',
+    plain: 'A practice block that banks toward the offseason.',
+    why: 'Each training week adds +0.2 OVR of offseason growth for the whole squad (cap 8 weeks a season), headroom-capped per player.',
+    kind: 'mechanical',
   },
   'dept.conditioning': {
-    label: 'Conditioning',
-    plain: 'How the staff frames the squad\'s physical week.',
-    why: 'Flavor only — no fatigue carries between weeks (stamina is a fixed rating), so this order changes nothing.',
-    kind: 'flavor',
-  },
-  'dept.medical': {
-    label: 'Medical',
-    plain: 'Your medical staff\'s stance for the week.',
-    why: 'Flavor only — injuries are not modeled, so availability is never actually at risk.',
-    kind: 'flavor',
+    label: 'Conditioning Focus',
+    plain: 'A recovery week: legs stay fresher in the next match.',
+    why: 'Next match, the fatigue drag on every action stat is halved — late-match performance holds up.',
+    kind: 'mechanical',
   },
   'dept.scouting': {
-    label: 'Scouting',
-    plain: 'Where your scouts say their attention is this week.',
-    why: 'Flavor only — real scouting happens via the Scout action (readiness gate) and the recruit board\'s Scout/Contact/Visit.',
-    kind: 'flavor',
+    label: 'Scouting Focus',
+    plain: 'Extra scout hours on the recruit board this week.',
+    why: 'One extra Scout action this week (3 → 4) for narrowing prospect bands.',
+    kind: 'mechanical',
   },
   'dept.culture': {
-    label: 'Culture',
-    plain: 'The locker-room emphasis your staff notes this week.',
-    why: 'Flavor only — there is no morale or chemistry stat for this to move.',
-    kind: 'flavor',
+    label: 'Culture Focus',
+    plain: 'A locker-room week that makes your program easier to say yes to.',
+    why: 'Contact and Visit interest gains land 25% stronger this week — interest feeds your contested Signing Day offer.',
+    kind: 'mechanical',
   },
   // --- Staff roles (Phase 3b) ---
   'staff.training': {

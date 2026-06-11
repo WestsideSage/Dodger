@@ -862,13 +862,15 @@ def simulate_week(conn = Depends(get_db)) -> SimResponse:
 
 def _run_recruiting_action(conn, prospect_id: str, action: str) -> dict[str, Any]:
     """Deduct a slot, apply the action, and return the visible before/after delta."""
-    from dodgeball_sim.recruitment import deduct_recruiting_slot
+    from dodgeball_sim.recruitment import deduct_recruiting_slot, staff_focus_for_week
     from dodgeball_sim.recruiting_office import apply_recruiting_action
     from dodgeball_sim.persistence import load_command_history_all_seasons
 
     season_id = get_state(conn, "active_season_id")
     player_club_id = get_state(conn, "player_club_id")
     week = load_career_state_cursor(conn).week
+    # V19b: a "culture" staff focus week makes courtship land warmer.
+    culture_week = staff_focus_for_week(conn, season_id, week) == "culture"
     try:
         deduct_recruiting_slot(conn, season_id, week, action)
         delta = apply_recruiting_action(
@@ -879,6 +881,7 @@ def _run_recruiting_action(conn, prospect_id: str, action: str) -> dict[str, Any
             player_club_id=player_club_id or "",
             root_seed=stored_root_seed(conn),
             history=load_command_history_all_seasons(conn),
+            interest_gain_multiplier=1.25 if culture_week else 1.0,
         )
         conn.commit()
     except ValueError as exc:

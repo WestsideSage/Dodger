@@ -13,23 +13,6 @@ const dynastySubtabFromUrl = (): 'recruit' | 'history' | 'staff' => {
   return subtab === 'history' || subtab === 'staff' || subtab === 'recruit' ? subtab : 'recruit';
 };
 
-const DEPARTMENT_LABELS: Record<string, string> = {
-  tactics: 'Tactics',
-  training: 'Training',
-  conditioning: 'Conditioning',
-  medical: 'Medical',
-  scouting: 'Scouting',
-  culture: 'Culture',
-};
-
-const DEPARTMENT_OPTIONS: Record<string, string[]> = {
-  tactics: ['opponent prep', 'star containment', 'possession control', 'pressure tempo'],
-  training: ['fundamentals', 'throw accuracy', 'catch security', 'scrimmage reps'],
-  conditioning: ['balanced maintenance', 'recovery emphasis', 'stamina push', 'fresh legs'],
-  medical: ['injury prevention', 'minutes restriction', 'recovery monitoring', 'play through'],
-  scouting: ['next opponent', 'prospect board', 'playoff threats', 'rival tendencies'],
-  culture: ['pressure management', 'youth confidence', 'veteran leadership', 'accountability'],
-};
 
 const STAFF_DEPARTMENT_TARGETS = ['tactics', 'training', 'conditioning', 'medical', 'scouting', 'culture'];
 
@@ -65,80 +48,65 @@ function SettingsModal({
   onUpdate: (key: string, value: string) => void;
   onClose: () => void;
 }) {
-  const departmentEntries = Object.entries(plan.department_orders).filter(([key]) => key !== 'dev_focus');
-
-  // HONESTY (ADR 0002): these orders have no mechanical consumer — they are
-  // recorded on the weekly plan and echoed in the post-week debrief, nothing
-  // more. The previous descriptions claimed engine effects that do not exist
-  // ("reduces injury chance", "fewer rushed throws", "short-term edge,
-  // long-term cost"). Descriptions below are staff color only and must not
-  // promise an outcome effect; the modal banner states the boundary once.
-  const DEPARTMENT_DESCRIPTIONS: Record<string, Record<string, string>> = {
-    tactics: {
-      'opponent prep': 'Staff note: film time on this week\'s opponent.',
-      'star containment': 'Staff note: attention on the opponent\'s best player.',
-      'possession control': 'Staff note: ball-discipline emphasis in practice.',
-      'pressure tempo': 'Staff note: an up-tempo week on the practice floor.',
+  // V19b: the six flavor dropdowns are retired. The staff runs ONE focused
+  // department per week — a real decision with an opportunity cost, each
+  // option a disclosed mechanical effect ("medical" was removed: injuries
+  // are not modeled, so there was nothing to order).
+  const FOCUS_OPTIONS: Array<{
+    key: string;
+    label: string;
+    effect: string;
+    termId: import('../legibility').TermId;
+  }> = [
+    {
+      key: 'tactics',
+      label: 'Tactics — film week',
+      effect: 'Next match, your throwers play smarter: +18 effective Tactical IQ on target reads, release timing, and catch-beating timing.',
+      termId: 'dept.tactics',
     },
-    training: {
-      fundamentals: 'Staff note: balanced practice across skill areas.',
-      'throw accuracy': 'Staff note: extra reps on throw precision.',
-      'catch security': 'Staff note: catch-drill emphasis this week.',
-      'scrimmage reps': 'Staff note: live scrimmage emphasis this week.',
+    {
+      key: 'conditioning',
+      label: 'Conditioning — recovery week',
+      effect: 'Next match, fatigue bites half as hard: the stamina drag on every action stat is halved.',
+      termId: 'dept.conditioning',
     },
-    conditioning: {
-      'balanced maintenance': 'Staff note: a standard physical week.',
-      'recovery emphasis': 'Staff note: a lighter week in the gym.',
-      'stamina push': 'Staff note: a heavy week in the gym.',
-      'fresh legs': 'Staff note: workload spread across the squad.',
+    {
+      key: 'training',
+      label: 'Training — practice block',
+      effect: 'Banks a practice credit: each training week adds +0.2 OVR of offseason growth for the whole squad (cap 8 weeks).',
+      termId: 'dept.training',
     },
-    medical: {
-      'injury prevention': 'Staff note: cautious handling all week.',
-      'minutes restriction': 'Staff note: flagged players handled carefully.',
-      'recovery monitoring': 'Staff note: health signals under observation.',
-      'play through': 'Staff note: everyone cleared at full participation.',
+    {
+      key: 'scouting',
+      label: 'Scouting — extra assignment',
+      effect: 'One extra Scout action on the recruit board this week (3 → 4).',
+      termId: 'dept.scouting',
     },
-    scouting: {
-      'next opponent': 'Staff note: scout time on this week\'s matchup.',
-      'prospect board': 'Staff note: scout time on the recruit pool.',
-      'playoff threats': 'Staff note: scout time on the postseason race.',
-      'rival tendencies': 'Staff note: scout time on a key rival.',
+    {
+      key: 'culture',
+      label: 'Culture — locker-room week',
+      effect: 'Courtship lands warmer this week: Contact and Visit interest gains are 25% stronger.',
+      termId: 'dept.culture',
     },
-    culture: {
-      'pressure management': 'Staff note: big-moment composure emphasis.',
-      'youth confidence': 'Staff note: encouragement for the young core.',
-      'veteran leadership': 'Staff note: veterans set the tone this week.',
-      accountability: 'Staff note: standards-first messaging this week.',
-    },
-  };
-
-  const DEPT_TERM_IDS: Record<string, import('../legibility').TermId> = {
-    tactics: 'dept.tactics',
-    training: 'dept.training',
-    conditioning: 'dept.conditioning',
-    medical: 'dept.medical',
-    scouting: 'dept.scouting',
-    culture: 'dept.culture',
-  };
+  ];
+  const currentFocus = String(plan.department_orders?.focus_department ?? 'tactics');
 
   return (
     <Dialog
       labelledBy="program-settings-title"
-      label="Department Orders"
+      label="Staff Focus"
       onClose={onClose}
       overlayStyle={{ background: 'rgba(0,0,0,0.8)', backgroundColor: undefined, backdropFilter: undefined, zIndex: 101, padding: '1rem' }}
       panelClassName="dm-panel"
       panelStyle={{ width: 'min(92vw, 34rem)', maxHeight: '88vh', overflowY: 'auto' }}
     >
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.25rem' }}>
           <div>
             <p className="dm-kicker">Program Settings</p>
-            <h2 id="program-settings-title" style={{ margin: '0.25rem 0 0', color: '#fff' }}>Department Orders</h2>
-            <p style={{ margin: '0.4rem 0 0', color: '#94a3b8', fontSize: '0.875rem' }}>Choose a focused order for each staff room.</p>
-            <p style={{ margin: '0.5rem 0 0', color: '#fbbf24', fontSize: '0.72rem', lineHeight: 1.45 }}>
-              Flavor only: these orders are recorded in your weekly debrief but do not
-              change match outcomes or development. Dev Focus (Command Center) and the
-              Policy Editor are the levers that affect play.
+            <h2 id="program-settings-title" style={{ margin: '0.25rem 0 0', color: '#fff' }}>Staff Focus</h2>
+            <p style={{ margin: '0.4rem 0 0', color: '#94a3b8', fontSize: '0.875rem' }}>
+              Your staff concentrates on one room this week. Every option is a real,
+              disclosed effect — pick where the week goes.
             </p>
           </div>
           <button
@@ -150,37 +118,43 @@ function SettingsModal({
             X
           </button>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {departmentEntries.map(([key, value]) => {
-            const knownOptions = DEPARTMENT_OPTIONS[key] ?? [String(value)];
-            const options = knownOptions.includes(String(value)) ? knownOptions : [String(value), ...knownOptions];
+        <div role="radiogroup" aria-label="Weekly staff focus" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          {FOCUS_OPTIONS.map((option) => {
+            const selected = currentFocus === option.key;
             return (
-              <label key={key} style={{ display: 'block' }}>
-                <span className="dm-kicker">
-                  {DEPT_TERM_IDS[key] ? (
-                    <TermTip term={DEPT_TERM_IDS[key]}>{DEPARTMENT_LABELS[key] ?? key}</TermTip>
-                  ) : (
-                    DEPARTMENT_LABELS[key] ?? key
-                  )}
+              <button
+                key={option.key}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => onUpdate('focus_department', option.key)}
+                style={{
+                  textAlign: 'left',
+                  padding: '0.7rem 0.85rem',
+                  borderRadius: 6,
+                  background: selected ? 'rgba(34,211,238,0.08)' : '#0f172a',
+                  border: selected ? '1px solid #22d3ee' : '1px solid #1e293b',
+                  borderLeft: selected ? '3px solid #22d3ee' : '3px solid #1e293b',
+                  color: '#e2e8f0',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <span className="dm-kicker" style={{ color: selected ? '#22d3ee' : '#94a3b8' }}>
+                  <TermTip term={option.termId}>{option.label}</TermTip>
                 </span>
-                <select
-                  value={String(value)}
-                  onChange={(event) => onUpdate(key, event.target.value)}
-                  style={{ width: '100%', boxSizing: 'border-box', background: '#0f172a', border: '1px solid #334155', borderRadius: '4px', padding: '0.55rem 0.65rem', color: '#e2e8f0', marginTop: '0.3rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.05em' }}
-                >
-                  {options.map((option) => (
-                    <option key={`${key}-${option}`} value={option}>{option.replaceAll('_', ' ')}</option>
-                  ))}
-                </select>
-                {DEPARTMENT_DESCRIPTIONS[key]?.[String(value)] && (
-                  <p style={{ margin: '0.3rem 0 0', color: '#64748b', fontSize: '0.68rem', lineHeight: 1.4 }}>
-                    {DEPARTMENT_DESCRIPTIONS[key][String(value)]}
-                  </p>
-                )}
-              </label>
+                <p style={{ margin: '0.3rem 0 0', color: selected ? '#cbd5e1' : '#64748b', fontSize: '0.74rem', lineHeight: 1.45 }}>
+                  {option.effect}
+                </p>
+              </button>
             );
           })}
         </div>
+        <p style={{ margin: '0.9rem 0 0', color: '#64748b', fontSize: '0.7rem', lineHeight: 1.45 }}>
+          Dev Focus (player development direction) lives on the Command Center, and match
+          tactics live in the Policy Editor — both stay set independently of this week’s
+          staff focus. AI clubs run the same staff system with their own weekly picks.
+        </p>
     </Dialog>
   );
 }

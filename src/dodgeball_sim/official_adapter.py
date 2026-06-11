@@ -59,7 +59,15 @@ class OfficialEngineAdapter:
         self.selection = selection
         self.profile = selection.to_profile()
 
-    def _run_raw(self, setup: MatchSetup, *, seed: int, match_id: str | None) -> OfficialMatchResult:
+    def _run_raw(
+        self,
+        setup: MatchSetup,
+        *,
+        seed: int,
+        match_id: str | None,
+        prep_a: dict | None = None,
+        prep_b: dict | None = None,
+    ) -> OfficialMatchResult:
         # Persistence (game_loop.persist_match_record) and aftermath builders
         # assume team_a is the home club; the team_a_id is round-tripped through
         # official_metadata so downstream code can verify. Keep that invariant
@@ -86,6 +94,7 @@ class OfficialEngineAdapter:
             player_lookup=lookup,
             policy_a=team_a.coach_policy, policy_b=team_b.coach_policy,
             seed=seed,
+            prep_a=prep_a, prep_b=prep_b,
         )
         box = derive_box_score(
             match_result.events,
@@ -108,10 +117,23 @@ class OfficialEngineAdapter:
     def run(self, setup: MatchSetup, *, seed: int, match_id: str | None = None) -> OfficialMatchResult:
         return self._run_raw(setup, seed=seed, match_id=match_id)
 
-    def run_generic(self, setup: MatchSetup, *, seed: int, match_id: str | None = None) -> MatchResult:
-        """Run the official engine and return a generic-shaped MatchResult."""
+    def run_generic(
+        self,
+        setup: MatchSetup,
+        *,
+        seed: int,
+        match_id: str | None = None,
+        prep_a: dict | None = None,
+        prep_b: dict | None = None,
+    ) -> MatchResult:
+        """Run the official engine and return a generic-shaped MatchResult.
 
-        raw = self._run_raw(setup, seed=seed, match_id=match_id)
+        ``prep_a``/``prep_b`` are the V19b staff-focus match preps (tactics
+        read sharpening / conditioning stamina relief), derived from each
+        club's weekly plan by the caller.
+        """
+
+        raw = self._run_raw(setup, seed=seed, match_id=match_id, prep_a=prep_a, prep_b=prep_b)
         starters_a = tuple(p.id for p in setup.team_a.players[: self.profile.roster_rule.starters])
         starters_b = tuple(p.id for p in setup.team_b.players[: self.profile.roster_rule.starters])
         match_events = translate_events(

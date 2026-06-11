@@ -23,12 +23,26 @@ from .rec_engine import RecTier1Driver
 class RecEngineAdapter:
     tier_id: str = "local_rec_league"
 
-    def run(self, setup: MatchSetup, *, seed: int, match_id: str | None = None) -> DriverMatchOutput:
+    def run(
+        self,
+        setup: MatchSetup,
+        *,
+        seed: int,
+        match_id: str | None = None,
+        prep_a: dict | None = None,
+        prep_b: dict | None = None,
+    ) -> DriverMatchOutput:
         team_a = setup.team_a
         team_b = setup.team_b
         starters_a = tuple(player.id for player in team_a.players)
         starters_b = tuple(player.id for player in team_b.players)
         player_lookup = {player.id: player for player in team_a.players} | {player.id: player for player in team_b.players}
+        config: dict = {"config_version": setup.config_version}
+        # V19b staff-focus match preps (tactics read / conditioning relief).
+        if prep_a:
+            config["prep_a"] = dict(prep_a)
+        if prep_b:
+            config["prep_b"] = dict(prep_b)
         driver_input = DriverMatchInput(
             match_id=match_id or f"{team_a.id}-vs-{team_b.id}",
             team_a_id=team_a.id,
@@ -39,7 +53,7 @@ class RecEngineAdapter:
             policy_a=team_a.coach_policy,
             policy_b=team_b.coach_policy,
             seed=seed,
-            config={"config_version": setup.config_version},
+            config=config,
         )
         return RecTier1Driver().run(driver_input)
 
@@ -50,8 +64,10 @@ class RecEngineAdapter:
         seed: int,
         match_id: str | None = None,
         difficulty: str = "pro",
+        prep_a: dict | None = None,
+        prep_b: dict | None = None,
     ) -> MatchResult:
-        output = self.run(setup, seed=seed, match_id=match_id)
+        output = self.run(setup, seed=seed, match_id=match_id, prep_a=prep_a, prep_b=prep_b)
         events = _translate_events(
             setup=setup,
             output=output,
