@@ -365,6 +365,18 @@ def match_replay_payload(conn: sqlite3.Connection, match_id: str) -> dict[str, A
         proof["proof_events"],
         row["home_club_id"],
     )
+    # V20 intent context: the locked match policies both clubs actually played
+    # under (persisted with the official score by the adapter). None for
+    # legacy/rec matches — the panel simply omits the row.
+    team_policies = None
+    raw_score_json = (
+        row["official_score_json"] if "official_score_json" in row.keys() else None
+    )
+    if raw_score_json:
+        try:
+            team_policies = json.loads(raw_score_json).get("team_policies")
+        except (TypeError, ValueError):
+            team_policies = None
     _winner_id = row["winner_club_id"]
 
     def _weighted(player_id: str, stat) -> float:
@@ -431,6 +443,7 @@ def match_replay_payload(conn: sqlite3.Connection, match_id: str) -> dict[str, A
         "key_play_indices": proof["key_play_indices"],
         "game_segments": game_segments,
         "report": report,
+        "team_policies": team_policies,
         "official_state": official_state,
         "broadcast_frame": broadcast_frame.to_dict(),
         "playoff_frame": playoff_frame.to_dict() if playoff_frame is not None else None,

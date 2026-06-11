@@ -17,7 +17,7 @@ class PlayerMatchStats:
     dodges_successful: int = 0      # throw targeting this player resolved as "dodged" (not on-target)
     times_hit: int = 0              # on-target throws not caught or dodged; == times_eliminated in default ruleset
     times_eliminated: int = 0       # times removed from play (hit as target OR caught as thrower)
-    revivals_caused: int = 0        # catch revivals triggered; 0 in default ruleset (no catch_revival)
+    revivals_caused: int = 0        # teammates returned to court by this player's catches (V20: real in both engines)
     clutch_events: int = 0          # populated by analysis layer after extraction
     elimination_plus_minus: int = 0  # team elims minus opp elims while this player was alive
     minutes_played: int = 0
@@ -46,6 +46,7 @@ def extract_player_stats(
     dodges_successful = 0
     times_hit = 0
     times_eliminated = 0
+    revivals_caused = 0
     team_elims = 0  # opponents eliminated while player alive
     opp_elims = 0   # teammates eliminated while player alive
     player_alive = True
@@ -113,6 +114,24 @@ def extract_player_stats(
             times_eliminated += 1
             player_alive = False
 
+        # V20 stats truth: catch returns. A caught throw puts a queued
+        # teammate back on court (state_diff.player_return, both engines) —
+        # the returning player is alive again (their minutes/plus-minus
+        # resume), and the catcher is credited with the revival they caused
+        # (revivals_caused was hardcoded 0 since V1).
+        return_info = event.state_diff.get("player_return")
+        if return_info:
+            if return_info.get("player_id") == player_id:
+                player_alive = True
+            if resolution == "catch":
+                credited = (
+                    list(catcher_ids)
+                    if has_explicit_catcher
+                    else ([actors.get("target")] if actors.get("target") else [])
+                )
+                if player_id in credited:
+                    revivals_caused += 1
+
     return PlayerMatchStats(
         throws_attempted=throws_attempted,
         throws_on_target=throws_on_target,
@@ -123,7 +142,7 @@ def extract_player_stats(
         dodges_successful=dodges_successful,
         times_hit=times_hit,
         times_eliminated=times_eliminated,
-        revivals_caused=0,
+        revivals_caused=revivals_caused,
         clutch_events=0,
         elimination_plus_minus=team_elims - opp_elims,
         minutes_played=minutes_played,

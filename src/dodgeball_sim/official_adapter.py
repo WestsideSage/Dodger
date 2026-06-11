@@ -104,12 +104,23 @@ class OfficialEngineAdapter:
             starters_a=starters_a, starters_b=starters_b,
             winner_team_id=match_result.winner_team_id,
         )
+        # V20 intent context: persist BOTH clubs' locked match policies (the
+        # weekly plan's tactics, already applied to the club by
+        # _apply_command_plan_to_match) so the replay can show the decision
+        # frame the match was actually played under. Post-hoc disclosure of
+        # the player's own locked decisions plus the opponent's now-historical
+        # plan — by replay time the match is tape, so no fog is broken.
+        metadata = asdict(match_result.official_match_score)
+        metadata["team_policies"] = {
+            team_a.id: dict(team_a.coach_policy.as_dict()),
+            team_b.id: dict(team_b.coach_policy.as_dict()),
+        }
         return OfficialMatchResult(
             winner_team_id=match_result.winner_team_id,
             box_score=box, events=match_result.events,
             ticks=match_result.ticks,
             ruleset_selection=self.selection.value,
-            official_metadata=asdict(match_result.official_match_score),
+            official_metadata=metadata,
             replay_state=match_result.replay_state,
             moment_events=match_result.moment_events,
         )

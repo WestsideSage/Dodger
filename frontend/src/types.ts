@@ -394,6 +394,9 @@ export interface MatchReplayResponse {
     // Per-game story of an official match (set results in order, running
     // points, proof-index ranges). Null for legacy/rec matches.
     game_segments?: ReplayGameSegment[] | null;
+    // V20 intent context: the locked match policies each club actually
+    // played under (club_id -> policy dict). Null for legacy/rec matches.
+    team_policies?: Record<string, Record<string, string>> | null;
     official_state?: OfficialReplayState | null;
     report: {
         winner_name: string;

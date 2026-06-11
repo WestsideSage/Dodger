@@ -292,7 +292,7 @@ export function MyProgramView({ clubId, isSelf = true }: { clubId: string; isSel
           </span>
           <span className="trend">
             {allTime
-              ? `Across ${allTime.seasons} season${allTime.seasons === 1 ? '' : 's'} (incl. current)`
+              ? `Across ${allTime.seasons} completed season${allTime.seasons === 1 ? '' : 's'}`
               : currentHero
                 ? formatSeasonLabel(currentHero.season_label)
                 : 'First completed season will appear here'}
