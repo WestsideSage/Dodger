@@ -274,6 +274,29 @@ export function ProspectCard({
           <span className="copy">{evidence.join(' · ')}</span>
         </div>
       )}
+      {prospect.active_promise && (
+        <div
+          data-testid="prospect-promise-chip"
+          style={{
+            display: 'flex',
+            gap: '0.4rem',
+            alignItems: 'baseline',
+            margin: '0.35rem 0 0',
+            fontSize: '0.68rem',
+          }}
+        >
+          <span className={`dm-badge ${prospect.active_promise.status === 'broken' ? 'dm-badge-orange' : 'dm-badge-cyan'}`}>
+            {prospect.active_promise.status === 'open'
+              ? 'PROMISED'
+              : prospect.active_promise.status === 'fulfilled'
+                ? 'PROMISE KEPT'
+                : 'PROMISE BROKEN'}
+          </span>
+          <span style={{ color: '#94a3b8' }}>
+            {PROMISE_TYPE_LABELS[prospect.active_promise.promise_type] ?? prospect.active_promise.promise_type}
+          </span>
+        </div>
+      )}
       <div className="do-recruit-actions">
         <button
           className="do-recruit-btn"
@@ -306,7 +329,60 @@ export function ProspectCard({
         >
           Visit
         </button>
+        {/* V19b: promises are mechanical — results feed credibility, which
+            feeds interest and your contested Signing Day offer. */}
+        <select
+          className="do-recruit-btn"
+          aria-label={`Make a promise to ${prospect.name}`}
+          disabled={loading || Boolean(prospect.active_promise && prospect.active_promise.status === 'open')}
+          value=""
+          onChange={(event) => {
+            const promiseType = event.target.value;
+            if (!promiseType) return;
+            setLoading(true);
+            dynastyApi
+              .makePromise(prospect.player_id, promiseType)
+              .then(() => {
+                setFeedbackTone('success');
+                setFeedbackMessage(
+                  `Promise made: ${PROMISE_TYPE_LABELS[promiseType] ?? promiseType}. Checked at season's end.`,
+                );
+                if (feedbackTimer.current !== null) clearTimeout(feedbackTimer.current);
+                feedbackTimer.current = setTimeout(() => setFeedbackMessage(null), 3200);
+                onAction();
+              })
+              .catch((error) => {
+                setFeedbackTone('error');
+                setFeedbackMessage(error instanceof Error ? error.message : 'Promise failed.');
+                if (feedbackTimer.current !== null) clearTimeout(feedbackTimer.current);
+                feedbackTimer.current = setTimeout(() => setFeedbackMessage(null), 3200);
+              })
+              .finally(() => setLoading(false));
+          }}
+          title={
+            prospect.active_promise && prospect.active_promise.status === 'open'
+              ? 'A promise to this prospect is already open'
+              : 'Commit to something real — checked at season\'s end; kept promises build credibility, broken ones cost more'
+          }
+          style={{ cursor: 'pointer' }}
+        >
+          <option value="" disabled>
+            Promise…
+          </option>
+          {(prospect.promise_options ?? []).map((option) => (
+            <option key={option} value={option}>
+              {PROMISE_TYPE_LABELS[option] ?? option}
+            </option>
+          ))}
+        </select>
       </div>
     </div>
   );
 }
+
+// Plain-language promise vocabulary (mirrors DynastyOffice.PROMISE_LABELS).
+const PROMISE_TYPE_LABELS: Record<string, string> = {
+  early_playing_time: 'Early playing time',
+  development_priority: 'Development priority',
+  contender_path: "We'll contend",
+};

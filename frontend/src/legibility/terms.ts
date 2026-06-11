@@ -123,6 +123,16 @@ export const TERMS = {
   // Pipeline and Credibility are therefore MECHANICAL (they feed that offer
   // chain). Fit stays a flavor reading: it summarizes mechanical inputs
   // (scouted range + credibility) but is not itself consumed anywhere.
+  // V19b: promises are MECHANICAL — evaluated at season's end against real
+  // match/plan/playoff records, and the kept/broken record feeds program
+  // credibility (kept +4 each, broken -6 each, capped ±15), which sets
+  // prospect interest, which strengthens your contested Signing Day offer.
+  'recruit.promise': {
+    label: 'Promises',
+    plain: 'A real commitment to a prospect or player, checked at season\'s end.',
+    why: 'Each promise is graded against what actually happened (matches played, dev weeks run, playoffs made). Kept promises build credibility; broken ones cost more — and credibility feeds every prospect\'s interest in you.',
+    kind: 'mechanical',
+  },
   'recruit.fit': {
     label: 'Fit',
     plain: 'How well this prospect matches your program right now (0-100).',

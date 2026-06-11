@@ -191,6 +191,84 @@ function DoTabs({
   );
 }
 
+// V19b: plain-language promise vocabulary (the old "Promise Lane" label
+// failed owner comprehension — the term itself was the bug).
+const PROMISE_LABELS: Record<string, { label: string; meaning: string }> = {
+  early_playing_time: {
+    label: 'Early playing time',
+    meaning: 'They appear in at least 6 matches this season.',
+  },
+  development_priority: {
+    label: 'Development priority',
+    meaning: 'You run a focused dev plan at least 3 weeks and keep them rostered.',
+  },
+  contender_path: {
+    label: "We'll contend",
+    meaning: 'The club reaches the playoffs this season.',
+  },
+};
+
+function PromisesPanel({
+  promises,
+  maxActive,
+  prospects,
+}: {
+  promises: DynastyOfficeResponse['recruiting']['active_promises'];
+  maxActive: number;
+  prospects: DynastyOfficeResponse['recruiting']['prospects'];
+}) {
+  const nameById = new Map(prospects.map((p) => [p.player_id, p.name]));
+  const open = promises.filter((p) => p.status === 'open');
+  const resolved = promises.filter((p) => p.status !== 'open').slice(0, 4);
+
+  return (
+    <div className="dm-panel" style={{ padding: '0.85rem 1rem' }} data-testid="promises-panel">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <span className="dm-kicker">
+          <TermTip term="recruit.promise">Promises</TermTip>
+          <span style={{ color: '#64748b', marginLeft: '0.4rem', textTransform: 'none', letterSpacing: 0 }}>
+            {open.length}/{maxActive} open
+          </span>
+        </span>
+        <span style={{ color: '#64748b', fontSize: '0.68rem' }}>
+          Checked at season&apos;s end — kept promises build credibility, broken ones cost more.
+        </span>
+      </div>
+      {open.length === 0 && resolved.length === 0 ? (
+        <p style={{ margin: '0.5rem 0 0', color: '#64748b', fontSize: '0.74rem' }}>
+          No promises yet. Use a prospect card&apos;s Promise action to commit to something
+          real — playing time, development, or contention.
+        </p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.55rem' }}>
+          {open.map((p) => (
+            <div key={`open-${p.player_id}`} style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', fontSize: '0.76rem' }}>
+              <span className="dm-badge dm-badge-cyan">OPEN</span>
+              <span style={{ color: '#e2e8f0' }}>
+                {nameById.get(p.player_id) ?? p.player_id}: {PROMISE_LABELS[p.promise_type]?.label ?? p.promise_type}
+              </span>
+              <span style={{ color: '#64748b' }}>
+                — {PROMISE_LABELS[p.promise_type]?.meaning ?? ''}
+              </span>
+            </div>
+          ))}
+          {resolved.map((p) => (
+            <div key={`done-${p.player_id}-${p.result_season_id}`} style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', fontSize: '0.76rem' }}>
+              <span className={`dm-badge ${p.status === 'fulfilled' ? 'dm-badge-cyan' : 'dm-badge-orange'}`}>
+                {p.status === 'fulfilled' ? 'KEPT' : 'BROKEN'}
+              </span>
+              <span style={{ color: '#94a3b8' }}>
+                {nameById.get(p.player_id) ?? p.player_id}: {PROMISE_LABELS[p.promise_type]?.label ?? p.promise_type}
+              </span>
+              <span style={{ color: '#64748b' }}>— {p.evidence}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SlotMeter({ slots }: { slots: DynastyOfficeResponse['recruiting']['budget'] }) {
   const items = [
     { key: 'scout', label: 'Scout', tone: 'cyan', help: 'Verify prospect tiers.' },
@@ -744,6 +822,11 @@ export function DynastyOffice() {
               budget={data.recruiting.budget}
               prospectCount={sortedProspects.length}
               week={data.week}
+            />
+            <PromisesPanel
+              promises={data.recruiting.active_promises}
+              maxActive={data.recruiting.rules.max_active_promises}
+              prospects={data.recruiting.prospects}
             />
             <div className="do-grid-row">
               <SlotMeter slots={data.recruiting.budget} />

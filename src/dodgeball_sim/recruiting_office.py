@@ -106,12 +106,29 @@ def _credibility(
         if item.get("plan", {}).get("department_orders", {}).get("dev_focus") == "YOUTH_ACCELERATION"
         or item.get("intent") == "Develop Youth"
     )
-    score = max(0, min(100, 50 + prestige * 2 + wins * 4 - losses * 3 + youth_weeks * 2))
+    # V19b: the promise record is a real credibility consumer — kept promises
+    # build trust, broken ones cost more (recruiting reputations work that
+    # way). Capped so the record shades, never dominates, the win/prestige
+    # base. This closes the loop the owner asked for: promise results ->
+    # credibility -> prospect interest -> your contested Signing Day offer.
+    promises = list(load_json_state(conn, PROMISE_STATE_KEY, []))
+    kept = sum(1 for p in promises if p.get("status") == "fulfilled")
+    broken = sum(1 for p in promises if p.get("status") == "broken")
+    promise_delta = max(-15, min(15, kept * 4 - broken * 6))
+    score = max(
+        0,
+        min(100, 50 + prestige * 2 + wins * 4 - losses * 3 + youth_weeks * 2 + promise_delta),
+    )
     evidence = [
         f"{wins} wins and {losses} losses across your career.",
         f"{youth_weeks} week{'' if youth_weeks == 1 else 's'} spent prioritizing youth development.",
         f"Club prestige: {prestige} (a long-term score earned from titles and facilities).",
     ]
+    if kept or broken:
+        evidence.append(
+            f"Promise record: {kept} kept, {broken} broken "
+            f"({promise_delta:+d} credibility — kept promises build trust, broken ones cost more)."
+        )
     if not history:
         evidence.append("No match history yet — credibility starts from the program baseline.")
     return {"score": score, "grade": _grade(score), "evidence": evidence}
