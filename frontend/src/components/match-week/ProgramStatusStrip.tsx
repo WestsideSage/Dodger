@@ -8,6 +8,11 @@ export function ProgramStatusStrip() {
   const rank = userRow ? data!.standings.findIndex(r => r.is_user_club) + 1 : null;
   const total = data?.standings.length ?? 0;
 
+  // V20 §7.3: officials rank on game points; the survivor diff is noise there.
+  const strapDiff = userRow
+    ? (data?.is_official_career ? (userRow.game_point_differential ?? 0) : userRow.elimination_differential)
+    : 0;
+
   const pctColor = userRow
     ? userRow.wins > userRow.losses ? '#10b981' : userRow.wins < userRow.losses ? '#f43f5e' : '#94a3b8'
     : '#64748b';
@@ -35,9 +40,9 @@ export function ProgramStatusStrip() {
               <div>
                 <span className="dm-kicker" style={{ display: 'block' }}>Points</span>
                 <span className="dm-data" style={{ color: pctColor, fontWeight: 800, fontSize: '1.25rem' }}>{userRow.points}</span>
-                {userRow.elimination_differential !== 0 && (
-                  <span style={{ color: userRow.elimination_differential > 0 ? '#10b981' : '#f43f5e', marginLeft: '0.5rem', fontSize: '0.75rem', fontWeight: 700 }}>
-                    {userRow.elimination_differential > 0 ? '+' : ''}{userRow.elimination_differential} diff
+                {strapDiff !== 0 && (
+                  <span style={{ color: strapDiff > 0 ? '#10b981' : '#f43f5e', marginLeft: '0.5rem', fontSize: '0.75rem', fontWeight: 700 }}>
+                    {strapDiff > 0 ? '+' : ''}{strapDiff} diff
                   </span>
                 )}
               </div>

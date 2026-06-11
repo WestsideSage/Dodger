@@ -175,6 +175,13 @@ export const TERMS = {
     why: 'A tiebreaker and a rough strength signal beyond W-L-D.',
     kind: 'mechanical',
   },
+  // V20 §7.3: the differential that actually ranks official careers.
+  'standings.gp_diff': {
+    label: 'Game-Point Differential',
+    plain: 'Game points scored minus conceded across the season.',
+    why: 'The live tiebreaker behind table points: officials rank on points, then total game points scored, then this.',
+    kind: 'mechanical',
+  },
   'standings.playoff_line': {
     label: 'Playoff Line',
     plain: 'The cutoff seed that makes the postseason (top N).',

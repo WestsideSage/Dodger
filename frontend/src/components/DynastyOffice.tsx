@@ -794,7 +794,13 @@ export function DynastyOffice() {
     commandApi.savePlan({
       intent: planContext.plan.intent,
       department_orders: { [key]: value },
-    }).then(setPlanContext);
+    }).then((nextPlan) => {
+      setPlanContext(nextPlan);
+      // A staff-focus change moves real numbers on this screen (a scouting
+      // week buys a 4th Scout slot) — refetch so the budget meter is never
+      // stale behind the modal.
+      reload();
+    });
   };
 
   if (loading && !data) return <StatusMessage title="Opening the program office">Loading dynasty records.</StatusMessage>;

@@ -33,3 +33,25 @@ def _disable_launch_token_guard():
         yield
     finally:
         server._enforce_launch_token = previous
+
+
+@pytest.fixture(autouse=True)
+def _isolate_server_shared_state():
+    """Fence the server module's per-process shared state between tests.
+
+    V20 §7.5 flake root cause class: ``server.app.dependency_overrides`` and
+    ``server._active_save_path`` are process-global. Most tests that set them
+    restore them, but any test that fails *between* set and restore (or any
+    future test that forgets) poisons every later test in the session — the
+    reported ``test_server_save_boundary`` failure appeared exactly once in a
+    full run and never in isolation, the signature of such a leak. This net
+    makes the whole class impossible instead of chasing one instance:
+    within-test behavior is untouched; after every test the overrides map is
+    emptied and the active-save pointer is restored to its pre-test value.
+    """
+    previous_save_path = server._active_save_path
+    try:
+        yield
+    finally:
+        server.app.dependency_overrides.clear()
+        server._active_save_path = previous_save_path

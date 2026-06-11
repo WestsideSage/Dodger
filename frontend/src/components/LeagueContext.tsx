@@ -100,6 +100,7 @@ const buildNeedCopy = (
   cutoffTeam: RankedStanding,
   playoffLine: number,
   gamesRemaining: number,
+  diffLabel: string,
 ) => {
   // "Games to play" (byes excluded), matching the command center's count so
   // the two surfaces never disagree on how much season is left.
@@ -114,8 +115,8 @@ const buildNeedCopy = (
       outcome: 'Stay #1',
       helper:
         weeksRemaining > 0
-          ? `You are pacing the table with ${weeksRemaining} to play. Keep the edge on survivor differential.`
-          : 'The table lead is yours. Survivor differential is the live tiebreaker.',
+          ? `You are pacing the table with ${weeksRemaining} to play. Keep the edge on ${diffLabel}.`
+          : `The table lead is yours. ${diffLabel.charAt(0).toUpperCase()}${diffLabel.slice(1)} is the live tiebreaker.`,
     };
   }
 
@@ -207,9 +208,19 @@ export function Standings() {
     [data?.standings],
   );
 
+  // V20 §7.3 survivors cleanup: official careers rank on GAME POINTS — the
+  // survivor differential is a legacy/rec stat (on officials it only ever
+  // held final-game living counts, i.e. noise). Display the differential
+  // that actually ranks this career.
+  const isOfficial = data?.is_official_career ?? false;
+  const diffOf = (standing: StandingRow) =>
+    isOfficial ? (standing.game_point_differential ?? 0) : standing.elimination_differential;
+
   const maxDiff = useMemo(
-    () => Math.max(0, ...standings.map((standing) => Math.abs(standing.elimination_differential))),
-    [standings],
+    () => Math.max(0, ...standings.map((standing) => Math.abs(
+      isOfficial ? (standing.game_point_differential ?? 0) : standing.elimination_differential,
+    ))),
+    [standings, isOfficial],
   );
 
   if (error) return <StatusMessage title="Standings unavailable" tone="danger">{error}</StatusMessage>;
@@ -241,7 +252,7 @@ export function Standings() {
           outcome: 'Bracket Decides',
           helper: `Regular season finished #${us.rank} of ${standings.length}. The bracket above now decides the title.`,
         }
-      : buildNeedCopy(us, leader, cutoffTeam, playoffLine, data.user_games_remaining ?? Math.max(0, data.total_weeks - data.current_week));
+      : buildNeedCopy(us, leader, cutoffTeam, playoffLine, data.user_games_remaining ?? Math.max(0, data.total_weeks - data.current_week), isOfficial ? 'game-point differential' : 'survivor differential');
   const wireRows = buildWireRows(data.recent_matches, us.club_name);
   const tiebreakRows = standings.slice(0, Math.min(standings.length, playoffLine + 2));
 
@@ -287,9 +298,9 @@ export function Standings() {
               <span className="rec">{us.wins}-{us.losses}-{us.draws}</span>
               <span
                 className="diff"
-                style={us.elimination_differential < 0 ? { color: 'var(--dm-rose)' } : undefined}
+                style={diffOf(us) < 0 ? { color: 'var(--dm-rose)' } : undefined}
               >
-                {formatDiff(us.elimination_differential)}
+                {formatDiff(diffOf(us))}
               </span>
             </div>
             <FormStub label={us.latest_approach} />
@@ -348,7 +359,7 @@ export function Standings() {
                   <th className="num">PTS</th>
                   <th>Plan</th>
                   <th>
-                    <TermTip term="standings.diff">Survivor Diff</TermTip>
+                    <TermTip term={isOfficial ? 'standings.gp_diff' : 'standings.diff'}>{isOfficial ? 'GP Diff' : 'Survivor Diff'}</TermTip>
                   </th>
                 </tr>
               </thead>
@@ -411,7 +422,7 @@ export function Standings() {
                             {normalizeApproach(standing.latest_approach)}
                           </span>
                         </td>
-                        <td><DiffBar diff={standing.elimination_differential} max={maxDiff} /></td>
+                        <td><DiffBar diff={diffOf(standing)} max={maxDiff} /></td>
                       </tr>
                     </React.Fragment>
                   );
@@ -515,7 +526,7 @@ export function Standings() {
                       <div className="ls-tb-body">
                         <span className="ls-tb-who">{standing.club_name}</span>
                         <span className="ls-tb-note">
-                          {standing.points} pts · {formatDiff(standing.elimination_differential)} diff
+                          {standing.points} pts · {formatDiff(diffOf(standing))} diff
                         </span>
                       </div>
                       <span className={`ls-tb-risk ${isSafe ? 'risk-low' : 'risk-high'}`}>

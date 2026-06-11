@@ -393,17 +393,34 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
                 "draws": row.draws if row else 0,
                 "points": row.points if row else 0,
                 "elimination_differential": row.elimination_differential if row else 0,
+                "game_point_differential": row.game_point_differential if row else 0,
+                "total_game_points_scored": row.total_game_points_scored if row else 0,
                 "is_user_club": club_id == player_club_id,
                 "latest_approach": _intent_display_label(latest_plan["intent"]) if latest_plan else "Balanced",
                 "program_archetype": club.program_archetype,
                 "program_trajectory_label": traj_label,
             }
         )
-    rows.sort(key=lambda item: (-item["points"], -item["elimination_differential"], item["club_id"]))
+    # V20 §7.3 survivors cleanup: official careers rank on game-point fields
+    # (mirrors season.compute_standings exactly — this payload previously
+    # tiebroke on the survivor-noise differential, so the web standings
+    # order could disagree with the persisted standings on officials).
+    is_official_career = (get_state(conn, "ruleset_selection") or "").startswith("official")
+    if is_official_career:
+        rows.sort(key=lambda item: (
+            -item["points"],
+            -item["total_game_points_scored"],
+            -item["game_point_differential"],
+            item["club_id"],
+        ))
+    else:
+        rows.sort(key=lambda item: (-item["points"], -item["elimination_differential"], item["club_id"]))
 
     recent = conn.execute(
         """
-        SELECT match_id, week, home_club_id, away_club_id, winner_club_id, home_survivors, away_survivors
+        SELECT match_id, week, home_club_id, away_club_id, winner_club_id,
+               home_survivors, away_survivors, scoring_model,
+               home_game_points, away_game_points
         FROM match_records
         WHERE season_id = ?
         ORDER BY week DESC, match_id DESC
@@ -433,6 +450,9 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         "user_games_remaining": user_games_remaining,
         "playoff_spots": PLAYOFF_FIELD_SIZE,
         "is_offseason": is_offseason,
+        # V20 §7.3: lets the standings UI show the differential that actually
+        # ranks this career (game points on officials, survivors on legacy).
+        "is_official_career": is_official_career,
     }
 
 

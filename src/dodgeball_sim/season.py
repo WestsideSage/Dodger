@@ -94,10 +94,17 @@ def compute_standings(results: List[SeasonResult]) -> List[StandingsRow]:
         home = tally[result.home_club_id]
         away = tally[result.away_club_id]
 
-        home["diff"] += result.home_survivors - result.away_survivors
-        away["diff"] += result.away_survivors - result.home_survivors
-
         is_official = result.config_version and result.config_version.startswith("official:")
+
+        # V20 §7.3 survivors cleanup: on official matches the survivors
+        # fields hold only the FINAL game's living counts — accumulating
+        # them produced a noise "differential" that standings surfaces then
+        # displayed as if it meant something. Officials rank and display on
+        # game-point fields; the survivor diff stays a legacy/rec stat.
+        if not is_official:
+            home["diff"] += result.home_survivors - result.away_survivors
+            away["diff"] += result.away_survivors - result.home_survivors
+
         if is_official:
             home["game_points_for"] += result.home_game_points
             home["game_points_against"] += result.away_game_points
