@@ -54,6 +54,11 @@ class RatifiedRecord:
     # record; True for first-time records and dethronings.
     is_new_holder: bool = True
     previous_holder_name: str = ""
+    # V21 middle tier (owner §6.4): a same-holder extension that crosses a
+    # round-number boundary is a genuine MILESTONE ("passed 100 career
+    # eliminations"), sitting between the marquee holder-change cards and the
+    # quiet extension ledger. Empty string = plain extension.
+    milestone_label: str = ""
 
 
 @dataclass(frozen=True)
@@ -115,6 +120,7 @@ def _record_to_dict(record: RatifiedRecord) -> Dict[str, Any]:
         "holder_club_id": record.holder_club_id,
         "is_new_holder": bool(record.is_new_holder),
         "previous_holder_name": record.previous_holder_name,
+        "milestone_label": record.milestone_label,
     }
 
 
@@ -134,6 +140,7 @@ def _record_from_dict(d: Dict[str, Any]) -> RatifiedRecord:
         # treatment — never silently downgrade a record we know nothing about.
         is_new_holder=bool(d.get("is_new_holder", True)),
         previous_holder_name=str(d.get("previous_holder_name", "")),
+        milestone_label=str(d.get("milestone_label", "")),
     )
 
 
@@ -232,6 +239,17 @@ def ratify_records(
             holder_club_id = player_club_map.get(candidate.holder_id, "")
         previous_holder_id, previous_holder_name = existing_holders.get(record_type, ("", ""))
         is_new_holder = not previous_holder_id or previous_holder_id != candidate.holder_id
+        # V21 middle tier: a same-holder extension that crosses a round-number
+        # boundary (every 50) is a genuine milestone — "passed 100 career
+        # eliminations" — not just ledger noise.
+        milestone_label = ""
+        if not is_new_holder and existing_value > 0:
+            prev_step = int(existing_value // 50)
+            new_step = int(float(candidate.value) // 50)
+            if new_step > prev_step:
+                crossed = new_step * 50
+                metric = record_type.replace("_", " ")
+                milestone_label = f"Passed {crossed} {metric}"
         broken.append(
             RatifiedRecord(
                 record_type=record_type,
@@ -245,6 +263,7 @@ def ratify_records(
                 holder_club_id=holder_club_id,
                 is_new_holder=is_new_holder,
                 previous_holder_name=previous_holder_name,
+                milestone_label=milestone_label,
             )
         )
 

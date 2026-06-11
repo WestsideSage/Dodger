@@ -245,7 +245,15 @@ export function RecordsRatified({
           </div>
         ) : (() => {
           const milestones = records.filter(r => r.is_new_holder !== false);
-          const extensions = records.filter(r => r.is_new_holder === false);
+          // V21 middle tier (owner: milestones should feel like real
+          // milestones): same-holder extensions that crossed a round-number
+          // boundary get their own band; plain extensions stay quiet.
+          const careerMilestones = records.filter(
+            r => r.is_new_holder === false && Boolean(r.milestone_label),
+          );
+          const extensions = records.filter(
+            r => r.is_new_holder === false && !r.milestone_label,
+          );
           return (
           <div style={{ display: 'grid', gap: '0.6rem', marginTop: '0.85rem' }}>
             {milestones.map(record => {
@@ -355,8 +363,48 @@ export function RecordsRatified({
               );
             })}
 
+            {careerMilestones.length > 0 && (
+              <div data-testid="record-career-milestones" style={{ marginTop: milestones.length > 0 ? '0.2rem' : 0 }}>
+                <p
+                  className="dm-kicker"
+                  style={{ margin: '0 0 0.4rem', fontSize: '0.6rem', color: '#fbbf24' }}
+                >
+                  Career milestones
+                </p>
+                <div style={{ display: 'grid', gap: '0.3rem' }}>
+                  {careerMilestones.map(record => (
+                    <div
+                      key={record.record_id ?? record.record_type}
+                      data-testid="record-milestone-row"
+                      data-my-club={record.is_my_club === true ? 'true' : 'false'}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'baseline',
+                        gap: '0.6rem',
+                        flexWrap: 'wrap',
+                        padding: '0.45rem 0.7rem',
+                        background: 'rgba(251,191,36,0.07)',
+                        border: '1px solid rgba(251,191,36,0.25)',
+                        borderRadius: '4px',
+                        fontSize: '0.78rem',
+                      }}
+                    >
+                      <span style={{ color: '#fbbf24', fontWeight: 800, fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        Milestone
+                      </span>
+                      <span style={{ color: '#f1f5f9', fontWeight: 700 }}>{record.holder_name}</span>
+                      <span style={{ color: '#cbd5e1' }}>{record.milestone_label?.toLowerCase()}</span>
+                      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.72rem', color: '#94a3b8' }}>
+                        now {formatValue(record.new_value)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {extensions.length > 0 && (
-              <div data-testid="record-extensions" style={{ marginTop: milestones.length > 0 ? '0.2rem' : 0 }}>
+              <div data-testid="record-extensions" style={{ marginTop: milestones.length > 0 || careerMilestones.length > 0 ? '0.2rem' : 0 }}>
                 <p
                   className="dm-kicker"
                   style={{ margin: '0 0 0.4rem', fontSize: '0.6rem', color: '#64748b' }}
@@ -467,8 +515,10 @@ export function HallOfFameInduction({
                   <span>{inductee.awards_won} awards</span>
                   <span>{inductee.total_eliminations} career elims</span>
                 </div>
+                {/* V21 zero-floats (owner: no fractional numbers on any
+                    player-facing surface): the legacy line is integerized. */}
                 <p className="hof-legacy">
-                  Legacy {inductee.legacy_score.toFixed(1)} · clears the {inductee.threshold.toFixed(1)} induction bar
+                  Legacy {Math.round(inductee.legacy_score)} · clears the {Math.round(inductee.threshold)} induction bar
                 </p>
                 {inductee.reasons.length > 0 && (
                   <p className="hof-reasons">{inductee.reasons.join(' · ')}</p>

@@ -1168,6 +1168,9 @@ export interface RatifiedRecordEntry {
         ratified before this field existed — treat as true. */
     is_new_holder?: boolean;
     previous_holder_name?: string;
+    /** V21 middle tier: set when a same-holder extension crossed a
+        round-number boundary ("Passed 100 career eliminations"). */
+    milestone_label?: string;
 }
 
 export interface RecordsRatifiedBeatPayload {

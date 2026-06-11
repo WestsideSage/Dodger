@@ -910,14 +910,14 @@ def sign_chosen_rookie_contested(
             rival_club = clubs.get(outcome.rival_club_id)
             rival_name = rival_club.name if rival_club else outcome.rival_club_id
             win_line = (
-                f"Your offer {outcome.user_offer_strength:.1f} beat "
-                f"{rival_name}'s {outcome.rival_offer_strength:.1f} — interest "
+                f"Your offer {round(outcome.user_offer_strength)} beat "
+                f"{rival_name}'s {round(outcome.rival_offer_strength)} — interest "
                 f"{outcome.interest}% strengthened it."
             )
         else:
             win_line = (
                 f"No rival club bid on {chosen.name} this round — your offer "
-                f"{outcome.user_offer_strength:.1f} stood alone."
+                f"{round(outcome.user_offer_strength)} stood alone."
             )
         verified_ovr = outcome.signed_player.overall_skill()
         return outcome.signed_player, {
@@ -956,8 +956,8 @@ def sign_chosen_rookie_contested(
         "actions_taken": outcome.actions_taken,
         "explanation": (
             f"{winning_club_name} signed {chosen.name} — their offer "
-            f"{outcome.winning_offer_strength:.1f} beat yours "
-            f"{outcome.user_offer_strength:.1f}. Your interest was "
+            f"{round(outcome.winning_offer_strength)} beat yours "
+            f"{round(outcome.user_offer_strength)}. Your interest was "
             f"{outcome.interest}%, built from {action_label}."
         ),
     }
@@ -1284,8 +1284,8 @@ def build_offseason_ceremony_beat(
                 reasons = ", ".join(entry.get("reasons", [])) or "qualified by score"
                 lines.append(
                     f"  {entry.get('player_name', entry.get('player_id', '?'))}: "
-                    f"legacy {float(entry.get('legacy_score', 0.0)):.1f} "
-                    f"(threshold {float(entry.get('threshold', 0.0)):.1f})"
+                    f"legacy {round(float(entry.get('legacy_score', 0.0)))} "
+                    f"(threshold {round(float(entry.get('threshold', 0.0)))})"
                 )
                 lines.append(
                     f"    {int(entry.get('seasons_played', 0))} seasons, "
@@ -1306,7 +1306,7 @@ def build_offseason_ceremony_beat(
             marker = " *" if row.get("club_id") == player_club_id else ""
             lines.append(
                 f"  {row.get('player_name', row.get('player_id'))} ({club_name(str(row.get('club_id', '')))}): "
-                f"{float(row.get('before', 0)):.1f} -> {float(row.get('after', 0)):.1f} "
+                f"{round(float(row.get('before', 0)))} -> {round(float(row.get('after', 0)))} "
                 f"({float(row.get('delta', 0)):+.1f}){marker}"
             )
         lines.append("\nAll active players have aged by 1 year, and match fatigue has been fully resolved across the league.")
