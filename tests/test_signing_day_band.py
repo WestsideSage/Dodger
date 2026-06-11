@@ -58,6 +58,10 @@ PROSPECT_CHOICE_KEYS = {
     "visited",
     "interest",
     "fit_score",
+    # Codex issue 13: flags a target carrying one of the MANAGER'S OWN open
+    # promises (Signing Day "Promise at stake" badge). Player-side state —
+    # discloses nothing about the prospect's hidden ratings.
+    "promised",
 }
 FREE_AGENT_CHOICE_KEYS = {
     "prospect_id",

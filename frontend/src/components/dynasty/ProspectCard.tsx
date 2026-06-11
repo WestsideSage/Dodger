@@ -112,9 +112,15 @@ export function ProspectCard({
         // Revert optimistic update on failure.
         setOptimisticStatus(previousOptimistic);
         setFeedbackTone('error');
-        setFeedbackMessage(error instanceof Error ? error.message : 'Action failed.');
+        // Codex issue 10: a refused action must be unmistakable — say the
+        // action was NOT spent, hold the message longer, and refetch the
+        // board so the counters/buttons reflect the true remaining budget
+        // (a click against a stale budget is the usual cause).
+        const reason = error instanceof Error ? error.message : 'Action failed.';
+        setFeedbackMessage(`${reason} — action not spent.`);
         if (feedbackTimer.current !== null) clearTimeout(feedbackTimer.current);
-        feedbackTimer.current = setTimeout(() => setFeedbackMessage(null), 3200);
+        feedbackTimer.current = setTimeout(() => setFeedbackMessage(null), 5200);
+        onAction();
       })
       .finally(() => {
         setLoading(false);
