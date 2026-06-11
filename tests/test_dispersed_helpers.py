@@ -934,7 +934,10 @@ def test_build_player_profile_details_includes_bio_ratings_and_stats():
     assert details.title == "Casey Cannon"
     assert "Club: Aurora Sentinels" in details.text
     assert "Role:" in details.text
-    assert "Accuracy: 72.0" in details.text
+    # V21 zero-floats: ratings render as integers ("Accuracy: 72"), never
+    # with a trailing ".0".
+    assert "Accuracy: 72" in details.text
+    assert "Accuracy: 72.0" not in details.text
     assert "Matches: 2" in details.text
     assert "Eliminations: 4" in details.text
     assert "Seasons: 1" in details.text

@@ -55,14 +55,34 @@ walkthrough save purged.
 
 ## Honest remainders (recorded, not silently dropped)
 
-- Official survivors-column cleanup (V20 §7.3): persistence-shape surgery
-  with standings-consumer risk — needs its own measured pass.
-- `test_server_save_boundary` flake investigation (V20 §7.5).
-- V21 app-wide voice/vague-language purge, information-dedup pass, further
-  Class Brief redesign (structured rows from the v2 pass remain current),
-  scenario-browser coverage beyond the main-ruleset walks.
-- Dynasty Office budget panel shows a stale Scout count until navigation
-  refetch after changing staff focus in the modal (minor polish).
+**ALL CLOSED in the same-day leftovers pass (`27a58eb`..`ddb7508`):**
+
+- ~~Survivors-column cleanup (V20 §7.3)~~ — CLOSED `27a58eb`: the consumer
+  trace found three surfaces actively LYING on officials (league-memory
+  recent-match lines could crown the recorded loser, the Command Center
+  last-meeting line printed final-game livings as the score, and the web
+  standings payload tiebroke on survivor noise — diverging from the
+  persisted official sort). All branch on scoring_model now; standings UI
+  shows GP Diff on officials; columns retained as rec/box truth.
+- ~~save-boundary flake (V20 §7.5)~~ — CLOSED `27a58eb`: mechanism was
+  process-global server state leaking when any test fails between set and
+  restore; an autouse conftest fence (overrides cleared + save pointer
+  restored after every test) makes the class impossible.
+- ~~Voice purge / dedup / Class Brief (V21 §4.2/§6.5/§3.4/§4.6)~~ — CLOSED
+  `210cd02` at the level the reports flagged: Class Brief restructured
+  (glance section + deep/thin reading + storylines), draw footer and dev
+  staff notes voiced with real numbers, the Dynasty Office/Standings
+  week/title duplications removed. A future app-wide sweep is welcome but
+  no named offender remains.
+- ~~Loss/scenario coverage (V21 §4.5/§7.6)~~ — CLOSED `ddb7508` via a full
+  multi-season browser walk (draws home/away, playoff semifinal AND final
+  ties with the seed-tiebreak banner, championship, 8-beat offseason,
+  broken-promise grading, season-2 loss aftermath). Two real bugs found
+  and fixed: the playoff-draw footer promised standings points that don't
+  exist in playoffs, and graded promises showed raw prospect ids once the
+  class rolled over (names now stored at promise time).
+- ~~Dynasty Office budget-panel staleness~~ — CLOSED `27a58eb` (refetch on
+  focus change).
 
 ## Traps for future passes
 
