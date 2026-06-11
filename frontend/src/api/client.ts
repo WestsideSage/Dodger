@@ -240,4 +240,11 @@ export const dynastyApi = {
     apiPost<RecruitingActionResponse>(`/api/recruiting/visit/${encodeURIComponent(prospectId)}`),
   hireStaff: (candidateId: string) =>
     apiPost<DynastyOfficeResponse>('/api/dynasty-office/staff/hire', { candidate_id: candidateId }),
+  // V19b: promises are mechanical — results feed credibility, which feeds
+  // prospect interest and therefore your contested Signing Day offer.
+  makePromise: (playerId: string, promiseType: string) =>
+    apiPost<DynastyOfficeResponse>('/api/dynasty-office/promises', {
+      player_id: playerId,
+      promise_type: promiseType,
+    }),
 };
