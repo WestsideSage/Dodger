@@ -237,6 +237,12 @@ def _run_prod(root: Path) -> None:
         _build_frontend(root)
 
     print("Starting Dodgeball Manager...")
+    print(f"  App -> http://localhost:{ports.backend}")
+    # Codex playtest issue 1: make the security model visible at startup so
+    # "bare localhost worked" never reads as a missing protection. The token
+    # is a CSRF guard auto-injected into the served page (it shields the
+    # mutating API from cross-origin requests), not a URL secret.
+    print("  CSRF launch token active (auto-injected into the app page; local browser needs no extra setup).")
     _write_launch_state(
         root,
         backend_port=ports.backend,
