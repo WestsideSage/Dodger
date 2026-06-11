@@ -219,6 +219,11 @@ export function SeasonPreview({
               <div style={{ color: '#f1f5f9', fontSize: '0.9rem', fontWeight: 700, marginTop: '0.2rem' }}>
                 {archetypeTip(preview.strength.archetype_key, preview.strength.archetype, preview.strength.avg_overall)}
               </div>
+              {/* Codex issue 2: say what the label MEANS, not just the
+                  number — the preview should teach, not make you translate. */}
+              <div style={{ color: '#64748b', fontSize: '0.72rem', marginTop: '0.25rem', lineHeight: 1.4 }}>
+                Your highest-rated archetype group — build the lineup and game plan around them.
+              </div>
             </div>
           )}
           {preview.weakness && (
@@ -238,6 +243,9 @@ export function SeasonPreview({
               </div>
               <div style={{ color: '#f1f5f9', fontSize: '0.9rem', fontWeight: 700, marginTop: '0.2rem' }}>
                 {archetypeTip(preview.weakness.archetype_key, preview.weakness.archetype, preview.weakness.avg_overall)}
+              </div>
+              <div style={{ color: '#64748b', fontSize: '0.72rem', marginTop: '0.25rem', lineHeight: 1.4 }}>
+                Your lowest-rated group — expect opponents to lean on it; target it in development and recruiting.
               </div>
             </div>
           )}

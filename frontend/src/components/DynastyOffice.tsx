@@ -186,7 +186,10 @@ function DoTabs({
       ))}
       <span className="do-tabs-spacer" />
       <button className="dm-btn" onClick={onOpenSettings} type="button">Program Settings</button>
-      <span className="do-tabs-note">Front Office - Week {String(data.week).padStart(2, '0')}</span>
+      {/* Codex issue 5: the office works the UPCOMING week (its recruiting
+          slots belong to it), which can read one ahead of the match banner —
+          say "prepping" so the two labels stop looking contradictory. */}
+      <span className="do-tabs-note">Front Office · prepping Week {String(data.week).padStart(2, '0')}</span>
     </div>
   );
 }

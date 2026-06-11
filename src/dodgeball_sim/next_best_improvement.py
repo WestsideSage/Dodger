@@ -91,6 +91,12 @@ def coolest_critical_recruit(
         critical,
         key=lambda r: (int(r.get("interest", 0)), str(r.get("name", ""))),
     )
+    # Codex playtest issues 8/11: at 96% the card said "only 96% interest",
+    # and at 100% it told the manager to warm up a fully-closed recruit.
+    # A recruit at/above 90% has no gap worth a card — drop the suggestion
+    # instead of inventing one.
+    if int(low.get("interest", 0)) >= 90:
+        return None
     return {
         "name": str(low.get("name", "")),
         "interest": int(low.get("interest", 0)),
