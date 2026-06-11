@@ -72,9 +72,14 @@ def test_recruiting_promises_are_limited_and_persisted_as_truth():
     updated = save_recruiting_promise(conn, prospect_id, "early_playing_time")
 
     promises = updated["recruiting"]["active_promises"]
+    prospect_name = state["recruiting"]["prospects"][0]["name"]
     assert promises == [
         {
             "player_id": prospect_id,
+            # V21 loss-walk fix: the display name is resolved at promise time
+            # so the panel never shows a raw id after the prospect leaves the
+            # board (the graded promise outlives the class it came from).
+            "player_name": prospect_name,
             "promise_type": "early_playing_time",
             "status": "open",
             "result": None,

@@ -127,6 +127,7 @@ export function MatchScoreHero({
   homeGamePoints,
   awayGamePoints,
   games,
+  isPlayoff = false,
 }: {
   homeTeam: string;
   awayTeam: string;
@@ -138,6 +139,9 @@ export function MatchScoreHero({
   homeGamePoints?: number;
   awayGamePoints?: number;
   games?: MatchCardGame[];
+  // Playoff context: a drawn playoff match does NOT award standings points —
+  // it is settled by the resolution banner above (overtime/seed tiebreak).
+  isPlayoff?: boolean;
 }) {
   const scoreline = formatScoreline({
     scoring_model: scoringModel,
@@ -219,10 +223,15 @@ export function MatchScoreHero({
           }}
         >
           {/* Owner §6.5: keep the mechanics, lose the flatness — a draw is a
-              story beat (neither side blinked), not a ledger entry. */}
-          {isOfficial
-            ? 'Neither side blinked — level on game points when the clock ran out. Both clubs walk away with a standings point.'
-            : 'Neither side blinked — dead level at full time. Both clubs walk away with a standings point.'}
+              story beat (neither side blinked), not a ledger entry. In the
+              playoffs a tie cannot stand: the resolution banner above names
+              who advances and why, so this footer must not promise standings
+              points that do not exist there (loss-coverage walk finding). */}
+          {isPlayoff
+            ? 'Neither side blinked — level on game points when the clock ran out. A playoff tie can\'t stand: the resolution call above says who advances.'
+            : isOfficial
+              ? 'Neither side blinked — level on game points when the clock ran out. Both clubs walk away with a standings point.'
+              : 'Neither side blinked — dead level at full time. Both clubs walk away with a standings point.'}
         </p>
       )}
     </section>

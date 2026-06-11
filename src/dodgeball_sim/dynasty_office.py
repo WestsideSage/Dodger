@@ -128,6 +128,10 @@ def save_recruiting_promise(
     next_promises.append(
         {
             "player_id": player_id,
+            # Resolve the display name NOW — by the time the promise is
+            # graded, the prospect may have left the board, and the panel
+            # would otherwise show a raw id (loss-coverage walk finding).
+            "player_name": _player_display_name(conn, player_id),
             "promise_type": promise_type,
             "status": "open",
             "result": None,
@@ -299,6 +303,19 @@ def _is_known_player(conn: sqlite3.Connection, player_id: str) -> bool:
             if getattr(player, "id", None) == player_id:
                 return True
     return False
+
+
+def _player_display_name(conn: sqlite3.Connection, player_id: str) -> str:
+    """Best-known display name for a promise target (prospect or rostered)."""
+    for prospect in _current_prospect_pool(conn):
+        if prospect.player_id == player_id:
+            return str(prospect.name)
+    rosters = load_all_rosters(conn)
+    for roster in rosters.values():
+        for player in roster:
+            if getattr(player, "id", None) == player_id:
+                return str(player.name)
+    return player_id
 
 
 def _load_promises(conn: sqlite3.Connection) -> list[dict[str, Any]]:
