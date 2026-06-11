@@ -62,6 +62,10 @@ PROSPECT_CHOICE_KEYS = {
     # promises (Signing Day "Promise at stake" badge). Player-side state —
     # discloses nothing about the prospect's hidden ratings.
     "promised",
+    # Playtest 3 elite reveal (owner-approved): the SCOUT-GATED growth-arc
+    # grade (HIGH_CEILING/SOLID/STANDARD). None until scouted; coarse by
+    # design — it never carries the exact trajectory tier or a number.
+    "ceiling_label",
 }
 FREE_AGENT_CHOICE_KEYS = {
     "prospect_id",

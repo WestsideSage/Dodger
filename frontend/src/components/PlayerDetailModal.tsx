@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Player } from '../types';
 import { RatingBar, ActionButton, Dialog } from './ui';
 import { TermTip, ProofChip, getTerm } from '../legibility';
@@ -18,10 +19,23 @@ const PLAYER_TERM_ID: Record<string, TermId> = {
 export function PlayerDetailModal({
   player,
   onClose,
+  onRelease,
+  releaseBlockedReason,
+  hasOpenPromise,
 }: {
   player: Player;
   onClose: () => void;
+  /** Playtest 3 F-8: release this player to free agency. Absent on surfaces
+      that only inspect (e.g. read-only contexts). */
+  onRelease?: () => Promise<void>;
+  /** Why the release is blocked right now (e.g. roster at the 6 floor). */
+  releaseBlockedReason?: string | null;
+  /** An OPEN promise rides on this player — releasing breaks it. */
+  hasOpenPromise?: boolean;
 }) {
+  const [confirmingRelease, setConfirmingRelease] = useState(false);
+  const [releasing, setReleasing] = useState(false);
+  const [releaseError, setReleaseError] = useState<string | null>(null);
   return (
     <Dialog
       label={`${player.name} — player card`}
@@ -188,7 +202,91 @@ export function PlayerDetailModal({
           </div>
         </div>
 
-        <div style={{ padding: '1rem', borderTop: '1px solid #1e293b', background: '#0f172a', display: 'flex', justifyContent: 'flex-end' }}>
+        {/* Playtest 3 F-8: the release confirm strip — the warning carries the
+            real consequences (free agency, broken promise) before the click. */}
+        {confirmingRelease && onRelease && (
+          <div
+            data-testid="release-confirm-strip"
+            style={{
+              padding: '0.8rem 1rem',
+              borderTop: '1px solid rgba(244,63,94,0.35)',
+              background: 'rgba(244,63,94,0.07)',
+            }}
+          >
+            <p style={{ margin: 0, fontSize: '0.85rem', color: '#fda4af', fontWeight: 700 }}>
+              Release {player.name} to free agency?
+            </p>
+            <p style={{ margin: '0.2rem 0 0.55rem', fontSize: '0.78rem', color: '#cbd5e1', lineHeight: 1.45 }}>
+              They leave your roster immediately and join the free-agent pool — a rival
+              can sign them later.
+              {hasOpenPromise && (
+                <strong style={{ color: '#fb923c' }}>
+                  {' '}You have an OPEN promise to them — releasing breaks it and costs credibility.
+                </strong>
+              )}
+            </p>
+            {releaseError && (
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.78rem', color: '#f87171' }}>{releaseError}</p>
+            )}
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                type="button"
+                disabled={releasing}
+                onClick={() => {
+                  setReleasing(true);
+                  setReleaseError(null);
+                  onRelease()
+                    .catch((err) =>
+                      setReleaseError(err instanceof Error ? err.message : 'Release failed'),
+                    )
+                    .finally(() => setReleasing(false));
+                }}
+                style={{
+                  background: '#be123c', border: 'none', borderRadius: '4px',
+                  color: '#fff', fontWeight: 700, padding: '0.4rem 0.9rem',
+                  cursor: releasing ? 'not-allowed' : 'pointer', fontSize: '0.8rem',
+                }}
+              >
+                {releasing ? 'Releasing…' : `Yes, release ${player.name}`}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setConfirmingRelease(false); setReleaseError(null); }}
+                style={{
+                  background: 'none', border: '1px solid #334155', borderRadius: '4px',
+                  color: '#94a3b8', padding: '0.4rem 0.9rem', cursor: 'pointer', fontSize: '0.8rem',
+                }}
+              >
+                Keep them
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div style={{ padding: '1rem', borderTop: '1px solid #1e293b', background: '#0f172a', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
+          {onRelease ? (
+            <button
+              type="button"
+              data-testid="release-player-btn"
+              disabled={Boolean(releaseBlockedReason) || confirmingRelease}
+              title={releaseBlockedReason ?? 'Release this player to free agency'}
+              onClick={() => setConfirmingRelease(true)}
+              style={{
+                background: 'none',
+                border: '1px solid rgba(244,63,94,0.45)',
+                borderRadius: '4px',
+                color: releaseBlockedReason ? '#64748b' : '#fb7185',
+                padding: '0.4rem 0.9rem',
+                cursor: releaseBlockedReason || confirmingRelease ? 'not-allowed' : 'pointer',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+              }}
+            >
+              Release to Free Agency
+            </button>
+          ) : (
+            <span />
+          )}
           <ActionButton onClick={onClose}>Close</ActionButton>
         </div>
     </Dialog>

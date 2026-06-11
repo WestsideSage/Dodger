@@ -369,6 +369,57 @@ def test_compute_active_beats_preserves_order():
     assert active[-1] == "schedule_reveal"
 
 
+def test_development_beat_skipped_when_nothing_changed_for_player():
+    """Playtest 3 ceremony trim (owner-approved): a capped late-dynasty roster
+    showed a Development beat of "0 players changed" every offseason. With no
+    nonzero player-club delta and no training receipt, the beat is dropped."""
+    dev_rows = [
+        {"player_id": "p1", "club_id": "mine", "delta": 0.0},
+        {"player_id": "p2", "club_id": "mine", "delta": 0.0},
+        # A RIVAL's growth must not keep the player's beat alive.
+        {"player_id": "r1", "club_id": "rival", "delta": 4.0},
+    ]
+    active = compute_active_beats(
+        records_payload_json=None,
+        hof_payload_json=None,
+        retirement_rows=[],
+        development_rows=dev_rows,
+        player_club_id="mine",
+        training_credit_weeks=0,
+    )
+    assert "development" not in active
+
+
+def test_development_beat_kept_when_player_club_changed_or_trained():
+    base = dict(
+        records_payload_json=None,
+        hof_payload_json=None,
+        retirement_rows=[],
+        player_club_id="mine",
+    )
+    changed = compute_active_beats(
+        **base,
+        development_rows=[{"player_id": "p1", "club_id": "mine", "delta": 3.0}],
+        training_credit_weeks=0,
+    )
+    assert "development" in changed
+
+    trained = compute_active_beats(
+        **base,
+        development_rows=[{"player_id": "p1", "club_id": "mine", "delta": 0.0}],
+        training_credit_weeks=2,
+    )
+    assert "development" in trained
+
+    # Legacy callers without dev data keep the beat (unknown ≠ empty).
+    legacy = compute_active_beats(
+        records_payload_json=None,
+        hof_payload_json=None,
+        retirement_rows=[],
+    )
+    assert "development" in legacy
+
+
 def test_initialize_manager_offseason_stores_active_beats():
     """After init, offseason_active_beats_json is stored and well-formed."""
     conn = _career_conn()
@@ -388,6 +439,33 @@ def test_initialize_manager_offseason_stores_active_beats():
     assert len(active) > 0
     assert "schedule_reveal" in active
     assert active[-1] == "schedule_reveal"
+
+
+def test_initialize_manager_offseason_previews_the_signing_class():
+    """Playtest 3: the Rookie Class Preview must describe the class THIS
+    ceremony's Signing Day signs from (class_year == season number). It used
+    to point at next year's class, whose pool is not persisted until
+    begin_next_season — so every preview silently fell back to free-agent
+    stats while labeled as the rookie class ("0 rookies at 70+" forever)."""
+    conn = _career_conn()
+    season_id = conn.execute(
+        "SELECT value FROM dynasty_state WHERE key = 'active_season_id'"
+    ).fetchone()["value"]
+    season = load_season(conn, season_id)
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+
+    initialize_manager_offseason(conn, season, clubs, rosters, root_seed=20260426)
+
+    raw = get_state(conn, "offseason_rookie_preview_json")
+    assert raw is not None
+    payload = json.loads(raw)
+    season_number = int(season_id.rsplit("_", 1)[-1])
+    assert payload["class_year"] == season_number
+    # The signing class's pool exists (seeded at career/season start), so the
+    # preview must be sourced from real prospects, not the FA fallback.
+    assert payload["source"] == "prospect_pool"
+    assert payload["class_size"] > 0
 
 
 def test_awards_payload_has_season_stat_fields():

@@ -324,6 +324,9 @@ class WeeklyCommandPlanUpdate(BaseModel):
 
 class OffseasonRecruitRequest(BaseModel):
     prospect_id: str | None = None
+    # Playtest 3 F-8 sign-over-cut: at a full roster, the player named here is
+    # released to free agency when (and only when) the contested pick lands.
+    release_player_id: str | None = None
 
 
 class CareerStateResponse(BaseModel):
@@ -351,6 +354,20 @@ class RosterResponse(BaseModel):
     club_id: str
     roster: list[Any]
     default_lineup: list[str] | None
+    # Declared explicitly: a FastAPI response_model FILTERS undeclared keys,
+    # so payload fields the frontend reads must appear here.
+    lineup_auto_reorder: bool | None = None
+    # Playtest 3 F-8: ids carrying an OPEN promise, so the release control can
+    # warn that cutting them breaks your word.
+    open_promise_player_ids: list[str] = []
+
+
+class RosterReleaseRequest(BaseModel):
+    player_id: str
+
+
+class RosterReleaseResponse(RosterResponse):
+    release_outcome: dict[str, Any]
 
 
 class TacticsResponse(BaseModel):
@@ -618,6 +635,24 @@ def get_status(conn = Depends(get_db)) -> StatusResponse:
 def get_roster(conn = Depends(get_db)) -> RosterResponse:
     try:
         return build_roster_payload(conn)
+    except CorruptSaveError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/roster/release", response_model=RosterReleaseResponse)
+def post_roster_release(
+    request: RosterReleaseRequest, conn = Depends(get_db)
+) -> RosterReleaseResponse:
+    """Playtest 3 F-8: release a contracted player to free agency."""
+    from .roster_moves import RosterMoveError, release_player_to_free_agency
+
+    try:
+        outcome = release_player_to_free_agency(conn, request.player_id)
+        return {**build_roster_payload(conn), "release_outcome": outcome}
+    except RosterMoveError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     except CorruptSaveError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
@@ -1103,7 +1138,11 @@ def advance_offseason_beat(conn = Depends(get_db)):
 @app.post("/api/offseason/recruit")
 def offseason_recruit(request: OffseasonRecruitRequest | None = None, conn = Depends(get_db)):
     try:
-        return recruit_offseason_payload(conn, request.prospect_id if request else None)
+        return recruit_offseason_payload(
+            conn,
+            request.prospect_id if request else None,
+            release_player_id=request.release_player_id if request else None,
+        )
     except OffseasonError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 

@@ -140,6 +140,9 @@ def save_recruiting_promise(
             # would otherwise show a raw id (loss-coverage walk finding).
             "player_name": _player_display_name(conn, player_id),
             "promise_type": promise_type,
+            # Playtest 3 F-9: the season the words were said, so the ledger
+            # can show when a deferred promise was actually made.
+            "made_season_id": get_state(conn, "active_season_id"),
             "status": "open",
             "result": None,
             "result_season_id": None,
@@ -231,18 +234,21 @@ def evaluate_season_promises(
         # early-playing-time promise "broke" with 0 appearances before she
         # was even signed), and a target sniped by a rival on Signing Day
         # counted as the manager breaking their word. Honest lifecycle:
-        #   - target still on the recruiting board (no roster) -> DEFER; the
-        #     promise is graded after their first rostered season.
+        #   - ROSTER-DEPENDENT promise (playing time / dev priority) whose
+        #     target is still on the recruiting board -> DEFER; graded after
+        #     their first rostered season.
+        #   - "We'll contend" is a pure TEAM outcome the prospect can see
+        #     from the board, so it grades against the season being
+        #     evaluated regardless of signing (playtest 3 F-9: deferring it
+        #     made the card's "this season" false and the promise
+        #     unbreakable by simply never signing the prospect).
         #   - target signed by ANOTHER club -> VOID, no credibility effect
         #     (the manager never got the chance to deliver).
         #   - target gone entirely (class rolled over unsigned) -> VOID.
+        promise_type = promise.get("promise_type", "")
         target_club = club_of.get(str(player_id))
-        if target_club is None:
-            if player_id in pool_ids:
-                if promise.get("evidence") != _PROMISE_PENDING_EVIDENCE:
-                    promise["evidence"] = _PROMISE_PENDING_EVIDENCE
-                    changed = True
-                continue  # still recruitable — defer, stays open
+        on_board = target_club is None and player_id in pool_ids
+        if target_club is None and not on_board:
             promise["result"] = "void"
             promise["status"] = "void"
             promise["result_season_id"] = season_id
@@ -252,7 +258,7 @@ def evaluate_season_promises(
             )
             changed = True
             continue
-        if target_club != club_id:
+        if target_club is not None and target_club != club_id:
             club_name = getattr(load_clubs(conn).get(target_club), "name", target_club)
             promise["result"] = "void"
             promise["status"] = "void"
@@ -263,8 +269,11 @@ def evaluate_season_promises(
             )
             changed = True
             continue
-
-        promise_type = promise.get("promise_type", "")
+        if on_board and promise_type != "contender_path":
+            if promise.get("evidence") != _PROMISE_PENDING_EVIDENCE:
+                promise["evidence"] = _PROMISE_PENDING_EVIDENCE
+                changed = True
+            continue  # still recruitable — defer, stays open
         result, evidence = _evaluate_one_promise(
             conn, season_id, club_id, player_id, promise_type
         )

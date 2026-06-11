@@ -71,18 +71,20 @@ def test_every_action_reports_a_non_trivial_delta():
 
 
 # The displayed-strongest pipeline tier. The UI (PipelineEmblem.tsx TIER_STYLE)
-# labels tier 5 "Elite" and terms.ts `recruit.pipeline` teaches "stronger pipeline
-# tier means warmer prospects" — so 5 is the displayed strongest. There is no
-# frontend test runner (see docs/agents memory), so we pin the displayed-strongest
-# tier here as a source-of-truth constant the contract test reads.
+# labels tier 5 "Platinum" (playtest 3 F-3 renamed it from "Elite", which
+# collided with the potential tier of the same name) and terms.ts
+# `recruit.pipeline` teaches "stronger pipeline tier means warmer prospects" —
+# so 5 is the displayed strongest. There is no frontend test runner (see
+# docs/agents memory), so we pin the displayed-strongest tier here as a
+# source-of-truth constant the contract test reads.
 DISPLAYED_STRONGEST_TIER = 5
 PIPELINE_TIERS = range(1, DISPLAYED_STRONGEST_TIER + 1)  # recruitment.py rolls 1..5
 
 
 def test_base_interest_warmer_for_better_pipeline():
     # WT-25: higher pipeline tier must start WARMER. The displayed-strongest tier
-    # (5 = Elite) must beat a weaker tier. Compare 5 vs 1 (never adjacent tiers like
-    # 1 vs 2, which both floor at the same base) so the inequality is strict.
+    # (5 = Platinum) must beat a weaker tier. Compare 5 vs 1 (never adjacent tiers
+    # like 1 vs 2, which both floor at the same base) so the inequality is strict.
     strongest = base_interest(pipeline_tier=DISPLAYED_STRONGEST_TIER, credibility_score=50)
     weaker = base_interest(pipeline_tier=1, credibility_score=50)
     assert strongest > weaker

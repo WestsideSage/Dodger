@@ -109,14 +109,34 @@ export function stakesLine(
   return 'Mid-table for now — a win is how the climb starts.';
 }
 
-// Highlights the highest-ceiling player on the sheet.
+// Highlights the develop-target on the sheet: the player with the most
+// remaining headroom (ceiling − current OVR), tie-broken by youth.
+// Playtest 3 CL-2: the old pick was max CEILING, which flagged tied-top-OVR
+// players who grow the LEAST (offseason growth closes a fraction of remaining
+// headroom), and "reps now shape the climb" was false for under-23s (they get
+// a full practice season whether or not they start — development reps gate).
 export function playerToWatch(players: LineupPlayer[]): string | null {
-  const withPotential = players.filter(player => typeof player.potential === 'number');
-  if (withPotential.length === 0) return null;
-  const top = withPotential.reduce((best, player) => {
-    if (player.potential! > best.potential!) return player;
-    if (player.potential === best.potential && (player.age ?? 99) < (best.age ?? 99)) return player;
+  const withHeadroom = players
+    .map(player => ({
+      player,
+      headroom: typeof player.potential === 'number' ? player.potential - player.overall : null,
+    }))
+    .filter((entry): entry is { player: LineupPlayer; headroom: number } => entry.headroom !== null);
+  if (withHeadroom.length === 0) return null;
+  const top = withHeadroom.reduce((best, entry) => {
+    if (entry.headroom > best.headroom) return entry;
+    if (entry.headroom === best.headroom && (entry.player.age ?? 99) < (best.player.age ?? 99)) return entry;
     return best;
   });
-  return `${top.name} carries the highest ceiling on the sheet — reps now shape the climb.`;
+  // A fully-developed sheet has no develop-target — say nothing rather than
+  // inventing one.
+  if (top.headroom <= 0) return null;
+  const room = Math.round(top.headroom);
+  // Only under-23s are guaranteed full practice growth on every growth curve;
+  // for older players the driver varies, so don't claim one.
+  const practiceClause =
+    typeof top.player.age === 'number' && top.player.age < 23
+      ? ' — young enough to close it in practice, starter or not'
+      : '';
+  return `${top.player.name} has the most room left on the sheet: ${room} OVR below their ceiling${practiceClause}.`;
 }

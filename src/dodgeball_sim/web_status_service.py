@@ -184,11 +184,16 @@ def build_roster_payload(conn: sqlite3.Connection) -> dict[str, Any]:
             player_dict["traits"].pop("potential", None)
         enriched.append(player_dict)
 
+    # Playtest 3 F-8: the Release control warns before cutting a player who
+    # carries an OPEN promise (releasing them breaks it immediately).
+    from .roster_moves import open_promise_player_ids
+
     return {
         "club_id": player_club_id,
         "roster": enriched,
         "default_lineup": lineup,
         "lineup_auto_reorder": lineup_auto_reorder_enabled(conn),
+        "open_promise_player_ids": sorted(open_promise_player_ids(conn)),
     }
 
 

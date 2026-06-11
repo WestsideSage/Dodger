@@ -13,9 +13,14 @@ export function RookieClassPreview({
     acting?: boolean;
 }) {
     const { class_size, top_prospects, free_agents, archetypes, storylines } = beat.payload;
+    // Playtest 3: headline the class's UPSIDE (bands that top out at 70+) —
+    // the old headline counted 70+ FLOORS, which is honestly ~0 in every
+    // class and read as "elite talent doesn't exist in this league". The
+    // floor count survives below as the "sure things" secondary stat.
+    const ceilingProspects = beat.payload.ceiling_prospects ?? 0;
 
-    const hasTopProspects = top_prospects > 0;
-    const qualityPct = class_size > 0 ? Math.round((top_prospects / class_size) * 100) : 0;
+    const hasUpside = ceilingProspects > 0;
+    const qualityPct = class_size > 0 ? Math.round((ceilingProspects / class_size) * 100) : 0;
     const maxArchetype = archetypes.reduce((m, a) => Math.max(m, a.count), 0);
 
     return (
@@ -40,45 +45,49 @@ export function RookieClassPreview({
                 }
             />
 
-            {/* Primary signal: class quality. top_prospects is the single number
-                that should drive how aggressively the player spends slots
-                (Brief 4.5, criterion #1). */}
+            {/* Primary signal: class upside. ceiling_prospects is the single
+                number that should drive how aggressively the player spends
+                slots (Brief 4.5, criterion #1; playtest 3 metric fix). */}
             <div
                 className="dm-panel"
                 style={{
                     padding: '1.1rem 1.15rem',
-                    borderLeft: `3px solid ${hasTopProspects ? '#10b981' : '#475569'}`,
+                    borderLeft: `3px solid ${hasUpside ? '#10b981' : '#475569'}`,
                     display: 'flex',
                     alignItems: 'center',
                     gap: '1.1rem',
                 }}
             >
                 <div style={{ flex: '0 0 auto', textAlign: 'center', minWidth: '4.5rem' }}>
-                    <div style={{ fontSize: '3rem', lineHeight: 1, fontWeight: 900, color: hasTopProspects ? '#10b981' : '#64748b' }}>
-                        {top_prospects}
+                    <div style={{ fontSize: '3rem', lineHeight: 1, fontWeight: 900, color: hasUpside ? '#10b981' : '#64748b' }}>
+                        {ceilingProspects}
                     </div>
                     <div style={{ fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#64748b', marginTop: '0.2rem' }}>
-                        Top Prospects
+                        70+ Upside
                     </div>
                 </div>
                 <div style={{ flex: '1 1 auto', minWidth: 0 }}>
                     <p style={{ margin: 0, color: '#e2e8f0', fontWeight: 700, fontSize: '0.9rem' }}>
-                        {hasTopProspects
-                            ? `${top_prospects} of ${class_size} rookies project at 70+ OVR`
-                            : 'No rookies project at 70+ OVR this year'}
+                        {hasUpside
+                            ? `${ceilingProspects} of ${class_size} rookies scout a ceiling of 70+ OVR`
+                            : 'No rookie scouts a 70+ ceiling this year — a thin class up top'}
                     </p>
                     {/* Explainer rendered as visible text on all devices — was a
                         hover-only title attribute (Brief 4.5, criterion #3). */}
                     <p style={{ margin: '0.3rem 0 0', color: '#94a3b8', fontSize: '0.76rem', lineHeight: 1.5 }}>
-                        A 70+ scouted floor means scouts are already confident in the player — a strong class rewards spending your signing slots aggressively.
+                        A 70+ ceiling means the scouted range tops out that high — worth slots and
+                        development time.
+                        {top_prospects > 0
+                            ? ` ${top_prospects} of them scout a 70+ FLOOR — already that good before development.`
+                            : ' None carry a 70+ floor — every gem here still needs developing.'}
                     </p>
                     {class_size > 0 && (
                         <div style={{ marginTop: '0.55rem' }} aria-hidden="true">
                             <div style={{ height: '5px', borderRadius: '999px', background: '#1e293b', overflow: 'hidden' }}>
-                                <div style={{ width: `${qualityPct}%`, height: '100%', background: hasTopProspects ? '#10b981' : '#475569' }} />
+                                <div style={{ width: `${qualityPct}%`, height: '100%', background: hasUpside ? '#10b981' : '#475569' }} />
                             </div>
                             <span style={{ fontSize: '0.66rem', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>
-                                {qualityPct}% high-confidence
+                                {qualityPct}% of the class
                             </span>
                         </div>
                     )}

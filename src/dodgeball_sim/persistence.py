@@ -1977,6 +1977,26 @@ def save_free_agents(
     )
 
 
+def add_free_agent(
+    conn: sqlite3.Connection,
+    player: Player,
+    available_since_season: str,
+) -> None:
+    """Add one player to the free-agent pool without replacing it.
+
+    Playtest 3 F-8: a player the user RELEASES joins the existing pool —
+    ``save_free_agents`` is a full-table replace and would erase everyone
+    else waiting for a club.
+    """
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO free_agents (player_id, available_since_season, player_json)
+        VALUES (?, ?, ?)
+        """,
+        (player.id, available_since_season, _json_dump(_player_to_dict(player))),
+    )
+
+
 def load_free_agents(conn: sqlite3.Connection) -> List[Player]:
     cursor = conn.execute(
         "SELECT player_json FROM free_agents ORDER BY available_since_season, player_id"
