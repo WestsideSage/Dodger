@@ -1082,6 +1082,20 @@ export interface RecapBeatPayload {
         cutoff: number;
         total: number;
     };
+    /** V22 Phase 2: the season's settled books. Absent on pre-economy saves. */
+    finances?: {
+        season_id: string;
+        rank: number;
+        total_clubs: number;
+        playoff_result: 'champion' | 'runner_up' | 'semifinalist' | null;
+        league_payout_k: number;
+        playoff_bonus_k: number;
+        staff_payroll_k: number;
+        net_k: number;
+        opening_treasury_k: number;
+        closing_treasury_k: number;
+        rules: string;
+    };
 }
 
 export interface DevelopmentPlayer {
@@ -1323,6 +1337,11 @@ export interface DynastyOfficeResponse {
     week: number;
     player_club_id: string;
     player_club_name: string;
+    /** V22 Phase 2: club treasury in integer thousands ("420" => $420k).
+        Absent on pre-economy payloads. */
+    treasury_k?: number;
+    /** True while the treasury is negative — staff hiring is frozen. */
+    hiring_frozen?: boolean;
     recruiting: {
         credibility: {
             score: number;

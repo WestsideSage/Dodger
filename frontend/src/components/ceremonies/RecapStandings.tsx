@@ -1,4 +1,5 @@
 import type { OffseasonBeat } from '../../types';
+import { formatK, formatKSigned } from '../../money';
 import { ActionButton, PageHeader } from '../ui';
 
 type RecapBeat = Extract<OffseasonBeat, { key: 'recap' }>;
@@ -29,6 +30,9 @@ export function RecapStandings({
     // finished outside the cut (derived from the real playoff seeding), so it
     // never shows for a club that qualified.
     const missed = beat.payload.missed_playoffs;
+    // V22 Phase 2: the season's settled books (league payout + playoff bonus
+    // in, staff payroll out). Absent on pre-economy saves.
+    const finances = beat.payload.finances;
 
     return (
         <section className="command-offseason-shell" data-testid="offseason-recap">
@@ -138,6 +142,43 @@ export function RecapStandings({
                     </div>
                 ))}
             </div>
+
+            {finances && (
+                <div
+                    className="dm-panel"
+                    data-testid="recap-finances"
+                    style={{ padding: '0.85rem 1rem' }}
+                >
+                    <p className="dm-kicker" style={{ margin: '0 0 0.5rem' }}>Season Finances</p>
+                    <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', fontSize: '0.82rem', color: '#cbd5e1' }}>
+                        <span>
+                            League payout <strong style={{ color: '#10b981' }}>{formatKSigned(finances.league_payout_k)}</strong>
+                        </span>
+                        {finances.playoff_bonus_k > 0 && (
+                            <span>
+                                Playoff bonus <strong style={{ color: '#10b981' }}>{formatKSigned(finances.playoff_bonus_k)}</strong>
+                            </span>
+                        )}
+                        <span>
+                            Staff payroll <strong style={{ color: '#f87171' }}>{formatKSigned(-finances.staff_payroll_k)}</strong>
+                        </span>
+                        <span>
+                            Net <strong style={{ color: finances.net_k >= 0 ? '#10b981' : '#f87171' }}>{formatKSigned(finances.net_k)}</strong>
+                        </span>
+                        <span style={{ marginLeft: 'auto' }}>
+                            Treasury <strong style={{ color: finances.closing_treasury_k < 0 ? '#f87171' : '#e2e8f0' }}>{formatK(finances.closing_treasury_k)}</strong>
+                        </span>
+                    </div>
+                    {finances.closing_treasury_k < 0 && (
+                        <p style={{ margin: '0.4rem 0 0', fontSize: '0.74rem', color: '#fb923c' }}>
+                            Treasury is in the red — staff hiring is frozen until the books recover.
+                        </p>
+                    )}
+                    <p style={{ margin: '0.4rem 0 0', fontSize: '0.7rem', color: '#64748b' }}>
+                        {finances.rules}
+                    </p>
+                </div>
+            )}
 
             <div className="dm-panel command-action-bar">
                 <div>

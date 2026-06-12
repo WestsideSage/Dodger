@@ -6,6 +6,7 @@ import { CredibilityStrip } from './dynasty/CredibilityStrip';
 import { ProspectCard } from './dynasty/ProspectCard';
 import { HistorySubTab } from './dynasty/HistorySubTab';
 import { commandApi, dynastyApi } from '../api/client';
+import { formatK } from '../money';
 import { EmptyState, TermTip, ProofChip } from '../legibility';
 
 const dynastySubtabFromUrl = (): 'recruit' | 'history' | 'staff' => {
@@ -185,6 +186,35 @@ function DoTabs({
         </button>
       ))}
       <span className="do-tabs-spacer" />
+      {/* V22 Phase 2: the club's one money number, always in view from the
+          front office. Red + "hiring frozen" while negative. */}
+      {typeof data.treasury_k === 'number' && (
+        <span
+          data-testid="treasury-chip"
+          title={
+            data.hiring_frozen
+              ? 'Treasury is negative — staff hiring is frozen until the books recover.'
+              : 'Club treasury — league payouts in, staff payroll out, settled each offseason.'
+          }
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            padding: '0.2rem 0.55rem',
+            borderRadius: '999px',
+            fontSize: '0.7rem',
+            fontWeight: 800,
+            fontVariantNumeric: 'tabular-nums',
+            color: data.treasury_k < 0 ? '#f87171' : '#34d399',
+            background: data.treasury_k < 0 ? 'rgba(248,113,113,0.10)' : 'rgba(52,211,153,0.10)',
+            border: `1px solid ${data.treasury_k < 0 ? 'rgba(248,113,113,0.35)' : 'rgba(52,211,153,0.3)'}`,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Treasury {formatK(data.treasury_k)}
+          {data.hiring_frozen && <span style={{ fontWeight: 700 }}>· hiring frozen</span>}
+        </span>
+      )}
       <button className="dm-btn" onClick={onOpenSettings} type="button">Program Settings</button>
       {/* Codex issue 5: the office works the UPCOMING week (its recruiting
           slots belong to it), which can read one ahead of the match banner —

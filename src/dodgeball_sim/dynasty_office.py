@@ -92,11 +92,17 @@ def build_dynasty_office_state(conn: sqlite3.Connection) -> dict[str, Any]:
     history = load_command_history_all_seasons(conn)
     root_seed = _root_seed(conn)
     week = current_week(conn, season) or 0
+    from .economy import hiring_frozen, treasury_k
+
     return {
         "season_id": season_id,
         "week": week,
         "player_club_id": player_club_id,
         "player_club_name": clubs[player_club_id].name if player_club_id in clubs else player_club_id,
+        # V22 Phase 2: the club treasury (integer thousands) — the front
+        # office's one money number. hiring_frozen flips while it's negative.
+        "treasury_k": treasury_k(conn),
+        "hiring_frozen": hiring_frozen(conn),
         "recruiting": build_recruiting_state(
             conn,
             season_id=season_id,

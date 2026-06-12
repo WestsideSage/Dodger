@@ -586,6 +586,20 @@ def initialize_manager_offseason(
     if _player_club_id:
         evaluate_season_promises(conn, season.season_id, _player_club_id)
 
+    # V22 Phase 2: settle the season's books once — league payout + playoff
+    # bonus in, next season's staff payroll out. Runs before any roster
+    # mutation (it reads standings and department heads only) and guards its
+    # own idempotence on top of this function's.
+    if _player_club_id:
+        from .economy import apply_season_finances
+
+        apply_season_finances(
+            conn,
+            season_id=season.season_id,
+            club_id=_player_club_id,
+            standings=load_standings(conn, season.season_id),
+        )
+
     # Training is the persisted staff department that owns player-growth work.
     _all_dept_heads = {h["department"]: h for h in load_department_heads(conn)}
     _dev_head = _all_dept_heads.get("training")
