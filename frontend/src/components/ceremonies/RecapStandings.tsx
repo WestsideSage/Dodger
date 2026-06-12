@@ -33,6 +33,10 @@ export function RecapStandings({
     // V22 Phase 2: the season's settled books (league payout + playoff bonus
     // in, staff payroll out). Absent on pre-economy saves.
     const finances = beat.payload.finances;
+    // V23: the season's league movement — promotions, relegations, WORLDS —
+    // present on pyramid saves once the world's postseason is complete.
+    const pyramid = beat.payload.pyramid;
+    const userMovement = pyramid?.user?.movement;
 
     return (
         <section className="command-offseason-shell" data-testid="offseason-recap">
@@ -177,6 +181,58 @@ export function RecapStandings({
                     <p style={{ margin: '0.4rem 0 0', fontSize: '0.7rem', color: '#64748b' }}>
                         {finances.rules}
                     </p>
+                </div>
+            )}
+
+            {pyramid && (
+                <div
+                    className="dm-panel"
+                    data-testid="recap-pyramid"
+                    style={{ padding: '0.85rem 1rem' }}
+                >
+                    <p className="dm-kicker" style={{ margin: '0 0 0.5rem' }}>League Movement</p>
+                    {userMovement && userMovement !== 'stays' && (
+                        <p
+                            style={{
+                                margin: '0 0 0.6rem',
+                                padding: '0.5rem 0.75rem',
+                                borderRadius: '6px',
+                                fontWeight: 700,
+                                fontSize: '0.9rem',
+                                color: userMovement === 'promoted' ? '#10b981' : '#f87171',
+                                background: userMovement === 'promoted' ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+                                border: `1px solid ${userMovement === 'promoted' ? '#065f46' : '#7f1d1d'}`,
+                            }}
+                        >
+                            {userMovement === 'promoted'
+                                ? `PROMOTED — next season you play in the ${pyramid.user.division_name}.`
+                                : `RELEGATED — next season you play in the ${pyramid.user.division_name}.`}
+                        </p>
+                    )}
+                    <div style={{ display: 'grid', gap: '0.3rem', fontSize: '0.82rem', color: '#cbd5e1' }}>
+                        {pyramid.champions.map((champion) => (
+                            <span key={champion.division_id}>
+                                <strong style={{ color: '#e2e8f0' }}>{champion.division_name}:</strong>{' '}
+                                {champion.club_name} are champions.
+                            </span>
+                        ))}
+                        {pyramid.promoted.map((move) => (
+                            <span key={`up-${move.from_division}`} style={{ color: '#10b981' }}>
+                                ↑ {move.clubs.join(' and ')} go up to the {move.to_division}.
+                            </span>
+                        ))}
+                        {pyramid.relegated.map((move) => (
+                            <span key={`down-${move.from_division}`} style={{ color: '#f87171' }}>
+                                ↓ {move.clubs.join(' and ')} drop to the {move.to_division}.
+                            </span>
+                        ))}
+                        {pyramid.worlds && (
+                            <span style={{ marginTop: '0.3rem', color: '#fbbf24' }}>
+                                ★ WORLDS: {pyramid.worlds.champion_name} are World Champions
+                                {pyramid.worlds.runner_up_name ? ` — ${pyramid.worlds.runner_up_name} fall in the final.` : '.'}
+                            </span>
+                        )}
+                    </div>
                 </div>
             )}
 

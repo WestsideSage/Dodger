@@ -706,7 +706,8 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                     </span>
                     <h3 style={{ margin: '0.5rem 0 0.5rem', color: '#f97316', fontSize: '1.25rem', fontWeight: 800 }}>Take Over a Program</h3>
                     <p style={{ margin: 0, fontSize: '0.8125rem', color: '#cbd5e1', lineHeight: 1.4 }}>
-                      Lead one of the 6 established league franchises to championship glory.
+                      Inherit an established Premier League club — the top of a
+                      28-club pyramid where the bottom two go down every season.
                     </p>
                   </button>
 
@@ -737,7 +738,8 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                   >
                     <h3 style={{ margin: '0.5rem 0 0.5rem', color: '#22d3ee', fontSize: '1.25rem', fontWeight: 800 }}>Build from Scratch</h3>
                     <p style={{ margin: 0, fontSize: '0.8125rem', color: '#cbd5e1', lineHeight: 1.4 }}>
-                      Create a custom club from identity to starting roster.
+                      Found a club at the bottom of the District League (D3)
+                      and climb the pyramid toward WORLDS.
                     </p>
                   </button>
                 </div>

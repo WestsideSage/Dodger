@@ -35,6 +35,14 @@ interface LeagueData {
     draws: number;
     meetings: number;
   }>;
+  /** V23: the World Championship roll, newest first (pyramid saves only). */
+  worlds?: Array<{
+    season_id: string;
+    champion_club_id: string;
+    champion_name: string;
+    runner_up_club_id: string | null;
+    runner_up_name: string | null;
+  }>;
 }
 
 export function LeagueView() {
@@ -118,6 +126,32 @@ export function LeagueView() {
       </section>
 
       <div className="do-hist-grid">
+        {data.worlds && data.worlds.length > 0 && (
+          <section className="dm-panel do-hist-card">
+            <div className="do-hist-card-head">
+              <span className="dm-kicker">World Championship</span>
+              <h3>The summit, season by season</h3>
+            </div>
+            <div className="do-hist-list">
+              {data.worlds.map((entry) => (
+                <div key={entry.season_id} className="do-hist-list-row">
+                  <div className="main">
+                    <strong>★ {entry.champion_name}</strong>
+                    <span className="meta">
+                      {formatSeasonLabel(entry.season_id)}
+                      {entry.runner_up_name ? ` — beat ${entry.runner_up_name} in the final` : ''}
+                    </span>
+                  </div>
+                  <div className="side">
+                    <span className="dm-badge dm-badge-amber">WORLDS</span>
+                    <span className="note">Premier top two vs the International Circuit's best.</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className="dm-panel do-hist-card">
           <div className="do-hist-card-head">
             <span className="dm-kicker">Dynasty Rankings</span>
