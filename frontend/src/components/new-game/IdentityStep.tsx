@@ -87,7 +87,7 @@ export function IdentityStep({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <div>
-        <p className="dm-kicker" style={{ marginBottom: '0.25rem' }}>Step 1 of 3</p>
+        <p className="dm-kicker" style={{ marginBottom: '0.25rem' }}>Step 1 of 4</p>
         <h2 style={{ fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', margin: 0, fontSize: '1.25rem' }}>
           Program Identity
         </h2>

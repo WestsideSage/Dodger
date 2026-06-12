@@ -3,6 +3,7 @@ import type React from 'react';
 import type { SaveInfo, SaveListResponse, ClubOption } from '../types';
 import { IdentityStep } from './new-game/IdentityStep';
 import { CoachStep } from './new-game/CoachStep';
+import { StaffHiringStep } from './new-game/StaffHiringStep';
 import { StartingRecruitmentStep } from './new-game/StartingRecruitmentStep';
 import { saveApi } from '../api/client';
 import { RadioGroup } from './ui';
@@ -110,7 +111,7 @@ interface SaveMenuProps {
   onSaveLoaded: () => void;
 }
 
-type View = 'list' | 'new' | 'takeover' | 'build_identity' | 'build_coach' | 'build_roster';
+type View = 'list' | 'new' | 'takeover' | 'build_identity' | 'build_coach' | 'build_staff' | 'build_roster';
 
 export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
   const [view, setView] = useState<View>('list');
@@ -155,6 +156,8 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
   // wizard SHOWS (?seed= on starting-prospects) and the career the build POST
   // creates (root_seed) — both must be the same number, held here.
   const [buildSeed, setBuildSeed] = useState<number>(() => freshCreationSeed());
+  // V22 Phase 3: the wizard's founding staff picks (department -> candidate).
+  const [buildStaff, setBuildStaff] = useState<Record<string, string>>({});
 
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -247,6 +250,10 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
         coach_name: buildCoach.coach_name,
         coach_backstory: buildCoach.coach_backstory,
         roster_player_ids: rosterIds,
+        // V22 Phase 3: the founding staff hired in the wizard's budget step.
+        // Omitted when empty (a failed market fetch keeps the step blocked,
+        // but never let {} reach the backend's all-six validation).
+        ...(Object.keys(buildStaff).length > 0 ? { staff_choices: buildStaff } : {}),
         // V22 Phase 1: the same seed the prospect list was fetched with.
         root_seed: buildSeed,
         // Single-ruleset standardization: every new career is foam-official.
@@ -707,8 +714,9 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                   <button
                     onClick={() => {
                       // V22 Phase 1: every wizard run is a new universe —
-                      // fresh seed, fresh founding class.
+                      // fresh seed, fresh founding class, fresh staff market.
                       setBuildSeed(freshCreationSeed());
+                      setBuildStaff({});
                       setView('build_identity');
                     }}
                     style={{
@@ -942,8 +950,9 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
             )}
 
             {view === 'build_identity' && <IdentityStep identity={buildIdentity} setIdentity={setBuildIdentity} onNext={() => setView('build_coach')} onBack={() => setView('new')} takenNames={saves.map(s => s.name)} />}
-            {view === 'build_coach' && <CoachStep coach={buildCoach} setCoach={setBuildCoach} onBack={() => setView('build_identity')} onNext={() => setView('build_roster')} />}
-            {view === 'build_roster' && <StartingRecruitmentStep seed={buildSeed} onCommit={handleBuildFromScratch} onBack={() => setView('build_coach')} creating={creating} />}
+            {view === 'build_coach' && <CoachStep coach={buildCoach} setCoach={setBuildCoach} onBack={() => setView('build_identity')} onNext={() => setView('build_staff')} />}
+            {view === 'build_staff' && <StaffHiringStep seed={buildSeed} choices={buildStaff} setChoices={setBuildStaff} onBack={() => setView('build_coach')} onNext={() => setView('build_roster')} />}
+            {view === 'build_roster' && <StartingRecruitmentStep seed={buildSeed} onCommit={handleBuildFromScratch} onBack={() => setView('build_staff')} creating={creating} />}
             {createError && view.startsWith('build_') && (
               <div
                 role="alert"

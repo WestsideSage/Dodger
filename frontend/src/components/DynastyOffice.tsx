@@ -686,8 +686,11 @@ function StaffTab({
             <dl className="meta">
               <div><dt>Primary</dt><dd>{member.rating_primary}</dd></div>
               <div><dt>Secondary</dt><dd>{member.rating_secondary}</dd></div>
+              {/* V22 Phase 3: every head's annual cost on the card. */}
+              {typeof member.salary_k === 'number' && (
+                <div><dt>Salary</dt><dd>{formatK(member.salary_k)}/yr</dd></div>
+              )}
               <div><dt>Facility Sync</dt><dd>{data.staff_market.active_facilities.length > 0 ? data.staff_market.active_facilities[0] : 'None tracked'}</dd></div>
-              <div><dt>Recent Moves</dt><dd>{data.staff_market.recent_actions.length}</dd></div>
             </dl>
             <div className="impact" style={{ marginTop: '0.5rem' }}>
               <span className="lbl" style={{ fontSize: '0.6rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -766,14 +769,30 @@ function StaffTab({
                   </div>
                   <div className="do-pipe-meta">
                     <span className="rating">{candidate.rating_primary}<small> OVR</small></span>
+                    {/* V22 Phase 3: the hire's payroll consequence up front. */}
+                    {typeof candidate.salary_k === 'number' && (
+                      <span style={{ fontSize: '0.68rem', color: '#94a3b8', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                        {formatK(candidate.salary_k)}/yr
+                        {typeof candidate.salary_delta_k === 'number' && candidate.salary_delta_k !== 0 && (
+                          <span style={{ color: candidate.salary_delta_k > 0 ? '#fb923c' : '#34d399' }}>
+                            {' '}({candidate.salary_delta_k > 0 ? '+' : ''}{candidate.salary_delta_k}k)
+                          </span>
+                        )}
+                      </span>
+                    )}
                     <span className={`stage stage-${normalizedStage}`}>{normalizedStage.replace('-', ' ')}</span>
                     <button
                       className="dm-btn"
                       type="button"
-                      disabled={hiringCandidateId !== null}
+                      disabled={hiringCandidateId !== null || data.hiring_frozen === true}
+                      title={
+                        data.hiring_frozen
+                          ? 'Treasury is negative — hiring is frozen until the books recover.'
+                          : undefined
+                      }
                       onClick={() => handleInterview(candidate.candidate_id)}
                     >
-                      {isHiring ? 'Hiring...' : 'Hire'}
+                      {isHiring ? 'Hiring...' : data.hiring_frozen ? 'Frozen' : 'Hire'}
                     </button>
                   </div>
                 </div>

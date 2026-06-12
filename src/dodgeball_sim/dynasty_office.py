@@ -162,6 +162,17 @@ def save_recruiting_promise(
 
 def hire_staff_candidate(conn: sqlite3.Connection, candidate_id: str) -> dict[str, Any]:
     _ensure_dynasty_keys(conn)
+    # V22 Phase 3: hiring freezes while the treasury is negative — the
+    # economy's no-spiral pressure rule. The error is the player-facing copy.
+    from .economy import hiring_frozen, treasury_k
+
+    if hiring_frozen(conn):
+        from .economy import format_k
+
+        raise ValueError(
+            f"Hiring is frozen — the treasury is {format_k(treasury_k(conn))}. "
+            "Climb the table to bring the books back into the black."
+        )
     state = build_dynasty_office_state(conn)
     candidates = state["staff_market"]["candidates"]
     candidate = next((item for item in candidates if item["candidate_id"] == candidate_id), None)

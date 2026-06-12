@@ -176,6 +176,9 @@ export const saveApi = {
     coach_name: string;
     coach_backstory: string;
     roster_player_ids: string[];
+    /** V22 Phase 3: founding staff picks (department -> candidate_id) from
+        GET /api/saves/starting-staff for the same seed. */
+    staff_choices?: Record<string, string>;
     /** V22 Phase 1: the wizard's creation seed (same one the prospect list
         was fetched with) — drives the founding pool and the whole career. */
     root_seed?: number;

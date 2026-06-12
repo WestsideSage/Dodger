@@ -492,6 +492,10 @@ class BuildFromScratchRequest(BaseModel):
     coach_name: str
     coach_backstory: str
     roster_player_ids: list[str]
+    # V22 Phase 3: the wizard's founding staff picks — department -> the
+    # candidate_id chosen from GET /api/saves/starting-staff for the same
+    # seed. None keeps the default six (legacy callers).
+    staff_choices: dict[str, str] | None = None
     root_seed: int = 20260426
     # WT-17: build-from-scratch careers also default to official foam at the
     # backend boundary (see NewSaveRequest). Explicit "generic"/None still
@@ -1047,6 +1051,15 @@ def api_starting_prospects(seed: int | None = None):
     # V22 Phase 1: the wizard passes its per-creation seed so the list shown
     # here is exactly the pool the build POST (root_seed) will draft from.
     return starting_prospects_payload(seed)
+
+
+@app.get("/api/saves/starting-staff")
+def api_starting_staff(seed: int | None = None):
+    # V22 Phase 3: the founding staff market — same creation seed as the
+    # prospect list, so the build POST validates against the exact pool shown.
+    from .save_service import starting_staff_payload
+
+    return starting_staff_payload(seed)
 
 
 @app.post("/api/saves/build-from-scratch")
