@@ -292,6 +292,12 @@ def initialize_curated_manager_career(
     set_state(conn, "active_season_id", season.season_id)
     set_state(conn, "player_club_id", selected_club_id)
     set_state(conn, "difficulty", "pro")
+    # V22 Phase 2: takeover careers inherit an established program's modest
+    # treasury. Create-a-club careers overwrite this right after init with
+    # (starting budget − the founding staff payroll they committed).
+    from .config import DEFAULT_ECONOMY
+
+    set_state(conn, "club_treasury_k", str(DEFAULT_ECONOMY.takeover_treasury_k))
     # V19 Task 8: lineup auto-reorder defaults ON for new careers (CFB26
     # depth-chart pattern — set-and-forget). A manual lineup save flips it
     # off; the Lineup Editor toggle controls it thereafter.

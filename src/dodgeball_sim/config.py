@@ -144,6 +144,38 @@ AI_OFFSEASON_SIGNINGS_PER_CLUB = 3
 AI_OFFSEASON_MAX_ROSTER = 12
 
 
+# --- V22 Club Economy (config layer) ----------------------------------------
+# Owner (2026-06-11): "add a budget component… a financial management aspect"
+# (Teamfight Manager cited), deliberately light — one treasury number, annual
+# staff payroll, league payouts by finish. USER club only; AI club finances
+# stay abstracted. All amounts are integer THOUSANDS (displayed "$340k").
+#
+# Calibration (7-club league, default staff payroll ≈ 276k/season):
+#   champion  340 + 140 = 480  → ~+200k surplus funds upgrades
+#   mid-table 280        →  ~break-even on default staff
+#   basement  220        →  ~-56k/season squeeze (pressure, no death spiral —
+#                            hiring freezes while negative, payroll still owed)
+@dataclass(frozen=True)
+class EconomyConfig:
+    # Treasury seeds.
+    starting_budget_k: int = 600          # create-a-club wizard budget
+    takeover_treasury_k: int = 150        # curated takeover careers
+    # Season income: base + (total_clubs - rank) * step, plus ONE playoff
+    # bonus for the furthest stage reached.
+    base_payout_k: int = 220
+    per_rank_step_k: int = 20
+    champion_bonus_k: int = 140
+    runner_up_bonus_k: int = 80
+    semifinalist_bonus_k: int = 40
+    # Staff salaries: quality-priced from the head's visible ratings.
+    # salary = max(floor, round(0.75*primary + 0.25*secondary) - offset)
+    salary_floor_k: int = 20
+    salary_rating_offset_k: int = 25
+
+
+DEFAULT_ECONOMY = EconomyConfig()
+
+
 def get_config(version: str | None = None) -> BalanceConfig:
     """Return the requested config, defaulting to the latest entry."""
 
@@ -160,7 +192,9 @@ __all__ = [
     "BalanceConfig",
     "CONTESTED_USER_OFFER_BASE",
     "CONTESTED_USER_OFFER_INTEREST_WEIGHT",
+    "DEFAULT_ECONOMY",
     "DifficultyProfile",
+    "EconomyConfig",
     "ScoutingBalanceConfig",
     "CONFIG_REGISTRY",
     "DEFAULT_CONFIG",

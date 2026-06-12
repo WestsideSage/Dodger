@@ -305,6 +305,14 @@ def build_beat_payload(
         missed = _missed_playoffs_block(conn, standings, player_club_id, season=season)
         if missed is not None:
             recap["missed_playoffs"] = missed
+        # V22 Phase 2: the season's books, settled at offseason init. Only
+        # attached when the persisted ledger belongs to THIS season (an older
+        # save mid-migration must not show last year's money).
+        from .economy import load_season_finances
+
+        finances = load_season_finances(conn)
+        if finances and season is not None and finances.get("season_id") == season.season_id:
+            recap["finances"] = finances
         return recap
 
     if beat_key == "records_ratified":

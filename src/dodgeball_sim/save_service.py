@@ -466,6 +466,18 @@ def build_from_scratch_save(saves_dir: Path, request: dict[str, Any]) -> dict[st
                     conn, player_id, roster_map[player_id].hidden_trajectory
                 )
 
+            # V22 Phase 2: a founded club opens its books with the starting
+            # budget minus season-1 payroll for its staff. (Phase 3 replaces
+            # the default six with the wizard's budgeted hires; the same
+            # arithmetic then prices the player's actual choices.)
+            from .config import DEFAULT_ECONOMY
+            from .economy import set_treasury_k, staff_payroll_k
+
+            set_treasury_k(
+                conn,
+                DEFAULT_ECONOMY.starting_budget_k - staff_payroll_k(conn),
+            )
+
             # Seed 3 warm prospects from the active career pool.
             remaining_prospects = load_prospect_pool(conn, class_year=1)
             remaining_prospects.sort(key=lambda p: (-p.pipeline_tier, p.player_id))
