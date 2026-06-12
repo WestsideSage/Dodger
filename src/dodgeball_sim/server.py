@@ -1537,12 +1537,19 @@ def get_history_league(conn = Depends(get_db)):
         })
     rivalries.sort(key=lambda r: -r["meetings"])
 
+    # V23: the World Championship roll — alive from Season 1, whether or not
+    # the player's club has ever been near it.
+    from dodgeball_sim.pyramid_postseason import load_worlds_history
+
+    worlds = list(reversed(load_worlds_history(conn)))
+
     return {
         "directory": directory,
         "dynasty_rankings": dynasty_rankings,
         "records": load_league_records(conn),
         "hof": hof,
         "rivalries": rivalries,
+        "worlds": worlds,
     }
 
 

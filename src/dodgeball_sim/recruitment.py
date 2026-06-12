@@ -449,9 +449,30 @@ def _eligible_ai_offer_clubs(
 ) -> set[str]:
     """AI clubs allowed to bid this round: under the per-offseason signing cap
     (D3) and below the Signing Day roster ceiling. The user club never bids
-    through this path."""
+    through this path.
+
+    V23: on pyramid saves the Signing Day market is the USER'S DIVISION (the
+    V24 Board frame — one 25-prospect class, seven clubs). Clubs in other
+    divisions develop, age, retire, and repair rosters, but deep
+    cross-division recruiting is V24's milestone; the scope line is disclosed
+    on the recruiting surfaces.
+    """
     from .config import AI_OFFSEASON_MAX_ROSTER, AI_OFFSEASON_SIGNINGS_PER_CLUB
     from .persistence import load_all_rosters, load_recruitment_signings
+    from .world import pyramid_world_active
+
+    division_club_ids: set[str] | None = None
+    if user_club_id is not None and pyramid_world_active(conn):
+        from .persistence import load_division_map
+
+        division_map = load_division_map(conn, season_id)
+        seat = division_map.get(user_club_id)
+        if seat is not None:
+            division_club_ids = {
+                club_id
+                for club_id, membership in division_map.items()
+                if membership.division_id == seat.division_id
+            }
 
     signings_per_club: dict[str, int] = {}
     for signing in load_recruitment_signings(conn, season_id):
@@ -461,6 +482,8 @@ def _eligible_ai_offer_clubs(
     eligible: set[str] = set()
     for club_id, roster in load_all_rosters(conn).items():
         if user_club_id is not None and club_id == user_club_id:
+            continue
+        if division_club_ids is not None and club_id not in division_club_ids:
             continue
         if signings_per_club.get(club_id, 0) >= AI_OFFSEASON_SIGNINGS_PER_CLUB:
             continue

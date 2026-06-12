@@ -34,6 +34,16 @@ TREASURY_STATE_KEY = "club_treasury_k"
 FINANCES_APPLIED_KEY = "finances_applied_for"
 SEASON_FINANCES_KEY = "season_finances_json"
 
+# V23: league payouts scale with the tier you played in. The DISTRICT league
+# is the 1.0× anchor — the V22 payout/payroll squeeze was tuned at exactly
+# this scale for the founding path, and "squeeze, never a spiral" must keep
+# holding where new clubs are born (a 0.35× D3 was measured to spiral a
+# journeyman-staffed founder to -217k by season 3). Climbing PAYS: Premier
+# money is the pull up the pyramid. V25's wage bills are what stop the top
+# from un-squeezing (vision doc: "promotion inflates payroll as it raises
+# prize money"). Disclosed in the finances ledger every season.
+TIER_PAYOUT_MULTIPLIERS: dict[int, float] = {1: 1.8, 2: 1.35, 3: 1.0}
+
 
 def format_k(amount_k: int) -> str:
     """Render integer thousands the way every surface shows money."""
@@ -157,6 +167,30 @@ def apply_season_finances(
     if get_state(conn, FINANCES_APPLIED_KEY) == season_id:
         return load_season_finances(conn)
 
+    # V23: on pyramid saves you are paid by your DIVISION — rank within its
+    # seven clubs, scaled by the tier's payout multiplier.
+    from .world import pyramid_world_active
+
+    standings = list(standings)
+    tier_multiplier = 1.0
+    division_name: Optional[str] = None
+    tier: Optional[int] = None
+    if pyramid_world_active(conn):
+        from .persistence import load_division_map
+
+        division_map = load_division_map(conn, season_id)
+        seat = division_map.get(club_id)
+        if seat is not None:
+            standings = [
+                row
+                for row in standings
+                if division_map.get(row.club_id)
+                and division_map[row.club_id].division_id == seat.division_id
+            ]
+            tier_multiplier = TIER_PAYOUT_MULTIPLIERS.get(seat.tier, 1.0)
+            division_name = seat.division_name
+            tier = seat.tier
+
     rank, total_clubs = _final_rank(standings, club_id)
     if rank is None:
         return None
@@ -167,24 +201,40 @@ def apply_season_finances(
         playoff_result=playoff_result,
         config=config,
     )
+    league_payout_k = round(income["league_payout_k"] * tier_multiplier)
+    playoff_bonus_k = round(income["playoff_bonus_k"] * tier_multiplier)
     payroll = staff_payroll_k(conn, config)
     opening = treasury_k(conn, config)
-    net = income["league_payout_k"] + income["playoff_bonus_k"] - payroll
+    net = league_payout_k + playoff_bonus_k - payroll
     closing = opening + net
+
+    rules_line = (
+        "Club finances cover the user program only — league payouts in, staff "
+        "payroll out. AI club budgets stay abstracted."
+    )
+    if division_name is not None:
+        rules_line = (
+            f"League payouts scale with tier: the {division_name} pays "
+            f"{tier_multiplier:.2f}× the District League base. " + rules_line
+        )
 
     ledger: dict[str, Any] = {
         "season_id": season_id,
         "rank": rank,
         "total_clubs": total_clubs,
         "playoff_result": playoff_result,
-        "league_payout_k": income["league_payout_k"],
-        "playoff_bonus_k": income["playoff_bonus_k"],
+        "league_payout_k": league_payout_k,
+        "playoff_bonus_k": playoff_bonus_k,
         "staff_payroll_k": payroll,
         "net_k": net,
         "opening_treasury_k": opening,
         "closing_treasury_k": closing,
+        # V23: which rung of the pyramid paid this (None on legacy saves).
+        "division_name": division_name,
+        "tier": tier,
+        "tier_multiplier": tier_multiplier,
         # Honest scope line, rendered verbatim by the finances block.
-        "rules": "Club finances cover the user program only — league payouts in, staff payroll out. AI club budgets stay abstracted.",
+        "rules": rules_line,
     }
     set_treasury_k(conn, closing)
     set_state(conn, SEASON_FINANCES_KEY, json.dumps(ledger))
