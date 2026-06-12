@@ -35,6 +35,20 @@
         "8000"
       ],
       "port": 8000
+    },
+    {
+      "name": "Verify 8010",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "uvicorn",
+        "dodgeball_sim.server:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8010"
+      ],
+      "port": 8010
     }
   ]
 }
