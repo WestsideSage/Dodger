@@ -421,6 +421,49 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     else:
         rows.sort(key=lambda item: (-item["points"], -item["elimination_differential"], item["club_id"]))
 
+    # V23: on pyramid saves the flat `standings` list becomes the USER'S
+    # DIVISION table (so every existing consumer shows the table the player
+    # is actually in), and the full pyramid rides alongside in `divisions`.
+    from .world import DIVISIONS, pyramid_world_active
+
+    division_payload: dict[str, Any] | None = None
+    divisions_payload: list[dict[str, Any]] | None = None
+    if pyramid_world_active(conn):
+        from .persistence import load_division_map
+
+        division_map = load_division_map(conn, season_id)
+        user_division_id = (
+            division_map[player_club_id].division_id
+            if player_club_id in division_map
+            else None
+        )
+        divisions_payload = []
+        for division in DIVISIONS:
+            division_rows = [
+                row for row in rows
+                if division_map.get(row["club_id"])
+                and division_map[row["club_id"]].division_id == division.division_id
+            ]
+            if not division_rows:
+                continue
+            block = {
+                "division_id": division.division_id,
+                "name": division.name,
+                "short_name": division.short_name,
+                "tier": division.tier,
+                "kind": division.kind,
+                "is_user_division": division.division_id == user_division_id,
+                "standings": division_rows,
+                "movement": _division_movement_rules(division.division_id),
+            }
+            divisions_payload.append(block)
+            if division.division_id == user_division_id:
+                division_payload = {
+                    key: block[key]
+                    for key in ("division_id", "name", "short_name", "tier", "kind", "movement")
+                }
+                rows = division_rows
+
     recent = conn.execute(
         """
         SELECT match_id, week, home_club_id, away_club_id, winner_club_id,
@@ -429,10 +472,20 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         FROM match_records
         WHERE season_id = ?
         ORDER BY week DESC, match_id DESC
-        LIMIT 5
+        LIMIT 40
         """,
         (season_id,),
     ).fetchall()
+    if divisions_payload is not None:
+        # Pyramid: the "recent results" strip stays the player's division
+        # (a Circuit scoreline between two clubs you never face is noise here;
+        # the pyramid view carries the rest of the world).
+        recent = [
+            row for row in recent
+            if division_map.get(row["home_club_id"])
+            and division_map[row["home_club_id"]].division_id == user_division_id
+        ]
+    recent = recent[:5]
 
     season = load_season(conn, season_id)
     # Count unplayed user matches the same way the command center does, so the
@@ -458,7 +511,57 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         # V20 §7.3: lets the standings UI show the differential that actually
         # ranks this career (game points on officials, survivors on legacy).
         "is_official_career": is_official_career,
+        # V23: the player's division + the full pyramid (None on legacy saves).
+        "division": division_payload,
+        "divisions": divisions_payload,
     }
+
+
+def _division_movement_rules(division_id: str) -> dict[str, Any]:
+    """What's at stake at each end of a division table (V23 spec rules).
+
+    Champions of D2/D3 auto-promote; the next four by regular-season rank
+    play a promotion playoff for the second slot; the bottom two of D1/D2
+    relegate; the Premier and Circuit tops feed WORLDS. The Circuit is
+    closed — it represents the rest of the world.
+    """
+    rules = {
+        "premier": {
+            "auto_promotion": False,
+            "promotion_playoff": False,
+            "relegation_count": 2,
+            "worlds_slots": 2,
+            "summary": "Top two reach WORLDS · bottom two relegate to the Challenger League",
+        },
+        "challenger": {
+            "auto_promotion": True,
+            "promotion_playoff": True,
+            "relegation_count": 2,
+            "worlds_slots": 0,
+            "summary": "Champion promotes · next four play a promotion playoff · bottom two relegate",
+        },
+        "district": {
+            "auto_promotion": True,
+            "promotion_playoff": True,
+            "relegation_count": 0,
+            "worlds_slots": 0,
+            "summary": "Champion promotes · next four play a promotion playoff for the second slot",
+        },
+        "circuit": {
+            "auto_promotion": False,
+            "promotion_playoff": False,
+            "relegation_count": 0,
+            "worlds_slots": 2,
+            "summary": "Closed international division · top two reach WORLDS",
+        },
+    }
+    return rules.get(division_id, {
+        "auto_promotion": False,
+        "promotion_playoff": False,
+        "relegation_count": 0,
+        "worlds_slots": 0,
+        "summary": "",
+    })
 
 
 def current_week_number(conn: sqlite3.Connection, season_id: str) -> int | None:

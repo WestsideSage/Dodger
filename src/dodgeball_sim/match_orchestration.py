@@ -187,6 +187,13 @@ def _advance_playoffs_if_needed(conn, season: Season, clubs: dict[str, Any], pla
         completed = load_completed_match_ids(conn, season.season_id)
         if bracket is None:
             standings = _standings_with_all_clubs(load_standings(conn, season.season_id), clubs)
+            # V23: on pyramid saves the user's title bracket seeds from their
+            # DIVISION's table, not the 28-club world (identity on legacy saves).
+            from dodgeball_sim.pyramid_postseason import user_division_standings_filter
+
+            standings = user_division_standings_filter(
+                conn, season.season_id, standings, player_club_id
+            )
             next_week = max((match.week for match in _regular_season_matches(season)), default=0) + 1
             bracket, semifinals = create_semifinal_bracket(season.season_id, standings, next_week)
             save_playoff_bracket(conn, bracket)
@@ -284,7 +291,15 @@ def _choose_next_user_match_after_automation(
     clubs: dict[str, Any],
     player_club_id: str,
 ) -> tuple[Season, list[ScheduledMatch], str]:
+    # V23: the pyramid postseason hook runs right after the legacy playoff
+    # advancer at every automation point — it owns the AI divisions' title
+    # brackets, the promotion playoffs, and Worlds (no-op on legacy saves),
+    # and schedules the player's own promotion/Worlds fixtures so
+    # _choose_user_match surfaces them interactively.
+    from dodgeball_sim.pyramid_postseason import advance_pyramid_postseason
+
     season = _advance_playoffs_if_needed(conn, season, clubs, player_club_id)
+    season = advance_pyramid_postseason(conn, season, clubs, player_club_id)
     completed = load_completed_match_ids(conn, season.season_id)
     chosen, stop_reason = _choose_user_match(season, completed, player_club_id)
     if chosen:
@@ -302,6 +317,7 @@ def _choose_next_user_match_after_automation(
         conn.commit()
         season = load_season(conn, season.season_id)
         season = _advance_playoffs_if_needed(conn, season, clubs, player_club_id)
+        season = advance_pyramid_postseason(conn, season, clubs, player_club_id)
         completed = load_completed_match_ids(conn, season.season_id)
         chosen, stop_reason = _choose_user_match(season, completed, player_club_id)
     return season, chosen, stop_reason

@@ -166,7 +166,38 @@ def playoff_stage_label(season_id: str, match_id: str) -> str:
         return "Playoff Semifinal"
     if match_id == f"{season_id}_p_final":
         return "Playoff Final"
+    # V23 pyramid postseason stages. The user-division title bracket keeps the
+    # legacy ids above so every existing surface reads the title run unchanged;
+    # everything else carries its stage in the id (see the V23 spec id scheme).
+    prefix = playoff_match_id_prefix(season_id)
+    if match_id.startswith(prefix):
+        stage = match_id[len(prefix):]
+        if stage.startswith("worlds_"):
+            return "WORLDS Final" if stage.endswith("_final") else "WORLDS Semifinal"
+        if stage.startswith("promo_"):
+            return (
+                "Promotion Playoff Final"
+                if stage.endswith("_final")
+                else "Promotion Playoff Semifinal"
+            )
+        if stage.startswith("div_"):
+            division_name = _division_display_name(stage)
+            return (
+                f"{division_name} Final"
+                if stage.endswith("_final")
+                else f"{division_name} Semifinal"
+            )
     return "Regular Season"
+
+
+def _division_display_name(stage_suffix: str) -> str:
+    """Map a ``div_{division_id}_...`` id suffix to the division's name."""
+    from .world import DIVISIONS
+
+    for division in DIVISIONS:
+        if stage_suffix.startswith(f"div_{division.division_id}_"):
+            return division.name
+    return "Division Playoff"
 
 
 __all__ = [
