@@ -4,7 +4,47 @@ Canonical snapshot of what is actually built and what is still open. When code
 state changes materially, update this file in the same pass. If this file and
 the source disagree, the source wins - then fix this file.
 
-Last updated: 2026-06-10. `main` / `origin/main`: V16 shipped at `0c9bf28`
+Last updated: 2026-06-11.
+
+**Playtest 3 (Orphanage Run) answered — SHIPPED 2026-06-11 (`8c314f5`).**
+The dynasty turnover loop exists: a Release control on the player card
+(released players join the free-agent pool; releasing a promised player
+BREAKS the promise) and sign-over-cut at a full-roster Signing Day (the
+release commits only when the contested pick lands). Scout actions reveal a
+prospect's growth-arc grade (HIGH_CEILING/SOLID/STANDARD) and the class
+brief carries an elite-buzz storyline; the Rookie Class Preview was fixed to
+describe the class this Signing Day actually signs (it had silently shown
+free-agent stats forever). Counter Read consults sanctioned scouted reads;
+"We'll contend" promises grade the season they're made; training credits
+get a dev-beat receipt; contentless Development beats are skipped. Gated by
+`tests/test_roster_release.py` + extended fences.
+
+**V22 Founding Choices & Club Economy — SHIPPED 2026-06-11 (Phases 1–5:
+`62c20fc`, `e681317`, `953d1f2`, `5f7dd78` + the Phase 5/6 close-out
+commit).** Spec: `docs/specs/2026-06-11-v22-founding-choices-club-economy.md`.
+One wide name pool (`names.py`, ~200×300, two-RNG-draw unique picker) feeds
+every generated person; founding pools/leagues follow a per-creation seed
+(they were hardcoded to one universe); founders carry natural ceilings +
+persisted growth arcs (the 70-floor wall is gone). The first economy layer:
+club treasury (integer $k, user-only, AI abstracted), league payouts by
+finish + playoff bonuses, quality-priced annual staff salaries, settled once
+per offseason with a recap Finances block and a Dynasty Office treasury
+chip; hiring freezes while negative (squeeze, never a spiral). The
+create-a-club wizard gained a budgeted "Hire Your Staff" step (18
+candidates, 6 departments × 3 tiers; six journeymen always affordable —
+tested) and the founding draft picker shows the full sheet (ratings,
+ceiling+tier, arc badge, archetype TermTips, age). All six department-head
+ratings are wired to real effects (`staff_effects.py` is the single formula
+home: tactics 12–24 TIQ, conditioning 30–70% relief, culture +15–40%
+courtship, scouting 70–130% band narrowing persisted at scout time, medical
+owns age-decline mitigation, training keeps growth) — anchored so default
+heads match the legacy flat numbers. Gated by `tests/test_names.py`,
+`test_economy.py`, `test_founding_staff.py`, `test_staff_effects.py`.
+Wizard browser-verified end-to-end 2026-06-11 (staff step → buffed draft →
+created club with the chosen heads, payroll $208k, treasury $392k =
+600−208).
+
+Prior snapshot (2026-06-10): `main` / `origin/main`: V16 shipped at `0c9bf28`
 (child of `5668471`, which followed the `2969271` Task 0 sweep that landed
 the six 2026-06-09 audit passes — the "Task 0 sweep" entries below).
 Master-roadmap Phases 0-7 are on main. Section 4 (the Phase 8 desktop-first

@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ActionButton } from '../ui';
+import { TermTip, CeilingGrade } from '../../legibility';
+import type { TermId, CeilingGradeToken } from '../../legibility';
 import { formatOverall, formatPlayerName, formatRole } from '../roster/playerDisplay';
 
 interface ProspectOption {
@@ -8,7 +10,35 @@ interface ProspectOption {
   hometown: string;
   public_archetype: string;
   public_ovr_band: [number, number];
+  /** V22 Phase 5: the full sheet — the founding draft is the player's own
+      class, nothing is fogged (same values the roster shows post-commit). */
+  age?: number;
+  ratings?: {
+    accuracy: number;
+    power: number;
+    dodge: number;
+    catch: number;
+    stamina: number;
+    tactical_iq: number;
+  };
+  potential_ceiling?: number;
+  potential_tier?: string;
+  ceiling_label?: CeilingGradeToken | null;
 }
+
+// Display-string -> archetype term, mirroring Roster.tsx ROLE_TERM_ID (the
+// owner's exact complaint: "you can't even see what exactly their archetype
+// even does since there is no tooltip").
+const ARCHETYPE_TERM_ID: Record<string, TermId> = {
+  'Sharpshooter':          'archetype.sharpshooter',
+  'Net Specialist':        'archetype.net_specialist',
+  'Ball Hawk':             'archetype.ball_hawk',
+  'Iron Anchor':           'archetype.iron_anchor',
+  'Two-Way Threat':        'archetype.two_way_threat',
+  'Skirmisher':            'archetype.skirmisher',
+  'Possession Specialist': 'archetype.possession_specialist',
+  'Hit-and-Run':           'archetype.hit_and_run',
+};
 
 // Soft roster-balance guidance for the build-from-scratch starting draft.
 type RoleTrack = 'throwing' | 'catching' | 'survival';
@@ -113,7 +143,9 @@ export function StartingRecruitmentStep({
           Select at least 6 players (max 10). {rosterIds.size > 0 && `${rosterIds.size} selected.`}
         </p>
         <p style={{ fontSize: '0.75rem', opacity: 0.7, color: '#94a3b8', marginTop: '0.375rem', marginBottom: '0.5rem' }}>
-          Each prospect shows their current <strong>OVR</strong> and archetype — the same values their roster row will show after you commit.
+          This is your own founding class, so nothing is hidden: every card shows the
+          full ratings, the <strong>ceiling</strong> they can develop to, and their growth
+          arc — the same values their roster row will show after you commit.
         </p>
       </div>
 
@@ -247,19 +279,49 @@ export function StartingRecruitmentStep({
                 textAlign: 'left',
               }}
             >
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: selected ? '#67e8f9' : '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {displayName}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.125rem' }}>
-                  {displayRole && (
-                    <span style={{ color: '#475569' }}>
-                      {' | '}
-                      {displayRole}
-                      {roleInfo && <span style={{ color: '#64748b' }}> ({roleInfo.label})</span>}
-                    </span>
+              <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: selected ? '#67e8f9' : '#e2e8f0', whiteSpace: 'nowrap' }}>
+                    {displayName}
+                  </span>
+                  {typeof p.age === 'number' && (
+                    <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Age {p.age}</span>
                   )}
+                  {p.ceiling_label && <CeilingGrade grade={p.ceiling_label} />}
                 </div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.125rem', display: 'flex', alignItems: 'baseline', gap: '0.35rem', flexWrap: 'wrap' }}>
+                  {displayRole && (
+                    // V22 Phase 5: the archetype finally explains itself —
+                    // the journal's "no tooltip" complaint.
+                    ARCHETYPE_TERM_ID[p.public_archetype] ? (
+                      <span onClick={(e) => e.stopPropagation()}>
+                        <TermTip term={ARCHETYPE_TERM_ID[p.public_archetype]}>
+                          <span style={{ color: '#94a3b8' }}>{displayRole}</span>
+                        </TermTip>
+                      </span>
+                    ) : (
+                      <span style={{ color: '#94a3b8' }}>{displayRole}</span>
+                    )
+                  )}
+                  {roleInfo && <span style={{ color: '#64748b' }}>({roleInfo.label})</span>}
+                </div>
+                {p.ratings && (
+                  <div style={{ display: 'flex', gap: '0.55rem', marginTop: '0.3rem', fontSize: '0.66rem', color: '#64748b', fontVariantNumeric: 'tabular-nums', flexWrap: 'wrap' }}>
+                    {([
+                      ['ACC', p.ratings.accuracy],
+                      ['POW', p.ratings.power],
+                      ['DOD', p.ratings.dodge],
+                      ['CAT', p.ratings.catch],
+                      ['STA', p.ratings.stamina],
+                      ['IQ', p.ratings.tactical_iq],
+                    ] as Array<[string, number]>).map(([label, value]) => (
+                      <span key={label}>
+                        {label}{' '}
+                        <strong style={{ color: value >= 55 ? '#cbd5e1' : '#64748b' }}>{value}</strong>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, marginLeft: '1rem' }}>
                 <div style={{ textAlign: 'right' }}>
@@ -269,6 +331,17 @@ export function StartingRecruitmentStep({
                       OVR
                     </span>
                   </div>
+                  {typeof p.potential_ceiling === 'number' && (
+                    <div
+                      style={{ fontSize: '0.66rem', color: '#94a3b8', marginTop: '0.15rem', fontVariantNumeric: 'tabular-nums' }}
+                      title={`Development ceiling: the highest OVR this player can reach (${p.potential_tier ?? ''} potential).`}
+                    >
+                      Ceil <strong style={{ color: '#e2e8f0' }}>{p.potential_ceiling}</strong>
+                      {p.potential_tier && (
+                        <span style={{ marginLeft: '0.25rem', color: '#64748b' }}>{p.potential_tier}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div style={{ width: '18px', height: '18px', borderRadius: '9999px', border: selected ? '2px solid #22d3ee' : '2px solid #334155', background: selected ? 'rgba(34,211,238,0.15)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   {selected && <span style={{ color: '#22d3ee', fontSize: '0.625rem', lineHeight: 1 }}>OK</span>}
