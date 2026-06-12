@@ -211,8 +211,12 @@ def create_new_save(
         raise SaveServiceError(f"Save '{safe_name}' already exists.", status_code=409)
     conn = connect(path)
     try:
+        # V23: every web-created career lives in the pyramid world — a
+        # takeover starts in the Premier League with the climb's summit
+        # (Worlds) already alive above it.
         initialize_curated_manager_career(
             conn, club_id, root_seed, ruleset_selection=ruleset_selection,
+            world="pyramid",
         )
     finally:
         conn.close()
@@ -523,6 +527,9 @@ def build_from_scratch_save(saves_dir: Path, request: dict[str, Any]) -> dict[st
     try:
         conn = connect(tmp_path)
         try:
+            # V23: a founded club starts at the bottom of the pyramid — the
+            # District League — with the V22 founding squeeze as its honest
+            # narrative home (TFM1 start).
             initialize_curated_manager_career(
                 conn,
                 club_id,
@@ -530,6 +537,7 @@ def build_from_scratch_save(saves_dir: Path, request: dict[str, Any]) -> dict[st
                 custom_club=custom_club,
                 custom_roster=custom_roster,
                 ruleset_selection=request.get("ruleset_selection"),
+                world="pyramid",
             )
             set_state(conn, "coach_backstory", request["coach_backstory"])
 
