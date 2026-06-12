@@ -23,6 +23,32 @@ class Club:
 
 
 @dataclass(frozen=True)
+class Division:
+    """V23: one rung of the pyramid (or the International Circuit).
+
+    ``tier`` orders the domestic climb (1 = Premier). The Circuit carries
+    tier 1 strength but ``kind="international"`` — key logic on
+    ``division_id``, never on tier alone.
+    """
+    division_id: str
+    name: str
+    tier: int
+    kind: str            # "domestic" | "international"
+    short_name: str      # "D1" / "D2" / "D3" / "INT"
+
+
+@dataclass(frozen=True)
+class DivisionMembership:
+    """A club's seat in a division for one season (persisted per season)."""
+    season_id: str
+    club_id: str
+    division_id: str
+    division_name: str
+    tier: int
+    kind: str
+
+
+@dataclass(frozen=True)
 class Conference:
     conference_id: str
     name: str
@@ -50,4 +76,4 @@ class League:
         return ids
 
 
-__all__ = ["Club", "Conference", "League"]
+__all__ = ["Club", "Conference", "Division", "DivisionMembership", "League"]

@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from .career_state import CareerStateCursor
 
 # Increment when new migrations are added.
-CURRENT_SCHEMA_VERSION = 17
+CURRENT_SCHEMA_VERSION = 18
 _MAX_OFFSEASON_BEAT_INDEX = 9
 
 
@@ -1075,6 +1075,31 @@ def _migrate_v17(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE match_records ADD COLUMN narrative_note TEXT")
 
 
+def _migrate_v18(conn: sqlite3.Connection) -> None:
+    """V23 — The World: per-season division membership for pyramid careers.
+
+    One row per (season, club). Legacy single-league saves simply have no
+    rows; every pyramid consumer must treat an empty membership set as
+    "classic world" and fall back to the current single-league behavior.
+    """
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS division_membership (
+            season_id TEXT NOT NULL,
+            club_id TEXT NOT NULL,
+            division_id TEXT NOT NULL,
+            division_name TEXT NOT NULL,
+            tier INTEGER NOT NULL,
+            kind TEXT NOT NULL DEFAULT 'domestic',
+            PRIMARY KEY (season_id, club_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_division_membership_season
+            ON division_membership(season_id, division_id);
+        """
+    )
+
+
 _MIGRATIONS: Dict[int, Any] = {
     1: _migrate_v1,
     2: _migrate_v2,
@@ -1093,6 +1118,7 @@ _MIGRATIONS: Dict[int, Any] = {
     15: _migrate_v15,
     16: _migrate_v16,
     17: _migrate_v17,
+    18: _migrate_v18,
 }
 
 
@@ -1575,6 +1601,59 @@ def save_season(conn: sqlite3.Connection, season: Season) -> None:
             for m in season.scheduled_matches
         ],
     )
+
+
+def save_division_memberships(
+    conn: sqlite3.Connection, memberships: Iterable["DivisionMembership"]
+) -> None:
+    """V23: persist a season's club→division seats (idempotent upsert)."""
+    from .league import DivisionMembership  # noqa: F401 — type anchor
+
+    conn.executemany(
+        """
+        INSERT OR REPLACE INTO division_membership
+            (season_id, club_id, division_id, division_name, tier, kind)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        [
+            (m.season_id, m.club_id, m.division_id, m.division_name, m.tier, m.kind)
+            for m in memberships
+        ],
+    )
+
+
+def load_division_memberships(
+    conn: sqlite3.Connection, season_id: str
+) -> List["DivisionMembership"]:
+    """All membership rows for a season. Empty ⇒ classic single-league world."""
+    from .league import DivisionMembership
+
+    rows = conn.execute(
+        """
+        SELECT season_id, club_id, division_id, division_name, tier, kind
+        FROM division_membership WHERE season_id = ?
+        ORDER BY tier, division_id, club_id
+        """,
+        (season_id,),
+    ).fetchall()
+    return [
+        DivisionMembership(
+            season_id=row["season_id"],
+            club_id=row["club_id"],
+            division_id=row["division_id"],
+            division_name=row["division_name"],
+            tier=row["tier"],
+            kind=row["kind"],
+        )
+        for row in rows
+    ]
+
+
+def load_division_map(
+    conn: sqlite3.Connection, season_id: str
+) -> Dict[str, "DivisionMembership"]:
+    """club_id → membership for a season ({} ⇒ classic world)."""
+    return {m.club_id: m for m in load_division_memberships(conn, season_id)}
 
 
 def save_scheduled_matches(conn: sqlite3.Connection, matches: Iterable[ScheduledMatch]) -> None:

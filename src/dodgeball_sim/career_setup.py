@@ -15,6 +15,7 @@ from .persistence import (
     get_state,
     save_career_state_cursor,
     save_club,
+    save_division_memberships,
     save_lineup_default,
     save_season,
     save_season_format,
@@ -96,6 +97,7 @@ MANAGER_TABLES = (
     "playoff_brackets",
     "season_outcomes",
     "season_formats",
+    "division_membership",
 )
 
 
@@ -165,7 +167,20 @@ def _curated_potential_ceiling(raw_potential: float, ovr: int, age: int) -> int:
     return int(_clamp(ovr + headroom, ovr, 95))
 
 
-def build_curated_roster(club_id: str, club_name: str, seed: int, count: int = 6) -> List[Player]:
+def build_curated_roster(
+    club_id: str,
+    club_name: str,
+    seed: int,
+    count: int = 6,
+    base_shift: float = 0.0,
+) -> List[Player]:
+    """Seed a club's starting six.
+
+    ``base_shift`` (V23) moves the four action-stat role bases before the
+    per-player noise draw — the pyramid's tier-strength knob
+    (``world.ROSTER_SHIFT_BY_DIVISION``). At the default 0.0 the RNG stream
+    and every rolled value are byte-identical to the pre-V23 seeding.
+    """
     rng = DeterministicRNG(seed)
     # V18 Task 3 (owner-approved 2026-06-10): each role carries an age band so
     # every curated club seeds the vet / prime / rising / prodigy texture the
@@ -191,7 +206,7 @@ def build_curated_roster(club_id: str, club_name: str, seed: int, count: int = 6
     names = _unique_roster_names(rng, count)
     for index, (label, base, (age_lo, age_hi)) in enumerate(roles[:count], 1):
         accuracy, power, dodge, catch = (
-            _clamp(value + rng.gauss(0, 4), 35, 95) for value in base
+            _clamp(value + base_shift + rng.gauss(0, 4), 35, 95) for value in base
         )
         name = names[index - 1]
         ratings = PlayerRatings(
@@ -247,26 +262,73 @@ def initialize_curated_manager_career(
     custom_club: Club | None = None,
     custom_roster: List[Player] | None = None,
     ruleset_selection: str | None = None,
+    world: str | None = None,
 ) -> CareerStateCursor:
-    """Create a fresh Manager career using the curated league without importing UI code."""
+    """Create a fresh Manager career using the curated league without importing UI code.
+
+    ``world="pyramid"`` (V23) builds the full 28-club world: the curated cast
+    plus Ridgeline in the Premier League, the fixed Challenger / District /
+    Circuit casts beneath and beside them, four aligned round-robins in one
+    season, and persisted division memberships. A founding career
+    (``custom_club``) enters at the bottom of D3; a takeover stays in the
+    Premier League. ``world=None`` keeps the legacy single-league behavior
+    byte-identical for existing tests and saves.
+    """
+    from .world import (
+        DISTRICT,
+        PREMIER,
+        ROSTER_SHIFT_BY_DIVISION,
+        WORLD_MODEL_PYRAMID,
+        WORLD_MODEL_STATE_KEY,
+        create_pyramid_season,
+        membership_rows,
+        pyramid_generated_clubs,
+    )
+
     root_seed = normalize_root_seed(root_seed)
     create_schema(conn)
     for table in MANAGER_TABLES:
         conn.execute(f"DELETE FROM {table}")
 
+    pyramid = world == WORLD_MODEL_PYRAMID
     clubs = curated_clubs()
+    division_of_club: Dict[str, str] = {}
+    if pyramid:
+        founding = custom_club is not None
+        generated = pyramid_generated_clubs(founding=founding)
+        for club in clubs:
+            division_of_club[club.club_id] = PREMIER.division_id
+        for division_id, division_clubs in generated.items():
+            for club in division_clubs:
+                division_of_club[club.club_id] = division_id
+            clubs.extend(division_clubs)
+        if custom_club:
+            division_of_club[custom_club.club_id] = DISTRICT.division_id
     if custom_club:
         clubs.append(custom_club)
 
     selected_ids = {club.club_id for club in clubs}
     if selected_club_id not in selected_ids:
         raise ValueError(f"Unknown curated club: {selected_club_id}")
+    if pyramid and division_of_club.get(selected_club_id) not in (
+        PREMIER.division_id,
+        DISTRICT.division_id,
+    ):
+        raise ValueError(
+            "Takeover careers start in the Premier League and founded clubs in "
+            f"the District League; {selected_club_id} is neither."
+        )
 
     rosters = {
         club.club_id: build_curated_roster(
             club.club_id,
             club.name,
             derive_seed(root_seed, "roster", club.club_id),
+            base_shift=(
+                ROSTER_SHIFT_BY_DIVISION[division_of_club[club.club_id]]
+                if pyramid
+                else 0.0
+            ),
         )
         for club in clubs if club.club_id != selected_club_id or custom_roster is None
     }
@@ -280,12 +342,20 @@ def initialize_curated_manager_career(
         save_club(conn, club, rosters[club.club_id])
         _persist_initial_lineup_default(conn, club.club_id, rosters[club.club_id], is_user=is_user)
 
-    league = League(
-        league_id="manager_league",
-        name="Dodgeball Premier League",
-        conferences=(Conference("main", "Premier", tuple(club.club_id for club in clubs)),),
-    )
-    season = create_season("season_1", 2026, league, root_seed=root_seed)
+    if pyramid:
+        assignment: Dict[str, List[str]] = {}
+        for club in clubs:
+            assignment.setdefault(division_of_club[club.club_id], []).append(club.club_id)
+        season = create_pyramid_season("season_1", 2026, assignment, root_seed=root_seed)
+        save_division_memberships(conn, membership_rows(season.season_id, assignment))
+        set_state(conn, WORLD_MODEL_STATE_KEY, WORLD_MODEL_PYRAMID)
+    else:
+        league = League(
+            league_id="manager_league",
+            name="Dodgeball Premier League",
+            conferences=(Conference("main", "Premier", tuple(club.club_id for club in clubs)),),
+        )
+        season = create_season("season_1", 2026, league, root_seed=root_seed)
     save_season(conn, season)
     save_season_format(conn, season.season_id, PLAYOFF_FORMAT)
     set_state(conn, "root_seed", str(root_seed))
