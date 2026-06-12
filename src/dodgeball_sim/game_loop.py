@@ -35,6 +35,11 @@ def current_week(conn: sqlite3.Connection, season: Season) -> int | None:
 # MATCH preps consumed by both engines; the other three (training credits,
 # scouting slot, culture courtship) land outside the match. A genuine weekly
 # decision: one room gets the week, the others run standard.
+# V22 Phase 4: with the club's HEAD RATINGS provided, the prep scales with
+# the head running the week (staff_effects formulas). Without them — every
+# AI club, whose staff stay abstracted — the legacy flat numbers apply
+# (equivalent to ~rating-7x staff by the same formulas, so no side gets a
+# user-only buff).
 _MATCH_PREP_BY_FOCUS: dict[str, dict] = {
     # Film week: throwers read the court like +18 Tactical IQ (V19a consumer).
     "tactics": {"targeting_read_bonus": 18.0},
@@ -43,10 +48,24 @@ _MATCH_PREP_BY_FOCUS: dict[str, dict] = {
 }
 
 
-def match_prep_from_plan(plan: Mapping[str, Any] | None) -> dict:
-    """Derive the engine-facing match prep from a club's weekly plan."""
+def match_prep_from_plan(
+    plan: Mapping[str, Any] | None,
+    head_ratings: Mapping[str, float] | None = None,
+) -> dict:
+    """Derive the engine-facing match prep from a club's weekly plan.
+
+    ``head_ratings`` (department -> primary rating) scales the prep with the
+    head who runs the focused week; ``None`` keeps the legacy flat prep.
+    """
     orders = dict((plan or {}).get("department_orders") or {})
     focus = str(orders.get("focus_department") or "").strip().lower()
+    if head_ratings is not None and focus in head_ratings:
+        from .staff_effects import conditioning_focus_relief, tactics_focus_tiq_bonus
+
+        if focus == "tactics":
+            return {"targeting_read_bonus": tactics_focus_tiq_bonus(head_ratings[focus])}
+        if focus == "conditioning":
+            return {"stamina_relief": conditioning_focus_relief(head_ratings[focus])}
     return dict(_MATCH_PREP_BY_FOCUS.get(focus, {}))
 
 
@@ -64,15 +83,25 @@ def simulate_scheduled_match(
     away_default = load_lineup_default(conn, scheduled.away_club_id)
     home_override = load_match_lineup_override(conn, scheduled.match_id, scheduled.home_club_id)
     away_override = load_match_lineup_override(conn, scheduled.match_id, scheduled.away_club_id)
-    from .persistence import get_state, load_weekly_command_plan
+    from .persistence import get_state, load_department_heads, load_weekly_command_plan
     ruleset_selection = get_state(conn, "ruleset_selection")
     # V19b: both clubs' staff-focus preps, symmetrically from their persisted
     # weekly plans (the user's plan and the AI plans share the same table).
+    # V22 Phase 4: the USER club's prep scales with their actual department
+    # heads (the heads table is user-only); AI clubs keep the legacy flat
+    # prep, which the staff_effects anchors make ~rating-7x staff.
+    player_club_id = get_state(conn, "player_club_id")
+    user_head_ratings = {
+        head["department"]: float(head["rating_primary"])
+        for head in load_department_heads(conn)
+    }
     home_prep = match_prep_from_plan(
-        load_weekly_command_plan(conn, scheduled.season_id, scheduled.week, scheduled.home_club_id)
+        load_weekly_command_plan(conn, scheduled.season_id, scheduled.week, scheduled.home_club_id),
+        user_head_ratings if scheduled.home_club_id == player_club_id else None,
     )
     away_prep = match_prep_from_plan(
-        load_weekly_command_plan(conn, scheduled.season_id, scheduled.week, scheduled.away_club_id)
+        load_weekly_command_plan(conn, scheduled.season_id, scheduled.week, scheduled.away_club_id),
+        user_head_ratings if scheduled.away_club_id == player_club_id else None,
     )
     record, _ = simulate_match(
         scheduled=scheduled,

@@ -54,15 +54,44 @@ def base_interest(*, pipeline_tier: int, credibility_score: int) -> int:
     return _clamp_int(raw, 0, 80)
 
 
-def narrow_band(band: tuple[int, int], *, scouted: bool) -> tuple[int, int]:
-    """Return the public OVR band the player should see, narrowed once if scouted."""
+def narrow_band(
+    band: tuple[int, int], *, scouted: bool, quality: float = 1.0
+) -> tuple[int, int]:
+    """Return the public OVR band the player should see, narrowed once if scouted.
+
+    ``quality`` (V22 Phase 4) scales the narrowing with the SCOUTING head who
+    ran the assignment (staff_effects.scouting_band_quality, 0.70–1.30);
+    1.0 reproduces the legacy narrowing exactly. Clamped so even a perfect
+    scout never pretends to reveal the true rating.
+    """
     low, high = int(band[0]), int(band[1])
     if not scouted or high <= low:
         return (low, high)
+    narrow = max(0.0, min(0.9, _SCOUT_NARROW * float(quality)))
     mid = (low + high) / 2.0
-    new_low = round(mid - (mid - low) * (1.0 - _SCOUT_NARROW))
-    new_high = round(mid + (high - mid) * (1.0 - _SCOUT_NARROW))
+    new_low = round(mid - (mid - low) * (1.0 - narrow))
+    new_high = round(mid + (high - mid) * (1.0 - narrow))
     return (int(new_low), int(new_high))
+
+
+def scouted_band_from_state(
+    state: dict[str, Any], base_band: tuple[int, int]
+) -> tuple[int, int]:
+    """The band a surface should display for this prospect's action state.
+
+    V22 Phase 4: a Scout action persists the band it produced (scaled by the
+    scouting head AT SCOUT TIME) as ``scouted_band``, so every surface shows
+    the same numbers even if the head changes later. Legacy states without it
+    fall back to the default-quality narrowing.
+    """
+    stored = state.get("scouted_band")
+    if (
+        isinstance(stored, (list, tuple))
+        and len(stored) == 2
+        and all(isinstance(value, (int, float)) for value in stored)
+    ):
+        return (int(stored[0]), int(stored[1]))
+    return narrow_band(base_band, scouted=bool(state.get("scouted")))
 
 
 def current_interest(state: dict[str, Any], *, pipeline_tier: int, credibility_score: int) -> int:
@@ -105,6 +134,7 @@ def apply_action(
     pipeline_tier: int,
     credibility_score: int,
     gain_multiplier: float = 1.0,
+    scout_quality: float = 1.0,
 ) -> tuple[dict[str, Any], RecruitingActionResult]:
     """Apply one action to a prospect's action state, returning new state + the delta.
 
@@ -112,18 +142,22 @@ def apply_action(
     The returned state is a new dict (the input is not mutated).
     ``gain_multiplier`` scales the interest gains (V19b: a "culture" staff
     focus week makes contact/visits land warmer).
+    ``scout_quality`` (V22 Phase 4) scales how tightly THIS scout narrows the
+    band; the produced band persists on the state so every surface agrees.
     """
     new_state = dict(state)
 
     interest_before = current_interest(
         state, pipeline_tier=pipeline_tier, credibility_score=credibility_score
     )
-    scouted_before = bool(state.get("scouted"))
-    band_before = narrow_band(base_band, scouted=scouted_before)
+    band_before = scouted_band_from_state(state, base_band)
 
     interest_after = interest_before
     if action == "scout":
         new_state["scouted"] = True
+        new_state["scouted_band"] = list(
+            narrow_band(base_band, scouted=True, quality=scout_quality)
+        )
     elif action == "contact":
         new_state["contacted"] = True
         interest_after = _clamp_int(
@@ -138,7 +172,7 @@ def apply_action(
         raise ValueError(f"Unknown recruiting action: {action}")
 
     new_state["interest"] = interest_after
-    band_after = narrow_band(base_band, scouted=bool(new_state.get("scouted")))
+    band_after = scouted_band_from_state(new_state, base_band)
 
     return new_state, RecruitingActionResult(
         action=action,

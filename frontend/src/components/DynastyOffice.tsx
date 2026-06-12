@@ -59,16 +59,19 @@ function SettingsModal({
     effect: string;
     termId: import('../legibility').TermId;
   }> = [
+    // V22 Phase 4: focus payoffs SCALE with the head running them — the
+    // ranges here are honest bounds; each head's exact number is on their
+    // staff-tab card.
     {
       key: 'tactics',
       label: 'Tactics — film week',
-      effect: 'Next match, your throwers play smarter: +18 effective Tactical IQ on target reads, release timing, and catch-beating timing.',
+      effect: 'Next match, your throwers play smarter: +12–24 effective Tactical IQ (scaled by your Tactics head) on target reads, release timing, and catch-beating timing.',
       termId: 'dept.tactics',
     },
     {
       key: 'conditioning',
       label: 'Conditioning — recovery week',
-      effect: 'Next match, fatigue bites half as hard: the stamina drag on every action stat is halved.',
+      effect: 'Next match, fatigue bites lighter: the stamina drag on every action stat is cut 30–70%, scaled by your Conditioning head.',
       termId: 'dept.conditioning',
     },
     {
@@ -80,13 +83,13 @@ function SettingsModal({
     {
       key: 'scouting',
       label: 'Scouting — extra assignment',
-      effect: 'One extra Scout action on the recruit board this week (3 → 4).',
+      effect: 'One extra Scout action on the recruit board this week (3 → 4). Your Scouting head also scales how tightly every scout narrows a prospect’s band.',
       termId: 'dept.scouting',
     },
     {
       key: 'culture',
       label: 'Culture — locker-room week',
-      effect: 'Courtship lands warmer this week: Contact and Visit interest gains are 25% stronger.',
+      effect: 'Courtship lands warmer this week: Contact and Visit gains are 15–40% stronger, scaled by your Culture head.',
       termId: 'dept.culture',
     },
   ];
@@ -694,10 +697,12 @@ function StaffTab({
             </dl>
             <div className="impact" style={{ marginTop: '0.5rem' }}>
               <span className="lbl" style={{ fontSize: '0.6rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                {member.department === 'training' ? 'Development Impact' : 'Program Role'}
+                Wired Effect
               </span>
               <span className="val" style={{ fontSize: '0.72rem', color: '#cbd5e1', lineHeight: 1.4 }}>
-                {member.effect_summary}
+                {/* V22 Phase 4: every head shows the CONCRETE number their
+                    rating drives, from the same formulas the engine runs. */}
+                {member.effect_detail ?? member.effect_summary}
               </span>
               {member.department === 'training' && member.training_modifier_pct !== undefined && (
                 <div style={{ marginTop: '0.35rem' }}>

@@ -136,6 +136,7 @@ def apply_season_development(
     matches_played: int | None = None,
     club_matches: int | None = None,
     practice_credit_ovr: float = 0.0,
+    decline_mitigation_modifier: float = 0.0,
 ) -> Player:
     """Apply one offseason of deterministic development to a player.
 
@@ -237,8 +238,11 @@ def apply_season_development(
     deltas: dict[str, int] = {}
 
     if player.age > peak_end:
-        # Decline path (unchanged by V18): mitigated by performance, facility,
-        # and staff.
+        # Decline path: mitigated by performance, facility, and — V22 Phase 4
+        # — the MEDICAL head (recovery/availability is their fiction). The
+        # training modifier used to ride here too; growth and decline now
+        # have separate staff owners, each disclosed on its hiring card.
+        mitigation = max(0.0, decline_mitigation_modifier)
         performance = _performance_signal(season_stats)
         decline_years = player.age - peak_end
         for stat in multipliers:
@@ -248,7 +252,7 @@ def apply_season_development(
                 + performance * 0.5
                 + f_bonus * 0.5
                 + noise[stat] * 0.5
-                + (effective_staff_modifier * 2.0)
+                + (mitigation * 2.0)
             )
             delta = int(round(delta_f))
             # Don't let it be positive from mitigation alone unless performance was great

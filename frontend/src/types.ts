@@ -1408,6 +1408,8 @@ export interface DynastyOfficeResponse {
             rating_secondary: number;
             voice: string;
             effect_summary: string;
+            /** V22 Phase 4: the concrete wired number this head's rating drives. */
+            effect_detail?: string;
             /** V22 Phase 3: annual salary in $k. */
             salary_k?: number;
             training_modifier_pct?: number;

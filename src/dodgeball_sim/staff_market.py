@@ -9,17 +9,16 @@ from .rng import DeterministicRNG, derive_seed
 
 STAFF_ACTION_STATE_KEY = "staff_market_actions_json"
 
-# Honest per-department effect summary. Only the "training" lane currently has a
-# real mechanical hook (offseason player development); the rest describe the
-# recommendation surface that department drives. See the staff_market honesty
-# rule below.
+# Per-department effect summary. V22 Phase 4: every head's rating now has a
+# real mechanical hook (see staff_effects for the formulas; the concrete
+# per-head numbers ride on each card via staff_effect_detail).
 _STAFF_EFFECT_LABELS = {
-    "tactics": "Tactics recommendations and replay-proof preparation.",
-    "training": "Development focus advice and offseason player-growth impact.",
-    "conditioning": "Fatigue-risk recommendations and recovery planning.",
-    "medical": "Availability warnings and overuse-risk reporting.",
-    "scouting": "Recruiting fit explanations and prospect board clarity.",
-    "culture": "Promise-risk framing and command-plan stability.",
+    "tactics": "Scales the tactics-focus week's effective-TIQ bonus.",
+    "training": "Scales offseason player growth for the whole roster.",
+    "conditioning": "Scales the conditioning-focus week's fatigue relief.",
+    "medical": "Softens veteran age-decline each offseason.",
+    "scouting": "Scales how tightly Scout actions narrow prospect bands.",
+    "culture": "Scales the culture-focus week's courtship gains.",
 }
 
 
@@ -45,6 +44,7 @@ def build_staff_market_state(
     root_seed: int,
 ) -> dict[str, Any]:
     from .economy import hiring_frozen, staff_salary_k, treasury_k
+    from .staff_effects import staff_effect_detail
 
     current_staff = [
         {
@@ -52,6 +52,10 @@ def build_staff_market_state(
             "rating_primary": round(float(head["rating_primary"])),
             "rating_secondary": round(float(head["rating_secondary"])),
             "effect_summary": staff_effect_summary(head["department"]),
+            # V22 Phase 4: this head's concrete wired number.
+            "effect_detail": staff_effect_detail(
+                head["department"], head["rating_primary"]
+            ),
             # V22 Phase 3: every head carries their annual salary so the
             # payroll delta of a hire is visible before the click.
             "salary_k": staff_salary_k(
@@ -83,7 +87,10 @@ def build_staff_market_state(
         "hiring_frozen": hiring_frozen(conn),
         "payroll_k": sum(head["salary_k"] for head in current_staff),
         "rules": {
-            "honesty": "Training staff affects offseason player development now; scouting, recovery, and deeper staff economy effects remain explicit future hooks.",
+            # V22 Phase 4: all six heads carry real hooks now; the per-head
+            # numbers are on each card. AI club staff stay abstracted (their
+            # focus weeks run at the flat legacy strength).
+            "honesty": "Every department head's rating drives a real effect — training scales offseason growth, medical softens age-decline, and tactics/conditioning/culture/scouting scale their focus-week payoffs. AI club staff are abstracted at standard strength.",
             "economy": "Salaries are paid from the club treasury every offseason. Hiring freezes while the treasury is negative.",
         },
     }
@@ -117,8 +124,13 @@ def _candidate_for_head(head: dict[str, Any], root_seed: int, season_id: str) ->
 
 
 def _staff_effect_lanes(department: str, primary: int, secondary: int) -> list[str]:
+    from .staff_effects import staff_effect_detail
+
     return [
         staff_effect_summary(department),
+        # V22 Phase 4: the candidate's CONCRETE wired number, from the same
+        # formulas the engine consumes.
+        staff_effect_detail(department, primary),
         f"Visible staff ratings would become {primary}/{secondary}.",
     ]
 
@@ -168,6 +180,7 @@ def generate_founding_staff_pool(seed: int) -> list[dict[str, Any]]:
     """
     from .economy import staff_salary_k
     from .names import unique_full_name
+    from .staff_effects import staff_effect_detail
 
     rng = DeterministicRNG(derive_seed(seed, "founding_staff"))
     used_names: set[str] = set()
@@ -190,6 +203,9 @@ def generate_founding_staff_pool(seed: int) -> list[dict[str, Any]]:
                     "salary_k": staff_salary_k(primary, secondary),
                     "voice": _staff_voice(department, rng),
                     "effect_summary": staff_effect_summary(department),
+                    # V22 Phase 4: the candidate's concrete wired number —
+                    # the hiring decision is about THIS, not vibes.
+                    "effect_detail": staff_effect_detail(department, primary),
                     **(
                         {"training_modifier_pct": _training_modifier_pct(primary)}
                         if department == "training"

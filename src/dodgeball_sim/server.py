@@ -914,12 +914,26 @@ def _run_recruiting_action(conn, prospect_id: str, action: str) -> dict[str, Any
     from dodgeball_sim.recruitment import deduct_recruiting_slot, staff_focus_for_week
     from dodgeball_sim.recruiting_office import apply_recruiting_action
     from dodgeball_sim.persistence import load_command_history_all_seasons
+    from dodgeball_sim.staff_effects import culture_focus_interest_multiplier
 
     season_id = get_state(conn, "active_season_id")
     player_club_id = get_state(conn, "player_club_id")
     week = load_career_state_cursor(conn).week
     # V19b: a "culture" staff focus week makes courtship land warmer.
+    # V22 Phase 4: HOW MUCH warmer scales with the culture head running it
+    # (×1.15–×1.40; the old flat 1.25 ≈ the default head's 68 rating).
     culture_week = staff_focus_for_week(conn, season_id, week) == "culture"
+    culture_multiplier = 1.0
+    if culture_week:
+        from dodgeball_sim.persistence import load_department_heads
+
+        culture_head = next(
+            (h for h in load_department_heads(conn) if h["department"] == "culture"),
+            None,
+        )
+        culture_multiplier = culture_focus_interest_multiplier(
+            culture_head["rating_primary"] if culture_head else 50.0
+        )
     try:
         deduct_recruiting_slot(conn, season_id, week, action)
         delta = apply_recruiting_action(
@@ -930,7 +944,7 @@ def _run_recruiting_action(conn, prospect_id: str, action: str) -> dict[str, Any
             player_club_id=player_club_id or "",
             root_seed=stored_root_seed(conn),
             history=load_command_history_all_seasons(conn),
-            interest_gain_multiplier=1.25 if culture_week else 1.0,
+            interest_gain_multiplier=culture_multiplier,
         )
         conn.commit()
     except ValueError as exc:
