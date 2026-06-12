@@ -1408,6 +1408,8 @@ export interface DynastyOfficeResponse {
             rating_secondary: number;
             voice: string;
             effect_summary: string;
+            /** V22 Phase 3: annual salary in $k. */
+            salary_k?: number;
             training_modifier_pct?: number;
         }>;
         active_facilities: string[];
@@ -1419,6 +1421,9 @@ export interface DynastyOfficeResponse {
             rating_secondary: number;
             voice: string;
             effect_lanes: string[];
+            /** V22 Phase 3: annual salary + the payroll delta vs the current head. */
+            salary_k?: number;
+            salary_delta_k?: number;
         }>;
         recent_actions: Array<{
             candidate_id: string;
@@ -1426,8 +1431,13 @@ export interface DynastyOfficeResponse {
             name: string;
             effect_lanes: string[];
         }>;
+        /** V22 Phase 3: money context for hire decisions. */
+        treasury_k?: number;
+        hiring_frozen?: boolean;
+        payroll_k?: number;
         rules: {
             honesty: string;
+            economy?: string;
         };
     };
 }

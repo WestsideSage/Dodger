@@ -44,12 +44,19 @@ def build_staff_market_state(
     player_club_id: str,
     root_seed: int,
 ) -> dict[str, Any]:
+    from .economy import hiring_frozen, staff_salary_k, treasury_k
+
     current_staff = [
         {
             **head,
             "rating_primary": round(float(head["rating_primary"])),
             "rating_secondary": round(float(head["rating_secondary"])),
             "effect_summary": staff_effect_summary(head["department"]),
+            # V22 Phase 3: every head carries their annual salary so the
+            # payroll delta of a hire is visible before the click.
+            "salary_k": staff_salary_k(
+                head["rating_primary"], head["rating_secondary"]
+            ),
             **(
                 {"training_modifier_pct": _training_modifier_pct(head["rating_primary"])}
                 if head["department"] == "training"
@@ -71,13 +78,20 @@ def build_staff_market_state(
         "active_facilities": facilities,
         "candidates": candidates,
         "recent_actions": recent_actions,
+        # V22 Phase 3: the money context every hire decision needs.
+        "treasury_k": treasury_k(conn),
+        "hiring_frozen": hiring_frozen(conn),
+        "payroll_k": sum(head["salary_k"] for head in current_staff),
         "rules": {
             "honesty": "Training staff affects offseason player development now; scouting, recovery, and deeper staff economy effects remain explicit future hooks.",
+            "economy": "Salaries are paid from the club treasury every offseason. Hiring freezes while the treasury is negative.",
         },
     }
 
 
 def _candidate_for_head(head: dict[str, Any], root_seed: int, season_id: str) -> dict[str, Any]:
+    from .economy import staff_salary_k
+
     department = head["department"]
     rng = DeterministicRNG(derive_seed(root_seed, "staff_market", season_id, department))
     primary_gain = round(rng.roll(3.0, 9.0), 1)
@@ -85,14 +99,20 @@ def _candidate_for_head(head: dict[str, Any], root_seed: int, season_id: str) ->
     primary = round(min(99.0, float(head["rating_primary"]) + primary_gain))
     secondary = round(min(99.0, float(head["rating_secondary"]) + secondary_gain))
     name = f"{_staff_first_name(rng)} {_staff_last_name(rng)}"
+    salary = staff_salary_k(primary, secondary)
+    current_salary = staff_salary_k(head["rating_primary"], head["rating_secondary"])
     return {
         "candidate_id": f"{season_id}_{department}_candidate",
         "department": department,
         "name": name,
         "rating_primary": primary,
         "rating_secondary": secondary,
+        # V22 Phase 3: the hire's payroll consequences, disclosed up front.
+        "salary_k": salary,
+        "salary_delta_k": salary - current_salary,
         "voice": _staff_voice(department, rng),
-        "effect_lanes": _staff_effect_lanes(department, primary, secondary),
+        "effect_lanes": _staff_effect_lanes(department, primary, secondary)
+        + [f"Annual salary ${salary}k (payroll {'+' if salary >= current_salary else ''}{salary - current_salary}k/season)."],
     }
 
 
@@ -117,6 +137,69 @@ def _staff_last_name(rng: DeterministicRNG) -> str:
     return rng.choice(LAST_NAMES)
 
 
+FOUNDING_DEPARTMENTS = (
+    "tactics",
+    "training",
+    "conditioning",
+    "medical",
+    "scouting",
+    "culture",
+)
+
+# Quality tiers for the founding pool: every department always offers a cheap
+# journeyman (so filling all six is ALWAYS affordable), a solid mid-tier, and
+# a premium hire whose salary commits real payroll. Ranges feed the V22
+# economy salary formula (economy.staff_salary_k).
+_FOUNDING_TIERS = (
+    ("journeyman", (52.0, 60.0), (48.0, 58.0)),
+    ("solid", (63.0, 72.0), (58.0, 70.0)),
+    ("premium", (76.0, 88.0), (70.0, 84.0)),
+)
+
+
+def generate_founding_staff_pool(seed: int) -> list[dict[str, Any]]:
+    """V22 Phase 3: the create-a-club staff market.
+
+    Deterministic from the wizard's creation seed (same number the founding
+    prospect pool uses, different namespace). Each of the six departments
+    offers one candidate per quality tier; salaries come straight from the
+    economy formula so the wizard's budget math and the offseason payroll
+    are the same arithmetic.
+    """
+    from .economy import staff_salary_k
+    from .names import unique_full_name
+
+    rng = DeterministicRNG(derive_seed(seed, "founding_staff"))
+    used_names: set[str] = set()
+    candidates: list[dict[str, Any]] = []
+    for department in FOUNDING_DEPARTMENTS:
+        for tier_name, primary_range, secondary_range in _FOUNDING_TIERS:
+            primary = round(rng.roll(*primary_range))
+            secondary = round(rng.roll(*secondary_range))
+            name = unique_full_name(
+                rng=rng, used_names=used_names, fallback_tag=f"{department}-{tier_name}"
+            )
+            candidates.append(
+                {
+                    "candidate_id": f"founding_{department}_{tier_name}",
+                    "department": department,
+                    "tier": tier_name,
+                    "name": name,
+                    "rating_primary": primary,
+                    "rating_secondary": secondary,
+                    "salary_k": staff_salary_k(primary, secondary),
+                    "voice": _staff_voice(department, rng),
+                    "effect_summary": staff_effect_summary(department),
+                    **(
+                        {"training_modifier_pct": _training_modifier_pct(primary)}
+                        if department == "training"
+                        else {}
+                    ),
+                }
+            )
+    return candidates
+
+
 def _staff_voice(department: str, rng: DeterministicRNG) -> str:
     voices = {
         "tactics": ["Make every matchup leave evidence.", "Execution beats raw talent when the plan is clear.", "We dictate the tempo, they react to the pressure.", "A rigid lineup is a vulnerable lineup."],
@@ -129,4 +212,10 @@ def _staff_voice(department: str, rng: DeterministicRNG) -> str:
     return rng.choice(voices.get(department, ["Build the program with proof."]))
 
 
-__all__ = ["STAFF_ACTION_STATE_KEY", "build_staff_market_state", "staff_effect_summary"]
+__all__ = [
+    "FOUNDING_DEPARTMENTS",
+    "STAFF_ACTION_STATE_KEY",
+    "build_staff_market_state",
+    "generate_founding_staff_pool",
+    "staff_effect_summary",
+]

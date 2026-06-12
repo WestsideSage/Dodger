@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from .career_setup import initialize_curated_manager_career
 from .persistence import connect, load_prospect_pool, set_state
@@ -247,6 +247,78 @@ def _founding_ceiling(prospect) -> int:
     return int(round(max(natural, floor) if floor is not None else natural))
 
 
+def starting_staff_payload(seed: int | None = None) -> dict[str, Any]:
+    """V22 Phase 3: the create-a-club staff market for the wizard's hiring step.
+
+    Same creation seed as the prospect list; the budget and the honesty rules
+    ride along so the wizard never invents numbers.
+    """
+    from .config import DEFAULT_ECONOMY
+    from .staff_market import FOUNDING_DEPARTMENTS, generate_founding_staff_pool
+
+    pool = generate_founding_staff_pool(
+        DEFAULT_CREATION_SEED if seed is None else int(seed)
+    )
+    return {
+        "candidates": pool,
+        "departments": list(FOUNDING_DEPARTMENTS),
+        "budget_k": DEFAULT_ECONOMY.starting_budget_k,
+        # Context numbers the hiring step shows so a payroll splurge is a
+        # VISIBLE squeeze, not a surprise three seasons later.
+        "mid_table_payout_k": DEFAULT_ECONOMY.base_payout_k
+        + 3 * DEFAULT_ECONOMY.per_rank_step_k,
+        "rules": (
+            "Salaries are paid every season from the club treasury. Whatever "
+            "you don't commit at founding opens the books. Hiring freezes "
+            "while the treasury is negative."
+        ),
+    }
+
+
+def _validate_founding_staff_choices(
+    requested: Any, seed: int
+) -> Optional[dict[str, dict[str, Any]]]:
+    """Validate the wizard's staff picks against the seed's real pool.
+
+    Returns ``{department: candidate}`` on success, ``None`` when the request
+    carries no choices (legacy callers keep the default six), and raises
+    ``SaveServiceError`` for anything malformed — BEFORE any file is created
+    (the WT-14 rule the roster validation follows).
+    """
+    if requested is None:
+        return None
+    from .config import DEFAULT_ECONOMY
+    from .staff_market import FOUNDING_DEPARTMENTS, generate_founding_staff_pool
+
+    if not isinstance(requested, dict):
+        raise SaveServiceError("Staff choices must map department -> candidate id.")
+    pool = {c["candidate_id"]: c for c in generate_founding_staff_pool(seed)}
+    chosen: dict[str, dict[str, Any]] = {}
+    for department in FOUNDING_DEPARTMENTS:
+        candidate_id = requested.get(department)
+        if not isinstance(candidate_id, str) or not candidate_id:
+            raise SaveServiceError(
+                f"Staff choices must fill every department (missing: {department})."
+            )
+        candidate = pool.get(candidate_id)
+        if candidate is None or candidate["department"] != department:
+            raise SaveServiceError(
+                f"Unknown staff candidate for {department}: {candidate_id}."
+            )
+        chosen[department] = candidate
+    unknown_departments = set(requested) - set(FOUNDING_DEPARTMENTS)
+    if unknown_departments:
+        raise SaveServiceError(
+            f"Unknown staff departments: {sorted(unknown_departments)}."
+        )
+    payroll = sum(c["salary_k"] for c in chosen.values())
+    if payroll > DEFAULT_ECONOMY.starting_budget_k:
+        raise SaveServiceError(
+            f"Founding payroll ${payroll}k exceeds the ${DEFAULT_ECONOMY.starting_budget_k}k budget."
+        )
+    return chosen
+
+
 def starting_prospects_payload(seed: int | None = None) -> dict[str, Any]:
     """Founding-draft prospect list.
 
@@ -391,6 +463,12 @@ def build_from_scratch_save(saves_dir: Path, request: dict[str, Any]) -> dict[st
     pool = _founding_pool(creation_seed)
     roster_map = {prospect.player_id: prospect for prospect in pool}
 
+    # V22 Phase 3: validate the founding staff picks BEFORE any file exists
+    # (WT-14). None => legacy caller keeps the default six.
+    staff_choices = _validate_founding_staff_choices(
+        request.get("staff_choices"), creation_seed
+    )
+
     # WT-14: validate the selection up front. On rejection we have not created
     # any file, so no partial/corrupt .db can be left behind.
     roster_ids = _validate_founding_roster_ids(
@@ -466,10 +544,31 @@ def build_from_scratch_save(saves_dir: Path, request: dict[str, Any]) -> dict[st
                     conn, player_id, roster_map[player_id].hidden_trajectory
                 )
 
+            # V22 Phase 3: the wizard's budgeted founding hires replace the
+            # default six. Written BEFORE the treasury line so the opening
+            # books price the player's actual staff through the same payroll
+            # arithmetic the offseason uses.
+            if staff_choices is not None:
+                conn.executemany(
+                    """
+                    INSERT OR REPLACE INTO department_heads
+                        (department, name, rating_primary, rating_secondary, voice)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    [
+                        (
+                            department,
+                            candidate["name"],
+                            float(candidate["rating_primary"]),
+                            float(candidate["rating_secondary"]),
+                            candidate["voice"],
+                        )
+                        for department, candidate in staff_choices.items()
+                    ],
+                )
+
             # V22 Phase 2: a founded club opens its books with the starting
-            # budget minus season-1 payroll for its staff. (Phase 3 replaces
-            # the default six with the wizard's budgeted hires; the same
-            # arithmetic then prices the player's actual choices.)
+            # budget minus season-1 payroll for its staff.
             from .config import DEFAULT_ECONOMY
             from .economy import set_treasury_k, staff_payroll_k
 
