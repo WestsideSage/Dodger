@@ -578,11 +578,14 @@ def build_beat_response(conn: sqlite3.Connection, cursor) -> dict[str, Any]:
 
             assignment = next_season_assignment(conn, season.season_id)
             if assignment is not None:
+                # Must mirror begin_next_season exactly (incl. the user's
+                # week-1 rotation) — the reveal is a promise the rollover keeps.
                 next_preview = create_pyramid_season(
                     f"season_{season_number + 1}",
                     season.year + 1,
                     assignment,
                     root_seed=root_seed,
+                    first_week_club_id=get_state(conn, "player_club_id"),
                 )
         if next_preview is None:
             next_preview = create_next_manager_season(

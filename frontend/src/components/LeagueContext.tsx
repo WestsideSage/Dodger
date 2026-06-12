@@ -254,7 +254,10 @@ const PyramidPanel = ({
                 style={{ cursor: 'pointer' }}
                 role="button"
                 tabIndex={0}
-                aria-label={`Open ${standing.club_name} program history`}
+                // Worded so the main table's "Open X program history" is NOT
+                // a substring (Playwright role-name matching is substring
+                // based — the duplicate label was a strict-mode ambiguity).
+                aria-label={`${standing.club_name} program history — ${active.name} table`}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();

@@ -346,7 +346,13 @@ def initialize_curated_manager_career(
         assignment: Dict[str, List[str]] = {}
         for club in clubs:
             assignment.setdefault(division_of_club[club.club_id], []).append(club.club_id)
-        season = create_pyramid_season("season_1", 2026, assignment, root_seed=root_seed)
+        season = create_pyramid_season(
+            "season_1",
+            2026,
+            assignment,
+            root_seed=root_seed,
+            first_week_club_id=selected_club_id,
+        )
         save_division_memberships(conn, membership_rows(season.season_id, assignment))
         set_state(conn, WORLD_MODEL_STATE_KEY, WORLD_MODEL_PYRAMID)
     else:

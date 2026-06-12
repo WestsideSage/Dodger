@@ -302,6 +302,7 @@ def create_pyramid_season(
     root_seed: int,
     config_version: str = "phase1.v1",
     ruleset_version: str = "default.v1",
+    first_week_club_id: str | None = None,
 ) -> Season:
     """One Season holding every division's round-robin, weeks aligned.
 
@@ -309,6 +310,11 @@ def create_pyramid_season(
     namespaced by division id), then the fixtures merge into the single
     season the weekly loop already knows how to drive. Seven-club divisions
     produce seven aligned weeks with one bye club per division per week.
+
+    ``first_week_club_id`` (the user's club): that division's rounds are
+    cyclically relabeled so the club PLAYS in week 1 — a new season must
+    never open on "your bye week". A rotation only renames which round is
+    week 1; every pairing, venue, and seeded draw is unchanged.
     """
     schedule: List[ScheduledMatch] = []
     for division_id in sorted(assignment.keys()):
@@ -317,14 +323,17 @@ def create_pyramid_season(
             raise ValueError(
                 f"Division {division_id} needs at least 2 clubs, got {len(club_ids)}"
             )
-        schedule.extend(
-            generate_round_robin(
-                club_ids=club_ids,
-                root_seed=root_seed,
-                season_id=season_id,
-                league_id=f"{PYRAMID_LEAGUE_ID}_{division_id}",
-            )
+        division_schedule = generate_round_robin(
+            club_ids=club_ids,
+            root_seed=root_seed,
+            season_id=season_id,
+            league_id=f"{PYRAMID_LEAGUE_ID}_{division_id}",
         )
+        if first_week_club_id in club_ids:
+            division_schedule = _rotate_first_match_to_week_one(
+                division_schedule, first_week_club_id, season_id
+            )
+        schedule.extend(division_schedule)
     return Season(
         season_id=season_id,
         year=year,
@@ -333,6 +342,40 @@ def create_pyramid_season(
         ruleset_version=ruleset_version,
         scheduled_matches=tuple(schedule),
     )
+
+
+def _rotate_first_match_to_week_one(
+    schedule: List[ScheduledMatch], club_id: str, season_id: str
+) -> List[ScheduledMatch]:
+    """Cyclically relabel round numbers so ``club_id`` plays in week 1."""
+    total_weeks = max((match.week for match in schedule), default=0)
+    first_match_week = min(
+        (
+            match.week
+            for match in schedule
+            if club_id in (match.home_club_id, match.away_club_id)
+        ),
+        default=1,
+    )
+    if first_match_week <= 1:
+        return schedule
+    shift = first_match_week - 1
+    rotated: List[ScheduledMatch] = []
+    for match in schedule:
+        new_week = ((match.week - shift - 1) % total_weeks) + 1
+        rotated.append(
+            ScheduledMatch(
+                match_id=(
+                    f"{season_id}_w{new_week:02d}_"
+                    f"{match.home_club_id}_vs_{match.away_club_id}"
+                ),
+                season_id=match.season_id,
+                week=new_week,
+                home_club_id=match.home_club_id,
+                away_club_id=match.away_club_id,
+            )
+        )
+    return rotated
 
 
 __all__ = [

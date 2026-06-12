@@ -213,10 +213,16 @@ def apply_season_finances(
         "payroll out. AI club budgets stay abstracted."
     )
     if division_name is not None:
-        rules_line = (
-            f"League payouts scale with tier: the {division_name} pays "
-            f"{tier_multiplier:.2f}× the District League base. " + rules_line
-        )
+        if tier_multiplier == 1.0:
+            rules_line = (
+                f"{division_name} payouts are the pyramid's base scale — "
+                "climbing a tier raises them. " + rules_line
+            )
+        else:
+            rules_line = (
+                f"League payouts scale with tier: the {division_name} pays "
+                f"{tier_multiplier:.2f}× the District League base. " + rules_line
+            )
 
     ledger: dict[str, Any] = {
         "season_id": season_id,

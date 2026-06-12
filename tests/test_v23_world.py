@@ -138,6 +138,21 @@ class TestPyramidSchedule:
         # 4 divisions × C(7,2) fixtures.
         assert len(season.scheduled_matches) == 4 * 21
 
+    def test_user_club_always_plays_week_one(self):
+        # A new season must never open on "your bye week" — the user's
+        # division rotates its round labels so the climb starts immediately.
+        for build in (_new_takeover, _new_founding):
+            conn = _conn()
+            result = build(conn)
+            user_club_id = result if isinstance(result, str) else "aurora"
+            season = load_season(conn, "season_1")
+            week_one_clubs = {
+                club
+                for match in season.matches_for_week(1)
+                for club in (match.home_club_id, match.away_club_id)
+            }
+            assert user_club_id in week_one_clubs
+
     def test_world_is_deterministic_per_seed(self):
         conn_a, conn_b = _conn(), _conn()
         _new_takeover(conn_a)

@@ -24,18 +24,33 @@ test('replay header keeps the final survivor score visible from the first frame'
   }
   await expect(page.getByTestId('weekly-command-center')).toBeVisible();
 
-  if (await page.getByTestId('scout-opponent').isVisible().catch(() => false)) {
-    await page.getByTestId('scout-opponent').click();
-  }
-  if (await page.getByTestId('confirm-lineup').isVisible().catch(() => false)) {
-    await page.getByTestId('confirm-lineup').click();
-  }
-  await page.getByTestId('lock-weekly-plan').click();
-  await expect(page.getByTestId('simulate-command-week')).toBeEnabled();
-  await page.getByTestId('simulate-command-week').click();
+  // V23: seven-club divisions schedule one bye per week, so the user's first
+  // match is not always week 1 — sim forward until a real match week shows
+  // the score hero (max 3 weeks).
+  let sawMatchWeek = false;
+  for (let attempt = 0; attempt < 3 && !sawMatchWeek; attempt++) {
+    if (await page.getByTestId('scout-opponent').isVisible().catch(() => false)) {
+      await page.getByTestId('scout-opponent').click();
+    }
+    if (await page.getByTestId('confirm-lineup').isVisible().catch(() => false)) {
+      await page.getByTestId('confirm-lineup').click();
+    }
+    await page.getByTestId('lock-weekly-plan').click();
+    await expect(page.getByTestId('simulate-command-week')).toBeEnabled();
+    await page.getByTestId('simulate-command-week').click();
 
-  await expect(page.getByTestId('post-week-dashboard')).toBeVisible({ timeout: 20000 });
-  await page.keyboard.press('Space');
+    await expect(page.getByTestId('post-week-dashboard')).toBeVisible({ timeout: 20000 });
+    await page.keyboard.press('Space');
+    sawMatchWeek = await page
+      .getByTestId('match-score-hero')
+      .isVisible()
+      .catch(() => false);
+    if (!sawMatchWeek) {
+      await page.getByRole('button', { name: /next week/i }).click();
+      await expect(page.getByTestId('weekly-command-center')).toBeVisible({ timeout: 10000 });
+    }
+  }
+  expect(sawMatchWeek, 'no real match week within 3 simulated weeks').toBeTruthy();
 
   const hero = page.getByTestId('match-score-hero');
   await expect(hero).toBeVisible();
