@@ -1043,8 +1043,10 @@ def api_new_save(req: NewSaveRequest):
 
 
 @app.get("/api/saves/starting-prospects")
-def api_starting_prospects():
-    return starting_prospects_payload()
+def api_starting_prospects(seed: int | None = None):
+    # V22 Phase 1: the wizard passes its per-creation seed so the list shown
+    # here is exactly the pool the build POST (root_seed) will draft from.
+    return starting_prospects_payload(seed)
 
 
 @app.post("/api/saves/build-from-scratch")

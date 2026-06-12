@@ -176,6 +176,9 @@ export const saveApi = {
     coach_name: string;
     coach_backstory: string;
     roster_player_ids: string[];
+    /** V22 Phase 1: the wizard's creation seed (same one the prospect list
+        was fetched with) — drives the founding pool and the whole career. */
+    root_seed?: number;
     ruleset_selection?: string | null;
   }) => apiPost<{ status: string; path: string }>('/api/saves/build-from-scratch', body),
 };

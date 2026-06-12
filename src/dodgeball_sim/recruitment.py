@@ -85,26 +85,13 @@ def deduct_recruiting_slot(conn: sqlite3.Connection, season_id: str, week: int, 
     conn.commit()
 
 
-_FIRST_NAMES = (
-    "Rin", "Avery", "Kai", "River", "Mara", "Ezra", "Sloane", "Jules",
-    "Remy", "Quinn", "Niko", "Sable", "Ash", "Lyra", "Zeph", "Cass",
-    "Talia", "Noor", "Imani", "Briar", "Callum", "Elio", "Mika", "Nia",
-    "Rowan", "Selah", "Tobin", "Vale", "Wren", "Zara", "Kellan", "Luca",
-)
-_LAST_NAMES = (
-    "Voss", "Helix", "Turner", "Lark", "Orion", "Vega", "Keene", "Hart",
-    "Rowe", "Slate", "Frost", "Drake", "Munn", "Cole", "Beck", "Thorn",
-    "Bishop", "Vale", "Cross", "Mercer", "Rhodes", "Santos", "Ibarra", "Kline",
-    "Novak", "Parr", "Sol", "Tanner", "West", "Yardley", "Zane", "Okafor",
-    "Chavez", "Duval", "Nakamura", "Jensen", "Olsen", "Griffin", "Sterling", "Hawthorne",
-    "Crosby", "Sinclair", "Garrison", "Fitzgerald", "Kerrigan", "O'Neill", "Rousseau", "Mendoza",
-    "Petrov", "Saito", "Takahashi", "Chen", "Kim", "Park", "Patel", "Sharma",
-    "Singh", "Das", "Ali", "Hassan", "Mensah", "Diallo", "Toure", "Kone",
-    "Ivanov", "Smirnov", "Hansen", "Nielsen", "Johansen", "Moreau", "Dubois", "Leroy",
-    "Garcia", "Martinez", "Rodriguez", "Lopez", "Gonzalez", "Perez", "Sanchez", "Ramirez",
-    "Torres", "Flores", "Sato", "Aura", "Zenith", "Apex", "Prism", "Bloom",
-    "Knox", "Mace", "Ash", "Moss", "Fern", "Shore"
-)
+# V22 Phase 1: name pools live in names.py (one wide, culturally broad set
+# shared by prospects, rookies and staff). The module-level aliases survive
+# for callers/tests that reach for recruitment's pools directly.
+from .names import FIRST_NAMES as _FIRST_NAMES
+from .names import LAST_NAMES as _LAST_NAMES
+from .names import unique_full_name as _names_unique_full_name
+
 _GROWTH_CURVES = ("early", "steady", "late")
 
 def _display_name_for_archetype(archetype: PlayerArchetype, ratings: PlayerRatings) -> str:
@@ -124,33 +111,15 @@ def _unique_name(
     used_last_names: set[str] | None = None,
     fallback_tag: str,
 ) -> str:
-    # Build all possible combos, shuffle once with rng, pick first unused.
-    # This consumes a fixed amount of RNG state regardless of collisions.
-    combos = [(first, last) for first in _FIRST_NAMES for last in _LAST_NAMES]
-    combos = rng.shuffle(combos)  # one shuffle, fixed RNG consumption
-    for first, last in combos:
-        name = f"{first} {last}"
-        if name in used_names:
-            continue
-        if used_last_names is not None and last in used_last_names:
-            continue
-        used_names.add(name)
-        if used_last_names is not None:
-            used_last_names.add(last)
-        return name
-    for first, last in combos:
-        name = f"{first} {last}"
-        if name not in used_names:
-            used_names.add(name)
-            if used_last_names is not None:
-                used_last_names.add(last)
-            return name
-    # Fallback: pool exhausted (only possible with classes > 1024)
-    base = f"{rng.choice(_FIRST_NAMES)} {rng.choice(_LAST_NAMES)} {fallback_tag}"
-    used_names.add(base)
-    if used_last_names is not None:
-        used_last_names.add(base.split()[-1])
-    return base
+    # V22 Phase 1: delegate to the shared picker — exactly two RNG draws per
+    # name regardless of collisions (the old full-combo shuffle was also
+    # fixed-consumption but O(pool²) per draw, unaffordable at the wide pools).
+    return _names_unique_full_name(
+        rng=rng,
+        used_names=used_names,
+        used_last_names=used_last_names,
+        fallback_tag=fallback_tag,
+    )
 
 
 def generate_rookie_class(

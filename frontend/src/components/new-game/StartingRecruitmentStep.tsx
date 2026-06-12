@@ -38,10 +38,14 @@ const RECOMMENDED: Record<RoleTrack, { min: number; label: string; tip: string }
 const ROLE_ORDER: RoleTrack[] = ['throwing', 'catching', 'survival'];
 
 export function StartingRecruitmentStep({
+  seed,
   onCommit,
   onBack,
   creating,
 }: {
+  /** V22 Phase 1: the wizard's creation seed — the list fetched here is
+      exactly the pool the build POST (root_seed) drafts from. */
+  seed: number;
   onCommit: (ids: string[]) => void;
   onBack: () => void;
   creating: boolean;
@@ -51,14 +55,14 @@ export function StartingRecruitmentStep({
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/saves/starting-prospects')
+    fetch(`/api/saves/starting-prospects?seed=${encodeURIComponent(seed)}`)
       .then(r => {
         if (!r.ok) throw new Error('Failed to load prospects');
         return r.json();
       })
       .then(d => setProspects(d.prospects ?? []))
       .catch(err => setLoadError(err.message));
-  }, []);
+  }, [seed]);
 
   const toggleProspect = (id: string) => {
     setRosterIds(prev => {
