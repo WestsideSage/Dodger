@@ -11,7 +11,13 @@ from .persistence import (
     load_prospect_pool,
     set_state,
 )
-from .recruiting_actions import Action, apply_action, current_interest, narrow_band
+from .recruiting_actions import (
+    Action,
+    apply_action,
+    current_interest,
+    narrow_band,
+    scouted_band_from_state,
+)
 from .recruitment import generate_prospect_pool, get_current_recruiting_budget
 from .rng import DeterministicRNG, derive_seed
 
@@ -158,7 +164,10 @@ def _prospect_rows(
         pid = prospect.player_id
         p_actions = actions.get(pid, {})
         scouted = bool(p_actions.get("scouted"))
-        low, high = narrow_band((base_low, base_high), scouted=scouted)
+        # V22 Phase 4: the band persisted at scout time (scaled by the
+        # scouting head who ran it); legacy states fall back to the default
+        # narrowing.
+        low, high = scouted_band_from_state(p_actions, (base_low, base_high))
         fit_score = round(((low + high) / 2.0) + credibility["score"] * 0.12)
         interest = current_interest(
             p_actions,
@@ -253,6 +262,19 @@ def apply_recruiting_action(
     base_band = tuple(prospect.public_ratings_band["ovr"])
     credibility_score = _credibility_score(conn, season_id, player_club_id, history)
 
+    # V22 Phase 4: the SCOUTING head's quality scales how tightly this scout
+    # narrows the band (staff_effects.scouting_band_quality, 0.70-1.30).
+    from .persistence import load_department_heads
+    from .staff_effects import scouting_band_quality
+
+    scouting_head = next(
+        (h for h in load_department_heads(conn) if h["department"] == "scouting"),
+        None,
+    )
+    scout_quality = scouting_band_quality(
+        scouting_head["rating_primary"] if scouting_head else 50.0
+    )
+
     new_state, result = apply_action(
         state,
         action,
@@ -260,6 +282,7 @@ def apply_recruiting_action(
         pipeline_tier=prospect.pipeline_tier,
         credibility_score=credibility_score,
         gain_multiplier=interest_gain_multiplier,
+        scout_quality=scout_quality,
     )
     actions[prospect_id] = new_state
     set_state(conn, "prospect_recruitment_actions_json", json.dumps(actions))

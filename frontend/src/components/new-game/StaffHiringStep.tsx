@@ -18,6 +18,8 @@ interface StaffCandidate {
   salary_k: number;
   voice: string;
   effect_summary: string;
+  /** V22 Phase 4: the candidate's concrete wired number. */
+  effect_detail?: string;
   training_modifier_pct?: number;
 }
 
@@ -207,9 +209,11 @@ export function StaffHiringStep({
                           {candidate.rating_primary}/{candidate.rating_secondary} ratings ·{' '}
                           <strong style={{ color: '#e2e8f0' }}>{formatK(candidate.salary_k)}/yr</strong>
                         </span>
-                        {typeof candidate.training_modifier_pct === 'number' && (
-                          <span style={{ fontSize: '0.64rem', color: '#34d399' }}>
-                            +{candidate.training_modifier_pct}% offseason development
+                        {/* V22 Phase 4: the wired number this hire's rating
+                            drives — the decision is about THIS. */}
+                        {candidate.effect_detail && (
+                          <span style={{ fontSize: '0.64rem', color: '#34d399', lineHeight: 1.35 }}>
+                            {candidate.effect_detail}
                           </span>
                         )}
                         <span style={{ fontSize: '0.64rem', color: '#475569', fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

@@ -6,7 +6,6 @@ import sqlite3
 from dataclasses import dataclass, replace
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
-from .config import DEFAULT_CONFIG
 from .career_state import CareerState, CareerStateCursor
 from .copy_quality import title_label
 from .development import apply_season_development, should_retire
@@ -600,15 +599,22 @@ def initialize_manager_offseason(
             standings=load_standings(conn, season.season_id),
         )
 
-    # Training is the persisted staff department that owns player-growth work.
+    # Training owns player GROWTH; medical owns age-DECLINE mitigation
+    # (V22 Phase 4 — each head's rating feeds its own development path,
+    # disclosed on the hiring cards via staff_effects).
+    from .staff_effects import medical_decline_mitigation, training_dev_modifier
+
     _all_dept_heads = {h["department"]: h for h in load_department_heads(conn)}
     _dev_head = _all_dept_heads.get("training")
-    _max_mod = DEFAULT_CONFIG.max_staff_development_modifier
-    _staff_dev_modifier = 0.0
-    if _dev_head is not None:
-        _staff_dev_modifier = max(
-            0.0, (_dev_head["rating_primary"] - 50.0) / 50.0 * _max_mod
-        )
+    _staff_dev_modifier = (
+        training_dev_modifier(_dev_head["rating_primary"]) if _dev_head else 0.0
+    )
+    _medical_head = _all_dept_heads.get("medical")
+    _decline_mitigation = (
+        medical_decline_mitigation(_medical_head["rating_primary"])
+        if _medical_head
+        else 0.0
+    )
 
     # V19b training credits: each TRAINING staff-focus week this season earns
     # the club +0.2 OVR of offseason practice growth (cap 8 weeks = +1.6),
@@ -636,6 +642,7 @@ def initialize_manager_offseason(
                 matches_played=matches_by_player.get(player.id, 0),
                 club_matches=club_match_counts.get(club_id, 0),
                 practice_credit_ovr=practice_credit_by_club.get(club_id, 0.0),
+                decline_mitigation_modifier=_decline_mitigation if is_player_club else 0.0,
             )
             aged = replace(developed, age=developed.age + 1)
             delta = aged.overall_skill() - player.overall_skill()
@@ -804,12 +811,12 @@ def _picker_credibility_score(conn: sqlite3.Connection) -> int:
 
 def _scouted_band(prospect, action_state: Mapping[str, Any]) -> tuple[int, int]:
     """The public OVR band the player is entitled to see — board and picker
-    must compute it identically (base public band, narrowed once if scouted)."""
-    from .recruiting_actions import narrow_band
+    must compute it identically (the band persisted at scout time, V22
+    Phase 4 scaled by the scouting head; legacy default otherwise)."""
+    from .recruiting_actions import scouted_band_from_state
 
-    return narrow_band(
-        tuple(prospect.public_ratings_band["ovr"]),
-        scouted=bool(action_state.get("scouted")),
+    return scouted_band_from_state(
+        dict(action_state), tuple(prospect.public_ratings_band["ovr"])
     )
 
 

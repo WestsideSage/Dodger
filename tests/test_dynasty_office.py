@@ -61,7 +61,12 @@ def test_dynasty_office_surfaces_v8_v9_v10_loops_without_fake_claims():
     assert state["staff_market"]["current_staff"]
     assert state["staff_market"]["candidates"]
     assert state["staff_market"]["candidates"][0]["effect_lanes"]
-    assert "Training staff affects offseason player development" in state["staff_market"]["rules"]["honesty"]
+    # V22 Phase 4 made the old "only training is real" disclaimer obsolete:
+    # the honesty rule now claims (truthfully) that every head is wired, and
+    # discloses that AI staff stay abstracted.
+    honesty = state["staff_market"]["rules"]["honesty"]
+    assert "Every department head's rating drives a real effect" in honesty
+    assert "AI club staff are abstracted" in honesty
 
 
 def test_recruiting_promises_are_limited_and_persisted_as_truth():
