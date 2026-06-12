@@ -18,16 +18,18 @@ async function fastForwardToWeek(request: APIRequestContext, week: number) {
 
 test('playoff command strip labels regular-season record instead of recent form', async ({ page, request }) => {
   const saveName = `e2e-playoff-record-label-${Date.now()}`;
-  // root_seed 7 deterministically lands aurora as the #1 seed, so the week-6
-  // fast-forward reaches an aurora playoff semifinal (the default seed leaves
-  // aurora out of the top 4, ending the season before any playoff week).
+  // V23 witness (re-derived for the 28-club pyramid): root_seed 12
+  // deterministically lands aurora as the Premier League #1 seed, so the
+  // week-8 fast-forward (7 regular weeks + semis) reaches an aurora playoff
+  // semifinal. (Pre-V23 this fixture was root_seed 7 / week 6 on the flat
+  // 6-club league.)
   const create = await request.post(`${baseUrl}/api/saves/new`, {
     headers: await launchTokenHeaders(request),
-    data: { name: saveName, club_id: 'aurora', root_seed: 7 },
+    data: { name: saveName, club_id: 'aurora', root_seed: 12 },
   });
   expect(create.ok()).toBeTruthy();
 
-  await fastForwardToWeek(request, 6);
+  await fastForwardToWeek(request, 8);
 
   await page.goto(`${baseUrl}/?tab=command`);
   const commandStrip = page.getByTestId('presim-command-strip');

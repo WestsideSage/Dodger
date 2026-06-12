@@ -224,7 +224,7 @@ class TestEconomyTier:
         assert finances["tier_multiplier"] == 1.0
         assert 1 <= finances["rank"] <= 7
         assert finances["total_clubs"] == 7
-        assert "pays 1.00× the District League base" in finances["rules"]
+        assert "payouts are the pyramid's base scale" in finances["rules"]
 
 
 class TestAwardScope:

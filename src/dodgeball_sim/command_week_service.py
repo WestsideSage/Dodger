@@ -137,11 +137,27 @@ def _build_season_preview_payload(
             for player in state.get("roster", [])
         ]
         skipped = (get_state(conn, SEASON_PREVIEW_SKIP_KEY, "0") or "0") == "1"
+        # V23: on pyramid saves the preview describes YOUR DIVISION — "top 4
+        # of 28" would set a playoff bar the schedule can't deliver.
+        total_clubs = len(clubs)
+        from .world import pyramid_world_active
+
+        if pyramid_world_active(conn):
+            from .persistence import load_division_map
+
+            division_map = load_division_map(conn, season_id)
+            seat = division_map.get(player_club_id)
+            if seat is not None:
+                total_clubs = sum(
+                    1
+                    for membership in division_map.values()
+                    if membership.division_id == seat.division_id
+                )
         return build_season_preview(
             regular_season_weeks=facts["regular_season_weeks"],
             bye_week=facts["bye_week"],
             playoff_cut=PLAYOFF_FIELD_SIZE,
-            total_clubs=len(clubs),
+            total_clubs=total_clubs,
             roster=roster_rows,
             skipped=skipped,
         )

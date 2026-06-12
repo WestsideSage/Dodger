@@ -438,6 +438,7 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
             else None
         )
         divisions_payload = []
+        user_division_rows: list[dict[str, Any]] | None = None
         for division in DIVISIONS:
             division_rows = [
                 row for row in rows
@@ -462,7 +463,12 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
                     key: block[key]
                     for key in ("division_id", "name", "short_name", "tier", "kind", "movement")
                 }
-                rows = division_rows
+                user_division_rows = division_rows
+        # Reassign only after the loop: the per-division filters above must
+        # all read the FULL table (reassigning mid-loop dropped the Circuit,
+        # which sorts after the user's district — caught in the live walk).
+        if user_division_rows is not None:
+            rows = user_division_rows
 
     recent = conn.execute(
         """

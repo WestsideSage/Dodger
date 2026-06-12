@@ -1223,7 +1223,11 @@ def begin_next_season(
                 "Pyramid save has no division memberships for the active season"
             )
         next_season = create_pyramid_season(
-            f"season_{next_number}", season.year + 1, assignment, root_seed=root_seed
+            f"season_{next_number}",
+            season.year + 1,
+            assignment,
+            root_seed=root_seed,
+            first_week_club_id=get_state(conn, "player_club_id"),
         )
         save_division_memberships(
             conn, membership_rows(next_season.season_id, assignment)

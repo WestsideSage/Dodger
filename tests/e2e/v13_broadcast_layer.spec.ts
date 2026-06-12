@@ -77,17 +77,24 @@ test('V13 broadcast framing and replay log keep proof one click away', async ({ 
 });
 
 test('V13 playoff framing and offseason record cards stay browser-visible', async ({ page, request }) => {
+  // V23: a simulated week now runs the whole 28-club world (12 fixtures) and
+  // the playoff hook orchestrates four divisions' postseasons - the walk
+  // needs more than the 30s default.
+  test.setTimeout(120_000);
   const saveName = `e2e-v13-playoffs-${Date.now()}`;
-  // root_seed 7 deterministically lands aurora as the #1 seed, so the week-6
-  // fast-forward reaches an aurora playoff semifinal (the default seed leaves
-  // aurora out of the top 4, ending the season before any playoff week).
+  // V23 witness (re-derived for the 28-club pyramid): root_seed 12
+  // deterministically lands aurora as the Premier League #1 seed. Aurora
+  // plays 6 regular matches across the 7-week season (one bye, auto-skipped
+  // by the simulate loop), so SIX sims land exactly at the week-8 playoff
+  // semifinal. (Pre-V23 this fixture was root_seed 7 / week 6 on the flat
+  // 6-club no-bye league.)
   const create = await request.post(`${baseUrl}/api/saves/new`, {
     headers: await launchTokenHeaders(request),
-    data: { name: saveName, club_id: 'aurora', root_seed: 7 },
+    data: { name: saveName, club_id: 'aurora', root_seed: 12 },
   });
   expect(create.ok()).toBeTruthy();
 
-  await fastForwardToWeek(request, 6);
+  await fastForwardToWeek(request, 7);
 
   await page.goto(`${baseUrl}/?tab=command`);
   

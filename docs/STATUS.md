@@ -4,7 +4,66 @@ Canonical snapshot of what is actually built and what is still open. When code
 state changes materially, update this file in the same pass. If this file and
 the source disagree, the source wins - then fix this file.
 
-Last updated: 2026-06-11.
+Last updated: 2026-06-12.
+
+**Post-V22 direction DECIDED 2026-06-12 — "The Climb Era" (V23–V28).** The
+owner-confirmed long-range plan lives in
+`docs/specs/2026-06-12-climb-era-vision.md`: CFB-style recruiting becomes the
+centerpiece on a TFM-style pyramid (3 domestic tiers + International Circuit +
+Worlds, alive from Season 1, real relegation), then contracts/transfer market,
+fans/facilities/bench roles, the event calendar, and the emergent-meta layer —
+in that order (V23 World first). That doc is the planning authority for what
+comes next; this file remains build-state truth.
+
+**V23 — The World: SHIPPED 2026-06-12 (Phases 1–6, same-day).** Spec:
+`docs/specs/2026-06-12-v23-the-world-spec.md`. Every NEW career lives in a
+**28-club pyramid**: D1 Premier League (the curated cast + Ridgeline), D2
+Challenger League, D3 District League (the seven district identities V24's
+Hometown will reuse), and the closed International Circuit — fixed recurring
+club identities with per-save seeded rosters (`world.py`), four aligned
+intra-division round-robins in one season, every match on the real engine.
+Founding (build-from-scratch) enters at the bottom of D3; takeover inherits
+a Premier club. **Movement is real and includes the user club**: the
+division champion auto-promotes from D2/D3, the four best non-champions play
+a promotion playoff for the second slot, and the bottom two of D1/D2
+relegate (applied at `begin_next_season` via persisted `division_membership`
+rows, schema v18). **WORLDS runs every season from Season 1** (Premier top
+two vs Circuit top two, semis cross-paired), orchestrated by
+`pyramid_postseason.py` at the existing automation chokepoints; the player
+plays every postseason match they're in (title, promotion playoff, Worlds)
+interactively, AI fixtures auto-sim, ties resolve through
+`playoff_resolution`, and the per-season postseason ledger + worlds history
+feed the recap movement block, `/api/history/league`, and the dynasty
+history Worlds roll. **Payouts scale by tier with D3 as the 1.0× anchor**
+(V22's squeeze was tuned there; a 0.35× D3 measured a −217k three-season
+spiral and was rejected — squeeze, never a spiral): D2 1.35×, D1 1.8×,
+disclosed in the finances ledger. The offseason ceremony reads the user's
+division (recap table, awards, missed-playoffs), and the Signing Day market
+is the user's division (V24 Board frame, single `_eligible_ai_offer_clubs`
+chokepoint — deep cross-division recruiting is V24's milestone); all 28
+clubs develop, age, retire, and repair rosters. Standings UI: the user's
+division table + movement stakes + a four-tab Pyramid panel with
+relegation DROP markers; the recap gains a League Movement block with a
+promoted/relegated banner for the user club. **Legacy saves and the default
+`initialize_curated_manager_career` path stay byte-identical** (world flag;
+empty memberships = classic world). Gated by `tests/test_v23_world.py` +
+`tests/test_v23_postseason.py` (4×7 integrity, intra-division schedules,
+tier-strength order, postseason completeness, movement application,
+Worlds-from-S1, tier-finance disclosure, award scope, ledger determinism).
+Verified: full `python -m pytest -q` green, build+lint clean, live
+prod-server (8010) browser walk on a founded D3 career — created through
+the real endpoint, season 1 fast-forwarded to the offseason, recap League
+Movement + season-2 moved divisions + Worlds roll confirmed live, zero
+console errors, walk save purged. The walk caught and fixed two falsifying
+surfaces mid-pass (season preview said "top 4 of 28"; the pyramid payload
+dropped the Circuit via a mid-loop reassignment). **Honest open cost
+(disclosed):** the V16/V18-era dynasty witnesses still pin the LEGACY
+7-club world — engine gates are world-independent, but the dynasty-health /
+balance re-derivation on the 28-club pyramid (D3 founding competitiveness
+vs the −11 tier shift, AI-division title seeding's official-aware composite
+vs the user's pinned legacy seeding, rich-Premier takeover income ahead of
+V25 wages) is V23's deferred balance pass — it should ride with the owner's
+first pyramid playthrough feedback.
 
 **Playtest 3 (Orphanage Run) answered — SHIPPED 2026-06-11 (`8c314f5`).**
 The dynasty turnover loop exists: a Release control on the player card
