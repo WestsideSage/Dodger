@@ -13,6 +13,13 @@ function isDebugSaveName(name: string) {
   return DEBUG_PREFIXES.some(prefix => name.startsWith(prefix));
 }
 
+// A fresh creation seed per wizard run — non-deterministic ON PURPOSE (this is
+// the one place randomness is allowed: choosing which deterministic universe a
+// new career lives in).
+function freshCreationSeed(): number {
+  return Math.floor(Math.random() * 2_147_483_646) + 1;
+}
+
 // Deterministic club monogram for save rows — initials + a stable accent
 // drawn from the club name so each career reads as a distinct program.
 // Presentation only; no payload fields are invented.
@@ -144,6 +151,10 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
   // Build from scratch state
   const [buildIdentity, setBuildIdentity] = useState({ save_name: '', club_name: '', city: '', colors: '#22d3ee,#1e293b' });
   const [buildCoach, setBuildCoach] = useState({ coach_name: '', coach_backstory: 'Tactical Mastermind' });
+  // V22 Phase 1: per-creation seed. It drives the founding prospect pool the
+  // wizard SHOWS (?seed= on starting-prospects) and the career the build POST
+  // creates (root_seed) — both must be the same number, held here.
+  const [buildSeed, setBuildSeed] = useState<number>(() => freshCreationSeed());
 
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -236,6 +247,8 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
         coach_name: buildCoach.coach_name,
         coach_backstory: buildCoach.coach_backstory,
         roster_player_ids: rosterIds,
+        // V22 Phase 1: the same seed the prospect list was fetched with.
+        root_seed: buildSeed,
         // Single-ruleset standardization: every new career is foam-official.
         ruleset_selection: 'official_foam',
       });
@@ -692,7 +705,12 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
 
                   {/* Build from Scratch Button */}
                   <button
-                    onClick={() => setView('build_identity')}
+                    onClick={() => {
+                      // V22 Phase 1: every wizard run is a new universe —
+                      // fresh seed, fresh founding class.
+                      setBuildSeed(freshCreationSeed());
+                      setView('build_identity');
+                    }}
                     style={{
                       flex: 1,
                       padding: '2rem 1.25rem',
@@ -925,7 +943,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
 
             {view === 'build_identity' && <IdentityStep identity={buildIdentity} setIdentity={setBuildIdentity} onNext={() => setView('build_coach')} onBack={() => setView('new')} takenNames={saves.map(s => s.name)} />}
             {view === 'build_coach' && <CoachStep coach={buildCoach} setCoach={setBuildCoach} onBack={() => setView('build_identity')} onNext={() => setView('build_roster')} />}
-            {view === 'build_roster' && <StartingRecruitmentStep onCommit={handleBuildFromScratch} onBack={() => setView('build_coach')} creating={creating} />}
+            {view === 'build_roster' && <StartingRecruitmentStep seed={buildSeed} onCommit={handleBuildFromScratch} onBack={() => setView('build_coach')} creating={creating} />}
             {createError && view.startsWith('build_') && (
               <div
                 role="alert"

@@ -111,14 +111,9 @@ _CLUB_POOL: List[Tuple[str, str, str, str, int]] = [
     ("cinder_hawks",    "Cinder Hawks",    "rust/brown",       "North",    1971),
 ]
 
-_FIRST_NAMES = [
-    "Rin", "Avery", "Kai", "River", "Mara", "Ezra", "Sloane", "Jules",
-    "Remy", "Quinn", "Niko", "Sable", "Ash", "Lyra", "Zeph", "Cass",
-]
-_LAST_NAMES = [
-    "Voss", "Helix", "Turner", "Lark", "Orion", "Vega", "Keene", "Hart",
-    "Rowe", "Slate", "Frost", "Drake", "Munn", "Cole", "Beck", "Thorn",
-]
+# V22 Phase 1: the sandbox CLI draws from the shared wide pools too.
+from .names import FIRST_NAMES as _FIRST_NAMES
+from .names import LAST_NAMES as _LAST_NAMES
 
 
 def _clamp(v: float, lo: float, hi: float) -> float:

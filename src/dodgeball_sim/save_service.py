@@ -219,24 +219,53 @@ def create_new_save(
     return {"status": "ok", "path": str(path)}
 
 
-def starting_prospects_payload() -> dict[str, Any]:
+# Historical default creation seed (matches BuildFromScratchRequest.root_seed).
+# V22 Phase 1: the founding pool used to be hardcoded to DeterministicRNG(12345),
+# so every created club drafted the SAME 25 prospects forever. The wizard now
+# holds a per-creation seed that drives both the prospect list it shows and the
+# build it commits — the two MUST agree, so both run through this helper.
+DEFAULT_CREATION_SEED = 20260426
+
+
+def _founding_pool(seed: int):
+    from .config import DEFAULT_SCOUTING_CONFIG
+    from .recruitment import generate_prospect_pool
+    from .rng import DeterministicRNG, derive_seed
+
+    rng = DeterministicRNG(derive_seed(int(seed), "founding_pool"))
+    return generate_prospect_pool(2026, rng, DEFAULT_SCOUTING_CONFIG)
+
+
+def _founding_ceiling(prospect) -> int:
+    """The ceiling a founder will actually carry, exactly as the roster
+    computes it post-commit: natural headroom (best hidden rating + 8 — the
+    V19 rule, no more 70 floor) raised by the trajectory arc's floor."""
+    from .development import _TRAJECTORY_POTENTIAL_FLOOR
+
+    natural = min(100.0, max(prospect.hidden_ratings.values()) + 8.0)
+    floor = _TRAJECTORY_POTENTIAL_FLOOR.get(prospect.hidden_trajectory)
+    return int(round(max(natural, floor) if floor is not None else natural))
+
+
+def starting_prospects_payload(seed: int | None = None) -> dict[str, Any]:
     """Founding-draft prospect list.
 
     The founding draft is the moment a coach signs their own first roster,
     not an arms-length scouting report. There is no fog-of-war story here,
-    so we expose the *true* archetype label and the *true* integer OVR — the
-    same values the roster screen will render the instant the user commits.
-    The OVR is still expressed as a band for layout compatibility, but the
-    low and high bound the same true value so the displayed and persisted
-    numbers cannot drift. See test_founding_roster_continuity.py.
+    so we expose the *true* archetype label, the *true* integer OVR, the six
+    display ratings, the ceiling, and the growth-arc grade — the same values
+    the roster screen will render the instant the user commits. The OVR is
+    still expressed as a band for layout compatibility, but the low and high
+    bound the same true value so the displayed and persisted numbers cannot
+    drift. See test_founding_roster_continuity.py.
     """
     from .archetype_derivation import derive_archetype
-    from .config import DEFAULT_SCOUTING_CONFIG
+    from .development import calculate_potential_tier
     from .models import PlayerRatings
-    from .recruitment import _display_name_for_archetype, generate_prospect_pool
-    from .rng import DeterministicRNG
+    from .recruitment import _display_name_for_archetype
+    from .scouting_center import ceiling_label_for_trajectory
 
-    pool = generate_prospect_pool(2026, DeterministicRNG(12345), DEFAULT_SCOUTING_CONFIG)
+    pool = _founding_pool(DEFAULT_CREATION_SEED if seed is None else seed)
     prospects_out = []
     for prospect in pool:
         ratings = PlayerRatings(
@@ -254,6 +283,11 @@ def starting_prospects_payload() -> dict[str, Any]:
             derive_archetype(ratings), ratings
         )
         true_overall = ratings.overall_skill()
+        ceiling = _founding_ceiling(prospect)
+        try:
+            arc = ceiling_label_for_trajectory(prospect.hidden_trajectory)
+        except ValueError:
+            arc = None
         prospects_out.append(
             {
                 "player_id": prospect.player_id,
@@ -261,6 +295,20 @@ def starting_prospects_payload() -> dict[str, Any]:
                 "hometown": prospect.hometown,
                 "public_archetype": true_archetype_label,
                 "public_ovr_band": (true_overall, true_overall),
+                # V22 Phase 1/5: the founding picker shows the full sheet —
+                # it is the player's own class, so nothing is fogged.
+                "age": prospect.age,
+                "ratings": {
+                    "accuracy": int(round(ratings.accuracy)),
+                    "power": int(round(ratings.power)),
+                    "dodge": int(round(ratings.dodge)),
+                    "catch": int(round(ratings.catch)),
+                    "stamina": int(round(ratings.stamina)),
+                    "tactical_iq": int(round(ratings.tactical_iq)),
+                },
+                "potential_ceiling": ceiling,
+                "potential_tier": calculate_potential_tier(float(ceiling)),
+                "ceiling_label": arc,
             }
         )
     return {"prospects": prospects_out}
@@ -316,11 +364,8 @@ def _validate_founding_roster_ids(
 def build_from_scratch_save(saves_dir: Path, request: dict[str, Any]) -> dict[str, str]:
     import os
 
-    from .config import DEFAULT_SCOUTING_CONFIG
     from .league import Club
     from .models import Player, PlayerRatings, PlayerTraits
-    from .recruitment import generate_prospect_pool
-    from .rng import DeterministicRNG
 
     saves_dir.mkdir(exist_ok=True)
     safe_name = sanitize_save_name(request["save_name"])
@@ -338,7 +383,12 @@ def build_from_scratch_save(saves_dir: Path, request: dict[str, Any]) -> dict[st
         tagline=f"{request['city']} - {request['coach_name']}",
     )
 
-    pool = generate_prospect_pool(2026, DeterministicRNG(12345), DEFAULT_SCOUTING_CONFIG)
+    # V22 Phase 1: the pool is derived from the creation seed the wizard also
+    # used to FETCH the prospect list — picker and builder agree by
+    # construction, and two creations with different seeds face different
+    # founding classes.
+    creation_seed = int(request.get("root_seed", DEFAULT_CREATION_SEED))
+    pool = _founding_pool(creation_seed)
     roster_map = {prospect.player_id: prospect for prospect in pool}
 
     # WT-14: validate the selection up front. On rejection we have not created
@@ -372,7 +422,14 @@ def build_from_scratch_save(saves_dir: Path, request: dict[str, Any]) -> dict[st
                 ratings=ratings,
                 archetype=derive_archetype(ratings),
                 traits=PlayerTraits(
-                    potential=min(100.0, max(70.0, max(prospect.hidden_ratings.values()) + 8.0)),
+                    # V22 Phase 1 (owner: natural ceilings + arcs): founders
+                    # use the same V19 rule as every other signing — their own
+                    # natural headroom (best hidden rating + 8). The old
+                    # max(70, ...) floor made 9 of 10 founders carry an
+                    # identical "Ceil 70" (playtest 3 Observation A); rare
+                    # trajectory arcs raise the effective ceiling instead,
+                    # persisted below exactly like a Signing Day signing.
+                    potential=min(100.0, max(prospect.hidden_ratings.values()) + 8.0),
                     growth_curve=50.0,
                     consistency=0.5,
                     pressure=0.5,
@@ -391,12 +448,23 @@ def build_from_scratch_save(saves_dir: Path, request: dict[str, Any]) -> dict[st
             initialize_curated_manager_career(
                 conn,
                 club_id,
-                int(request.get("root_seed", 20260426)),
+                creation_seed,
                 custom_club=custom_club,
                 custom_roster=custom_roster,
                 ruleset_selection=request.get("ruleset_selection"),
             )
             set_state(conn, "coach_backstory", request["coach_backstory"])
+
+            # V22 Phase 1: persist each founder's growth arc exactly like a
+            # Signing Day signing does — the development engine reads it for
+            # the trajectory floor/multiplier, and the roster screen raises
+            # the displayed ceiling with it.
+            from .persistence import save_player_trajectory
+
+            for player_id in roster_ids:
+                save_player_trajectory(
+                    conn, player_id, roster_map[player_id].hidden_trajectory
+                )
 
             # Seed 3 warm prospects from the active career pool.
             remaining_prospects = load_prospect_pool(conn, class_year=1)

@@ -42,30 +42,13 @@ _SUFFIXES = [
     "Surge", "Blades", "Raptors", "Havoc", "Crush", "Volts", "Breach",
     "Raze", "Wraith", "Charge", "Forge", "Hawks", "Lancers", "Comets", "Drift",
 ]
-_FIRST_NAMES = [
-    "Rin", "Avery", "Kai", "River", "Mara", "Ezra", "Sloane", "Jules", "Remy", "Quinn",
-    "Drew", "Sage", "Blake", "Reese", "Skye", "Morgan", "Bex", "Lex", "Cass", "Wren",
-    "Lux", "Soren", "Brin", "Zoe", "Arlo", "Tate", "Fenn", "Lane", "Yuki", "Hana",
-    "Sora", "Nori", "Kenji", "Zhen", "Lin", "Cruz", "Lena", "Nico", "Sol", "Vera",
-    "Dex", "Nola", "Zara", "Kemi", "Noa", "Ayo", "Amara", "Zuri", "Mira", "Sasha",
-    "Orin", "Saga", "Leif", "Lyra", "Cade", "Nex", "Tyne", "Vale", "Zeph", "Arc",
-    "Dray", "Pix", "Priya", "Kiran",
-]
-_LAST_NAMES = [
-    "Voss", "Helix", "Turner", "Lark", "Orion", "Vega", "Keene", "Hart", "Rowe", "Slate",
-    "Nova", "Crest", "Prism", "Zenith", "Aura", "Apex", "Corona", "Lyric", "Solace", "Meridian",
-    "Steel", "Forge", "Colt", "Flint", "Holt", "Drake", "Crane", "Bolt", "Cross", "Braun",
-    "Ash", "Moss", "Stone", "Fern", "Brook", "Vale", "Reed", "Shore", "Wilder", "Gale",
-    "Fox", "Knox", "Ward", "Dale", "Kade", "Bloom", "March", "Stowe", "Kwan", "Archer",
-    "Rayne", "Mercer", "Frost", "Pierce", "Marsh", "Valdez", "Okafor", "Sato", "Dusk", "Mace",
-    "Vane", "Hale", "Spire", "Cray", "Thorn", "Bishop", "Beck", "Rhodes", "Santos", "Ibarra",
-    "Kline", "Novak", "Parr", "Sol", "Tanner", "West", "Yardley", "Zane", "Lovelace", "Vaughan",
-    "Chavez", "Duval", "Nakamura", "Jensen", "Olsen", "Griffin", "Sterling", "Hawthorne", "Crosby", "Sinclair",
-    "Garrison", "Fitzgerald", "Kerrigan", "O'Neill", "Rousseau", "Mendoza", "Petrov", "Saito", "Takahashi", "Chen",
-    "Kim", "Park", "Patel", "Sharma", "Singh", "Das", "Ali", "Hassan", "Mensah", "Diallo",
-    "Toure", "Kone", "Ivanov", "Smirnov", "Hansen", "Nielsen", "Johansen", "Moreau", "Dubois", "Leroy",
-    "Garcia", "Martinez", "Rodriguez", "Lopez", "Gonzalez", "Perez", "Sanchez", "Ramirez", "Torres", "Flores"
-]
+# V22 Phase 1: one wide shared pool for every generated person (names.py).
+# The list() copies keep these module attributes list-typed for older callers.
+from .names import FIRST_NAMES as _SHARED_FIRST_NAMES
+from .names import LAST_NAMES as _SHARED_LAST_NAMES
+
+_FIRST_NAMES = list(_SHARED_FIRST_NAMES)
+_LAST_NAMES = list(_SHARED_LAST_NAMES)
 
 
 def _clamp(value: float, low: float, high: float) -> float:

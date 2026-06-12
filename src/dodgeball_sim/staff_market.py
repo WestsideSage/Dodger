@@ -104,15 +104,17 @@ def _staff_effect_lanes(department: str, primary: int, secondary: int) -> list[s
 
 
 def _staff_first_name(rng: DeterministicRNG) -> str:
-    return rng.choice(("Ari", "Blair", "Carmen", "Dev", "Eli", "Juno", "Morgan", "Sasha",
-        "Taylor", "Jordan", "Casey", "Riley", "Avery", "Quinn", "Peyton", "Skyler",
-        "Dallas", "Reese", "Rowan", "Ellis", "Kendall", "Micah", "Emerson", "Finley"))
+    # V22 Phase 1: staff draw from the same wide shared pools as players —
+    # the old separate 24-name pool produced the same dozen coaches forever.
+    from .names import FIRST_NAMES
+
+    return rng.choice(FIRST_NAMES)
 
 
 def _staff_last_name(rng: DeterministicRNG) -> str:
-    return rng.choice(("Vale", "Cross", "Hart", "Rook", "Sol", "Pike", "Ives", "Chen",
-        "Gaines", "Mercer", "Vance", "Sutton", "Hayes", "Frost", "Graves", "Cole",
-        "Bridges", "Stark", "Rivers", "Banks", "Shaw", "Kerr", "Brooks", "Glover"))
+    from .names import LAST_NAMES
+
+    return rng.choice(LAST_NAMES)
 
 
 def _staff_voice(department: str, rng: DeterministicRNG) -> str:

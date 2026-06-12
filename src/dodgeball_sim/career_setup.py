@@ -22,7 +22,7 @@ from .persistence import (
     classify_club_archetype,
 )
 from .playoffs import PLAYOFF_FORMAT
-from .randomizer import _FIRST_NAMES, _LAST_NAMES
+from .names import unique_full_name
 from .rng import DeterministicRNG, derive_seed
 from .sample_data import curated_clubs
 from .scouting_center import initialize_scouting_for_career
@@ -119,28 +119,21 @@ def _clamp(value: float, low: float, high: float) -> float:
 
 
 def _unique_roster_names(rng: DeterministicRNG, count: int) -> List[str]:
-    combos = [(first, last) for first in _FIRST_NAMES for last in _LAST_NAMES]
-    shuffled = rng.shuffle(combos)
-    names: List[str] = []
+    # V22 Phase 1: shared wide-pool picker — two RNG draws per name (the old
+    # full-combo shuffle was a 60k-element Fisher-Yates at the new pool sizes).
+    # Same-seed curated rosters change names/ratings with this (documented
+    # universe change); the age-band/rating-range properties are unchanged.
+    used_names: set[str] = set()
     used_last_names: set[str] = set()
-
-    for first, last in shuffled:
-        if last in used_last_names:
-            continue
-        names.append(f"{first} {last}")
-        used_last_names.add(last)
-        if len(names) == count:
-            return names
-
-    for first, last in shuffled:
-        name = f"{first} {last}"
-        if name in names:
-            continue
-        names.append(name)
-        if len(names) == count:
-            return names
-
-    return names
+    return [
+        unique_full_name(
+            rng=rng,
+            used_names=used_names,
+            used_last_names=used_last_names,
+            fallback_tag=f"#{index + 1}",
+        )
+        for index in range(count)
+    ]
 
 
 def _curated_potential_ceiling(raw_potential: float, ovr: int, age: int) -> int:
