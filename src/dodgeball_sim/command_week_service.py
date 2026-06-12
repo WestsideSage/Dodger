@@ -460,7 +460,12 @@ def run_simulation_command(conn: sqlite3.Connection, command: dict[str, Any]) ->
     if mode == "user_match":
         season, chosen, stop_reason = _choose_next_user_match_after_automation(conn, season, clubs, player_club_id)
     else:
+        from .pyramid_postseason import advance_pyramid_postseason
+
         season = advance_playoffs_if_needed(conn, season, clubs, player_club_id)
+        # V23: the pyramid postseason hook (no-op on legacy saves) — see
+        # match_orchestration._choose_next_user_match_after_automation.
+        season = advance_pyramid_postseason(conn, season, clubs, player_club_id)
         completed = load_completed_match_ids(conn, season_id)
         chosen, stop = choose_matches_to_sim(
             list(season.scheduled_matches),
@@ -612,6 +617,13 @@ def advance_playoffs_if_needed(conn: sqlite3.Connection, season: Season, clubs: 
         completed = load_completed_match_ids(conn, season.season_id)
         if bracket is None:
             standings = standings_with_all_clubs(load_standings(conn, season.season_id), clubs)
+            # V23: pyramid saves seed the user's title bracket from their
+            # division only (identity on legacy saves).
+            from .pyramid_postseason import user_division_standings_filter
+
+            standings = user_division_standings_filter(
+                conn, season.season_id, standings, player_club_id
+            )
             next_week = max((match.week for match in regular_season_matches(season)), default=0) + 1
             bracket, semifinals = create_semifinal_bracket(season.season_id, standings, next_week)
             save_playoff_bracket(conn, bracket)

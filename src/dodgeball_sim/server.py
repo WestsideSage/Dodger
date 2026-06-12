@@ -407,6 +407,10 @@ class StandingsResponse(BaseModel):
     playoff_spots: int = 4
     # V20 §7.3: tells the standings UI which differential ranks this career.
     is_official_career: bool = False
+    # V23: the player's division + the full pyramid. None on legacy
+    # single-league saves. Declared or FastAPI strips them (WT-2/WT-3 family).
+    division: dict[str, Any] | None = None
+    divisions: list[dict[str, Any]] | None = None
 
 
 class ScheduleItem(BaseModel):
