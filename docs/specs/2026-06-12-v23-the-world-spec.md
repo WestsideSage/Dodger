@@ -28,9 +28,13 @@ A real **28-club world** for new careers, on the real engine end to end:
   champion + runner-up (semis cross-paired: D1 champ vs Circuit RU,
   Circuit champ vs D1 RU), every season, recorded into history whether or
   not the player is anywhere near it.
-- **Payouts scale by tier** (extends the V22 economy settlement): D1 1.0×,
-  D2 0.6×, D3 0.35× on league payout + playoff bonuses, disclosed in the
-  finances ledger.
+- **Payouts scale by tier** (extends the V22 economy settlement): the
+  District League is the 1.0× anchor — V22's payout/payroll squeeze was
+  tuned at that scale and must keep holding where founders are born ("the
+  squeeze, never a spiral"; a 0.35× D3 was measured to spiral a journeyman
+  -staffed founder to −217k by season 3). D2 pays 1.35×, D1 1.8× — the
+  climb's pull. V25's wage bills are what stop the top from un-squeezing.
+  Disclosed in the finances ledger.
 
 ## Design decisions made here (within the vision's frame)
 

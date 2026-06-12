@@ -484,7 +484,35 @@ def finalize_season(
         (season.season_id,),
     ).fetchone()
     champion_club_id = _outcome_row["champion_club_id"] if _outcome_row else None
-    awards = compute_season_awards(season.season_id, season_stats, player_club_map, newcomers, champion_club_id)
+    # V23: on pyramid saves the ceremony's awards are the USER'S DIVISION'S
+    # awards (a Circuit star winning your league's MVP would be noise). The
+    # award computation gets division-filtered copies; the persisted season
+    # stats below keep the whole world.
+    award_stats, award_club_map = season_stats, player_club_map
+    from .world import pyramid_world_active
+
+    if pyramid_world_active(conn):
+        from .persistence import load_division_map
+
+        division_map = load_division_map(conn, season.season_id)
+        seat = division_map.get(get_state(conn, "player_club_id") or "")
+        if seat is not None:
+            division_clubs = {
+                club_id
+                for club_id, membership in division_map.items()
+                if membership.division_id == seat.division_id
+            }
+            award_club_map = {
+                player_id: club_id
+                for player_id, club_id in player_club_map.items()
+                if club_id in division_clubs
+            }
+            award_stats = {
+                player_id: stats
+                for player_id, stats in season_stats.items()
+                if player_id in award_club_map
+            }
+    awards = compute_season_awards(season.season_id, award_stats, award_club_map, newcomers, champion_club_id)
     save_awards(conn, awards)
     matches_by_player = {
         row["player_id"]: row["matches"]
@@ -1180,7 +1208,28 @@ def begin_next_season(
 
     next_number = (cursor.season_number or 1) + 1
     root_seed = stored_root_seed(conn)
-    next_season = create_next_manager_season(clubs, root_seed, next_number, season.year + 1)
+    from .world import create_pyramid_season, membership_rows, pyramid_world_active
+
+    if pyramid_world_active(conn):
+        # V23: apply the season's movement — champions + promotion-playoff
+        # winners up, bottom two down (the user club moves like any other) —
+        # and schedule the next season's four aligned round-robins.
+        from .persistence import save_division_memberships
+        from .pyramid_postseason import next_season_assignment
+
+        assignment = next_season_assignment(conn, season.season_id)
+        if assignment is None:
+            raise RuntimeError(
+                "Pyramid save has no division memberships for the active season"
+            )
+        next_season = create_pyramid_season(
+            f"season_{next_number}", season.year + 1, assignment, root_seed=root_seed
+        )
+        save_division_memberships(
+            conn, membership_rows(next_season.season_id, assignment)
+        )
+    else:
+        next_season = create_next_manager_season(clubs, root_seed, next_number, season.year + 1)
     prior_season_num = cursor.season_number or 1
 
     apply_scouting_carry_forward(conn, prior_season_num)

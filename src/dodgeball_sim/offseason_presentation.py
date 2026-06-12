@@ -313,6 +313,14 @@ def build_beat_payload(
         finances = load_season_finances(conn)
         if finances and season is not None and finances.get("season_id") == season.season_id:
             recap["finances"] = finances
+        # V23: the season's league movement — who went up, who came down,
+        # where the user plays next season, and who rules the world.
+        if season is not None:
+            pyramid_block = _pyramid_movement_block(
+                conn, season.season_id, player_club_id, club_name
+            )
+            if pyramid_block is not None:
+                recap["pyramid"] = pyramid_block
         return recap
 
     if beat_key == "records_ratified":
@@ -539,16 +547,50 @@ def build_beat_response(conn: sqlite3.Connection, cursor) -> dict[str, Any]:
     season_outcome = load_season_outcome(conn, season_id) if season_id else None
     signed_player_id = get_state(conn, "offseason_draft_signed_player_id") or ""
 
+    # V23: every ceremony surface built from `standings` (recap table,
+    # champion record, missed-playoffs banner) reads the USER'S DIVISION on
+    # pyramid saves — the world's other 21 clubs live in the standings
+    # screen's pyramid view, not the ceremony.
+    from .world import pyramid_world_active
+
+    is_pyramid = pyramid_world_active(conn)
+    if is_pyramid and season_id and standings:
+        from .persistence import load_division_map
+
+        _division_map = load_division_map(conn, season_id)
+        _seat = _division_map.get(get_state(conn, "player_club_id") or "")
+        if _seat is not None:
+            standings = [
+                row
+                for row in standings
+                if _division_map.get(row.club_id)
+                and _division_map[row.club_id].division_id == _seat.division_id
+            ]
+
     next_preview: Any = None
     if beat_key == "schedule_reveal":
         season_number = cursor.season_number or 1
         root_seed = stored_root_seed(conn)
-        next_preview = create_next_manager_season(
-            clubs,
-            root_seed,
-            season_number + 1,
-            (season.year + 1) if season else 2026,
-        )
+        if is_pyramid and season is not None:
+            # Preview the real next season: movement applied, four divisions.
+            from .pyramid_postseason import next_season_assignment
+            from .world import create_pyramid_season
+
+            assignment = next_season_assignment(conn, season.season_id)
+            if assignment is not None:
+                next_preview = create_pyramid_season(
+                    f"season_{season_number + 1}",
+                    season.year + 1,
+                    assignment,
+                    root_seed=root_seed,
+                )
+        if next_preview is None:
+            next_preview = create_next_manager_season(
+                clubs,
+                root_seed,
+                season_number + 1,
+                (season.year + 1) if season else 2026,
+            )
 
     dev_rows = _load_json_list(conn, "offseason_development_json")
     ret_rows = _load_json_list(conn, "offseason_retirements_json")
@@ -705,6 +747,97 @@ def _playoff_seeding_key(row):
     tiebreaker, which orders the in-season Standings screen.)
     """
     return (-row.points, -row.elimination_differential, row.club_id)
+
+
+_PROMOTION_TARGET = {"challenger": "premier", "district": "challenger"}
+_RELEGATION_TARGET = {"premier": "challenger", "challenger": "district"}
+
+
+def _pyramid_movement_block(
+    conn: sqlite3.Connection,
+    season_id: str,
+    player_club_id: str,
+    club_name,
+) -> Optional[dict[str, Any]]:
+    """V23: the recap's league-movement story, from the postseason ledger.
+
+    ``None`` on legacy saves or while the world's postseason is unfinished.
+    Every line derives from the persisted ledger (champions, promotion
+    playoff, relegation, Worlds) plus the same next-season assignment
+    ``begin_next_season`` will apply — the recap can never promise a
+    different world than the one the player wakes up in.
+    """
+    from .persistence import load_division_map
+    from .pyramid_postseason import load_postseason_ledger, next_season_assignment
+    from .world import DIVISIONS, division_by_id, pyramid_world_active
+
+    if not pyramid_world_active(conn):
+        return None
+    ledger = load_postseason_ledger(conn, season_id)
+    if not (ledger and ledger.get("complete")):
+        return None
+
+    division_map = load_division_map(conn, season_id)
+    seat = division_map.get(player_club_id)
+    assignment = next_season_assignment(conn, season_id) or {}
+    user_next_division_id = next(
+        (
+            division_id
+            for division_id, club_ids in assignment.items()
+            if player_club_id in club_ids
+        ),
+        None,
+    )
+    movement = "stays"
+    if seat is not None and user_next_division_id and user_next_division_id != seat.division_id:
+        movement = (
+            "promoted"
+            if division_by_id(user_next_division_id).tier < seat.tier
+            else "relegated"
+        )
+
+    champions = ledger.get("champions") or {}
+    promoted = ledger.get("promoted") or {}
+    relegated = ledger.get("relegated") or {}
+    return {
+        "champions": [
+            {
+                "division_id": division.division_id,
+                "division_name": division.name,
+                "club_name": club_name(champions[division.division_id]),
+            }
+            for division in DIVISIONS
+            if division.division_id in champions
+        ],
+        "promoted": [
+            {
+                "from_division": division_by_id(division_id).name,
+                "to_division": division_by_id(_PROMOTION_TARGET[division_id]).name,
+                "clubs": [club_name(club_id) for club_id in club_ids],
+            }
+            for division_id, club_ids in promoted.items()
+            if division_id in _PROMOTION_TARGET
+        ],
+        "relegated": [
+            {
+                "from_division": division_by_id(division_id).name,
+                "to_division": division_by_id(_RELEGATION_TARGET[division_id]).name,
+                "clubs": [club_name(club_id) for club_id in club_ids],
+            }
+            for division_id, club_ids in relegated.items()
+            if division_id in _RELEGATION_TARGET
+        ],
+        "worlds": ledger.get("worlds"),
+        "user": {
+            "movement": movement,
+            "division_id": user_next_division_id or (seat.division_id if seat else None),
+            "division_name": (
+                division_by_id(user_next_division_id).name
+                if user_next_division_id
+                else (seat.division_name if seat else None)
+            ),
+        },
+    }
 
 
 def _missed_playoffs_block(

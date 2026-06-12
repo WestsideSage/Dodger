@@ -599,12 +599,65 @@ def _write_postseason_ledger(
     conn.commit()
 
 
+def next_season_assignment(
+    conn: sqlite3.Connection, prior_season_id: str
+) -> dict[str, list[str]] | None:
+    """The next season's division → clubs map, with movement applied.
+
+    Champion + promotion-playoff winner go up from D3 and D2; the bottom two
+    of D1 and D2 come down; the Circuit is closed. Returns ``None`` on legacy
+    saves. If the prior postseason ledger is missing (it shouldn't be by the
+    time the next season begins), the world carries over unchanged rather
+    than inventing movement.
+    """
+    from .persistence import load_division_memberships
+
+    memberships = load_division_memberships(conn, prior_season_id)
+    if not memberships:
+        return None
+    current: dict[str, list[str]] = {}
+    for membership in memberships:
+        current.setdefault(membership.division_id, []).append(membership.club_id)
+
+    ledger = load_postseason_ledger(conn, prior_season_id)
+    if not (ledger and ledger.get("complete")):
+        return {division_id: sorted(club_ids) for division_id, club_ids in current.items()}
+
+    promoted: Mapping[str, list[str]] = ledger.get("promoted", {})
+    relegated: Mapping[str, list[str]] = ledger.get("relegated", {})
+    up_from_challenger = list(promoted.get(CHALLENGER.division_id, []))
+    up_from_district = list(promoted.get(DISTRICT.division_id, []))
+    down_from_premier = list(relegated.get(PREMIER.division_id, []))
+    down_from_challenger = list(relegated.get(CHALLENGER.division_id, []))
+
+    def _moved(division_id: str, leaving: list[str], arriving: list[str]) -> list[str]:
+        kept = [c for c in current.get(division_id, []) if c not in set(leaving)]
+        return sorted(kept + arriving)
+
+    assignment = {
+        PREMIER.division_id: _moved(
+            PREMIER.division_id, down_from_premier, up_from_challenger
+        ),
+        CHALLENGER.division_id: _moved(
+            CHALLENGER.division_id,
+            up_from_challenger + down_from_challenger,
+            down_from_premier + up_from_district,
+        ),
+        DISTRICT.division_id: _moved(
+            DISTRICT.division_id, up_from_district, down_from_challenger
+        ),
+        CIRCUIT.division_id: sorted(current.get(CIRCUIT.division_id, [])),
+    }
+    return assignment
+
+
 __all__ = [
     "WORLDS_HISTORY_KEY",
     "advance_pyramid_postseason",
     "division_rank_order",
     "load_postseason_ledger",
     "load_worlds_history",
+    "next_season_assignment",
     "postseason_ledger_key",
     "pyramid_postseason_complete",
     "user_division_standings_filter",

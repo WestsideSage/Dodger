@@ -34,6 +34,29 @@ from dodgeball_sim.pyramid_postseason import (  # noqa: E402
     load_worlds_history,
 )
 from dodgeball_sim.use_cases import auto_pilot_weeks  # noqa: E402
+from dodgeball_sim.offseason_service import (  # noqa: E402
+    OffseasonError,
+    advance_offseason_beat_payload,
+    begin_next_season_payload,
+    get_offseason_beat_payload,
+    recruit_offseason_payload,
+)
+
+
+def walk_offseason(conn: sqlite3.Connection) -> None:
+    payload = get_offseason_beat_payload(conn)
+    for _ in range(24):
+        state = payload.get("state")
+        if state == "next_season_ready":
+            break
+        if state == "season_complete_recruitment_pending":
+            payload = recruit_offseason_payload(conn, prospect_id="skip")
+            continue
+        try:
+            payload = advance_offseason_beat_payload(conn)
+        except OffseasonError:
+            break
+    begin_next_season_payload(conn)
 
 
 def main() -> None:
@@ -109,6 +132,27 @@ def main() -> None:
         for r in div_rows:
             tag = " <== YOU" if r.club_id == user_club else ""
             print(f"  {r.club_id:14s} {r.wins}-{r.losses}-{r.draws} pts={r.points}{tag}")
+
+        if season_num < args.seasons:
+            walk_offseason(conn)
+            from dodgeball_sim.economy import load_season_finances
+
+            finances = load_season_finances(conn)
+            if finances:
+                print(
+                    f"finances: rank {finances['rank']}/{finances['total_clubs']} in "
+                    f"{finances.get('division_name')} (x{finances.get('tier_multiplier')}), "
+                    f"payout {finances['league_payout_k']}k + bonus {finances['playoff_bonus_k']}k "
+                    f"- payroll {finances['staff_payroll_k']}k -> treasury {finances['closing_treasury_k']}k"
+                )
+            new_season_id = get_state(conn, "active_season_id")
+            new_map = load_division_map(conn, new_season_id)
+            print(f"next season {new_season_id}: user now in "
+                  f"{new_map[user_club].division_name if user_club in new_map else '???'}")
+            per_div: dict[str, int] = {}
+            for m in new_map.values():
+                per_div[m.division_id] = per_div.get(m.division_id, 0) + 1
+            print(f"division sizes: {per_div}")
 
     print(f"\nworlds history: {load_worlds_history(conn)}")
 
