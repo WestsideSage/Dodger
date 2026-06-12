@@ -55,6 +55,11 @@ A real **28-club world** for new careers, on the real engine end to end:
    matches are scheduled matches, so the existing weekly loop surfaces them
    interactively by construction; AI-only stages auto-sim at the same
    orchestration chokepoint as AI playoff matches today.
+4b. **The user always plays week 1.** Seven-club divisions schedule one bye
+   per week, and a new season must never open on "your bye week" — the
+   user's division rotates its round labels (pure relabeling; pairings and
+   seeded draws unchanged) at creation, at rollover, and in the
+   schedule-reveal preview, which mirrors the rollover exactly.
 5. **`season_outcomes` keeps meaning "the user's division champion"** (the
    celebrated outcome every ceremony surface reads). Pyramid facts —
    division champions, promotion/relegation, Worlds — live in a per-season
