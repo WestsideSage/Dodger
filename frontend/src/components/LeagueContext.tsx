@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import type { PlayoffBracketResponse, RecentMatchSummary, StandingRow, StandingsResponse } from '../types';
+import type { DivisionStandingsBlock, PlayoffBracketResponse, RecentMatchSummary, StandingRow, StandingsResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
 import { StatusMessage } from './ui';
 import { PlayoffBracket } from './standings/PlayoffBracket';
@@ -198,6 +198,94 @@ const buildWireRows = (
   });
 };
 
+// V23: the world beyond your table. One compact card per division — the
+// player's division is the main table above, so this panel is for watching
+// the rest of the pyramid (and the Circuit) live their own seasons.
+const PyramidPanel = ({
+  divisions,
+  isOfficial,
+  onClubClick,
+}: {
+  divisions: DivisionStandingsBlock[];
+  isOfficial: boolean;
+  onClubClick: (clubId: string, clubName: string) => void;
+}) => {
+  const userDivision = divisions.find((division) => division.is_user_division);
+  const [activeId, setActiveId] = useState<string>(userDivision?.division_id ?? divisions[0]?.division_id ?? '');
+  const active = divisions.find((division) => division.division_id === activeId) ?? divisions[0];
+  if (!active) return null;
+  const relegationCount = active.movement?.relegation_count ?? 0;
+
+  return (
+    <div className="ls-panel">
+      <div className="ls-panel-head">
+        <span className="dm-kicker">The Pyramid</span>
+        <h3>World Standings</h3>
+      </div>
+      <div role="tablist" aria-label="Divisions" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', padding: '0 0.75rem 0.5rem' }}>
+        {divisions.map((division) => (
+          <button
+            key={division.division_id}
+            type="button"
+            role="tab"
+            aria-selected={division.division_id === active.division_id}
+            className={`dm-badge ${division.division_id === active.division_id ? 'dm-badge-cyan' : 'dm-badge-slate'}`}
+            style={{ cursor: 'pointer', border: 'none' }}
+            onClick={() => setActiveId(division.division_id)}
+          >
+            {division.short_name}
+            {division.is_user_division ? ' ★' : ''}
+          </button>
+        ))}
+      </div>
+      <div style={{ padding: '0 0.75rem 0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.35rem' }}>
+          <strong>{active.name}</strong>
+          {active.is_user_division && <span className="dm-badge dm-badge-cyan">YOUR DIVISION</span>}
+        </div>
+        <div className="ls-tb-list">
+          {active.standings.map((standing, index) => {
+            const inRelegation = relegationCount > 0 && index >= active.standings.length - relegationCount;
+            return (
+              <div
+                key={standing.club_id}
+                className="ls-tb-row"
+                onClick={() => onClubClick(standing.club_id, standing.club_name)}
+                style={{ cursor: 'pointer' }}
+                role="button"
+                tabIndex={0}
+                aria-label={`Open ${standing.club_name} program history`}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onClubClick(standing.club_id, standing.club_name);
+                  }
+                }}
+              >
+                <span className="ls-tb-from">#{index + 1}</span>
+                <div className="ls-tb-body">
+                  <span className="ls-tb-who">
+                    {standing.club_name}
+                    {standing.is_user_club ? ' ★' : ''}
+                  </span>
+                  <span className="ls-tb-note">
+                    {standing.wins}-{standing.losses}-{standing.draws} · {standing.points} pts ·{' '}
+                    {formatDiff(isOfficial ? (standing.game_point_differential ?? 0) : standing.elimination_differential)} diff
+                  </span>
+                </div>
+                {inRelegation && <span className="ls-tb-risk risk-high">DROP</span>}
+              </div>
+            );
+          })}
+        </div>
+        {active.movement?.summary && (
+          <p className="ls-subtle" style={{ marginTop: '0.5rem' }}>{active.movement.summary}</p>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export function Standings() {
   const { data, error, loading } = useApiResource<StandingsResponse>('/api/standings');
   const { data: bracket } = useApiResource<PlayoffBracketResponse>('/api/playoffs/bracket');
@@ -334,13 +422,19 @@ export function Standings() {
         <div className="ls-table-card">
           <div className="ls-table-head">
             <div>
-              <span className="dm-kicker">League Office</span>
+              <span className="dm-kicker">{data.division ? data.division.name : 'League Office'}</span>
               <h2 className="ls-table-title">
                 {playoffsActive ? 'Final Regular-Season Table' : 'Season Standings'}
                 {playoffsActive && <>{' '}<span className="ls-subtle">Playoffs live above</span></>}
               </h2>
+              {data.division?.movement?.summary && (
+                <span className="ls-subtle" style={{ display: 'block' }}>{data.division.movement.summary}</span>
+              )}
             </div>
             <div className="ls-table-meta">
+              {data.division && (
+                <span className="dm-badge dm-badge-violet">{data.division.short_name}</span>
+              )}
               <span className="dm-badge dm-badge-cyan">WEEK {String(data.current_week).padStart(2, '0')}</span>
               <span className="dm-badge dm-badge-emerald">TOP {playoffLine}</span>
               <span className="dm-badge dm-badge-slate">{standings.length} CLUBS</span>
@@ -538,6 +632,14 @@ export function Standings() {
               </div>
             )}
           </div>
+
+          {data.divisions && data.divisions.length > 1 && (
+            <PyramidPanel
+              divisions={data.divisions}
+              isOfficial={isOfficial}
+              onClubClick={handleClubModal}
+            />
+          )}
         </div>
       </div>
       {modalClub && (

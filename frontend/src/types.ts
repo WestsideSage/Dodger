@@ -469,6 +469,9 @@ export interface StandingsResponse {
     is_offseason?: boolean;
     // V20 §7.3: which differential ranks this career.
     is_official_career?: boolean;
+    // V23: the player's division + the full pyramid (null on legacy saves).
+    division?: DivisionInfo | null;
+    divisions?: DivisionStandingsBlock[] | null;
 }
 
 export interface RecentMatchSummary {
@@ -476,6 +479,39 @@ export interface RecentMatchSummary {
     week: number;
     summary: string;
     winner_name: string;
+}
+
+// V23 — the pyramid world. Present on pyramid saves only; legacy
+// single-league saves leave division/divisions null.
+export interface DivisionMovementRules {
+    auto_promotion: boolean;
+    promotion_playoff: boolean;
+    relegation_count: number;
+    worlds_slots: number;
+    summary: string;
+}
+
+export interface DivisionInfo {
+    division_id: string;
+    name: string;
+    short_name: string;
+    tier: number;
+    kind: string;
+    movement: DivisionMovementRules;
+}
+
+export interface DivisionStandingsBlock extends DivisionInfo {
+    is_user_division: boolean;
+    standings: StandingRow[];
+}
+
+export interface WorldsHistoryEntry {
+    season_id: string;
+    champion_club_id: string;
+    champion_name: string;
+    runner_up_club_id: string | null;
+    runner_up_name: string | null;
+    final_match_id: string;
 }
 
 export interface ScheduleRow {
@@ -1095,6 +1131,29 @@ export interface RecapBeatPayload {
         opening_treasury_k: number;
         closing_treasury_k: number;
         rules: string;
+        /** V23: which rung of the pyramid paid this (absent on legacy saves). */
+        division_name?: string | null;
+        tier?: number | null;
+        tier_multiplier?: number;
+    };
+    /** V23: the season's league movement — present on pyramid saves once the
+        world's postseason is complete. */
+    pyramid?: {
+        champions: Array<{ division_id: string; division_name: string; club_name: string }>;
+        promoted: Array<{ from_division: string; to_division: string; clubs: string[] }>;
+        relegated: Array<{ from_division: string; to_division: string; clubs: string[] }>;
+        worlds: {
+            champion_club_id: string;
+            champion_name: string;
+            runner_up_club_id: string | null;
+            runner_up_name: string | null;
+            final_match_id: string;
+        } | null;
+        user: {
+            movement: 'promoted' | 'relegated' | 'stays';
+            division_id: string | null;
+            division_name: string | null;
+        };
     };
 }
 
