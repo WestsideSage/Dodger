@@ -38,11 +38,18 @@ def test_optimize_ai_lineup():
 
 def test_dev_focus_outcomes():
     from dodgeball_sim.models import PlayerTraits
+    # V23 balance witness re-derivation: the original 50-point headroom
+    # (OVR 40, potential 90) is exactly the teleport case the per-season
+    # pacing cap kills - at that gap every focus clamps to the same capped
+    # budget and the comparisons go flat. A realistic ~15-point headroom
+    # keeps every focus under the cap, where the pace/distribution semantics
+    # this test pins still express (potential 60 probed: youth 49>48 OVR,
+    # tactical 54>53 TIQ, strength 51>47 power).
     player = replace(
         make_player("p", accuracy=40, power=40, dodge=40, catch=40, stamina=40),
         age=20,
         archetype=PlayerArchetype.DODGER_ANCHOR,
-        traits=PlayerTraits(potential=90.0)
+        traits=PlayerTraits(potential=60.0)
     )
     stats = PlayerMatchStats(minutes_played=1000)
     rng = DeterministicRNG(42)

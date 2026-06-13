@@ -1063,7 +1063,9 @@ def _build_aftermath(
         "standings_shift": standings_shift,
         # PT4-05: the week's real scout/contact/visit work, from the
         # week-stamped action log — "no prospect movement" only when true.
-        "recruit_reactions": _recruit_reactions(conn, season_id, record.week),
+        "recruit_reactions": _recruit_reactions(
+            conn, season_id, getattr(record, "week", None)
+        ),
         "body": list(body),
         "top_performers": top_performers,
     }
