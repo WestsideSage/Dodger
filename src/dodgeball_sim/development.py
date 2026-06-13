@@ -32,6 +32,19 @@ _FINISH_FLOOR_OVR = 3.0
 # to their ceiling in a single season.
 _MAX_CLOSE_RATE = 0.85
 
+# V23 balance (Playtest 4): growth is a CURVE, not a teleport — one offseason
+# delivers at most this much OVR, whatever the headroom. The V18 close-rate
+# model was tuned on the legacy world's ~10-15 point headrooms (where 0.40 ×
+# headroom ≈ +5/season and this cap never binds); V22 founding rosters carry
+# 25-40 point headrooms with arc floors, and the measured result was a +40
+# OVR single-season jump and a D3 founder winning Worlds by season 4 on AUTO
+# -PILOT (tools/climb_resistance_probe.py BEFORE table). The cap spreads the
+# same delivered ceiling over the peak window — an 18-21 founder still
+# arrives years before peak end, so V18's delivery promise holds — and turns
+# elite arcs into players who sustain +9 seasons in a row instead of
+# teleporting. Practice credits count inside the cap.
+_MAX_SEASON_GROWTH_OVR = 9.0
+
 # Identity stats (no OVR weight) close their own gap to potential at this
 # share of the OVR closure rate — steady, capped growth until V19 wires their
 # match consumers.
@@ -300,9 +313,18 @@ def apply_season_development(
                 min(headroom, max(headroom * close_rate, _FINISH_FLOOR_OVR)) * reps_factor
             )
             # V19b training credits add on top (not reps-gated — practice is
-            # off-court) but never push past the remaining headroom.
-            target_ovr_gain = min(headroom, base_gain + max(0.0, practice_credit_ovr))
-            budget = target_ovr_gain * len(_OVR_STATS) + effective_staff_modifier * 20.0
+            # off-court). The TRAINING head's flat budget bonus (V22) rides
+            # inside the same accounting: everything that grows a player in
+            # one offseason respects the remaining headroom AND the pacing
+            # cap (V23 balance — the flat ``* 20.0`` stat-point add-on used
+            # to bypass both, which is part of how a founder teleported +40).
+            staff_extra_ovr = effective_staff_modifier * 20.0 / len(_OVR_STATS)
+            target_ovr_gain = min(
+                headroom,
+                base_gain + max(0.0, practice_credit_ovr) + staff_extra_ovr,
+                _MAX_SEASON_GROWTH_OVR,
+            )
+            budget = target_ovr_gain * len(_OVR_STATS)
         else:
             budget = 0.0
         for stat in _OVR_STATS:

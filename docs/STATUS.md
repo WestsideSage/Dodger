@@ -65,6 +65,40 @@ vs the user's pinned legacy seeding, rich-Premier takeover income ahead of
 V25 wages) is V23's deferred balance pass — it should ride with the owner's
 first pyramid playthrough feedback.
 
+**Playtest 4 (V23 pyramid) answered — trust sweep + climb pacing, 2026-06-12.**
+Journal: `PLAYTEST_JOURNAL_4.md` (Codex, both creation paths, relegation
+reached). All trust-breaks fixed: the career cursor lands on the next
+TIMELINE stop so the header can never disagree with a bye-week body
+(PT4-02/03, repro-gated); the Prospect Pulse derives from a week-stamped
+scout/contact/visit log — "no movement" only when true (PT4-05); the
+Signing Day desk shows the named "off the board" rival-signings strip so a
+vanished prospect always has a receipt (PT4-06); the aftermath Standings
+Shift speaks in division ranks (PT4-04); archetype keys and record-holder
+ids no longer leak (signing cards humanize; the records board renders the
+persisted holder_name) (PT4-07); the season preview carries the climb
+context — division, tier, movement stakes, the 28-club world (PT4-01);
+Ridgeline is a takeover choice and the picker copy owns the relegation
+stakes (PT4-08); fast-forward stop-point rows select on any click
+(PT4-09); the recruiting skip guard is mirrored into the payload so the UI
+disables instead of 409ing (PT4-11). **Climb pacing (the journal's headline
+balance finding, measured fix):** the V18 close-rate model on V22 founding
+headrooms (25-40 OVR + arc floors) produced a measured +40 single-season
+jump and a D3 founder winning WORLDS by season 4 on auto-pilot
+(`tools/climb_resistance_probe.py` BEFORE). Development now respects a
+per-season pacing cap (`development._MAX_SEASON_GROWTH_OVR = 9.0`) with the
+V22 training-head budget bonus folded inside the same headroom+cap
+accounting (it bypassed both). AFTER (two seeds, auto-pilot lower bound):
+losing season 1, contention S2-3, Premier by S4-5, first Worlds S4-6, max
+jump ~+9-10. The cap never binds on legacy ~10-15 point headrooms — all
+V18/V19 delivery, mortality, and scarcity gates pass unchanged, and elite
+arcs now express as players who SUSTAIN +9 seasons in a row. Gated by
+`tests/test_pt4_fixes.py`. **Still open (disclosed):** end-state dominance —
+once a founder's six fully delivers (~88 OVR), Premier offers no resistance
+because the world's top gets no new blood while the user compounds; that
+resistance is V24's AI recruiting boards and V25's uphill poaching, not a
+V23 patch. PT4-10 (archive replays for old promotion/Worlds finals)
+deferred to its own pass.
+
 **Playtest 3 (Orphanage Run) answered — SHIPPED 2026-06-11 (`8c314f5`).**
 The dynasty turnover loop exists: a Release control on the player card
 (released players join the free-agent pool; releasing a promised player
