@@ -451,28 +451,17 @@ def _eligible_ai_offer_clubs(
     (D3) and below the Signing Day roster ceiling. The user club never bids
     through this path.
 
-    V23: on pyramid saves the Signing Day market is the USER'S DIVISION (the
-    V24 Board frame — one 25-prospect class, seven clubs). Clubs in other
-    divisions develop, age, retire, and repair rosters, but deep
-    cross-division recruiting is V24's milestone; the scope line is disclosed
-    on the recruiting surfaces.
+    V24 (The Board): recruiting is whole-world. Every AI club in the universe
+    recruits its own class on merit — not just the user's division — so the
+    pyramid's top clubs (Premier + Circuit) get new blood every offseason
+    instead of stagnating while the user compounds (this closes the V23
+    end-state-dominance gap). Reach/district biases shape WHO each club pursues
+    (recruitment_domain.build_recruitment_board); this gate only decides WHO
+    may bid. Classic (non-pyramid) saves were never division-scoped and stay
+    byte-identical.
     """
     from .config import AI_OFFSEASON_MAX_ROSTER, AI_OFFSEASON_SIGNINGS_PER_CLUB
     from .persistence import load_all_rosters, load_recruitment_signings
-    from .world import pyramid_world_active
-
-    division_club_ids: set[str] | None = None
-    if user_club_id is not None and pyramid_world_active(conn):
-        from .persistence import load_division_map
-
-        division_map = load_division_map(conn, season_id)
-        seat = division_map.get(user_club_id)
-        if seat is not None:
-            division_club_ids = {
-                club_id
-                for club_id, membership in division_map.items()
-                if membership.division_id == seat.division_id
-            }
 
     signings_per_club: dict[str, int] = {}
     for signing in load_recruitment_signings(conn, season_id):
@@ -483,14 +472,25 @@ def _eligible_ai_offer_clubs(
     for club_id, roster in load_all_rosters(conn).items():
         if user_club_id is not None and club_id == user_club_id:
             continue
-        if division_club_ids is not None and club_id not in division_club_ids:
-            continue
         if signings_per_club.get(club_id, 0) >= AI_OFFSEASON_SIGNINGS_PER_CLUB:
             continue
         if len(roster) >= AI_OFFSEASON_MAX_ROSTER:
             continue
         eligible.add(club_id)
     return eligible
+
+
+def _tier_ceiling_bonus(tier: int, public_high_band: float) -> float:
+    """V24: how much an AI club in a given division TIER weights a prospect's
+    upside on its board. Top tiers (Premier + the International Circuit, both
+    tier 1) chase ceiling so the Worlds feeders build toward a compounding
+    user instead of treading water; bottom tiers favor ready-now. Rewards
+    upside above the baseline only — never raw signing."""
+    from .config import AI_TIER_CEILING_BASELINE, AI_TIER_CEILING_PREFERENCE
+
+    pref = AI_TIER_CEILING_PREFERENCE.get(tier, 0.0)
+    upside = max(0.0, public_high_band - AI_TIER_CEILING_BASELINE)
+    return round(upside * pref, 4)
 
 
 def _ensure_recruitment_prepared(
@@ -549,7 +549,15 @@ def _ensure_recruitment_prepared(
 
     boards = {}
     from .persistence import load_clubs
+    from .world import pyramid_world_active
     clubs = load_clubs(conn)
+    # V24: in the pyramid, each club's division tier shades how hard it chases
+    # upside (whole-world recruiting fix). Empty on legacy single-league saves.
+    division_map = {}
+    if pyramid_world_active(conn):
+        from .persistence import load_division_map
+
+        division_map = load_division_map(conn, season_id)
     for profile in active_profiles:
         board = build_recruitment_board(
             root_seed=root_seed,
@@ -578,6 +586,14 @@ def _ensure_recruitment_prepared(
                 # Favors ready-now depth immediately
                 midpoint = (prospect.public_ratings_band["ovr"][0] + prospect.public_ratings_band["ovr"][1]) / 2.0
                 total_score += round((midpoint - 55) * 0.2, 4)
+
+            # V24: division-tier ceiling preference — top tiers chase upside so
+            # the Worlds feeders keep pace with a compounding user.
+            seat = division_map.get(profile.club_id)
+            if seat is not None:
+                total_score += _tier_ceiling_bonus(
+                    seat.tier, prospect.public_ratings_band["ovr"][1]
+                )
 
             adjusted_board.append(
                 RecruitmentBoardRow(

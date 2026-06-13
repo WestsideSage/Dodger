@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Dict
 
 
@@ -144,6 +144,37 @@ AI_OFFSEASON_SIGNINGS_PER_CLUB = 3
 AI_OFFSEASON_MAX_ROSTER = 12
 
 
+# --- V24 The Board (config layer) -------------------------------------------
+# The pyramid world's recruiting class feeds all 28 clubs, not one 7-club
+# division. tools/ai_board_coverage_probe.py measured the single 25-class fully
+# consumed every offseason (25.0 signings) with the International Circuit
+# starved (65% coverage); a wider class restocks the whole world. Legacy
+# single-league saves keep the historical 25 (no witness churn). Probe-tuned.
+PYRAMID_PROSPECT_CLASS_SIZE = 56
+
+
+def scouting_config_for_world(pyramid: bool) -> "ScoutingBalanceConfig":
+    """Scouting config sized for the world: the 28-club pyramid gets the wide
+    class; legacy single-league keeps the historical 25-prospect class."""
+    if pyramid:
+        return replace(DEFAULT_SCOUTING_CONFIG, prospect_class_size=PYRAMID_PROSPECT_CLASS_SIZE)
+    return DEFAULT_SCOUTING_CONFIG
+
+
+# Higher-tier AI clubs chase upside so the Worlds feeders (Premier + the
+# International Circuit, both tier 1) build toward a compounding user's level
+# instead of treading water on ready-now depth; lower tiers favor ready-now.
+# The weight multiplies (public ceiling band - AI_TIER_CEILING_BASELINE),
+# clamped at zero so it rewards upside, never raw signing. Probe-tuned against
+# the D1/INT OVR trajectory (tools/climb_resistance_probe.py).
+AI_TIER_CEILING_BASELINE = 60.0
+AI_TIER_CEILING_PREFERENCE: Dict[int, float] = {
+    1: 0.55,  # Premier + Circuit: chase ceiling hard
+    2: 0.30,  # Challenger: balanced
+    3: 0.12,  # District: mostly ready-now
+}
+
+
 # --- V22 Club Economy (config layer) ----------------------------------------
 # Owner (2026-06-11): "add a budget component… a financial management aspect"
 # (Teamfight Manager cited), deliberately light — one treasury number, annual
@@ -189,6 +220,10 @@ def get_config(version: str | None = None) -> BalanceConfig:
 __all__ = [
     "AI_OFFSEASON_MAX_ROSTER",
     "AI_OFFSEASON_SIGNINGS_PER_CLUB",
+    "AI_TIER_CEILING_BASELINE",
+    "AI_TIER_CEILING_PREFERENCE",
+    "PYRAMID_PROSPECT_CLASS_SIZE",
+    "scouting_config_for_world",
     "BalanceConfig",
     "CONTESTED_USER_OFFER_BASE",
     "CONTESTED_USER_OFFER_INTEREST_WEIGHT",
