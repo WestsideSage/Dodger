@@ -213,6 +213,10 @@ DISTRICT_CLUBS: tuple[Club, ...] = (
           rush_commit="balanced", rush_target="center"),
 )
 
+# The seven district identities (the D3 home regions), reused as prospect home
+# districts for the V24 Hometown motivation.
+DISTRICT_REGIONS: tuple[str, ...] = tuple(club.home_region for club in DISTRICT_CLUBS)
+
 CIRCUIT_CLUBS: tuple[Club, ...] = (
     _club("osaka", "Osaka Tempo",
           region="Osaka", founded=1996, colors="white/crimson",

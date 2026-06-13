@@ -8,7 +8,7 @@ from .config import ScoutingBalanceConfig
 from .models import Player, PlayerArchetype, PlayerRatings, PlayerTraits
 from .rng import DeterministicRNG
 from .scouting_center import Prospect, Trajectory
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Sequence, Tuple
 
 
 @dataclass(frozen=True)
@@ -174,8 +174,17 @@ def generate_prospect_pool(
     class_year: int,
     rng: DeterministicRNG,
     config: ScoutingBalanceConfig,
+    hometown_pool: Optional[Sequence[str]] = None,
 ) -> list[Prospect]:
-    """Generate hidden prospect truths and a wide public baseline."""
+    """Generate hidden prospect truths and a wide public baseline.
+
+    ``hometown_pool`` overrides where each prospect's hometown comes from: the
+    pyramid world passes its seven districts (V24 Hometown), legacy single-league
+    saves keep the surname pool. It is routed through ``rng.choice`` (one draw,
+    any list length), so swapping the pool changes only the hometown string and
+    never shifts the generation stream — downstream prospects stay byte-identical.
+    """
+    pool = _LAST_NAMES if hometown_pool is None else hometown_pool
     prospects: list[Prospect] = []
     used_names: set[str] = set()
     used_last_names: set[str] = set()
@@ -255,7 +264,7 @@ def generate_prospect_pool(
                 class_year=class_year,
                 name=full_name,
                 age=18 + int(rng.roll(0, 4)),
-                hometown=rng.choice(_LAST_NAMES),
+                hometown=rng.choice(pool),
                 hidden_ratings=ratings,
                 hidden_trajectory=trajectory,
                 hidden_traits=traits,

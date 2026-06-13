@@ -134,3 +134,46 @@ class TestTierCeilingWeighting:
         # ceiling premium — the bonus rewards upside, not raw signing.
         assert _tier_ceiling_bonus(1, 55) < _tier_ceiling_bonus(1, 90)
         assert _tier_ceiling_bonus(1, 40) == 0.0
+
+
+class TestDistrictRooting:
+    def test_pyramid_prospects_are_district_rooted(self):
+        from dodgeball_sim.config import DEFAULT_SCOUTING_CONFIG
+        from dodgeball_sim.scouting_center import initialize_scouting_for_career
+        from dodgeball_sim.world import DISTRICT_REGIONS
+
+        conn = _conn()
+        _pyramid_takeover(conn)
+        initialize_scouting_for_career(conn, ROOT_SEED, DEFAULT_SCOUTING_CONFIG, class_year=7)
+        pool = load_prospect_pool(conn, 7)
+        assert pool
+        assert all(p.hometown in DISTRICT_REGIONS for p in pool), (
+            "Pyramid prospects must be rooted in one of the 7 districts, not a surname"
+        )
+
+    def test_hometown_pool_does_not_shift_the_rng_stream(self):
+        # The whole point of routing hometown through rng.choice (one draw,
+        # any list length): swapping surnames for districts changes ONLY the
+        # hometown — every other prospect attribute stays byte-identical, so no
+        # downstream witness moves and legacy saves are unaffected.
+        from dodgeball_sim.config import DEFAULT_SCOUTING_CONFIG
+        from dodgeball_sim.recruitment import generate_prospect_pool
+        from dodgeball_sim.world import DISTRICT_REGIONS
+
+        def _fresh_rng():
+            return DeterministicRNG(derive_seed(ROOT_SEED, "prospect_gen", "1"))
+
+        surnamed = generate_prospect_pool(1, _fresh_rng(), DEFAULT_SCOUTING_CONFIG)
+        districted = generate_prospect_pool(
+            1, _fresh_rng(), DEFAULT_SCOUTING_CONFIG, hometown_pool=DISTRICT_REGIONS
+        )
+        assert len(surnamed) == len(districted)
+        for s, d in zip(surnamed, districted):
+            assert s.player_id == d.player_id
+            assert s.name == d.name
+            assert s.hidden_ratings == d.hidden_ratings
+            assert s.hidden_trajectory == d.hidden_trajectory
+            assert s.public_ratings_band == d.public_ratings_band
+            assert s.pipeline_tier == d.pipeline_tier
+            assert s.hometown != d.hometown  # only the hometown differs
+            assert d.hometown in DISTRICT_REGIONS
