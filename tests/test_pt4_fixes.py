@@ -148,6 +148,53 @@ class TestProspectPulseTruth:
         assert "Scout" in reactions[0]["evidence"]
 
 
+class TestGrowthPacingCap:
+    def test_one_season_never_teleports_a_founder_to_his_ceiling(self):
+        """V23 balance: the +40 single-season jump is dead.
+
+        A founding-class player (huge natural headroom + GENERATIONAL arc +
+        full reps + practice credit) gains at most the pacing cap per
+        offseason — elite arcs sustain the cap for years instead of
+        teleporting (climb_resistance_probe BEFORE: +40, Worlds by S4 on
+        auto-pilot; AFTER: ≤ +10 with promotion contention from S3).
+        """
+        from dodgeball_sim.archetype_derivation import derive_archetype
+        from dodgeball_sim.development import (
+            _MAX_SEASON_GROWTH_OVR,
+            apply_season_development,
+        )
+        from dodgeball_sim.models import Player, PlayerRatings, PlayerTraits
+        from dodgeball_sim.rng import DeterministicRNG
+        from dodgeball_sim.stats import PlayerMatchStats
+
+        ratings = PlayerRatings(
+            accuracy=50, power=52, dodge=48, catch=51, stamina=50,
+            tactical_iq=50, catch_courage=50, throw_selection_iq=50,
+            conditioning_curve=50,
+        ).apply_bounds()
+        founder = Player(
+            id="cap_probe", name="Cap Probe", age=19, club_id="probe",
+            newcomer=True, ratings=ratings, archetype=derive_archetype(ratings),
+            traits=PlayerTraits(potential=96, growth_curve=50, consistency=0.5, pressure=0.5),
+        )
+        before = founder.overall_skill()
+        developed = apply_season_development(
+            founder,
+            PlayerMatchStats(),
+            facilities=(),
+            rng=DeterministicRNG(4242),
+            trajectory="GENERATIONAL",
+            matches_played=10,
+            club_matches=10,
+            practice_credit_ovr=1.6,
+            staff_development_modifier=0.4,
+        )
+        gained = developed.overall_skill() - before
+        # +1 tolerance for per-stat integer rounding on the 5-skill mean.
+        assert gained <= _MAX_SEASON_GROWTH_OVR + 1.0, gained
+        assert gained >= 6.0, f"the cap must pace growth, not kill it ({gained})"
+
+
 class TestSigningCardRoleDisplay:
     def test_role_is_a_display_name_not_an_enum_key(self):
         from dodgeball_sim.models import PlayerArchetype
