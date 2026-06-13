@@ -143,6 +143,13 @@ def _credibility(
     return {"score": score, "grade": _grade(score), "evidence": evidence}
 
 
+# V24: how many of the wide pyramid class the in-season board surfaces (the
+# vision's ~25-prospect battle view, up from the old hard cap of 8). Deeper
+# visibility into the full class is the money-gated scouting network (a later
+# phase).
+_RECRUIT_BOARD_SIZE = 25
+
+
 def _motivation_fields(ctx, prospect, scouted: bool) -> dict[str, Any]:
     """V24 board motivation view: the prospect's visible cared-about grades, plus
     his dealbreaker (revealed only once scouted). Empty on legacy (no context)."""
@@ -198,8 +205,14 @@ def _prospect_rows(
 
         motivation_ctx = build_club_context(conn, player_club_id, season_id)
 
+    # V24: surface the wide pyramid class (was hard-capped at the first 8),
+    # strongest public estimate first — the vision's class-sized battle view.
+    visible_prospects = sorted(
+        prospects,
+        key=lambda p: -sum(p.public_ratings_band.get("ovr", (0, 0))),
+    )[:_RECRUIT_BOARD_SIZE]
     rows = []
-    for prospect in prospects[:8]:
+    for prospect in visible_prospects:
         base_low, base_high = prospect.public_ratings_band["ovr"]
         pid = prospect.player_id
         p_actions = actions.get(pid, {})

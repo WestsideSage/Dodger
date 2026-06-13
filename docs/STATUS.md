@@ -46,13 +46,21 @@ full `python -m pytest -q` green after each:
   floors it; legacy offers byte-identical via fit=0) and the recruit board
   (visible cared grades + receipts; dealbreaker hidden until scouted).
 
-**Remaining (open) V24 work:** Phase 4 funnel stages (Open→Shortlist→Top3→
-Verbal) + persistent focus list (lift the `prospects[:8]` board cap) + visit
-scheduling vs home fixtures; Phase 5 visible rival suitors + interest-race
-momentum (revive the dormant `prospect_market_signal` table); Phase 6
-money-gated Scouting Network (L1/L2/L3 visibility, treasury sink); Phase 7
-frontend integration (`ProspectCard`/`RecruitmentChoice` + the V15 toolkit) +
-class-wire polish + a live browser walk. **Disclosed deferrals inside the
+**Playtestable now (board + frontend done on the branch):** the in-season
+recruit board cap is lifted 8→25-by-public-estimate
+(`recruiting_office._RECRUIT_BOARD_SIZE`) so the wide pyramid class is scoutable,
+and the React `ProspectCard` renders each prospect's visible motivation grades +
+hover receipts and the hidden-until-scouted dealbreaker (district hometowns
+already showed). `npm run build` + `npm run lint` clean; verified via the
+payload tests + data-flow (no FE test runner). The new recruiting flow is
+runnable end to end for playtest on a fresh pyramid career.
+
+**Remaining (open) V24 work:** the rest of Phase 4 (funnel-stage verb gating
+Open→Shortlist→Top3→Verbal + a persistent focus list + visit scheduling vs home
+fixtures); Phase 5 visible rival suitors + interest-race momentum (revive the
+dormant `prospect_market_signal` table); Phase 6 money-gated Scouting Network
+(L1/L2/L3 visibility, treasury sink); Phase 7 Signing-Day-payload motivation
+surfacing (`RecruitmentChoice`) + class-wire polish + a live browser walk. **Disclosed deferrals inside the
 shipped phases:** AI motivation symmetry (AI clubs use Phase 1's tier/archetype
 board weighting, not the full grades), the Development ceiling-delivery ledger
 (limited-state C grade until built; per-club HoF attribution rides with it),

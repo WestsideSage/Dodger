@@ -1454,6 +1454,23 @@ export interface DynastyOfficeResponse {
             contacted?: boolean;
             visited?: boolean;
             recruiting_status?: RecruitingStatus;
+            /** V24 motivations (pyramid worlds): the prospect's visible
+                cared-about grades, his dealbreaker (null until scouted), and the
+                0-1 fit blend. Empty/null on legacy single-league saves. */
+            motivations?: Array<{
+                motivation: string;
+                label: string;
+                letter: string;
+                receipt: string;
+            }>;
+            dealbreaker?: {
+                motivation: string;
+                label: string;
+                letter: string;
+                receipt: string;
+                veto: boolean;
+            } | null;
+            fit?: number | null;
         }>;
         rules: {
             max_active_promises: number;

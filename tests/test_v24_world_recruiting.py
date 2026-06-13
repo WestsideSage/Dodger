@@ -193,6 +193,22 @@ class TestBoardMotivations:
         assert srow["dealbreaker"] is not None
         assert {"label", "letter", "receipt", "veto"} <= set(srow["dealbreaker"])
 
+    def test_full_pyramid_class_is_recruitable(self):
+        # The board no longer caps at the first 8 — the whole wide class is
+        # scoutable (Phase 4: lift the cap), best public estimate first.
+        from dodgeball_sim.recruiting_office import build_recruiting_state
+
+        conn = _conn()
+        _pyramid_takeover(conn)
+        state = build_recruiting_state(
+            conn, season_id="season_1", player_club_id="aurora", root_seed=ROOT_SEED, history=[]
+        )
+        assert len(state["prospects"]) > 8
+        mids = [
+            sum(r["public_ovr_band"]) for r in state["prospects"] if r.get("public_ovr_band")
+        ]
+        assert mids == sorted(mids, reverse=True), "board should be best-estimate first"
+
 
 class TestDistrictRooting:
     def test_pyramid_prospects_are_district_rooted(self):

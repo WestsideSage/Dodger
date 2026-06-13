@@ -283,6 +283,44 @@ export function ProspectCard({
           <span className="copy">{evidence.join(' · ')}</span>
         </div>
       )}
+      {/* V24: what this prospect wants, graded from your real program with a
+          receipt on hover. The dealbreaker (★) is hidden until you scout him —
+          fail it and he never verbals. */}
+      {prospect.motivations && prospect.motivations.length > 0 && (
+        <div
+          data-testid="prospect-motivations"
+          style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', margin: '0.4rem 0 0' }}
+        >
+          {prospect.motivations.map((m) => (
+            <span
+              key={m.motivation}
+              className="dm-badge dm-badge-slate"
+              title={m.receipt}
+              style={{ fontSize: '0.6rem' }}
+            >
+              {m.label} <strong>{m.letter}</strong>
+            </span>
+          ))}
+          {prospect.dealbreaker ? (
+            <span
+              className={`dm-badge ${prospect.dealbreaker.veto ? 'dm-badge-orange' : 'dm-badge-violet'}`}
+              title={prospect.dealbreaker.receipt}
+              style={{ fontSize: '0.6rem' }}
+            >
+              ★ {prospect.dealbreaker.label} {prospect.dealbreaker.letter}
+              {prospect.dealbreaker.veto ? " — WON'T VERBAL" : ''}
+            </span>
+          ) : (
+            <span
+              className="dm-badge dm-badge-slate"
+              title="Scout this prospect to reveal what he cares about most"
+              style={{ fontSize: '0.6rem', opacity: 0.6 }}
+            >
+              ★ Dealbreaker hidden — scout to reveal
+            </span>
+          )}
+        </div>
+      )}
       {prospect.active_promise && (
         <div
           data-testid="prospect-promise-chip"
