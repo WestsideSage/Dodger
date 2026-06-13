@@ -252,6 +252,11 @@ export const dynastyApi = {
     apiPost<RecruitingActionResponse>(`/api/recruiting/contact/${encodeURIComponent(prospectId)}`),
   visitProspect: (prospectId: string) =>
     apiPost<RecruitingActionResponse>(`/api/recruiting/visit/${encodeURIComponent(prospectId)}`),
+  // V24: toggle a prospect on/off the persistent focus list (shortlist).
+  focusProspect: (prospectId: string) =>
+    apiPost<{ status: string; focused: boolean }>(
+      `/api/recruiting/focus/${encodeURIComponent(prospectId)}`,
+    ),
   hireStaff: (candidateId: string) =>
     apiPost<DynastyOfficeResponse>('/api/dynasty-office/staff/hire', { candidate_id: candidateId }),
   // V19b: promises are mechanical — results feed credibility, which feeds

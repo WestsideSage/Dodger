@@ -971,6 +971,17 @@ def recruiting_visit(prospect_id: str, conn = Depends(get_db)):
     return _run_recruiting_action(conn, prospect_id, "visit")
 
 
+@app.post("/api/recruiting/focus/{prospect_id}")
+def recruiting_focus(prospect_id: str, conn = Depends(get_db)):
+    """V24: toggle a prospect on/off the persistent focus list (shortlist). Once
+    focused you can Contact him; your top focus targets unlock Visit."""
+    from dodgeball_sim.recruiting_office import toggle_focus
+
+    focused = toggle_focus(conn, prospect_id)
+    conn.commit()
+    return {"status": "success", "focused": focused}
+
+
 @app.post("/api/recruiting/pitch-angle")
 def recruiting_pitch_angle(request: PitchAngleRequest, conn = Depends(get_db)):
     season_id = get_state(conn, "active_season_id")

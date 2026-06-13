@@ -149,15 +149,62 @@ def _credibility(
 # phase).
 _RECRUIT_BOARD_SIZE = 25
 
+# V24 Phase 4 funnel: the slot verbs are gated by how committed you are to a
+# prospect. Scout is always allowed; Contact requires shortlisting (on the focus
+# list); Visit is reserved for your top targets.
+FUNNEL_STAGES = ("OPEN", "SHORTLIST", "TOP3", "VERBAL")
+FOCUS_LIST_STATE_KEY = "recruiting_focus_list_json"
 
-def _motivation_fields(ctx, prospect, scouted: bool) -> dict[str, Any]:
-    """V24 board motivation view: the prospect's visible cared-about grades, plus
-    his dealbreaker (revealed only once scouted). Empty on legacy (no context)."""
-    if ctx is None:
+
+def funnel_stage(*, on_focus_list: bool, interest: int, focus_rank, vetoed: bool) -> str:
+    """The prospect's funnel stage: OPEN until shortlisted, SHORTLIST once on the
+    focus list, TOP3 among your three highest-interest focus targets, VERBAL at
+    high interest with no dealbreaker veto."""
+    from .config import VERBAL_INTEREST_THRESHOLD
+
+    if not on_focus_list:
+        return "OPEN"
+    if interest >= VERBAL_INTEREST_THRESHOLD and not vetoed:
+        return "VERBAL"
+    if focus_rank is not None and focus_rank < 3:
+        return "TOP3"
+    return "SHORTLIST"
+
+
+def funnel_allows(stage: str) -> tuple[bool, bool]:
+    """``(can_contact, can_visit)`` for a funnel stage. Scout is always allowed."""
+    can_contact = stage in ("SHORTLIST", "TOP3", "VERBAL")
+    can_visit = stage in ("TOP3", "VERBAL")
+    return can_contact, can_visit
+
+
+def load_focus_list(conn) -> list[str]:
+    return list(load_json_state(conn, FOCUS_LIST_STATE_KEY, []))
+
+
+def toggle_focus(conn, prospect_id: str) -> bool:
+    """Add/remove a prospect from the persistent focus list. Returns True if the
+    prospect is now focused, False if it was removed."""
+    import json as _json
+
+    from .persistence import set_state
+
+    current = load_focus_list(conn)
+    if prospect_id in current:
+        current = [p for p in current if p != prospect_id]
+        set_state(conn, FOCUS_LIST_STATE_KEY, _json.dumps(current))
+        return False
+    current.append(prospect_id)
+    set_state(conn, FOCUS_LIST_STATE_KEY, _json.dumps(current))
+    return True
+
+
+def _motivation_fields(fit, scouted: bool) -> dict[str, Any]:
+    """V24 board motivation view from a precomputed ``Fit``: the prospect's
+    visible cared-about grades plus his dealbreaker (revealed only once
+    scouted). Empty when ``fit`` is None (legacy single-league)."""
+    if fit is None:
         return {"motivations": [], "dealbreaker": None, "fit": None}
-    from .motivations import club_fit
-
-    fit = club_fit(ctx, prospect)
     visible = [
         {"motivation": g.motivation, "label": g.label, "letter": g.letter, "receipt": g.receipt}
         for g in fit.grades.values()
@@ -205,12 +252,38 @@ def _prospect_rows(
 
         motivation_ctx = build_club_context(conn, player_club_id, season_id)
 
+    # V24 Phase 4: the persistent focus list. Rank focus-listed prospects by
+    # interest so the funnel can mark your top targets (TOP3). Pyramid only.
+    focus_set = set(load_focus_list(conn)) if motivation_ctx is not None else set()
+    focus_interest = sorted(
+        (
+            (
+                p.player_id,
+                current_interest(
+                    actions.get(p.player_id, {}),
+                    pipeline_tier=p.pipeline_tier,
+                    credibility_score=credibility["score"],
+                ),
+            )
+            for p in prospects
+            if p.player_id in focus_set
+        ),
+        key=lambda t: -t[1],
+    )
+    focus_rank_map = {pid: rank for rank, (pid, _interest) in enumerate(focus_interest)}
+
     # V24: surface the wide pyramid class (was hard-capped at the first 8),
     # strongest public estimate first — the vision's class-sized battle view.
-    visible_prospects = sorted(
+    # Your focus targets always show, even if their public estimate is low.
+    ranked = sorted(
         prospects,
         key=lambda p: -sum(p.public_ratings_band.get("ovr", (0, 0))),
-    )[:_RECRUIT_BOARD_SIZE]
+    )
+    visible_prospects = ranked[:_RECRUIT_BOARD_SIZE]
+    visible_ids = {p.player_id for p in visible_prospects}
+    visible_prospects += [
+        p for p in ranked if p.player_id in focus_set and p.player_id not in visible_ids
+    ]
     rows = []
     for prospect in visible_prospects:
         base_low, base_high = prospect.public_ratings_band["ovr"]
@@ -227,6 +300,24 @@ def _prospect_rows(
             pipeline_tier=prospect.pipeline_tier,
             credibility_score=credibility["score"],
         )
+        # V24 motivations + funnel (pyramid only): one club_fit per prospect,
+        # reused for both the grade view and the dealbreaker veto in the funnel.
+        fit = None
+        if motivation_ctx is not None:
+            from .motivations import club_fit
+
+            fit = club_fit(motivation_ctx, prospect)
+        on_focus = pid in focus_set
+        if motivation_ctx is not None:
+            stage = funnel_stage(
+                on_focus_list=on_focus,
+                interest=interest,
+                focus_rank=focus_rank_map.get(pid),
+                vetoed=bool(fit and fit.veto),
+            )
+            can_contact, can_visit = funnel_allows(stage)
+        else:
+            stage, can_contact, can_visit = None, True, True
         rows.append({
             "player_id": pid,
             "name": prospect.name,
@@ -255,7 +346,11 @@ def _prospect_rows(
             "contacted": bool(p_actions.get("contacted")),
             "visited": bool(p_actions.get("visited")),
             "recruiting_status": compute_recruiting_status(p_actions),
-            **_motivation_fields(motivation_ctx, prospect, scouted),
+            "funnel_stage": stage,
+            "on_focus_list": on_focus,
+            "can_contact": can_contact,
+            "can_visit": can_visit,
+            **_motivation_fields(fit, scouted),
         })
     return rows
 
@@ -315,6 +410,18 @@ def apply_recruiting_action(
     state = actions.get(prospect_id, {})
     base_band = tuple(prospect.public_ratings_band["ovr"])
     credibility_score = _credibility_score(conn, season_id, player_club_id, history)
+
+    # V24 Phase 4: the funnel gates the stronger verbs (pyramid worlds). Contact
+    # and Visit require shortlisting first; Scout is always allowed. The board
+    # payload mirrors this (can_contact/can_visit) so the UI disables rather than
+    # firing a doomed request — this is the server-side backstop.
+    from .world import pyramid_world_active
+
+    if action in ("contact", "visit") and pyramid_world_active(conn):
+        if prospect_id not in load_focus_list(conn):
+            raise ValueError(
+                "Add this prospect to your focus list before you can contact or visit him."
+            )
 
     # V22 Phase 4: the SCOUTING head's quality scales how tightly this scout
     # narrows the band (staff_effects.scouting_band_quality, 0.70-1.30).

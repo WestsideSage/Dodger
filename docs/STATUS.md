@@ -55,9 +55,19 @@ already showed). `npm run build` + `npm run lint` clean; verified via the
 payload tests + data-flow (no FE test runner). The new recruiting flow is
 runnable end to end for playtest on a fresh pyramid career.
 
-**Remaining (open) V24 work:** the rest of Phase 4 (funnel-stage verb gating
-Open→Shortlist→Top3→Verbal + a persistent focus list + visit scheduling vs home
-fixtures); Phase 5 visible rival suitors + interest-race momentum (revive the
+**Phase 4 (funnel + focus list) DONE on the branch:** Open→Shortlist→Top3→Verbal
+funnel gates the slot verbs — Scout is always allowed, Contact requires
+shortlisting a prospect (the persistent focus list, `FOCUS_LIST_STATE_KEY` +
+`toggle_focus` + POST `/api/recruiting/focus/{id}`), and Visit is reserved for
+your top-3 focus targets; a dealbreaker veto can never reach Verbal. Enforced
+server-side in `apply_recruiting_action` (pyramid) AND mirrored in the board
+payload (`funnel_stage`/`on_focus_list`/`can_contact`/`can_visit`) so the UI
+disables rather than firing doomed requests (PT4 pattern). `ProspectCard` shows
+a ☆/★ Focus toggle, a stage badge, and funnel-gated Contact/Visit buttons.
+Pyramid-only; legacy single-league is ungated and unchanged.
+
+**Remaining (open) V24 work:** visit scheduling vs home fixtures (the last bit
+of Phase 4); Phase 5 visible rival suitors + interest-race momentum (revive the
 dormant `prospect_market_signal` table); Phase 6 money-gated Scouting Network
 (L1/L2/L3 visibility, treasury sink); Phase 7 Signing-Day-payload motivation
 surfacing (`RecruitmentChoice`) + class-wire polish + a live browser walk. **Disclosed deferrals inside the

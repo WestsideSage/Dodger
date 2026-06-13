@@ -21,6 +21,7 @@ from dodgeball_sim.persistence import load_career_state_cursor, load_season
 from dodgeball_sim.recruiting_office import (
     apply_recruiting_action,
     recruit_reactions_for_week,
+    toggle_focus,
 )
 from dodgeball_sim.use_cases import simulate_week
 
@@ -95,6 +96,10 @@ class TestProspectPulseTruth:
         pool = load_prospect_pool(conn, 1)
         assert pool, "founding save has no class-1 prospect pool"
         target = pool[0]
+
+        # V24 Phase 4: Contact/Visit are gated behind the focus list — shortlist
+        # the target before courting him.
+        toggle_focus(conn, target.player_id)
 
         apply_recruiting_action(
             conn,

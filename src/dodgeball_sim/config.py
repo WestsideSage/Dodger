@@ -183,6 +183,11 @@ AI_TIER_CEILING_PREFERENCE: Dict[int, float] = {
 MOTIVATION_FIT_WEIGHT = 18.0
 CONTESTED_VETO_OFFER_FLOOR = 25.0
 
+# V24 Phase 4 funnel: a focus-listed prospect at/above this interest (and with no
+# dealbreaker veto) has effectively verballed — your strongest pre-Signing-Day
+# commitment signal.
+VERBAL_INTEREST_THRESHOLD = 80
+
 
 # --- V22 Club Economy (config layer) ----------------------------------------
 # Owner (2026-06-11): "add a budget component… a financial management aspect"

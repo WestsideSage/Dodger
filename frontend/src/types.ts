@@ -1471,6 +1471,12 @@ export interface DynastyOfficeResponse {
                 veto: boolean;
             } | null;
             fit?: number | null;
+            /** V24 funnel: the stage gates the verbs and the focus list is your
+                persistent shortlist. Null / permissive on legacy (no funnel). */
+            funnel_stage?: 'OPEN' | 'SHORTLIST' | 'TOP3' | 'VERBAL' | null;
+            on_focus_list?: boolean;
+            can_contact?: boolean;
+            can_visit?: boolean;
         }>;
         rules: {
             max_active_promises: number;

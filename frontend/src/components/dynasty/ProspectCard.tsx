@@ -201,6 +201,18 @@ export function ProspectCard({
             {archetypeBadge(prospect.public_archetype || 'Balanced')}
             <span className="dot">·</span>
             <RecruitingBadge status={displayStatus} pending={pending} />
+            {prospect.funnel_stage != null && (
+              <>
+                <span className="dot">·</span>
+                <span
+                  className="dm-badge dm-badge-cyan"
+                  title="Your recruiting funnel stage — Open → Shortlist → Top 3 → Verbal"
+                  style={{ fontSize: '0.55rem' }}
+                >
+                  {prospect.funnel_stage}
+                </span>
+              </>
+            )}
             <span className="dot">·</span>
             <span
               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
@@ -345,6 +357,36 @@ export function ProspectCard({
         </div>
       )}
       <div className="do-recruit-actions">
+        {prospect.funnel_stage != null && (
+          <button
+            className={`do-recruit-btn${prospect.on_focus_list ? ' primary' : ''}`}
+            disabled={loading}
+            onClick={() => {
+              setLoading(true);
+              const wasFocused = prospect.on_focus_list;
+              dynastyApi
+                .focusProspect(prospect.player_id)
+                .then(() => {
+                  setFeedbackTone('success');
+                  setFeedbackMessage(wasFocused ? 'Removed from focus list.' : 'Added to focus list.');
+                  if (feedbackTimer.current !== null) clearTimeout(feedbackTimer.current);
+                  feedbackTimer.current = setTimeout(() => setFeedbackMessage(null), 2600);
+                  onAction();
+                })
+                .catch((error) => {
+                  setFeedbackTone('error');
+                  setFeedbackMessage(error instanceof Error ? error.message : 'Focus failed.');
+                  if (feedbackTimer.current !== null) clearTimeout(feedbackTimer.current);
+                  feedbackTimer.current = setTimeout(() => setFeedbackMessage(null), 3200);
+                })
+                .finally(() => setLoading(false));
+            }}
+            title="Add to / remove from your focus list. Focusing unlocks Contact; your top targets unlock Visit."
+            type="button"
+          >
+            {prospect.on_focus_list ? '★ Focused' : '☆ Focus'}
+          </button>
+        )}
         <button
           className="do-recruit-btn"
           disabled={loading || !canScout}
@@ -356,21 +398,29 @@ export function ProspectCard({
         </button>
         <button
           className="do-recruit-btn"
-          disabled={loading || !canContact}
+          disabled={loading || !canContact || prospect.can_contact === false}
           onClick={() => runAction('contactProspect', 'Contact logged.', 'CONTACTED')}
-          title={canContact ? 'Build recruit interest' : 'No Contact slots remain this week'}
+          title={
+            prospect.can_contact === false
+              ? 'Add him to your focus list first'
+              : canContact
+                ? 'Build recruit interest'
+                : 'No Contact slots remain this week'
+          }
           type="button"
         >
           Contact
         </button>
         <button
           className="do-recruit-btn primary"
-          disabled={loading || !canVisit}
+          disabled={loading || !canVisit || prospect.can_visit === false}
           onClick={() => runAction('visitProspect', 'Visit booked.', 'VISITED')}
           title={
-            canVisit
-              ? 'Spend a visit slot — your highest-commitment weekly signal to this prospect'
-              : 'No Visit slots remain this week'
+            prospect.can_visit === false
+              ? 'Visits are reserved for your top focus targets (Top 3)'
+              : canVisit
+                ? 'Spend a visit slot — your highest-commitment weekly signal to this prospect'
+                : 'No Visit slots remain this week'
           }
           type="button"
         >
