@@ -5,6 +5,14 @@ Status: **Active spec.** Implementation authority for the V24 milestone.
 Era authority: `docs/specs/2026-06-12-climb-era-vision.md` (§ "V24 — The Board").
 Build-state truth remains `docs/STATUS.md`.
 
+**Implementation status (2026-06-12, branch `feature/v24-the-board`):** Phases
+1–3 implemented + verified (commits `4d37c94`, `7e2c99f`, `f5d7747`; full
+pytest green at each). Phases 4–7 remain. Minor resequencing from the plan
+below: the Hometown *grade* ships with the other motivations in Phase 3 (Phase
+2 delivered the district *data*). See `docs/STATUS.md` for the measured Phase-1
+end-state evidence and the disclosed deferrals (AI motivation symmetry, the
+Development ledger, in-season interest momentum from fit).
+
 ## Relation to Prior Specs
 
 - **Supersedes nothing wholesale.** V24 *deepens* the existing recruiting chassis;

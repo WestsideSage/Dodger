@@ -15,6 +15,52 @@ fans/facilities/bench roles, the event calendar, and the emergent-meta layer —
 in that order (V23 World first). That doc is the planning authority for what
 comes next; this file remains build-state truth.
 
+**V24 — The Board: IN PROGRESS (branch `feature/v24-the-board`, 2026-06-12;
+NOT yet on main).** Spec: `docs/specs/2026-06-12-v24-the-board-spec.md` (7
+phases). Phases 1–3 implemented + verified on the branch, each its own commit,
+full `python -m pytest -q` green after each:
+- **Phase 1 — whole-world AI recruiting** (`4d37c94`) closes the V23
+  end-state-dominance gap. The division-scoped AI Signing Day market is gone
+  (`recruitment._eligible_ai_offer_clubs` no longer intersects the user's
+  division on pyramid saves); the pyramid prospect class widened 25→56
+  (`config.PYRAMID_PROSPECT_CLASS_SIZE` + `scouting_config_for_world`; legacy
+  stays 25, byte-identical); tier-weighted AI boards
+  (`config.AI_TIER_CEILING_PREFERENCE` + `recruitment._tier_ceiling_bonus`) so
+  the Worlds feeders chase upside. **Measured** (`tools/climb_resistance_probe.py`
+  gained a `--division-scoped` before/after + Premier/Circuit OVR columns, seed
+  20260613, 10 seasons): Premier OVR 77.9→82.6, Circuit **flat ~71 → climbing
+  75.2**, user Worlds wins S5–10 5/6→3/6 (the user now loses division titles
+  late); new `tools/ai_board_coverage_probe.py` (20 seeds): **every division
+  signs new blood every seed** (Circuit coverage 65%→100%).
+- **Phase 2 — district rooting** (`7e2c99f`): pyramid prospects carry one of the
+  seven D3 districts (`world.DISTRICT_REGIONS`) instead of a surname, via a
+  stream-preserving `hometown_pool` param on `generate_prospect_pool` (one
+  `rng.choice` draw regardless of list length → downstream byte-identical;
+  legacy keeps surnames). No schema migration (reuses the `hometown` column).
+- **Phase 3 — motivations** (`f5d7747`): `motivations.py` — seven
+  receipts-backed grades (Court Time, Contender, Development, Legacy, Staff,
+  Scheme Fit, Hometown) + a hidden dealbreaker veto, each prospect's profile
+  derived deterministically from his id on a separate rng stream. Folded
+  mechanically into the user's contested offer (pyramid:
+  `BASE + interest*WEIGHT + fit*MOTIVATION_FIT_WEIGHT`, the dealbreaker veto
+  floors it; legacy offers byte-identical via fit=0) and the recruit board
+  (visible cared grades + receipts; dealbreaker hidden until scouted).
+
+**Remaining (open) V24 work:** Phase 4 funnel stages (Open→Shortlist→Top3→
+Verbal) + persistent focus list (lift the `prospects[:8]` board cap) + visit
+scheduling vs home fixtures; Phase 5 visible rival suitors + interest-race
+momentum (revive the dormant `prospect_market_signal` table); Phase 6
+money-gated Scouting Network (L1/L2/L3 visibility, treasury sink); Phase 7
+frontend integration (`ProspectCard`/`RecruitmentChoice` + the V15 toolkit) +
+class-wire polish + a live browser walk. **Disclosed deferrals inside the
+shipped phases:** AI motivation symmetry (AI clubs use Phase 1's tier/archetype
+board weighting, not the full grades), the Development ceiling-delivery ledger
+(limited-state C grade until built; per-club HoF attribution rides with it),
+and in-season interest momentum from fit. **End-state-dominance honest
+residual:** Phase 1 narrows the gap and gives the top real blood but does not
+fully dethrone a maxed founder's concentrated ceiling — full Worlds parity is
+the rest of the V24 arc + V25 uphill poaching, exactly as the vision states.
+
 **V23 — The World: SHIPPED 2026-06-12 (Phases 1–6, same-day).** Spec:
 `docs/specs/2026-06-12-v23-the-world-spec.md`. Every NEW career lives in a
 **28-club pyramid**: D1 Premier League (the curated cast + Ridgeline), D2
