@@ -246,6 +246,12 @@ function FastForwardDialog({
               <label
                 key={option.id}
                 data-testid={`stop-point-${option.id}`}
+                // PT4-09: select on ANY click inside the row, not only via the
+                // native label→input association (a playtest click on the
+                // visible text failed to register and the run kept the
+                // default stop point). Redundant with the radio's onChange —
+                // both set the same value.
+                onClick={() => setStopPoint(option.id)}
                 style={{
                   display: 'flex',
                   gap: '0.5rem',
@@ -428,9 +434,15 @@ export function PreSimDashboard({
     ?? (edge.standing === 'favorite' ? 'Favorite' : edge.standing === 'underdog' ? 'Underdog' : 'Even Matchup');
   const edgeAdvisory = edge.advisory_detail
     ?? `${netStarterEdge > 0 ? '+' : ''}${formatEdge(netStarterEdge)} net starter OVR`;
-  const primaryActionLabel = planConfirmed ? 'SIMULATE WEEK' : 'LOCK PLAN';
+  // PT4-03: a locked bye must not promise a match — the action advances the
+  // league week (the rest of the world plays; your club rests).
+  const primaryActionLabel = planConfirmed
+    ? (isBye ? 'ADVANCE BYE WEEK' : 'SIMULATE WEEK')
+    : 'LOCK PLAN';
   const primaryActionHint = planConfirmed
-    ? 'Plan locked. Run the match when ready.'
+    ? isBye
+      ? 'No match this week — advance to play out the rest of the league.'
+      : 'Plan locked. Run the match when ready.'
     : isBye
     ? 'Bye week — lock to advance.'
     : isReadyToLock

@@ -801,12 +801,15 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                   }}>
                     Club
                   </span>
-                  {/* Honest pre-creation guidance: rosters are generated fresh at
-                      career start from the same templates, so there is no
-                      stronger/weaker pick to reveal here — only identity. */}
+                  {/* Honest pre-creation guidance (PT4-08): rosters are generated
+                      fresh from the same templates, so the pick is identity, not a
+                      head start — but every Premier club lives under the same real
+                      stakes, and that includes you. */}
                   <p style={{ fontSize: '0.6875rem', color: '#64748b', margin: '0 0 0.375rem' }}>
-                    Every club starts with a comparable six — this choice is about the identity
-                    and rival style you inherit, not a difficulty setting.
+                    Every Premier club starts with a comparable six — the choice is the identity
+                    and rival history you inherit. The stakes are the same for all of them: finish
+                    in the bottom two and your club really is relegated; win the league and WORLDS
+                    is next.
                   </p>
                   {clubs.length > 0 ? (
                     <RadioGroup
@@ -874,12 +877,15 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                         color: '#e2e8f0',
                       }}
                     >
-                      <option value="aurora">Aurora Pilots</option>
-                      <option value="lunar">Lunar Arcs</option>
-                      <option value="northwood">Northwood Wreckers</option>
-                      <option value="harbor">Harbor Anchors</option>
-                      <option value="granite">Granite Foxes</option>
-                      <option value="solstice">Solstice Embers</option>
+                      {/* Fallback only (clubs fetch failed) — names must match
+                          sample_data.curated_clubs + world.RIDGELINE. */}
+                      <option value="aurora">Aurora Sentinels</option>
+                      <option value="lunar">Lunar Syndicate</option>
+                      <option value="northwood">Northwood Ironclads</option>
+                      <option value="harbor">Harbor Tidebreakers</option>
+                      <option value="granite">Granite Specters</option>
+                      <option value="solstice">Solstice Flare</option>
+                      <option value="ridgeline">Ridgeline Vanguard</option>
                     </select>
                   )}
                 </div>

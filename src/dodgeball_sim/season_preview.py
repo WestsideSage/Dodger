@@ -40,11 +40,15 @@ def build_season_preview(
     total_clubs: int,
     roster: list[dict[str, Any]],
     skipped: bool = False,
+    division: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Assemble the season-preview payload.
 
     ``roster`` items: ``{"archetype": str, "overall": int}``. Strength and
     weakness name the highest/lowest average-OVR archetype groups.
+    ``division`` (PT4-01, pyramid saves): ``{name, short_name, tier, kind,
+    stakes}`` — the preview must carry where this season sits in the world
+    and what's at the top and bottom of the table, not just the playoff cut.
     """
 
     strength = strongest_position_group(roster)
@@ -59,6 +63,9 @@ def build_season_preview(
         "top_goal": (
             f"Finish in the top {playoff_cut} of {total_clubs} to reach the playoffs."
         ),
+        # PT4-01: None on legacy saves; the preview screen renders the climb
+        # context when present.
+        "division": division,
         "strength": (
             {
                 "archetype": archetype_display_name(strength["archetype"]),

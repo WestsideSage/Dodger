@@ -42,6 +42,13 @@ export function RecruitmentChoice({
   const rosterFull = rosterSize >= rosterLimit;
   const userRoster = beat.payload.user_roster ?? [];
   const releaseChoice = userRoster.find(p => p.id === releaseId) ?? null;
+  // PT4-06: every prospect that vanishes from the board mid-day must have a
+  // named receipt at the desk, not just in the end-of-day class report.
+  const rivalSignings = beat.payload.other_signings ?? [];
+  // PT4-11: the backend's roster-floor guard, mirrored into the payload so
+  // the skip is DISABLED with the reason instead of firing a 409.
+  const canSkip = beat.payload.can_skip ?? true;
+  const skipBlockedReason = beat.payload.skip_blocked_reason ?? null;
 
   return (
     <section className="command-offseason-shell" data-testid="offseason-recruitment-action">
@@ -101,6 +108,32 @@ export function RecruitmentChoice({
             <p style={{ margin: '0.15rem 0 0', fontSize: '0.78rem', color: '#cbd5e1' }}>
               {signingOutcome.explanation} Your signing slot was not used — pick from the
               remaining class.
+            </p>
+          </div>
+        )}
+        {rivalSignings.length > 0 && (
+          <div
+            data-testid="signing-rival-board"
+            style={{
+              margin: '0.6rem 0 0',
+              border: '1px solid rgba(148,163,184,0.25)',
+              borderLeft: '3px solid #64748b',
+              background: 'rgba(148,163,184,0.05)',
+              borderRadius: '4px',
+              padding: '0.6rem 0.8rem',
+            }}
+          >
+            <p style={{ margin: 0, fontSize: '0.68rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Off the board — rival signings so far
+            </p>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.78rem', color: '#cbd5e1', lineHeight: 1.5 }}>
+              {rivalSignings.map((s, i) => (
+                <span key={`${s.name}-${i}`}>
+                  {i > 0 && <span style={{ color: '#475569' }}> · </span>}
+                  <strong style={{ color: '#e2e8f0' }}>{s.name}</strong>
+                  {s.club_name ? ` → ${s.club_name}` : ''}
+                </span>
+              ))}
             </p>
           </div>
         )}
@@ -475,6 +508,11 @@ export function RecruitmentChoice({
               ? `${remainingSignings} signing slot${remainingSignings === 1 ? '' : 's'} remaining — select a prospect and sign them.`
               : 'All signing slots used. Continue when ready.'}
           </p>
+          {!canSkip && skipBlockedReason && (
+            <p style={{ margin: '0.2rem 0 0', fontSize: '0.74rem', color: '#fbbf24' }}>
+              {skipBlockedReason}
+            </p>
+          )}
         </div>
         <div className="command-action-buttons">
           <ActionButton
@@ -503,16 +541,18 @@ export function RecruitmentChoice({
             <button
               type="button"
               onClick={() => setConfirmFinish(true)}
-              disabled={acting}
+              disabled={acting || !canSkip}
+              title={!canSkip && skipBlockedReason ? skipBlockedReason : undefined}
               style={{
                 background: 'none',
                 border: '1px solid #334155',
                 borderRadius: '4px',
                 color: '#64748b',
                 padding: '0.4rem 0.9rem',
-                cursor: acting ? 'not-allowed' : 'pointer',
+                cursor: acting || !canSkip ? 'not-allowed' : 'pointer',
                 fontSize: '0.8rem',
                 whiteSpace: 'nowrap',
+                opacity: !canSkip ? 0.5 : 1,
               }}
             >
               {signedCount > 0 ? 'Lock class early' : 'Skip recruiting'}

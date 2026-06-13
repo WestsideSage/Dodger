@@ -138,12 +138,17 @@ def _build_season_preview_payload(
         ]
         skipped = (get_state(conn, SEASON_PREVIEW_SKIP_KEY, "0") or "0") == "1"
         # V23: on pyramid saves the preview describes YOUR DIVISION — "top 4
-        # of 28" would set a playoff bar the schedule can't deliver.
+        # of 28" would set a playoff bar the schedule can't deliver — and
+        # carries the climb's stakes (PT4-01: the preview was the one
+        # orientation surface that never said which rung of the world this
+        # season is played on).
         total_clubs = len(clubs)
+        division_context = None
         from .world import pyramid_world_active
 
         if pyramid_world_active(conn):
             from .persistence import load_division_map
+            from .web_status_service import _division_movement_rules
 
             division_map = load_division_map(conn, season_id)
             seat = division_map.get(player_club_id)
@@ -153,6 +158,19 @@ def _build_season_preview_payload(
                     for membership in division_map.values()
                     if membership.division_id == seat.division_id
                 )
+                movement = _division_movement_rules(seat.division_id)
+                division_context = {
+                    "name": seat.division_name,
+                    "short_name": {1: "D1", 2: "D2", 3: "D3"}.get(seat.tier, "INT"),
+                    "tier": seat.tier,
+                    "kind": seat.kind,
+                    "stakes": movement.get("summary", ""),
+                    "world_note": (
+                        "The pyramid has 28 clubs across three domestic tiers "
+                        "plus the International Circuit; the season ends with "
+                        "WORLDS between the Premier and Circuit top two."
+                    ),
+                }
         return build_season_preview(
             regular_season_weeks=facts["regular_season_weeks"],
             bye_week=facts["bye_week"],
@@ -160,6 +178,7 @@ def _build_season_preview_payload(
             total_clubs=total_clubs,
             roster=roster_rows,
             skipped=skipped,
+            division=division_context,
         )
     except Exception:
         return None

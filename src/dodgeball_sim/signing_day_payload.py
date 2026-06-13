@@ -146,6 +146,11 @@ def build_signing_card(
         ovr = int(round((low + high) / 2))
     if not role and prospect is not None:
         role = getattr(prospect, "public_archetype_guess", "") or ""
+    # PT4-07: archetypes reach the class report as display names, never raw
+    # enum keys ("dodger_anchor" leaked verbatim onto the cards).
+    from .models import archetype_display_name
+
+    role = archetype_display_name(str(getattr(role, "value", role) or ""))
 
     return {
         "player_id": signing.player_id,

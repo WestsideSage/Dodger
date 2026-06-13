@@ -892,6 +892,15 @@ export interface SeasonPreview {
     strength: { archetype: string; archetype_key: string; avg_overall: number } | null;
     weakness: { archetype: string; archetype_key: string; avg_overall: number } | null;
     skipped: boolean;
+    /** PT4-01: the climb context on pyramid saves (null/absent on legacy). */
+    division?: {
+        name: string;
+        short_name: string;
+        tier: number;
+        kind: string;
+        stakes: string;
+        world_note?: string;
+    } | null;
 }
 
 // A post-match body paragraph carries its own audience, assigned by the
@@ -1263,6 +1272,10 @@ export interface RecruitmentBeatPayload {
     player_signing: OffseasonSigning | null;
     other_signings: OffseasonSigning[];
     signings?: SigningCard[];
+    /** PT4-11: the backend's roster-floor skip guard, mirrored so the UI
+        disables the action instead of firing a request that 409s. */
+    can_skip?: boolean;
+    skip_blocked_reason?: string | null;
     available_prospects: RecruitmentProspectChoice[];
     signed_count: number;
     signing_limit: number;

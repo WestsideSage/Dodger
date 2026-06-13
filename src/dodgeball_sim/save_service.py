@@ -645,6 +645,11 @@ def _checkpoint_and_drop_wal(path: Path) -> None:
 
 
 def list_clubs_payload() -> dict[str, Any]:
+    # PT4-08: a takeover picks any PREMIER LEAGUE club — the curated six plus
+    # Ridgeline (V23 added it as the seventh fixed Premier identity, but the
+    # picker only ever offered the curated cast).
+    from .world import RIDGELINE
+
     return {
         "clubs": [
             {
@@ -653,7 +658,7 @@ def list_clubs_payload() -> dict[str, Any]:
                 "tagline": getattr(club, "tagline", ""),
                 "colors": getattr(club, "colors", ""),
             }
-            for club in curated_clubs()
+            for club in [*curated_clubs(), RIDGELINE]
         ]
     }
 
