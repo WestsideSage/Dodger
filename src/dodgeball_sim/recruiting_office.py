@@ -22,6 +22,9 @@ from .recruitment import generate_prospect_pool, get_current_recruiting_budget
 from .rng import DeterministicRNG, derive_seed
 
 PROMISE_STATE_KEY = "program_promises_json"
+# PT4-05: week-stamped log of the user's scout/contact/visit actions, the
+# derivation source for the post-week Prospect Pulse (capped at 120 entries).
+RECRUITING_WEEK_LOG_KEY = "recruiting_week_log_json"
 MAX_ACTIVE_PROMISES = 3
 PROMISE_OPTIONS = (
     "early_playing_time",
@@ -286,7 +289,96 @@ def apply_recruiting_action(
     )
     actions[prospect_id] = new_state
     set_state(conn, "prospect_recruitment_actions_json", json.dumps(actions))
+
+    # PT4-05: week-stamp every action so the post-week debrief's Prospect
+    # Pulse can report the recruiting work that actually happened this week
+    # (it claimed "no prospect movement" forever — the reactions list was
+    # never fed). Derivation source for use_cases.recruit_reactions_for_week.
+    from .persistence import load_career_state_cursor
+
+    cursor = load_career_state_cursor(conn)
+    log = load_json_state(conn, RECRUITING_WEEK_LOG_KEY, [])
+    if not isinstance(log, list):
+        log = []
+    log.append(
+        {
+            "season_id": season_id,
+            "week": int(cursor.week or 0),
+            "prospect_id": prospect_id,
+            "prospect_name": prospect.name,
+            "action": str(action),
+            "interest_before": result.interest_before,
+            "interest_after": result.interest_after,
+            "headline": result.headline,
+        }
+    )
+    set_state(conn, RECRUITING_WEEK_LOG_KEY, json.dumps(log[-120:]))
     return result.to_dict()
+
+
+def recruit_reactions_for_week(
+    conn: sqlite3.Connection, season_id: str, week: int
+) -> list[dict[str, Any]]:
+    """Prospect Pulse rows for one week, aggregated per prospect.
+
+    Derived from the week-stamped action log (PT4-05) in the exact shape the
+    aftermath FalloutGrid renders: ``prospect_name`` / ``interest_delta``
+    (signed string) / ``evidence``. Scout-only weeks report the band
+    narrowing instead of a phantom interest change. Empty when the player
+    genuinely took no recruiting action that week — the "no movement" empty
+    state is then true.
+    """
+    log = load_json_state(conn, RECRUITING_WEEK_LOG_KEY, [])
+    if not isinstance(log, list):
+        return []
+    _VERBS = {"scout": "scouted", "contact": "contacted", "visit": "visited"}
+    per_prospect: dict[str, dict[str, Any]] = {}
+    for entry in log:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("season_id") != season_id:
+            continue
+        if int(entry.get("week") or -1) != int(week):
+            continue
+        prospect_id = str(entry.get("prospect_id") or "")
+        slot = per_prospect.setdefault(
+            prospect_id,
+            {
+                "prospect_id": prospect_id,
+                "prospect_name": entry.get("prospect_name") or prospect_id,
+                "interest_first": entry.get("interest_before", 0),
+                "interest_last": entry.get("interest_after", 0),
+                "actions": [],
+                "headline": "",
+            },
+        )
+        slot["interest_last"] = entry.get("interest_after", slot["interest_last"])
+        slot["actions"].append(str(entry.get("action") or ""))
+        slot["headline"] = entry.get("headline") or slot["headline"]
+
+    reactions: list[dict[str, Any]] = []
+    for slot in per_prospect.values():
+        delta = int(slot["interest_last"]) - int(slot["interest_first"])
+        verbs = ", ".join(_VERBS.get(action, action) for action in slot["actions"])
+        if delta != 0:
+            evidence = (
+                f"{verbs.capitalize()} this week — interest "
+                f"{slot['interest_first']}% → {slot['interest_last']}%."
+            )
+        else:
+            evidence = f"{verbs.capitalize()} this week — {slot['headline']}"
+        reactions.append(
+            {
+                "prospect_id": slot["prospect_id"],
+                "prospect_name": slot["prospect_name"],
+                "interest_delta": f"{delta:+d}%",
+                "evidence": evidence,
+            }
+        )
+    reactions.sort(
+        key=lambda r: (-abs(int(r["interest_delta"].rstrip('%'))), r["prospect_name"])
+    )
+    return reactions
 
 
 def _grade(score: int) -> str:

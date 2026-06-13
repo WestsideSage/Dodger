@@ -110,6 +110,35 @@ export function SeasonPreview({
         </h2>
       </div>
 
+      {/* PT4-01: the climb context — which rung of the pyramid this season is
+          played on and what's at stake at both ends of the table. Absent on
+          legacy single-league saves. */}
+      {preview.division && (
+        <div
+          data-testid="season-preview-division"
+          style={{
+            padding: '0.6rem 0.75rem',
+            borderRadius: '6px',
+            background: 'rgba(139,92,246,0.08)',
+            borderLeft: '3px solid #8b5cf6',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <span style={{ color: '#c4b5fd', fontSize: '0.65rem', fontWeight: 900, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              {preview.division.short_name} · {preview.division.name}
+            </span>
+            <span style={{ color: '#e2e8f0', fontSize: '0.82rem', fontWeight: 600 }}>
+              {preview.division.stakes}
+            </span>
+          </div>
+          {preview.division.world_note && (
+            <p style={{ margin: '0.3rem 0 0', color: '#94a3b8', fontSize: '0.72rem', lineHeight: 1.4 }}>
+              {preview.division.world_note}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Season-shape strip */}
       <div>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: '2.2rem' }} aria-hidden="true">

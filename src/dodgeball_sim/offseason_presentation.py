@@ -426,17 +426,33 @@ def build_beat_payload(
             )
         ]
 
+        available_choices = available_recruitment_choices(conn, season_number)
+        # PT4-11: mirror recruit_offseason_payload's roster-floor guard so
+        # the UI can disable the skip instead of firing a request that 409s
+        # (the browser logs every failed request as a console error — handled
+        # validation must not look like a crash).
+        from .lineup import STARTERS_COUNT
+
+        skip_blocked_reason = None
+        if len(player_roster) < STARTERS_COUNT and available_choices:
+            skip_blocked_reason = (
+                f"Your roster has {len(player_roster)} players — at least "
+                f"{STARTERS_COUNT} are needed to field a legal six next "
+                "season. Sign at least one player before finishing."
+            )
         return {
             "player_signing": player_signing,
             "other_signings": other_signings,
             "signings": signing_cards,
-            "available_prospects": available_recruitment_choices(conn, season_number),
+            "available_prospects": available_choices,
             "signed_count": signed_count,
             "signing_limit": signing_limit,
             "remaining_signings": max(0, signing_limit - signed_count),
             "roster_size": len(player_roster),
             "roster_limit": roster_limit,
             "user_roster": user_roster_rows,
+            "can_skip": skip_blocked_reason is None,
+            "skip_blocked_reason": skip_blocked_reason,
         }
 
     if beat_key == "schedule_reveal":

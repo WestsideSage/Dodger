@@ -186,10 +186,15 @@ def _simulate_bye_week(
         conn, season, clubs, player_club_id
     )
     if next_chosen:
+        # PT4-02: the cursor week is the player's next TIMELINE stop — the
+        # first week with anything left to play, which a bye week between
+        # this match and the next one IS. Jumping straight to the next match
+        # week made the header read "Week 06" while the body served the
+        # week-5 bye.
         cursor = dataclasses.replace(
             cursor,
             state=CareerState.SEASON_ACTIVE_PRE_MATCH,
-            week=next_chosen[0].week,
+            week=current_week(conn, season) or next_chosen[0].week,
             match_id=None,
         )
     elif stop_reason == "season_complete":
@@ -236,7 +241,8 @@ def _simulate_bye_week(
                 "players": [],
             },
             "standings_shift": [],
-            "recruit_reactions": [],
+            # PT4-05: recruiting work done on a bye week is still real work.
+            "recruit_reactions": _recruit_reactions(conn, season_id, week),
         },
     }
 
@@ -828,6 +834,16 @@ def _dedup_lesson_panel(aftermath: dict[str, Any]) -> None:
         aftermath.pop("improvement_panel", None)
 
 
+def _recruit_reactions(conn, season_id: str, week: int | None) -> list:
+    """PT4-05: Prospect Pulse rows for the week (defensive — never raises)."""
+    from dodgeball_sim.recruiting_office import recruit_reactions_for_week
+
+    try:
+        return recruit_reactions_for_week(conn, season_id, int(week or 0))
+    except Exception:
+        return []
+
+
 def _build_aftermath(
     conn,
     dashboard: dict[str, Any],
@@ -868,6 +884,19 @@ def _build_aftermath(
 
     standings_shift: list[dict] = []
     if standings_before is not None and standings_after is not None and clubs is not None:
+        # PT4-04: on pyramid saves the shift card speaks in YOUR DIVISION's
+        # ranks — global 28-club rank jumps named clubs from leagues the
+        # player never faces and read as noise from a D3 viewpoint.
+        # (Identity on legacy saves.)
+        if player_club_id:
+            from dodgeball_sim.pyramid_postseason import user_division_standings_filter
+
+            standings_before = user_division_standings_filter(
+                conn, season_id, list(standings_before), player_club_id
+            )
+            standings_after = user_division_standings_filter(
+                conn, season_id, list(standings_after), player_club_id
+            )
         before_rank = {row.club_id: (i + 1) for i, row in enumerate(standings_before)}
         after_rank = {row.club_id: (i + 1) for i, row in enumerate(standings_after)}
         for club_id, new_rank in after_rank.items():
@@ -1032,7 +1061,9 @@ def _build_aftermath(
         "player_growth_deltas": [],
         "development_feedback": _development_feedback(plan, load_all_rosters(conn), player_club_id),
         "standings_shift": standings_shift,
-        "recruit_reactions": [],
+        # PT4-05: the week's real scout/contact/visit work, from the
+        # week-stamped action log — "no prospect movement" only when true.
+        "recruit_reactions": _recruit_reactions(conn, season_id, record.week),
         "body": list(body),
         "top_performers": top_performers,
     }
@@ -1535,10 +1566,11 @@ def simulate_week(
         if pending_user_playoff:
             next_chosen = pending_user_playoff[:1]
     if next_chosen:
+        # PT4-02: next TIMELINE stop, not next match week (byes count).
         cursor = dataclasses.replace(
             cursor,
             state=CareerState.SEASON_ACTIVE_PRE_MATCH,
-            week=next_chosen[0].week,
+            week=current_week(conn, season) or next_chosen[0].week,
             match_id=None,
         )
     else:

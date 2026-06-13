@@ -482,7 +482,18 @@ def acknowledge_match_payload(conn: sqlite3.Connection, match_id: str) -> dict[s
         if pending_user_playoff:
             chosen = pending_user_playoff[:1]
     if chosen:
-        cursor = advance(cursor, CareerState.SEASON_ACTIVE_PRE_MATCH, week=chosen[0].week, match_id=None)
+        # PT4-02: the cursor lands on the next TIMELINE stop — the first
+        # week with anything left to play, which a bye week between this
+        # match and the next one IS (the header read "Week 06" while the
+        # body served the week-5 bye).
+        from .game_loop import current_week as _current_week
+
+        cursor = advance(
+            cursor,
+            CareerState.SEASON_ACTIVE_PRE_MATCH,
+            week=_current_week(conn, season) or chosen[0].week,
+            match_id=None,
+        )
     else:
         cursor = advance(cursor, CareerState.SEASON_COMPLETE_OFFSEASON_BEAT, week=0, match_id=None)
     save_career_state_cursor(conn, cursor)

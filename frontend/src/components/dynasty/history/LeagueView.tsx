@@ -18,6 +18,9 @@ interface LeagueData {
     holder_id: string;
     record_value: number;
     set_in_season: string;
+    /** PT4-07: the persisted record payload carries the holder's real
+        display name — render it instead of humanizing the raw id. */
+    record?: { holder_name?: string; detail?: string };
   }>;
   hof: Array<{
     player_id: string;
@@ -191,7 +194,9 @@ export function LeagueView() {
                 <div key={`${record.record_type}-${record.holder_id}-${index}`} className="do-hist-list-row">
                   <div className="main">
                     <strong>{formatRecordLabel(record.record_type)}</strong>
-                    <span className="meta">{humanizeHistoryToken(record.holder_id)} - {formatSeasonLabel(record.set_in_season)}</span>
+                    <span className="meta">
+                      {record.record?.holder_name || humanizeHistoryToken(record.holder_id)} - {formatSeasonLabel(record.set_in_season)}
+                    </span>
                   </div>
                   <div className="side">
                     <span className="dm-badge dm-badge-cyan">{record.record_value}</span>
