@@ -83,7 +83,7 @@ def build_recruiting_state(
 ) -> dict[str, Any]:
     promises = list(load_json_state(conn, PROMISE_STATE_KEY, []))
     credibility = _credibility(conn, season_id, player_club_id, history)
-    prospects = _prospect_rows(conn, season_id, root_seed, promises, credibility)
+    prospects = _prospect_rows(conn, season_id, root_seed, promises, credibility, player_club_id)
     week_val = load_career_state_cursor(conn).week
     budget = get_current_recruiting_budget(conn, season_id, week_val)
     return {
@@ -143,12 +143,39 @@ def _credibility(
     return {"score": score, "grade": _grade(score), "evidence": evidence}
 
 
+def _motivation_fields(ctx, prospect, scouted: bool) -> dict[str, Any]:
+    """V24 board motivation view: the prospect's visible cared-about grades, plus
+    his dealbreaker (revealed only once scouted). Empty on legacy (no context)."""
+    if ctx is None:
+        return {"motivations": [], "dealbreaker": None, "fit": None}
+    from .motivations import club_fit
+
+    fit = club_fit(ctx, prospect)
+    visible = [
+        {"motivation": g.motivation, "label": g.label, "letter": g.letter, "receipt": g.receipt}
+        for g in fit.grades.values()
+        if g.cared and g.motivation != fit.dealbreaker
+    ]
+    dealbreaker = None
+    if scouted:
+        g = fit.grades[fit.dealbreaker]
+        dealbreaker = {
+            "motivation": g.motivation,
+            "label": g.label,
+            "letter": g.letter,
+            "receipt": g.receipt,
+            "veto": fit.veto,
+        }
+    return {"motivations": visible, "dealbreaker": dealbreaker, "fit": round(fit.fit, 4)}
+
+
 def _prospect_rows(
     conn: sqlite3.Connection,
     season_id: str,
     root_seed: int,
     promises: list[dict[str, Any]],
     credibility: dict[str, Any],
+    player_club_id: str,
 ) -> list[dict[str, Any]]:
     class_year = _class_year_from_season(season_id)
     persisted = load_prospect_pool(conn, class_year)
@@ -160,6 +187,16 @@ def _prospect_rows(
     promised = {promise["player_id"]: promise for promise in promises}
 
     actions = load_json_state(conn, "prospect_recruitment_actions_json", {})
+
+    # V24 motivations (pyramid only): grade the user club's fit once per
+    # prospect; legacy single-league saves get no motivation context.
+    motivation_ctx = None
+    from .world import pyramid_world_active
+
+    if pyramid_world_active(conn):
+        from .motivations import build_club_context
+
+        motivation_ctx = build_club_context(conn, player_club_id, season_id)
 
     rows = []
     for prospect in prospects[:8]:
@@ -205,6 +242,7 @@ def _prospect_rows(
             "contacted": bool(p_actions.get("contacted")),
             "visited": bool(p_actions.get("visited")),
             "recruiting_status": compute_recruiting_status(p_actions),
+            **_motivation_fields(motivation_ctx, prospect, scouted),
         })
     return rows
 

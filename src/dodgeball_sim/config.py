@@ -174,6 +174,15 @@ AI_TIER_CEILING_PREFERENCE: Dict[int, float] = {
     3: 0.12,  # District: mostly ready-now
 }
 
+# V24 Phase 3 motivations: the user's Signing Day offer becomes
+# BASE + interest*INTEREST_WEIGHT + fit*MOTIVATION_FIT_WEIGHT, where fit is the
+# 0-1 blend of the club's grades in the motivations the prospect cares about. A
+# dealbreaker veto floors the offer to CONTESTED_VETO_OFFER_FLOOR (he never
+# verbals). Pyramid-only; legacy offers pass fit=0 -> the exact V16 formula.
+# Probe-tuned against tools/contested_offer_probe.py.
+MOTIVATION_FIT_WEIGHT = 18.0
+CONTESTED_VETO_OFFER_FLOOR = 25.0
+
 
 # --- V22 Club Economy (config layer) ----------------------------------------
 # Owner (2026-06-11): "add a budget component… a financial management aspect"
@@ -227,6 +236,8 @@ __all__ = [
     "BalanceConfig",
     "CONTESTED_USER_OFFER_BASE",
     "CONTESTED_USER_OFFER_INTEREST_WEIGHT",
+    "CONTESTED_VETO_OFFER_FLOOR",
+    "MOTIVATION_FIT_WEIGHT",
     "DEFAULT_ECONOMY",
     "DifficultyProfile",
     "EconomyConfig",

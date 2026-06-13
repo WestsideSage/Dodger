@@ -489,6 +489,28 @@ def _eligible_ai_offer_clubs(
     return eligible
 
 
+def _user_offer_strength(interest: float, fit_score: float, veto: bool) -> float:
+    """The user's contested Signing Day offer strength. ``fit_score=0`` (legacy
+    single-league) reproduces the V16 formula exactly. On pyramid saves, fit is
+    the 0-1 motivation blend. A dealbreaker veto floors the offer — the prospect
+    never verbals, regardless of interest or fit."""
+    from .config import (
+        CONTESTED_USER_OFFER_BASE,
+        CONTESTED_USER_OFFER_INTEREST_WEIGHT,
+        CONTESTED_VETO_OFFER_FLOOR,
+        MOTIVATION_FIT_WEIGHT,
+    )
+
+    if veto:
+        return CONTESTED_VETO_OFFER_FLOOR
+    return round(
+        CONTESTED_USER_OFFER_BASE
+        + interest * CONTESTED_USER_OFFER_INTEREST_WEIGHT
+        + fit_score * MOTIVATION_FIT_WEIGHT,
+        4,
+    )
+
+
 def _tier_ceiling_bonus(tier: int, public_high_band: float) -> float:
     """V24: how much an AI club in a given division TIER weights a prospect's
     upside on its board. Top tiers (Premier + the International Circuit, both
@@ -678,6 +700,10 @@ class ContestedPickOutcome:
     # Best opposing bid on the user's pick (None when uncontested).
     rival_club_id: Optional[str] = None
     rival_offer_strength: Optional[float] = None
+    # V24: the 0-1 motivation fit folded into the user offer, and whether the
+    # prospect's dealbreaker vetoed the verbal (pyramid only).
+    motivation_fit: float = 0.0
+    dealbreaker_veto: bool = False
 
 
 def _apply_round_signings(
@@ -786,9 +812,18 @@ def conduct_recruitment_round(
         pipeline_tier=prospect.pipeline_tier,
         credibility_score=credibility,
     )
-    user_strength = round(
-        CONTESTED_USER_OFFER_BASE + interest * CONTESTED_USER_OFFER_INTEREST_WEIGHT, 4
-    )
+    # V24: on pyramid saves the offer also reflects how well the club satisfies
+    # the prospect's motivations; a dealbreaker veto floors it (never verbals).
+    fit_score = 0.0
+    fit_veto = False
+    from .world import pyramid_world_active
+
+    if pyramid_world_active(conn):
+        from .motivations import build_club_context, club_fit
+
+        fit = club_fit(build_club_context(conn, user_club_id, season_id), prospect)
+        fit_score, fit_veto = fit.fit, fit.veto
+    user_strength = _user_offer_strength(interest, fit_score, fit_veto)
     user_offer = RecruitmentOffer(
         season_id=season_id,
         round_number=round_number,
@@ -846,6 +881,8 @@ def conduct_recruitment_round(
         winning_offer_strength=round(winner.offer_strength, 4) if winner else None,
         rival_club_id=rival.club_id if rival else None,
         rival_offer_strength=round(rival.offer_strength, 4) if rival else None,
+        motivation_fit=round(fit_score, 4),
+        dealbreaker_veto=fit_veto,
     )
 
 

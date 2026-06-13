@@ -136,6 +136,64 @@ class TestTierCeilingWeighting:
         assert _tier_ceiling_bonus(1, 40) == 0.0
 
 
+class TestMotivationOffer:
+    def test_fit_raises_offer_and_veto_floors_it(self):
+        from dodgeball_sim.config import (
+            CONTESTED_USER_OFFER_BASE,
+            CONTESTED_USER_OFFER_INTEREST_WEIGHT,
+            CONTESTED_VETO_OFFER_FLOOR,
+        )
+        from dodgeball_sim.recruitment import _user_offer_strength
+
+        # No fit reproduces the legacy V16 offer exactly (legacy byte-identical).
+        base = _user_offer_strength(interest=50, fit_score=0.0, veto=False)
+        assert base == round(
+            CONTESTED_USER_OFFER_BASE + 50 * CONTESTED_USER_OFFER_INTEREST_WEIGHT, 4
+        )
+        # Satisfying his motivations strengthens the offer (courtship -> outcome).
+        assert _user_offer_strength(50, 0.8, False) > base
+        # Failing his dealbreaker floors the offer — he never verbals, even at
+        # max interest and fit.
+        assert _user_offer_strength(100, 1.0, True) == CONTESTED_VETO_OFFER_FLOOR
+        assert _user_offer_strength(100, 1.0, True) < base
+
+
+class TestBoardMotivations:
+    def test_pyramid_board_reveals_dealbreaker_only_when_scouted(self):
+        import json
+
+        from dodgeball_sim.persistence import set_state
+        from dodgeball_sim.recruiting_office import build_recruiting_state
+
+        conn = _conn()
+        _pyramid_takeover(conn)
+        state = build_recruiting_state(
+            conn, season_id="season_1", player_club_id="aurora", root_seed=ROOT_SEED, history=[]
+        )
+        rows = state["prospects"]
+        assert rows
+        row = rows[0]
+        # Non-dealbreaker motivations are visible; each is a graded receipt.
+        assert row["motivations"], "expected visible motivation grades"
+        for grade in row["motivations"]:
+            assert {"label", "letter", "receipt"} <= set(grade)
+        # The dealbreaker is hidden until the prospect is scouted.
+        assert row["dealbreaker"] is None
+
+        # Scout him -> the dealbreaker (and its veto) is revealed.
+        set_state(
+            conn,
+            "prospect_recruitment_actions_json",
+            json.dumps({row["player_id"]: {"scouted": True}}),
+        )
+        scouted = build_recruiting_state(
+            conn, season_id="season_1", player_club_id="aurora", root_seed=ROOT_SEED, history=[]
+        )
+        srow = next(r for r in scouted["prospects"] if r["player_id"] == row["player_id"])
+        assert srow["dealbreaker"] is not None
+        assert {"label", "letter", "receipt", "veto"} <= set(srow["dealbreaker"])
+
+
 class TestDistrictRooting:
     def test_pyramid_prospects_are_district_rooted(self):
         from dodgeball_sim.config import DEFAULT_SCOUTING_CONFIG
