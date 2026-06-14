@@ -4,7 +4,7 @@ Canonical snapshot of what is actually built and what is still open. When code
 state changes materially, update this file in the same pass. If this file and
 the source disagree, the source wins - then fix this file.
 
-Last updated: 2026-06-12.
+Last updated: 2026-06-14.
 
 **Post-V22 direction DECIDED 2026-06-12 — "The Climb Era" (V23–V28).** The
 owner-confirmed long-range plan lives in
@@ -66,18 +66,56 @@ disables rather than firing doomed requests (PT4 pattern). `ProspectCard` shows
 a ☆/★ Focus toggle, a stage badge, and funnel-gated Contact/Visit buttons.
 Pyramid-only; legacy single-league is ungated and unchanged.
 
-**Remaining (open) V24 work:** visit scheduling vs home fixtures (the last bit
-of Phase 4); Phase 5 visible rival suitors + interest-race momentum (revive the
-dormant `prospect_market_signal` table); Phase 6 money-gated Scouting Network
-(L1/L2/L3 visibility, treasury sink); Phase 7 Signing-Day-payload motivation
-surfacing (`RecruitmentChoice`) + class-wire polish + a live browser walk. **Disclosed deferrals inside the
-shipped phases:** AI motivation symmetry (AI clubs use Phase 1's tier/archetype
-board weighting, not the full grades), the Development ceiling-delivery ledger
-(limited-state C grade until built; per-club HoF attribution rides with it),
-and in-season interest momentum from fit. **End-state-dominance honest
-residual:** Phase 1 narrows the gap and gives the top real blood but does not
-fully dethrone a maxed founder's concentrated ceiling — full Worlds parity is
-the rest of the V24 arc + V25 uphill poaching, exactly as the vision states.
+**Phase 4 remainder — visit scheduling DONE (`7a41522`).** A campus visit is now
+hosted at one of the user club's upcoming HOME fixtures
+(`recruiting_office.select_visit_fixture` + the persisted
+`recruiting_visit_fixtures_json` map); the action reports the bound fixture and
+the board mirrors it (`visit_fixture`). A visit is refused when no home fixture
+remains. Pyramid only; legacy keeps the unscheduled visit. Gated by
+`tests/test_v24_visit_scheduling.py`.
+
+**Phase 5 — visible rival suitors + interest race DONE (`3ffbcd3`).** New
+`prospect_market.py` derives named rival suitors per focused prospect
+deterministically (dampened talent read `RIVAL_PURSUIT_TALENT_WEIGHT` + the
+tier's upside appetite + a per-(prospect,club) jitter, willingness-gated by the
+dealbreaker veto), each with a receipt; the dormant `prospect_market_signal`
+table is revived (written on each courtship action) and surfaced on focused
+board rows (`market_signal`). Leading the race compounds: a contact/visit while
+leading lands a momentum bonus scaled by the weeks left
+(`RIVAL_MOMENTUM_PER_WEEK`, capped). Gated by `tests/test_v24_rival_suitors.py`;
+measured by `tools/rival_momentum_probe.py` (early-beats-late 8/8 seeds, +5).
+
+**Phase 6 — money-gated Scouting Network DONE (`05b9437`).** New
+`scouting_network.py` (distinct from the Scout verb and the named-scout engine):
+a per-club L1/L2/L3 level gates a full sheet vs a bare name. Reach band derives
+purely from `hidden_trajectory` (STAR/GEN=NATIONAL, IMPACT=REGIONAL,
+else=DISTRICT); L1 = home + neighbor districts (`world.district_neighbors`), L2
+adds regional + district-anywhere, L3 adds national (a non-district founder runs
+a generic local net). The user's level starts by division tier (Premier inherits
+L3, a D3 founder L1) and upgrades are a treasury sink compressed by the scouting
+head; new `POST /api/recruiting/network/upgrade` + `scouting_network` board
+status. The board redacts beyond-reach prospects to name cards;
+`apply_recruiting_action` refuses actions on them. AI clubs carry a tier-based
+level with a deterministic blind-spot jitter (gems fall through). Gated by
+`tests/test_v24_scouting_network.py`; `ai_board_coverage_probe` still 100%
+coverage.
+
+**Phase 7 — frontend board wiring DONE (`459823f`).** `ProspectCard` /
+`DynastyOffice` render name-only cards, the Scouting Network panel + upgrade
+button, the rival interest race, and the scheduled visit fixture; `types.ts`
+carries the new fields. `npm run build` + `npm run lint` clean.
+
+**Remaining (open) V24 work (disclosed):** the class wire (a league-wide news
+line on a STAR/GENERATIONAL signing — the `/api/news` payload currently builds
+from `match_records`, not `news_headlines`, so this needs a payload-merge and a
+world-wide signing chokepoint); Signing-Day-payload motivation surfacing
+(`RecruitmentChoice.tsx`); and the milestone-close live prod-server browser walk
++ retrospective/learnings. **Disclosed deferrals inside the shipped phases:** AI
+motivation symmetry (AI clubs use tier/archetype board weighting, not the full
+grades), the Development ceiling-delivery ledger (limited-state C grade until
+built), and in-season interest momentum from fit. **End-state-dominance honest
+residual:** the rest of the V24 arc + V25 uphill poaching close full Worlds
+parity, exactly as the vision states.
 
 **V23 — The World: SHIPPED 2026-06-12 (Phases 1–6, same-day).** Spec:
 `docs/specs/2026-06-12-v23-the-world-spec.md`. Every NEW career lives in a
