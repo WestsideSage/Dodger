@@ -145,6 +145,54 @@ export function ProspectCard({
     Math.min(5, Math.max(1, Math.round(prospect.pipeline_tier ?? 1)))
   ) as PipelineTier;
 
+  // V24 Phase 6: a prospect beyond your Scouting Network is a NAME WITHOUT A
+  // SHEET — show who he is and where he's from, but nothing scoutable. The hint
+  // says exactly which level opens him; the Scouting Network panel above is how.
+  if (prospect.fully_visible === false) {
+    return (
+      <div
+        className="do-recruit"
+        style={{ position: 'relative', opacity: 0.7 }}
+        data-testid="prospect-card-locked"
+      >
+        <div className="do-recruit-head">
+          <div className="do-recruit-id">
+            <span className="do-recruit-name" title={prospect.name}>
+              🔒 {prospect.name}
+            </span>
+            <div className="do-recruit-sub" style={{ flexWrap: 'wrap' }}>
+              <span aria-label={`Hometown: ${prospect.hometown}`}>
+                <span
+                  style={{
+                    fontSize: '0.55rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    color: '#64748b',
+                    marginRight: '0.2rem',
+                  }}
+                >
+                  From
+                </span>
+                <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{prospect.hometown}</span>
+              </span>
+              {prospect.reach_band && (
+                <>
+                  <span className="dot">·</span>
+                  <span className="dm-badge dm-badge-slate" style={{ fontSize: '0.55rem' }}>
+                    {prospect.reach_band} REACH
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+        <p style={{ color: '#94a3b8', fontSize: '0.7rem', margin: '0.6rem 0 0' }}>
+          {prospect.visibility_hint ?? 'Beyond your Scouting Network — raise your reach to open his sheet.'}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className={`do-recruit fit-${fitTier}`} style={{ position: 'relative' }} data-testid="prospect-card">
       {feedbackMessage && (
@@ -331,6 +379,42 @@ export function ProspectCard({
               ★ Dealbreaker hidden — scout to reveal
             </span>
           )}
+        </div>
+      )}
+      {/* V24 Phase 5: the in-season interest race — named rival suitors and
+          whether you lead. Leading the race compounds your courtship. */}
+      {prospect.market_signal && prospect.market_signal.rivals.length > 0 && (
+        <div
+          data-testid="prospect-rivals"
+          style={{ margin: '0.4rem 0 0', fontSize: '0.66rem' }}
+        >
+          <span
+            className={`dm-badge ${prospect.market_signal.leader === 'user' ? 'dm-badge-cyan' : 'dm-badge-orange'}`}
+            style={{ fontSize: '0.58rem', marginRight: '0.4rem' }}
+            title="Your tracked interest vs the strongest rival's pursuit. Leading the race compounds your courtship."
+          >
+            {prospect.market_signal.leader === 'user'
+              ? `YOU LEAD +${prospect.market_signal.user_lead}`
+              : `TRAILING ${prospect.market_signal.user_lead}`}
+          </span>
+          <span style={{ color: '#94a3b8' }}>
+            Rivals:{' '}
+            {prospect.market_signal.rivals.map((r, i) => (
+              <span key={r.club_id} title={r.receipt}>
+                {i > 0 ? ', ' : ''}
+                {r.club_name} ({r.interest})
+              </span>
+            ))}
+          </span>
+        </div>
+      )}
+      {/* V24 Phase 4: the home fixture hosting his campus visit, once scheduled. */}
+      {prospect.visit_fixture && (
+        <div style={{ margin: '0.35rem 0 0', fontSize: '0.66rem', color: '#94a3b8' }}>
+          <span className="dm-badge dm-badge-violet" style={{ fontSize: '0.58rem', marginRight: '0.4rem' }}>
+            VISIT SET
+          </span>
+          Hosting him at your Week {prospect.visit_fixture.week} home game.
         </div>
       )}
       {prospect.active_promise && (

@@ -257,6 +257,12 @@ export const dynastyApi = {
     apiPost<{ status: string; focused: boolean }>(
       `/api/recruiting/focus/${encodeURIComponent(prospectId)}`,
     ),
+  // V24 Phase 6: spend treasury to raise the Scouting Network one level.
+  upgradeNetwork: () =>
+    apiPost<{
+      status: string;
+      network: { level: number; cost_k: number; treasury_k: number };
+    }>('/api/recruiting/network/upgrade'),
   hireStaff: (candidateId: string) =>
     apiPost<DynastyOfficeResponse>('/api/dynasty-office/staff/hire', { candidate_id: candidateId }),
   // V19b: promises are mechanical — results feed credibility, which feeds

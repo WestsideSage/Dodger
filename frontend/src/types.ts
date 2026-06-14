@@ -1477,7 +1477,44 @@ export interface DynastyOfficeResponse {
             on_focus_list?: boolean;
             can_contact?: boolean;
             can_visit?: boolean;
+            /** V24 Phase 4 (remainder): the home fixture hosting his campus
+                visit, once you schedule one. */
+            visit_fixture?: {
+                match_id: string;
+                week: number;
+                home_club_id: string;
+                opponent_club_id: string;
+            } | null;
+            /** V24 Phase 5: the in-season interest race — named rival suitors and
+                whether your tracked interest leads or trails the strongest. */
+            market_signal?: {
+                rivals: Array<{
+                    club_id: string;
+                    club_name: string;
+                    tier: number | null;
+                    interest: number;
+                    receipt: string;
+                }>;
+                leader: string;
+                user_interest: number;
+                top_rival_interest: number;
+                user_lead: number;
+            } | null;
+            /** V24 Phase 6: whether your Scouting Network opens his full sheet.
+                False = a name without a sheet (the redacted fields are null). */
+            fully_visible?: boolean;
+            reach_band?: 'DISTRICT' | 'REGIONAL' | 'NATIONAL' | null;
+            visibility_hint?: string;
         }>;
+        /** V24 Phase 6: the money-gated Scouting Network panel (pyramid only). */
+        scouting_network?: {
+            level: number;
+            next_level: number | null;
+            upgrade_cost_k: number | null;
+            treasury_k: number;
+            can_afford: boolean;
+            maxed: boolean;
+        } | null;
         rules: {
             max_active_promises: number;
             promise_options: string[];
