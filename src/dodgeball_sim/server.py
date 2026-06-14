@@ -982,6 +982,20 @@ def recruiting_focus(prospect_id: str, conn = Depends(get_db)):
     return {"status": "success", "focused": focused}
 
 
+@app.post("/api/recruiting/network/upgrade")
+def recruiting_network_upgrade(conn = Depends(get_db)):
+    """V24 Phase 6: spend treasury to raise the Scouting Network one level,
+    widening which prospects render a full sheet (the money-gated reach)."""
+    from dodgeball_sim.recruiting_office import upgrade_scouting_network
+
+    try:
+        result = upgrade_scouting_network(conn)
+        conn.commit()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"status": "success", "network": result}
+
+
 @app.post("/api/recruiting/pitch-angle")
 def recruiting_pitch_angle(request: PitchAngleRequest, conn = Depends(get_db)):
     season_id = get_state(conn, "active_season_id")

@@ -217,6 +217,20 @@ DISTRICT_CLUBS: tuple[Club, ...] = (
 # districts for the V24 Hometown motivation.
 DISTRICT_REGIONS: tuple[str, ...] = tuple(club.home_region for club in DISTRICT_CLUBS)
 
+
+def district_neighbors(region: str) -> tuple[str, ...]:
+    """The two adjacent districts on the ring topology (V24 Phase 6 Scouting
+    Network L1 reach = your district + neighbors). Symmetric by construction;
+    an unknown region has no neighbors."""
+    if region not in DISTRICT_REGIONS:
+        return ()
+    index = DISTRICT_REGIONS.index(region)
+    count = len(DISTRICT_REGIONS)
+    return (
+        DISTRICT_REGIONS[(index - 1) % count],
+        DISTRICT_REGIONS[(index + 1) % count],
+    )
+
 CIRCUIT_CLUBS: tuple[Club, ...] = (
     _club("osaka", "Osaka Tempo",
           region="Osaka", founded=1996, colors="white/crimson",
@@ -389,6 +403,7 @@ __all__ = [
     "CIRCUIT_CLUBS",
     "DISTRICT",
     "DISTRICT_CLUBS",
+    "DISTRICT_REGIONS",
     "DIVISIONS",
     "DIVISION_SIZE",
     "DOMESTIC_DIVISIONS",
@@ -399,6 +414,7 @@ __all__ = [
     "WORLD_MODEL_PYRAMID",
     "WORLD_MODEL_STATE_KEY",
     "create_pyramid_season",
+    "district_neighbors",
     "division_by_id",
     "membership_rows",
     "pyramid_generated_clubs",

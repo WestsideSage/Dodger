@@ -53,6 +53,14 @@ def scouting_band_quality(rating_primary: float) -> float:
     return _clamp(0.70 + (float(rating_primary) - 50.0) * 0.012, 0.70, 1.30)
 
 
+def scouting_network_cost_compression(rating_primary: float) -> float:
+    """Multiplier on Scouting-Network upgrade cost (V24 Phase 6): a stronger
+    scouting head compresses the price — 0.80 (elite) to 1.20 (weak); a neutral
+    50 leaves the base price intact. The vision's 'staff cost-compression
+    consumer'."""
+    return _clamp(1.0 - (float(rating_primary) - 50.0) / 250.0, 0.80, 1.20)
+
+
 def medical_decline_mitigation(rating_primary: float) -> float:
     """Offseason age-decline mitigation: same shape as the training modifier
     ((rating − 50)/50 × max), consumed by the development decline path."""
@@ -96,9 +104,11 @@ def staff_effect_detail(department: str, rating_primary: float) -> str:
         )
     if department == "scouting":
         strength_pct = round(scouting_band_quality(rating_primary) * 100)
+        cost_pct = round(scouting_network_cost_compression(rating_primary) * 100)
         return (
             f"Scout actions narrow prospect bands at {strength_pct}% strength "
-            "(scales 70% to 130% with this head); scouting-focus weeks still add +1 Scout action."
+            "(scales 70% to 130% with this head); scouting-focus weeks still add +1 Scout action. "
+            f"Scouting Network upgrades cost {cost_pct}% of base (a stronger head compresses the price)."
         )
     if department == "medical":
         return (
@@ -118,6 +128,7 @@ __all__ = [
     "culture_focus_interest_multiplier",
     "medical_decline_mitigation",
     "scouting_band_quality",
+    "scouting_network_cost_compression",
     "staff_effect_detail",
     "tactics_focus_tiq_bonus",
     "training_dev_modifier",

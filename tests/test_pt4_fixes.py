@@ -95,7 +95,11 @@ class TestProspectPulseTruth:
 
         pool = load_prospect_pool(conn, 1)
         assert pool, "founding save has no class-1 prospect pool"
-        target = pool[0]
+        # V24 Phase 6: you can only court a prospect within your Scouting
+        # Network's reach — pick the first one this founding club can see.
+        from dodgeball_sim.recruiting_office import _prospect_network_visible
+
+        target = next(p for p in pool if _prospect_network_visible(conn, p, club_id))
 
         # V24 Phase 4: Contact/Visit are gated behind the focus list — shortlist
         # the target before courting him.
@@ -136,8 +140,11 @@ class TestProspectPulseTruth:
         week = int(cursor.week or 1)
 
         from dodgeball_sim.persistence import load_prospect_pool
+        from dodgeball_sim.recruiting_office import _prospect_network_visible
 
-        target = load_prospect_pool(conn, 1)[1]
+        target = next(
+            p for p in load_prospect_pool(conn, 1) if _prospect_network_visible(conn, p, club_id)
+        )
         apply_recruiting_action(
             conn,
             prospect_id=target.player_id,

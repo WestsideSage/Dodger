@@ -6,6 +6,7 @@ from typing import Any
 
 from .config import DEFAULT_SCOUTING_CONFIG
 from .persistence import (
+    get_state,
     load_career_state_cursor,
     load_json_state,
     load_prospect_pool,
@@ -86,11 +87,15 @@ def build_recruiting_state(
     prospects = _prospect_rows(conn, season_id, root_seed, promises, credibility, player_club_id)
     week_val = load_career_state_cursor(conn).week
     budget = get_current_recruiting_budget(conn, season_id, week_val)
+    from .world import pyramid_world_active
+
+    network = scouting_network_status(conn) if pyramid_world_active(conn) else None
     return {
         "credibility": credibility,
         "active_promises": promises,
         "prospects": prospects,
         "budget": budget,
+        "scouting_network": network,
         "rules": {
             "max_active_promises": MAX_ACTIVE_PROMISES,
             "promise_options": list(PROMISE_OPTIONS),
@@ -148,6 +153,167 @@ def _credibility(
 # visibility into the full class is the money-gated scouting network (a later
 # phase).
 _RECRUIT_BOARD_SIZE = 25
+# V24 Phase 6: how many tantalizing "names beyond your network" the board tails
+# on so the Scouting Network upgrade has a visible payoff.
+_HIDDEN_TEASER_CAP = 6
+_REACH_ORDER = {"DISTRICT": 0, "REGIONAL": 1, "NATIONAL": 2}
+# Per-club Scouting Network level (the user club; AI clubs derive theirs by tier).
+NETWORK_LEVEL_STATE_KEY = "scouting_network_level"
+
+
+def network_level(conn) -> int:
+    """The user club's Scouting Network level.
+
+    An explicit upgrade (persisted) wins. Otherwise the STARTING level scales
+    with the club's division tier (the vision's "takeover inherits reach,
+    founding starts local"): Premier/Circuit clubs already run an L3 national
+    network; a D3 founder starts at L1 and must invest to widen it. This keeps a
+    big-club takeover from being blinded to the very class it should dominate.
+    """
+    raw = get_state(conn, NETWORK_LEVEL_STATE_KEY)
+    if raw is not None:
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            pass
+    return _default_network_level_for_user(conn)
+
+
+def _default_network_level_for_user(conn) -> int:
+    from .config import AI_NETWORK_LEVEL_BY_TIER, NETWORK_DEFAULT_LEVEL, NETWORK_MAX_LEVEL
+    from .world import pyramid_world_active
+
+    if not pyramid_world_active(conn):
+        return NETWORK_MAX_LEVEL  # legacy single-league: no reach gating
+    season_id = get_state(conn, "active_season_id")
+    club_id = get_state(conn, "player_club_id")
+    if not season_id or not club_id:
+        return NETWORK_DEFAULT_LEVEL
+    from .persistence import load_division_map
+
+    seat = load_division_map(conn, season_id).get(club_id)
+    tier = seat.tier if seat is not None else None
+    return AI_NETWORK_LEVEL_BY_TIER.get(int(tier or 0), NETWORK_DEFAULT_LEVEL)
+
+
+def _scouting_head_rating(conn) -> float:
+    from .persistence import load_department_heads
+
+    head = next(
+        (h for h in load_department_heads(conn) if h["department"] == "scouting"), None
+    )
+    return float(head["rating_primary"]) if head else 50.0
+
+
+def scouting_network_status(conn) -> dict[str, Any]:
+    """The network panel payload: current level, the next upgrade's level + cost
+    (staff-compressed), and whether the treasury can afford it."""
+    from .economy import treasury_k
+    from .scouting_network import network_upgrade_cost, next_network_level
+
+    level = network_level(conn)
+    to_level = next_network_level(level)
+    treasury = treasury_k(conn)
+    cost = (
+        network_upgrade_cost(
+            to_level=to_level, scouting_head_rating=_scouting_head_rating(conn)
+        )
+        if to_level is not None
+        else None
+    )
+    return {
+        "level": level,
+        "next_level": to_level,
+        "upgrade_cost_k": cost,
+        "treasury_k": treasury,
+        "can_afford": bool(cost is not None and treasury >= cost),
+        "maxed": to_level is None,
+    }
+
+
+def upgrade_scouting_network(conn) -> dict[str, Any]:
+    """Spend treasury to raise the network one level (the Phase 6 treasury sink).
+
+    Refuses at max level or when the treasury cannot cover the staff-compressed
+    cost (squeeze, never a spiral — you cannot go negative on an upgrade)."""
+    from .economy import set_treasury_k, treasury_k
+    from .scouting_network import network_upgrade_cost, next_network_level
+
+    level = network_level(conn)
+    to_level = next_network_level(level)
+    if to_level is None:
+        raise ValueError("Your Scouting Network is already at L3 — full national reach.")
+    cost = network_upgrade_cost(
+        to_level=to_level, scouting_head_rating=_scouting_head_rating(conn)
+    )
+    treasury = treasury_k(conn)
+    if treasury < cost:
+        raise ValueError(
+            f"Upgrading to L{to_level} costs ${cost}k; your treasury holds ${treasury}k."
+        )
+    set_treasury_k(conn, treasury - cost)
+    set_state(conn, NETWORK_LEVEL_STATE_KEY, str(to_level))
+    return {"level": to_level, "cost_k": cost, "treasury_k": treasury - cost}
+
+
+def _prospect_network_visible(conn, prospect, player_club_id: str) -> bool:
+    """Whether the user's current network opens this single prospect's sheet."""
+    from .persistence import load_clubs
+    from .scouting_network import prospect_fully_visible, reach_band_for_trajectory
+    from .world import district_neighbors
+
+    from .world import DISTRICT_REGIONS
+
+    club = load_clubs(conn).get(player_club_id)
+    home = getattr(club, "home_region", "") or ""
+    return prospect_fully_visible(
+        reach_band=reach_band_for_trajectory(prospect.hidden_trajectory),
+        hometown=prospect.hometown,
+        level=network_level(conn),
+        home_district=home,
+        neighbors=district_neighbors(home),
+        home_recognized=home in DISTRICT_REGIONS,
+    )
+
+
+def _name_only_row(prospect, reach_band: str, on_focus: bool) -> dict[str, Any]:
+    """A redacted board card for a prospect beyond your Scouting Network reach:
+    name + district only, no sheet, no actions (the vision's 'name without a
+    sheet'). The hint says exactly which level opens him."""
+    needed = 3 if reach_band == "NATIONAL" else 2
+    return {
+        "player_id": prospect.player_id,
+        "name": prospect.name,
+        "hometown": prospect.hometown,
+        "fully_visible": False,
+        "reach_band": reach_band,
+        "visibility_hint": (
+            f"{reach_band.title()}-reach prospect — raise your Scouting Network to "
+            f"L{needed} to open his sheet."
+        ),
+        "public_archetype": None,
+        "public_ovr_band": None,
+        "fit_score": None,
+        "interest": None,
+        "promise_options": [],
+        "active_promise": None,
+        "interest_evidence": [],
+        "pipeline_tier": None,
+        "scouted": False,
+        "ceiling_label": None,
+        "contacted": False,
+        "visited": False,
+        "recruiting_status": "UNSCOUTED",
+        "funnel_stage": None,
+        "on_focus_list": on_focus,
+        "can_contact": False,
+        "can_visit": False,
+        "visit_fixture": None,
+        "market_signal": None,
+        "motivations": [],
+        "dealbreaker": None,
+        "fit": None,
+    }
 
 # V24 Phase 4 funnel: the slot verbs are gated by how committed you are to a
 # prospect. Scout is always allowed; Contact requires shortlisting (on the focus
@@ -429,6 +595,29 @@ def _prospect_rows(
     )
     focus_rank_map = {pid: rank for rank, (pid, _interest) in enumerate(focus_interest)}
 
+    # V24 Phase 6: the money-gated Scouting Network decides whose full sheet you
+    # can open. Below your level a prospect is a NAME WITHOUT A SHEET. Pyramid
+    # only — legacy single-league saves see every prospect's sheet.
+    net_level = network_level(conn) if motivation_ctx is not None else None
+    home_district = (motivation_ctx.home_region or "") if motivation_ctx is not None else ""
+    neighbors: tuple[str, ...] = ()
+    visible_map: dict[str, bool] = {}
+    reach_map: dict[str, str] = {}
+    if motivation_ctx is not None:
+        from .scouting_network import prospect_fully_visible, reach_band_for_trajectory
+        from .world import DISTRICT_REGIONS, district_neighbors
+
+        neighbors = district_neighbors(home_district)
+        home_recognized = home_district in DISTRICT_REGIONS
+        for p in prospects:
+            band = reach_band_for_trajectory(p.hidden_trajectory)
+            reach_map[p.player_id] = band
+            visible_map[p.player_id] = prospect_fully_visible(
+                reach_band=band, hometown=p.hometown, level=net_level,
+                home_district=home_district, neighbors=neighbors,
+                home_recognized=home_recognized,
+            )
+
     # V24: surface the wide pyramid class (was hard-capped at the first 8),
     # strongest public estimate first — the vision's class-sized battle view.
     # Your focus targets always show, even if their public estimate is low.
@@ -436,13 +625,28 @@ def _prospect_rows(
         prospects,
         key=lambda p: -sum(p.public_ratings_band.get("ovr", (0, 0))),
     )
-    visible_prospects = ranked[:_RECRUIT_BOARD_SIZE]
-    visible_ids = {p.player_id for p in visible_prospects}
-    visible_prospects += [
-        p for p in ranked if p.player_id in focus_set and p.player_id not in visible_ids
+    if motivation_ctx is not None:
+        # Lead with the prospects you can actually scout; tail a few tantalizing
+        # names beyond your network (highest reach first) so the upgrade has a
+        # visible payoff, then always include your focus targets.
+        visible_ranked = [p for p in ranked if visible_map.get(p.player_id)]
+        hidden_ranked = sorted(
+            (p for p in ranked if not visible_map.get(p.player_id)),
+            key=lambda p: (-_REACH_ORDER.get(reach_map.get(p.player_id, ""), 0), p.player_id),
+        )
+        board_prospects = visible_ranked[:_RECRUIT_BOARD_SIZE] + hidden_ranked[:_HIDDEN_TEASER_CAP]
+    else:
+        board_prospects = ranked[:_RECRUIT_BOARD_SIZE]
+    board_ids = {p.player_id for p in board_prospects}
+    board_prospects += [
+        p for p in ranked if p.player_id in focus_set and p.player_id not in board_ids
     ]
     rows = []
-    for prospect in visible_prospects:
+    for prospect in board_prospects:
+        # V24 Phase 6: redact prospects beyond your network to a bare name card.
+        if motivation_ctx is not None and not visible_map.get(prospect.player_id, True):
+            rows.append(_name_only_row(prospect, reach_map[prospect.player_id], prospect.player_id in focus_set))
+            continue
         base_low, base_high = prospect.public_ratings_band["ovr"]
         pid = prospect.player_id
         p_actions = actions.get(pid, {})
@@ -509,6 +713,8 @@ def _prospect_rows(
             "can_visit": can_visit,
             "visit_fixture": visit_fixtures.get(pid),
             "market_signal": market_signals.get(pid),
+            "fully_visible": True,
+            "reach_band": reach_map.get(pid),
             **_motivation_fields(fit, scouted),
         })
     return rows
@@ -575,6 +781,16 @@ def apply_recruiting_action(
     # payload mirrors this (can_contact/can_visit) so the UI disables rather than
     # firing a doomed request — this is the server-side backstop.
     from .world import pyramid_world_active
+
+    # V24 Phase 6: a prospect beyond your Scouting Network is a name without a
+    # sheet — you cannot scout, contact, or visit him until you invest reach.
+    if pyramid_world_active(conn) and not _prospect_network_visible(
+        conn, prospect, player_club_id
+    ):
+        raise ValueError(
+            "This prospect is beyond your Scouting Network's reach — raise your "
+            "network to open his sheet first."
+        )
 
     if action in ("contact", "visit") and pyramid_world_active(conn):
         if prospect_id not in load_focus_list(conn):

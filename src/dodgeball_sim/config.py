@@ -206,6 +206,21 @@ RIVAL_PURSUIT_JITTER_SPAN = 16.0
 RIVAL_MOMENTUM_PER_WEEK = 0.8
 RIVAL_MOMENTUM_MAX = 12
 
+# V24 Phase 6: the money-gated Scouting Network. A per-club LEVEL (L1/L2/L3) gates
+# which prospects render a full sheet vs a bare name. L1 (your district +
+# neighbors) is the free founding baseline; upgrades are one-time treasury sinks,
+# compressed by the scouting head (staff_effects.scouting_network_cost_compression).
+# AI clubs carry a level by division tier (+ a deterministic blind-spot jitter),
+# so gems fall through the cracks. Costs are integer $k; probe-tuned vs V22
+# payouts (the table's L1=60 is the free founding baseline, not a purchase).
+NETWORK_UPGRADE_COSTS: Dict[int, int] = {2: 140, 3: 280}
+NETWORK_DEFAULT_LEVEL = 1
+NETWORK_MAX_LEVEL = 3
+# AI network level by division tier; a deterministic per-(season, club) jitter
+# can drop a club one level (a blind spot) so unrecruited gems happen organically.
+AI_NETWORK_LEVEL_BY_TIER: Dict[int, int] = {1: 3, 2: 2, 3: 1}
+AI_NETWORK_BLINDSPOT_RATE = 0.25
+
 
 # --- V22 Club Economy (config layer) ----------------------------------------
 # Owner (2026-06-11): "add a budget component… a financial management aspect"
@@ -267,6 +282,11 @@ __all__ = [
     "RIVAL_PURSUIT_JITTER_SPAN",
     "RIVAL_MOMENTUM_PER_WEEK",
     "RIVAL_MOMENTUM_MAX",
+    "NETWORK_UPGRADE_COSTS",
+    "NETWORK_DEFAULT_LEVEL",
+    "NETWORK_MAX_LEVEL",
+    "AI_NETWORK_LEVEL_BY_TIER",
+    "AI_NETWORK_BLINDSPOT_RATE",
     "DEFAULT_ECONOMY",
     "DifficultyProfile",
     "EconomyConfig",

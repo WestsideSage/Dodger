@@ -6,7 +6,7 @@ import sqlite3
 from .archetype_derivation import derive_archetype
 from .config import ScoutingBalanceConfig
 from .models import Player, PlayerArchetype, PlayerRatings, PlayerTraits
-from .rng import DeterministicRNG
+from .rng import DeterministicRNG, derive_seed
 from .scouting_center import Prospect, Trajectory
 from typing import Any, Dict, Optional, Sequence, Tuple
 
@@ -489,6 +489,49 @@ def _eligible_ai_offer_clubs(
     return eligible
 
 
+def _ai_network_visible_prospects(
+    club_id: str,
+    prospects: list,
+    *,
+    division_map: dict,
+    clubs: dict,
+    season_id: str,
+) -> list:
+    """The prospects an AI club's Scouting Network can see (V24 Phase 6).
+
+    Level by division tier (config.AI_NETWORK_LEVEL_BY_TIER) with a deterministic
+    per-(season, club) blind-spot jitter that can drop a club one level. The blind
+    spots are the point: they leave gems unrecruited (a national prodigy that no
+    L2 club can sign that year, a local kid only his region's clubs see)."""
+    from .scouting_network import (
+        ai_network_level,
+        prospect_fully_visible,
+        reach_band_for_trajectory,
+    )
+    from .world import DISTRICT_REGIONS, district_neighbors
+
+    seat = division_map.get(club_id)
+    tier = seat.tier if seat is not None else None
+    jitter = DeterministicRNG(derive_seed(0, "ai_network", season_id, club_id)).roll(0.0, 1.0)
+    level = ai_network_level(tier, jitter=jitter)
+    club = clubs.get(club_id)
+    home = getattr(club, "home_region", "") or ""
+    neighbors = district_neighbors(home)
+    home_recognized = home in DISTRICT_REGIONS
+    return [
+        p
+        for p in prospects
+        if prospect_fully_visible(
+            reach_band=reach_band_for_trajectory(p.hidden_trajectory),
+            hometown=p.hometown,
+            level=level,
+            home_district=home,
+            neighbors=neighbors,
+            home_recognized=home_recognized,
+        )
+    ]
+
+
 def _user_offer_strength(interest: float, fit_score: float, veto: bool) -> float:
     """The user's contested Signing Day offer strength. ``fit_score=0`` (legacy
     single-league) reproduces the V16 formula exactly. On pyramid saves, fit is
@@ -590,11 +633,25 @@ def _ensure_recruitment_prepared(
 
         division_map = load_division_map(conn, season_id)
     for profile in active_profiles:
+        # V24 Phase 6: AI clubs see only prospects within their Scouting Network
+        # reach (level by division tier + a deterministic blind-spot jitter), so
+        # gems fall through the cracks — a national prodigy is invisible to most
+        # D3 clubs, a far-district kid invisible to clubs outside his region. A
+        # club is never blinded to the WHOLE class (safety fallback). Pyramid
+        # only — division_map is empty on legacy single-league saves.
+        club_prospects = prospects
+        if division_map:
+            visible = _ai_network_visible_prospects(
+                profile.club_id, prospects, division_map=division_map,
+                clubs=clubs, season_id=season_id,
+            )
+            if visible:
+                club_prospects = visible
         board = build_recruitment_board(
             root_seed=root_seed,
             season_id=season_id,
             profile=profile,
-            prospects=prospects,
+            prospects=club_prospects,
             roster_needs=_default_roster_needs(),
         )
 
