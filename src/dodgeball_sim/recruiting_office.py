@@ -154,6 +154,12 @@ _RECRUIT_BOARD_SIZE = 25
 # list); Visit is reserved for your top targets.
 FUNNEL_STAGES = ("OPEN", "SHORTLIST", "TOP3", "VERBAL")
 FOCUS_LIST_STATE_KEY = "recruiting_focus_list_json"
+# V24 Phase 4 (remainder): a campus visit is hosted at one of your upcoming HOME
+# fixtures (the scheduler join). The binding (prospect_id -> fixture facts) is
+# persisted so the board can show where each recruit visits, and a visit is
+# refused when no home fixtures remain this season — you cannot host a visit
+# with no home game to host it at.
+VISIT_FIXTURES_STATE_KEY = "recruiting_visit_fixtures_json"
 
 
 def funnel_stage(*, on_focus_list: bool, interest: int, focus_rank, vetoed: bool) -> str:
@@ -197,6 +203,37 @@ def toggle_focus(conn, prospect_id: str) -> bool:
     current.append(prospect_id)
     set_state(conn, FOCUS_LIST_STATE_KEY, _json.dumps(current))
     return True
+
+
+def select_visit_fixture(
+    scheduled_matches,
+    *,
+    player_club_id: str,
+    current_week: int,
+    bound_match_ids: set[str],
+):
+    """The earliest upcoming HOME fixture available to host an official visit.
+
+    A visit is hosted at one of the user club's own home games at or after the
+    current week. ``bound_match_ids`` lets the caller exclude fixtures already
+    spoken for; returns ``None`` when no home fixture remains (the visit is then
+    refused — there is no home game left to host it at). Pure: no DB, no I/O.
+    """
+    candidates = [
+        m
+        for m in scheduled_matches
+        if m.home_club_id == player_club_id
+        and m.week >= current_week
+        and m.match_id not in bound_match_ids
+    ]
+    candidates.sort(key=lambda m: (m.week, m.match_id))
+    return candidates[0] if candidates else None
+
+
+def load_visit_fixtures(conn) -> dict[str, Any]:
+    """Persisted map of prospect_id -> the home fixture hosting his visit."""
+    stored = load_json_state(conn, VISIT_FIXTURES_STATE_KEY, {})
+    return dict(stored) if isinstance(stored, dict) else {}
 
 
 def _motivation_fields(fit, scouted: bool) -> dict[str, Any]:
@@ -255,6 +292,8 @@ def _prospect_rows(
     # V24 Phase 4: the persistent focus list. Rank focus-listed prospects by
     # interest so the funnel can mark your top targets (TOP3). Pyramid only.
     focus_set = set(load_focus_list(conn)) if motivation_ctx is not None else set()
+    # V24 Phase 4 (remainder): which home fixture hosts each recruit's visit.
+    visit_fixtures = load_visit_fixtures(conn) if motivation_ctx is not None else {}
     focus_interest = sorted(
         (
             (
@@ -350,6 +389,7 @@ def _prospect_rows(
             "on_focus_list": on_focus,
             "can_contact": can_contact,
             "can_visit": can_visit,
+            "visit_fixture": visit_fixtures.get(pid),
             **_motivation_fields(fit, scouted),
         })
     return rows
@@ -423,6 +463,47 @@ def apply_recruiting_action(
                 "Add this prospect to your focus list before you can contact or visit him."
             )
 
+    # V24 Phase 4 (remainder): a Visit is hosted at an upcoming HOME fixture.
+    # Schedule it against the next available home game; refuse if none remain.
+    # Pyramid only (legacy single-league saves keep the unscheduled visit).
+    visit_fixture: dict[str, Any] | None = None
+    if action == "visit" and pyramid_world_active(conn):
+        from .persistence import load_season
+
+        current_week = int(load_career_state_cursor(conn).week or 0)
+        bound = load_visit_fixtures(conn)
+        # Re-visiting a prospect keeps his already-booked fixture; otherwise the
+        # set of home games already hosting a visit is excluded so each visit
+        # books a distinct home game.
+        existing = bound.get(prospect_id)
+        if isinstance(existing, dict) and existing.get("match_id"):
+            visit_fixture = existing
+        else:
+            bound_ids = {
+                b["match_id"]
+                for b in bound.values()
+                if isinstance(b, dict) and b.get("match_id")
+            }
+            fixture = select_visit_fixture(
+                load_season(conn, season_id).scheduled_matches,
+                player_club_id=player_club_id,
+                current_week=current_week,
+                bound_match_ids=bound_ids,
+            )
+            if fixture is None:
+                raise ValueError(
+                    "No home fixtures remain this season to host an official visit — "
+                    "schedule visits earlier next year."
+                )
+            visit_fixture = {
+                "match_id": fixture.match_id,
+                "week": fixture.week,
+                "home_club_id": fixture.home_club_id,
+                "opponent_club_id": fixture.away_club_id,
+            }
+            bound[prospect_id] = visit_fixture
+            set_state(conn, VISIT_FIXTURES_STATE_KEY, json.dumps(bound))
+
     # V22 Phase 4: the SCOUTING head's quality scales how tightly this scout
     # narrows the band (staff_effects.scouting_band_quality, 0.70-1.30).
     from .persistence import load_department_heads
@@ -452,8 +533,6 @@ def apply_recruiting_action(
     # Pulse can report the recruiting work that actually happened this week
     # (it claimed "no prospect movement" forever — the reactions list was
     # never fed). Derivation source for use_cases.recruit_reactions_for_week.
-    from .persistence import load_career_state_cursor
-
     cursor = load_career_state_cursor(conn)
     log = load_json_state(conn, RECRUITING_WEEK_LOG_KEY, [])
     if not isinstance(log, list):
@@ -471,7 +550,10 @@ def apply_recruiting_action(
         }
     )
     set_state(conn, RECRUITING_WEEK_LOG_KEY, json.dumps(log[-120:]))
-    return result.to_dict()
+    payload = result.to_dict()
+    if visit_fixture is not None:
+        payload["visit_fixture"] = visit_fixture
+    return payload
 
 
 def recruit_reactions_for_week(
