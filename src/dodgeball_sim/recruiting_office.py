@@ -236,6 +236,108 @@ def load_visit_fixtures(conn) -> dict[str, Any]:
     return dict(stored) if isinstance(stored, dict) else {}
 
 
+def compute_market_signals(
+    conn: sqlite3.Connection,
+    season_id: str,
+    player_club_id: str,
+    *,
+    prospect_ids: list[str],
+) -> dict[str, dict[str, Any]]:
+    """V24 Phase 5: the in-season interest race for the given prospects.
+
+    For each prospect, derive the AI clubs courting him — a deterministic
+    talent+tier pursuit proxy (prospect_market.derive_club_pursuit), gated by
+    WILLINGNESS (a club he would veto on his dealbreaker is not a real suitor) —
+    and how the user's tracked interest leads or trails the strongest rival.
+    Returns a map prospect_id -> MarketSignal.to_dict(). Pyramid only (the world
+    of rival clubs); empty on legacy single-league saves.
+    """
+    from .world import pyramid_world_active
+
+    if not pyramid_world_active(conn):
+        return {}
+
+    from .config import RIVAL_SUITORS_SHOWN
+    from .motivations import build_club_context, club_fit
+    from .persistence import (
+        load_clubs,
+        load_command_history_all_seasons,
+        load_division_map,
+    )
+    from .prospect_market import RivalSuitor, build_market_signal, derive_club_pursuit
+
+    persisted = load_prospect_pool(conn, _class_year_from_season(season_id))
+    by_id = {p.player_id: p for p in persisted}
+    wanted = [by_id[pid] for pid in prospect_ids if pid in by_id]
+    if not wanted:
+        return {}
+
+    clubs = load_clubs(conn)
+    division_map = load_division_map(conn, season_id)
+    actions = load_json_state(conn, "prospect_recruitment_actions_json", {})
+    cred = _credibility_score(
+        conn, season_id, player_club_id, load_command_history_all_seasons(conn)
+    )
+    rival_club_ids = [cid for cid in sorted(clubs) if cid != player_club_id]
+    ctx_cache: dict[str, Any] = {}
+
+    signals: dict[str, dict[str, Any]] = {}
+    for prospect in wanted:
+        high_band = float(prospect.public_ratings_band["ovr"][1])
+        user_interest = current_interest(
+            actions.get(prospect.player_id, {}),
+            pipeline_tier=prospect.pipeline_tier,
+            credibility_score=cred,
+        )
+        # Cheap pass: rank every rival club by talent+tier pursuit.
+        scored = []
+        for club_id in rival_club_ids:
+            seat = division_map.get(club_id)
+            jitter = DeterministicRNG(
+                derive_seed(0, "v24_rival", str(prospect.player_id), str(club_id))
+            ).roll(0.0, 1.0)
+            pursuit = derive_club_pursuit(
+                public_high_band=high_band,
+                tier=seat.tier if seat is not None else None,
+                jitter=jitter,
+            )
+            scored.append((pursuit, club_id, seat))
+        scored.sort(key=lambda t: (-t[0], t[1]))
+
+        # Willingness gate: build context only for the strongest candidates and
+        # drop any the prospect would veto (he won't go there). Buffer a few so a
+        # veto doesn't shrink the shown list below the cap.
+        rivals: list[RivalSuitor] = []
+        for pursuit, club_id, seat in scored[: RIVAL_SUITORS_SHOWN + 4]:
+            if club_id not in ctx_cache:
+                ctx_cache[club_id] = build_club_context(conn, club_id, season_id)
+            fit = club_fit(ctx_cache[club_id], prospect)
+            if fit.veto:
+                continue
+            club = clubs.get(club_id)
+            club_name = getattr(club, "name", club_id)
+            tier_label = seat.division_name if seat is not None else "the wider world"
+            cared = [g for g in fit.grades.values() if g.cared]
+            best = max(cared, key=lambda g: g.score) if cared else None
+            note = f"; he rates their {best.label} {best.letter}" if best else ""
+            rivals.append(
+                RivalSuitor(
+                    club_id=club_id,
+                    club_name=club_name,
+                    tier=seat.tier if seat is not None else None,
+                    interest=pursuit,
+                    receipt=f"{club_name} ({tier_label}) is in the race{note}.",
+                )
+            )
+            if len(rivals) >= RIVAL_SUITORS_SHOWN:
+                break
+
+        signals[prospect.player_id] = build_market_signal(
+            user_interest=user_interest, rivals=rivals
+        ).to_dict()
+    return signals
+
+
 def _motivation_fields(fit, scouted: bool) -> dict[str, Any]:
     """V24 board motivation view from a precomputed ``Fit``: the prospect's
     visible cared-about grades plus his dealbreaker (revealed only once
@@ -294,6 +396,22 @@ def _prospect_rows(
     focus_set = set(load_focus_list(conn)) if motivation_ctx is not None else set()
     # V24 Phase 4 (remainder): which home fixture hosts each recruit's visit.
     visit_fixtures = load_visit_fixtures(conn) if motivation_ctx is not None else {}
+    # V24 Phase 5: the in-season interest race for your focused targets. Stored
+    # signals are authoritative (written on each courtship action); any focused
+    # prospect without one yet gets a freshly derived signal so the board never
+    # hides his rivals.
+    market_signals: dict[str, Any] = {}
+    if motivation_ctx is not None and focus_set:
+        from .persistence import load_prospect_market_signals
+
+        market_signals = dict(load_prospect_market_signals(conn, season_id))
+        missing = [pid for pid in focus_set if pid not in market_signals]
+        if missing:
+            market_signals.update(
+                compute_market_signals(
+                    conn, season_id, player_club_id, prospect_ids=missing
+                )
+            )
     focus_interest = sorted(
         (
             (
@@ -390,6 +508,7 @@ def _prospect_rows(
             "can_contact": can_contact,
             "can_visit": can_visit,
             "visit_fixture": visit_fixtures.get(pid),
+            "market_signal": market_signals.get(pid),
             **_motivation_fields(fit, scouted),
         })
     return rows
@@ -504,6 +623,27 @@ def apply_recruiting_action(
             bound[prospect_id] = visit_fixture
             set_state(conn, VISIT_FIXTURES_STATE_KEY, json.dumps(bound))
 
+    # V24 Phase 5: the in-season interest race. Compute the PRE-action market
+    # signal once (pyramid courtship only) so momentum keys off whether the user
+    # was already leading, and the refreshed signal can be persisted afterward.
+    pre_signal: dict[str, Any] | None = None
+    momentum_bonus = 0
+    if action in ("contact", "visit") and pyramid_world_active(conn):
+        from .persistence import load_season
+        from .prospect_market import leading_momentum_bonus
+
+        pre_signal = compute_market_signals(
+            conn, season_id, player_club_id, prospect_ids=[prospect_id]
+        ).get(prospect_id)
+        leading = bool(pre_signal and pre_signal["leader"] == "user")
+        cur_week = int(load_career_state_cursor(conn).week or 0)
+        max_week = max(
+            (m.week for m in load_season(conn, season_id).scheduled_matches), default=0
+        )
+        momentum_bonus = leading_momentum_bonus(
+            weeks_remaining=max(0, max_week - cur_week), leading=leading
+        )
+
     # V22 Phase 4: the SCOUTING head's quality scales how tightly this scout
     # narrows the band (staff_effects.scouting_band_quality, 0.70-1.30).
     from .persistence import load_department_heads
@@ -526,8 +666,43 @@ def apply_recruiting_action(
         gain_multiplier=interest_gain_multiplier,
         scout_quality=scout_quality,
     )
+
+    # V24 Phase 5: a leading user's courtship compounds — add the momentum bonus
+    # (computed pre-action) on top of the normal gain, clamped, and say so.
+    if momentum_bonus:
+        from dataclasses import replace as _replace
+
+        bumped = max(0, min(100, int(result.interest_after) + momentum_bonus))
+        added = bumped - int(result.interest_after)
+        if added:
+            new_state = dict(new_state)
+            new_state["interest"] = bumped
+            result = _replace(
+                result,
+                interest_after=bumped,
+                headline=f"{result.headline} You lead the race — momentum +{added}%.",
+            )
+
     actions[prospect_id] = new_state
     set_state(conn, "prospect_recruitment_actions_json", json.dumps(actions))
+
+    # V24 Phase 5: persist the refreshed interest-race signal (revives the
+    # prospect_market_signal table) so the board + receipts read a stored value.
+    # Rivals are talent/tier-derived (independent of this action), so the
+    # post-action signal is the pre-action one with the user's new interest.
+    if pre_signal is not None:
+        from .persistence import save_prospect_market_signal
+
+        top = int(pre_signal["top_rival_interest"])
+        new_interest = int(new_state.get("interest", pre_signal["user_interest"]))
+        rivals = pre_signal["rivals"]
+        post_signal = dict(pre_signal)
+        post_signal["user_interest"] = new_interest
+        post_signal["user_lead"] = new_interest - top
+        post_signal["leader"] = (
+            "user" if new_interest >= top else (rivals[0]["club_id"] if rivals else "user")
+        )
+        save_prospect_market_signal(conn, season_id, prospect_id, post_signal)
 
     # PT4-05: week-stamp every action so the post-week debrief's Prospect
     # Pulse can report the recruiting work that actually happened this week

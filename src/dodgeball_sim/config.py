@@ -188,6 +188,24 @@ CONTESTED_VETO_OFFER_FLOOR = 25.0
 # commitment signal.
 VERBAL_INTEREST_THRESHOLD = 80
 
+# V24 Phase 5: visible rival suitors + the in-season interest race. Each focused
+# prospect surfaces up to RIVAL_SUITORS_SHOWN named AI suitors; rival pursuit is
+# a deterministic talent+tier proxy with a per-(prospect, club) jitter of this
+# span (prospect_market.derive_club_pursuit). Leading the race compounds: while
+# the user's interest leads, courtship lands a bonus of PER_WEEK × weeks-left,
+# capped at MAX, so an early lead beats a late entry at equal effort. Sim-design
+# with probe evidence (tools/rival_momentum_probe.py), never real-world fidelity.
+RIVAL_SUITORS_SHOWN = 3
+# Rival pursuit is on the same 0-100 scale as the user's courtship interest, so
+# the race is winnable: a rival's pursuit is a DAMPENED read of the talent it can
+# see (weight < 1) plus its tier's upside appetite. Without the damping, every
+# good prospect's rivals would sit near 100 and no amount of courtship could ever
+# lead — the race would be theater. Probe-tuned (tools/rival_momentum_probe.py).
+RIVAL_PURSUIT_TALENT_WEIGHT = 0.65
+RIVAL_PURSUIT_JITTER_SPAN = 16.0
+RIVAL_MOMENTUM_PER_WEEK = 0.8
+RIVAL_MOMENTUM_MAX = 12
+
 
 # --- V22 Club Economy (config layer) ----------------------------------------
 # Owner (2026-06-11): "add a budget component… a financial management aspect"
@@ -243,6 +261,12 @@ __all__ = [
     "CONTESTED_USER_OFFER_INTEREST_WEIGHT",
     "CONTESTED_VETO_OFFER_FLOOR",
     "MOTIVATION_FIT_WEIGHT",
+    "VERBAL_INTEREST_THRESHOLD",
+    "RIVAL_SUITORS_SHOWN",
+    "RIVAL_PURSUIT_TALENT_WEIGHT",
+    "RIVAL_PURSUIT_JITTER_SPAN",
+    "RIVAL_MOMENTUM_PER_WEEK",
+    "RIVAL_MOMENTUM_MAX",
     "DEFAULT_ECONOMY",
     "DifficultyProfile",
     "EconomyConfig",
