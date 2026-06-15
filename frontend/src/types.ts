@@ -1228,6 +1228,22 @@ export interface RecruitmentProspectChoice {
     promised?: boolean;
     /** Courtship interest (%): strengthens the contested Signing Day offer. */
     interest?: number;
+    /** V24 Phase 7: the same motivation grades + dealbreaker the in-season board
+        showed, so the picker never knows less. Empty/null on legacy saves. */
+    motivations?: Array<{
+        motivation: string;
+        label: string;
+        letter: string;
+        receipt: string;
+    }>;
+    dealbreaker?: {
+        motivation: string;
+        label: string;
+        letter: string;
+        receipt: string;
+        veto: boolean;
+    } | null;
+    fit?: number | null;
 }
 
 /** Resolution of a Signing Day pick through the contested round (V16). */

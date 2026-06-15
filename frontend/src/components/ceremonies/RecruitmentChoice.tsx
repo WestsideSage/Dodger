@@ -308,6 +308,32 @@ export function RecruitmentChoice({
                     <p style={{ margin: '0.15rem 0 0', fontSize: '0.74rem', color: '#94a3b8' }}>
                       {prospect.archetype} · {prospect.hometown} · Age {prospect.age}
                     </p>
+                    {/* V24 Phase 7: the same motivation grades + dealbreaker the
+                        in-season board showed — the picker never knows less. */}
+                    {prospect.motivations && prospect.motivations.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', margin: '0.3rem 0 0' }}>
+                        {prospect.motivations.map(m => (
+                          <span
+                            key={m.motivation}
+                            className="dm-badge dm-badge-slate"
+                            title={m.receipt}
+                            style={{ fontSize: '0.55rem' }}
+                          >
+                            {m.label} <strong>{m.letter}</strong>
+                          </span>
+                        ))}
+                        {prospect.dealbreaker && (
+                          <span
+                            className={`dm-badge ${prospect.dealbreaker.veto ? 'dm-badge-orange' : 'dm-badge-violet'}`}
+                            title={prospect.dealbreaker.receipt}
+                            style={{ fontSize: '0.55rem' }}
+                          >
+                            ★ {prospect.dealbreaker.label} {prospect.dealbreaker.letter}
+                            {prospect.dealbreaker.veto ? " — WON'T VERBAL" : ''}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     {prospect.kind === 'prospect' && prospect.public_ovr_band ? (

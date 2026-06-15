@@ -744,10 +744,22 @@ def build_news_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         (season_id,),
     ).fetchall()
     items = build_wire_items(match_rows, clubs, load_awards(conn, season_id), rosters)
-    return {
-        "season_id": season_id,
-        "items": [
-            {"tag": item.tag, "text": item.text, "match_id": item.match_id, "player_id": item.player_id}
-            for item in items[:20]
-        ],
-    }
+    payload_items = [
+        {"tag": item.tag, "text": item.text, "match_id": item.match_id, "player_id": item.player_id}
+        for item in items[:20]
+    ]
+    # V24 class wire: league-wide elite-signing lines (news_headlines, category
+    # "class_wire") ride at the top of the wire — the chase target's destination.
+    from .persistence import load_news_headlines
+
+    for headline in load_news_headlines(conn, season_id):
+        if headline.get("category") != "class_wire":
+            continue
+        entity_ids = headline.get("entity_ids") or []
+        payload_items.insert(0, {
+            "tag": "Class Wire",
+            "text": headline["headline_text"],
+            "match_id": None,
+            "player_id": entity_ids[0] if entity_ids else None,
+        })
+    return {"season_id": season_id, "items": payload_items}

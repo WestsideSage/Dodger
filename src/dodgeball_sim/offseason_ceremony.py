@@ -874,40 +874,61 @@ def available_recruitment_choices(
         if p.get("status") == "open"
     }
 
+    # V24 Phase 7: the picker must not know less than the in-season board — carry
+    # the same motivation grades + dealbreaker (pyramid only). One club context.
+    from .world import pyramid_world_active
+
+    motivation_ctx = None
+    if pyramid_world_active(conn):
+        from .motivations import build_club_context
+
+        player_club_id = get_state(conn, "player_club_id") or ""
+        season_id = get_state(conn, "active_season_id")
+        if player_club_id:
+            motivation_ctx = build_club_context(conn, player_club_id, season_id)
+
     choices: list[dict[str, Any]] = []
     for prospect in _available_prospect_players(conn, class_year):
         state = actions.get(prospect.player_id, {})
         low, high = _scouted_band(prospect, state)
         from .recruiting_office import _scouted_ceiling_label
 
-        choices.append(
-            {
-                "prospect_id": prospect.player_id,
-                "name": prospect.name,
-                "age": prospect.age,
-                "hometown": prospect.hometown,
-                "archetype": prospect.public_archetype_guess,
-                "kind": "prospect",
-                "pipeline_tier": prospect.pipeline_tier,
-                "public_ovr_band": [low, high],
-                "scouted": bool(state.get("scouted")),
-                # Same scout-gated ceiling grade the in-season board shows —
-                # the picker must not know less than the board the player
-                # built their shortlist on (playtest 3 elite reveal).
-                "ceiling_label": _scouted_ceiling_label(
-                    prospect, bool(state.get("scouted"))
-                ),
-                "contacted": bool(state.get("contacted")),
-                "visited": bool(state.get("visited")),
-                "interest": current_interest(
-                    state,
-                    pipeline_tier=prospect.pipeline_tier,
-                    credibility_score=credibility,
-                ),
-                "fit_score": round((low + high) / 2.0 + credibility * 0.12),
-                "promised": prospect.player_id in promised_ids,
-            }
-        )
+        choice = {
+            "prospect_id": prospect.player_id,
+            "name": prospect.name,
+            "age": prospect.age,
+            "hometown": prospect.hometown,
+            "archetype": prospect.public_archetype_guess,
+            "kind": "prospect",
+            "pipeline_tier": prospect.pipeline_tier,
+            "public_ovr_band": [low, high],
+            "scouted": bool(state.get("scouted")),
+            # Same scout-gated ceiling grade the in-season board shows —
+            # the picker must not know less than the board the player
+            # built their shortlist on (playtest 3 elite reveal).
+            "ceiling_label": _scouted_ceiling_label(
+                prospect, bool(state.get("scouted"))
+            ),
+            "contacted": bool(state.get("contacted")),
+            "visited": bool(state.get("visited")),
+            "interest": current_interest(
+                state,
+                pipeline_tier=prospect.pipeline_tier,
+                credibility_score=credibility,
+            ),
+            "fit_score": round((low + high) / 2.0 + credibility * 0.12),
+            "promised": prospect.player_id in promised_ids,
+        }
+        if motivation_ctx is not None:
+            from .motivations import club_fit
+            from .recruiting_office import _motivation_fields
+
+            choice.update(
+                _motivation_fields(
+                    club_fit(motivation_ctx, prospect), bool(state.get("scouted"))
+                )
+            )
+        choices.append(choice)
     choices.sort(
         key=lambda c: (
             -(c["public_ovr_band"][0] + c["public_ovr_band"][1]),

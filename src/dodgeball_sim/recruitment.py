@@ -809,7 +809,57 @@ def _apply_round_signings(
             roster = list(load_all_rosters(conn).get(signing.club_id, []))
             save_lineup_default(conn, signing.club_id, optimize_ai_lineup(roster))
         signed_players[signing.player_id] = player
+
+    # V24 class wire: a league-wide news line whenever a STAR/GENERATIONAL
+    # prospect signs anywhere (this chokepoint covers both the user's contested
+    # round and the AI offseason sweep).
+    from .persistence import get_state
+
+    season_id = get_state(conn, "active_season_id")
+    if season_id:
+        _emit_class_wire(conn, season_id, result.signings, prospects_by_id, clubs)
     return signed_players
+
+
+def _emit_class_wire(conn, season_id, signings, prospects_by_id, clubs) -> None:
+    """Write a class-wire headline (reusing news_headlines) for each STAR or
+    GENERATIONAL prospect that signs. Idempotent per (season, prospect)."""
+    from .persistence import load_news_headlines, save_news_headlines
+
+    elite = []
+    for signing in signings:
+        prospect = prospects_by_id.get(signing.player_id)
+        if prospect is None:
+            continue
+        if prospect.hidden_trajectory not in (
+            Trajectory.STAR.value,
+            Trajectory.GENERATIONAL.value,
+        ):
+            continue
+        elite.append((signing, prospect))
+    if not elite:
+        return
+
+    existing = {h["headline_id"] for h in load_news_headlines(conn, season_id)}
+    rows = []
+    for signing, prospect in elite:
+        headline_id = f"classwire_{season_id}_{signing.player_id}"
+        if headline_id in existing:
+            continue
+        club_name = getattr(clubs.get(signing.club_id), "name", signing.club_id)
+        arc = (
+            "generational"
+            if prospect.hidden_trajectory == Trajectory.GENERATIONAL.value
+            else "star"
+        )
+        rows.append({
+            "headline_id": headline_id,
+            "category": "class_wire",
+            "headline_text": f"CLASS WIRE: {club_name} land {arc}-arc prospect {prospect.name}",
+            "entity_ids": [signing.player_id, signing.club_id],
+        })
+    if rows:
+        save_news_headlines(conn, season_id, 0, rows)
 
 
 def conduct_recruitment_round(
