@@ -262,21 +262,24 @@ class ContractConfig:
     entry_term: int = 3
     # STANDARD entry deals: tier-standardized, ABILITY-BLIND (money enters at the
     # second contract). Keyed by tier (1=Premier, 2=Challenger, 3=District /
-    # Circuit default).
+    # Circuit default). Phase 7: tuned so a full squad's wages stay a MODERATE
+    # fraction of the tier's prize money (squeeze, never tyranny).
     entry_salary_by_tier: Mapping[int, int] = field(
-        default_factory=lambda: {1: 22, 2: 14, 3: 8}
+        default_factory=lambda: {1: 14, 2: 9, 3: 5}
     )
     # Second contracts price ability: floor + per_ovr*(OVR - pivot), x tier mult.
-    second_base_k: int = 8
-    second_per_ovr_k: float = 0.8
+    # Phase 7: a competitive squad's wage bill lands at ~25-40% of tier income.
+    second_base_k: int = 6
+    second_per_ovr_k: float = 0.35
     second_ovr_pivot: int = 60
     second_tier_multiplier: Mapping[int, float] = field(
-        default_factory=lambda: {1: 1.8, 2: 1.35, 3: 1.0}
+        default_factory=lambda: {1: 1.4, 2: 1.2, 3: 1.0}
     )
     second_term_default: int = 3
     # AI wage BUDGET caps (no balance tracked) — gate poach/re-sign aggression.
+    # Tuned to bite once a club's squad develops into its cap, not on raw rookies.
     wage_budget_by_tier: Mapping[int, int] = field(
-        default_factory=lambda: {1: 420, 2: 240, 3: 140}
+        default_factory=lambda: {1: 230, 2: 140, 3: 75}
     )
     # Buyout fee / AI asking price = factor * salary * term_remaining.
     buyout_fee_factor: float = 2.0

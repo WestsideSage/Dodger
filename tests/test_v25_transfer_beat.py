@@ -79,6 +79,11 @@ def _seed_user(conn, user_club, expiring_ovr=80, contracted_ovr=90):
                                                         dodge=contracted_ovr, catch=contracted_ovr)))
         else:
             seeded.append(replace(p, salary_k=12, contract_term=2))
+    # Pad above the roster floor (6) so a single release/poach can actually
+    # depart — the commit protects the floor (you can't field fewer than six).
+    while len(seeded) < 8:
+        src = seeded[len(seeded) % len(roster)]
+        seeded.append(replace(src, id=f"pad_{len(seeded)}", salary_k=10, contract_term=2))
     save_club(conn, club, seeded)
     conn.commit()
 
@@ -178,6 +183,24 @@ def test_build_beat_payload_transfer_branch_renders_cached_state():
     assert "expiring" in payload and "buyouts" in payload
     assert payload["committed"] is False
     assert isinstance(payload["treasury_k"], int)
+
+
+def test_commit_protects_the_roster_floor():
+    # A thin squad where every player expires and is released must still field a
+    # legal six after the commit (auto-pilot can never strand the roster below 6).
+    conn, user_club = _founding_conn()
+    club = load_clubs(conn)[user_club]
+    roster = load_club_roster(conn, user_club)  # exactly 6 on a fresh founder
+    save_club(conn, club, [replace(p, salary_k=15, contract_term=0) for p in roster])
+    conn.commit()
+    state = tm.build_user_transfer_state(conn, user_club_id=user_club, season_id=get_state(conn, "active_season_id"), root_seed=_SEED, config=_OPEN)
+    # Mark them all to walk.
+    for r in state["expiring"]:
+        r["decision"] = "release"
+        r["user_offer_k"] = 0
+    tm.save_user_transfer_state(conn, state)
+    tm.apply_user_transfer_decisions(conn, get_state(conn, "active_season_id"), user_club, _SEED, _OPEN)
+    assert len(load_club_roster(conn, user_club)) >= 6
 
 
 def test_commit_is_idempotent():

@@ -737,22 +737,28 @@ def apply_user_transfer_decisions(
     rosters = load_all_rosters(conn)
     roster = {p.id: p for p in rosters.get(user_club_id, [])}
 
-    # 2) Expiring players — contested resolution per decision.
+    # 2) Expiring players — contested resolution per decision. A departure is
+    # capped at the roster floor: you cannot release/lose your way below a legal
+    # fielded six (mirrors the AI's must_keep), so auto-pilot never stalls.
     for player_id, dec in decisions.items():
         player = roster.get(player_id)
         if player is None:
             continue  # already sold above
         ask, fit, suitors = _expiring_context(conn, season_id, user_club_id, player, root_seed, config)
-        user_offer = int(dec.get("user_offer_k", ask)) if dec.get("decision") != "release" else 0
+        is_release = dec.get("decision") == "release"
+        user_offer = 0 if is_release else int(dec.get("user_offer_k", ask))
         res = resolve_poaching(
             player_id=player_id, user_offer_k=user_offer, expected_salary_k=ask,
             fit=fit.fit, veto=fit.veto, dealbreaker_letter=grade_letter(fit.grades[fit.dealbreaker].score),
             suitors=suitors, salary_k=player.salary_k, term_remaining=max(1, player.contract_term),
             config=config,
         )
-        if res.stayed:
-            roster[player_id] = replace(player, salary_k=user_offer, contract_term=config.resign_term_default)
-            resigned.append({"name": player.name, "salary_k": user_offer})
+        must_keep = len(roster) <= config.min_roster_after_transfer
+        if res.stayed or must_keep:
+            # Forced keep (floor) re-signs at his ask so he is on a real deal.
+            keep_salary = user_offer if (res.stayed and not is_release) else ask
+            roster[player_id] = replace(player, salary_k=keep_salary, contract_term=config.resign_term_default)
+            resigned.append({"name": player.name, "salary_k": keep_salary})
         else:
             roster.pop(player_id, None)
             if res.winner_club_id and res.winner_club_id in clubs:

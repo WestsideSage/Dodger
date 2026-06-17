@@ -15,7 +15,38 @@ fans/facilities/bench roles, the event calendar, and the emergent-meta layer —
 in that order (V23 World first). That doc is the planning authority for what
 comes next; this file remains build-state truth.
 
-**V24 — The Board: IN PROGRESS (branch `feature/v24-the-board`, 2026-06-12;
+**V25 — The Market: DONE on the branch `feature/v24-the-board` (2026-06-17;
+NOT yet on main).** Spec: `docs/specs/2026-06-17-v25-the-market-spec.md`;
+plan: `docs/specs/2026-06-17-v25-the-market-sprint-plan.md`; retro:
+`docs/retrospectives/2026-06-17-v25-the-market-retrospective.md`. All 7 phases
+shipped, full `python -m pytest -q` green (real exit code, no pipe), `npm run
+build` + `npm run lint` clean. Money enters a *player's* story: every player
+carries `salary_k` + `contract_term` (JSON-blob fields, no migration, `.get()`
+defaults → legacy byte-identical); `contracts.py` is the single formula home;
+STANDARD ability-blind entry deals at signing + a self-healing pricing pass; a
+player wage bill is a new `apply_season_finances` outflow (named in the Recap
+Finances block). Retention is recruiting's mirror
+(`transfer_market.evaluate_retention` reuses V24 `club_fit` on a rostered player
+vs his own club; the dealbreaker veto walks him at any price). Uphill poaching
+(`poach_suitors` + `resolve_poaching`): higher-tier money with wage headroom
+hunts the user's expiring stars, motivations break ties, departures carry
+receipts + dev-comp. Refusable incoming buyouts + outgoing bids. AI symmetry
+(`run_ai_transfer_period`): AI clubs re-sign/release on the same grades under a
+tier wage-budget cap (no AI treasuries) — real churn + a transfer ledger + a
+news line. A new commit-on-advance `transfer_period` offseason beat (frontend
+`TransferPeriod.tsx`) lets the user re-sign / let-walk / accept-or-refuse
+buyouts; the commit protects the roster floor. Whole layer behind
+`pyramid_world_active` (legacy byte-identical). **Probes:** `poach_retention_probe`
+(grades flip 6/6), `roster_fortress_probe` (movement > 0/offseason), `squeeze_probe`
+(wages 18/24/28% of tier income — squeeze, never spiral). **Findings fixed
+mid-build:** self-healing pricing (no $0-wage squeeze-dodge), an offseason
+beat-index clamp bug (`_MAX_OFFSEASON_BEAT_INDEX` made the final beat
+unreachable), a roster-floor guard so auto-pilot never strands < 6, and a
+wage-scale recalibration to MODERATE. **Disclosed deferrals:** player-hometown
+for the retention Hometown grade, full AI-vs-AI transfers, Circuit-tier poaching
+of Premier stars — see the retro.
+
+**V24 — The Board: DONE on the branch `feature/v24-the-board` (2026-06-12;
 NOT yet on main).** Spec: `docs/specs/2026-06-12-v24-the-board-spec.md` (7
 phases). Phases 1–3 implemented + verified on the branch, each its own commit,
 full `python -m pytest -q` green after each:
