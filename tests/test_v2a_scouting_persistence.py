@@ -40,14 +40,14 @@ from dodgeball_sim.scouting_center import (
 
 
 def test_schema_version_is_current():
-    assert CURRENT_SCHEMA_VERSION == 18
+    assert CURRENT_SCHEMA_VERSION == 19
 
 
 def test_create_schema_creates_v2a_tables():
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     create_schema(conn)
-    assert get_schema_version(conn) == 18
+    assert get_schema_version(conn) == CURRENT_SCHEMA_VERSION
 
     expected_tables = {
         "prospect_pool",
@@ -83,7 +83,7 @@ def test_v7_to_v10_migration_idempotent():
     assert get_schema_version(conn) == 10
 
     create_schema(conn)
-    assert get_schema_version(conn) == 18
+    assert get_schema_version(conn) == CURRENT_SCHEMA_VERSION
 
 
 def test_prospect_pool_table_columns():

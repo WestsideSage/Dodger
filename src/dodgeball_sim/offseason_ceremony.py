@@ -735,6 +735,16 @@ def initialize_manager_offseason(
             standings=load_standings(conn, season.season_id),
         )
 
+    # V26: grow club prestige (all clubs — ports the dormant CLI award to web so
+    # V24 Contender/credibility finally rise) and the user's fan ledger from this
+    # season's real events. Pyramid-gated; legacy single-league saves untouched.
+    from .world import pyramid_world_active as _v26_pyramid_active
+
+    if _v26_pyramid_active(conn):
+        from .fan_economy import award_season_fans_and_prestige
+
+        award_season_fans_and_prestige(conn, season.season_id)
+
     # Training owns player GROWTH; medical owns age-DECLINE mitigation
     # (V22 Phase 4 — each head's rating feeds its own development path,
     # disclosed on the hiring cards via staff_effects).

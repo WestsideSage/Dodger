@@ -338,6 +338,37 @@ class FacilityConfig:
 DEFAULT_FACILITIES = FacilityConfig()
 
 
+# V26 The Crowd — fan-ledger gains by event + fan-income rates. Proposed
+# sim-design tuned in Phase 7; income kept a meaningful margin, never prize
+# money's rival. All defaults safe for legacy (no fans → no income).
+@dataclass(frozen=True)
+class FanConfig:
+    # Club fans by event.
+    fans_per_win: int = 60
+    fans_promotion: int = 1200
+    fans_title: int = 1500
+    fans_cup: int = 600
+    fans_worlds_final: int = 2000
+    fans_worlds_win: int = 4000
+    # Player followers by event (Phase 3).
+    followers_mvp: int = 800
+    followers_record: int = 600
+    followers_milestone: int = 400
+    followers_district_tie: int = 150
+    # Fan income (Phase 4): matchday per fan drawn, merch per 1k fans; stadium
+    # capacity = base x (1 + owned-stadium) x tier.
+    matchday_per_fan_k: float = 0.012
+    merch_per_1k_fans_k: float = 0.9
+    stadium_base_capacity: int = 4000
+    stadium_facility_bonus: int = 6000
+    stadium_tier_capacity: Mapping[int, int] = field(
+        default_factory=lambda: {1: 9000, 2: 5000, 3: 2500}
+    )
+
+
+DEFAULT_FANS = FanConfig()
+
+
 def get_config(version: str | None = None) -> BalanceConfig:
     """Return the requested config, defaulting to the latest entry."""
 
@@ -360,6 +391,8 @@ __all__ = [
     "DEFAULT_CONTRACTS",
     "FacilityConfig",
     "DEFAULT_FACILITIES",
+    "FanConfig",
+    "DEFAULT_FANS",
     "CONTESTED_USER_OFFER_BASE",
     "CONTESTED_USER_OFFER_INTEREST_WEIGHT",
     "CONTESTED_VETO_OFFER_FLOOR",
