@@ -96,6 +96,8 @@ def _player_to_dict(player: Player) -> Dict[str, Any]:
         "age": player.age,
         "club_id": player.club_id,
         "newcomer": player.newcomer,
+        "salary_k": player.salary_k,
+        "contract_term": player.contract_term,
         "archetype": player.archetype.value if isinstance(player.archetype, PlayerArchetype) else str(player.archetype),
         "ratings": {
             "accuracy": ratings.accuracy,
@@ -157,6 +159,8 @@ def _player_from_dict(d: Dict[str, Any]) -> Player:
         age=d.get("age", 18),
         club_id=d.get("club_id"),
         newcomer=d.get("newcomer", True),
+        salary_k=d.get("salary_k", 0),
+        contract_term=d.get("contract_term", 1),
         archetype=archetype,
         ratings=PlayerRatings(
             accuracy=int(round(float(r["accuracy"]))),

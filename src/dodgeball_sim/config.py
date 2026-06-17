@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
-from typing import Dict
+from dataclasses import dataclass, field, replace
+from typing import Dict, Mapping
 
 
 @dataclass(frozen=True)
@@ -254,6 +254,39 @@ class EconomyConfig:
 DEFAULT_ECONOMY = EconomyConfig()
 
 
+# V25 The Market — player contract knobs. Proposed sim-design; tuned in Phase 7
+# against the squeeze-never-spiral invariant and the poach/retention probe.
+# Amounts are integer thousands; never claimed as real-world fidelity.
+@dataclass(frozen=True)
+class ContractConfig:
+    entry_term: int = 3
+    # STANDARD entry deals: tier-standardized, ABILITY-BLIND (money enters at the
+    # second contract). Keyed by tier (1=Premier, 2=Challenger, 3=District /
+    # Circuit default).
+    entry_salary_by_tier: Mapping[int, int] = field(
+        default_factory=lambda: {1: 22, 2: 14, 3: 8}
+    )
+    # Second contracts price ability: floor + per_ovr*(OVR - pivot), x tier mult.
+    second_base_k: int = 8
+    second_per_ovr_k: float = 0.8
+    second_ovr_pivot: int = 60
+    second_tier_multiplier: Mapping[int, float] = field(
+        default_factory=lambda: {1: 1.8, 2: 1.35, 3: 1.0}
+    )
+    second_term_default: int = 3
+    # AI wage BUDGET caps (no balance tracked) — gate poach/re-sign aggression.
+    wage_budget_by_tier: Mapping[int, int] = field(
+        default_factory=lambda: {1: 420, 2: 240, 3: 140}
+    )
+    # Buyout fee / AI asking price = factor * salary * term_remaining.
+    buyout_fee_factor: float = 2.0
+    # Dev-compensation credit when a homegrown player is poached (fraction of fee).
+    dev_compensation_fraction: float = 0.5
+
+
+DEFAULT_CONTRACTS = ContractConfig()
+
+
 def get_config(version: str | None = None) -> BalanceConfig:
     """Return the requested config, defaulting to the latest entry."""
 
@@ -272,6 +305,8 @@ __all__ = [
     "PYRAMID_PROSPECT_CLASS_SIZE",
     "scouting_config_for_world",
     "BalanceConfig",
+    "ContractConfig",
+    "DEFAULT_CONTRACTS",
     "CONTESTED_USER_OFFER_BASE",
     "CONTESTED_USER_OFFER_INTEREST_WEIGHT",
     "CONTESTED_VETO_OFFER_FLOOR",

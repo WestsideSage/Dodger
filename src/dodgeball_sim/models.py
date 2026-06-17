@@ -157,6 +157,10 @@ class Player:
     age: int = 18
     club_id: str | None = None
     newcomer: bool = True
+    # V25 The Market — contract fields. Default to a free (0) one-season deal so
+    # pre-V25 saves and legacy/non-pyramid worlds load + behave byte-identically.
+    salary_k: int = 0
+    contract_term: int = 1
 
     def __post_init__(self) -> None:
         if self.archetype is None:
