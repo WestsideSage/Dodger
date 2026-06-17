@@ -59,6 +59,7 @@ OFFSEASON_CEREMONY_BEATS = (
     "hof_induction",
     "development",
     "retirements",
+    "transfer_period",
     "rookie_class_preview",
     "recruitment",
     "schedule_reveal",
@@ -104,6 +105,7 @@ def compute_active_beats(
     development_rows: Optional[List[Dict[str, Any]]] = None,
     player_club_id: str = "",
     training_credit_weeks: int = 0,
+    has_transfer_content: bool = False,
 ) -> List[str]:
     """Return the ordered subset of OFFSEASON_CEREMONY_BEATS that have real content.
 
@@ -133,6 +135,9 @@ def compute_active_beats(
         "hof_induction": lambda: bool(_parse_json_list(hof_payload_json)),
         "retirements": lambda: bool(retirement_rows),
         "development": _development_has_content,
+        # V25: the Transfer Period shows only when the user has an expiring
+        # player to keep/lose or an incoming buyout to weigh.
+        "transfer_period": lambda: has_transfer_content,
     }
     return [
         beat for beat in OFFSEASON_CEREMONY_BEATS
@@ -894,6 +899,22 @@ def initialize_manager_offseason(
         else 1
     )
     build_rookie_class_preview(conn, season.season_id, signing_class_year)
+    # V25: assemble the user's Transfer Period state (expiring re-signs + incoming
+    # buyouts) with default decisions, cached for the beat. Pyramid + user only;
+    # empty when there is nothing to decide (the beat then drops out).
+    has_transfer_content = False
+    from .world import pyramid_world_active
+
+    if player_club_id and pyramid_world_active(conn):
+        from .transfer_market import build_user_transfer_state, save_user_transfer_state
+
+        transfer_state = build_user_transfer_state(
+            conn, season.season_id, player_club_id, root_seed
+        )
+        save_user_transfer_state(conn, transfer_state)
+        has_transfer_content = bool(
+            transfer_state.get("expiring") or transfer_state.get("buyouts")
+        )
     # Compute and store the active beat list for this offseason
     active_beats = compute_active_beats(
         records_payload_json=get_state(conn, "offseason_records_ratified_json"),
@@ -906,6 +927,7 @@ def initialize_manager_offseason(
         )[0]
         if player_club_id
         else 0,
+        has_transfer_content=has_transfer_content,
     )
     set_state(conn, "offseason_active_beats_json", json.dumps(active_beats))
     set_state(conn, "offseason_initialized_for", season.season_id)
@@ -1346,6 +1368,18 @@ def begin_next_season(
     # (idempotent — usually already done at recruitment close).
     ensure_ai_offseason_signings(conn)
 
+    # V25 safety net: commit the user's Transfer Period decisions (idempotent)
+    # before the roster rolls forward, in case the advance hook was bypassed
+    # (a fast-forward that jumped straight to begin-season).
+    from .world import pyramid_world_active as _pyramid_active
+
+    _pcid = get_state(conn, "player_club_id")
+    _sid = get_state(conn, "active_season_id")
+    if _pcid and _sid and _pyramid_active(conn):
+        from .transfer_market import apply_user_transfer_decisions
+
+        apply_user_transfer_decisions(conn, _sid, _pcid, stored_root_seed(conn))
+
     _maintain_user_lineup_for_new_season(conn)
 
     active_season_id = get_state(conn, "active_season_id")
@@ -1686,6 +1720,17 @@ def build_offseason_ceremony_beat(
                     lines.append(f"- {storyline.get('sentence', '')}")
             body = "\n".join(lines)
         return OffseasonCeremonyBeat(key, "Rookie Class Preview", body)
+
+    if key == "transfer_period":
+        # Text layer only — the web client renders the interactive beat from
+        # build_beat_payload's "transfer_period" branch.
+        return OffseasonCeremonyBeat(
+            key,
+            "Transfer Period",
+            "Re-sign your expiring players, weigh incoming buyout offers, and see "
+            "which rival clubs are chasing your best. Higher-tier money hunts your "
+            "stars — keep who you can, and let the rest go for what they're worth.",
+        )
 
     if key == "recruitment":
         roster_sizes = sorted((club_id, len(list(roster))) for club_id, roster in rosters.items())

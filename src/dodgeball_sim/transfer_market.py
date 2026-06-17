@@ -578,6 +578,205 @@ def run_ai_transfer_period(
     return {"resigned": resigned, "released": released, "moved": len(entries)}
 
 
+# --- Phase 6: the user's interactive Transfer Period beat -----------------------
+
+_USER_STATE_KEY = "v25_user_transfer_json"
+_USER_RESULTS_KEY = "v25_user_transfer_results_json"
+_USER_COMMITTED_KEY = "v25_user_transfer_committed_for"
+
+
+def _expiring_context(conn, season_id, user_club_id, player, root_seed, config):
+    """(ask_k, Fit, suitors) for one expiring user player — shared by the display
+    state and the commit so they never disagree."""
+    from . import contracts
+    from .motivations import build_club_context, club_fit
+    from .persistence import load_division_map
+
+    seat = load_division_map(conn, season_id).get(user_club_id)
+    tier = seat.tier if seat is not None else 3
+    ctx = build_club_context(conn, user_club_id, season_id)
+    fit = club_fit(ctx, motivation_view(player))
+    ask = contracts.second_contract_salary_k(player.overall_skill(), tier, config)
+    suitors = poach_suitors(conn, season_id, player, user_club_id, root_seed, config)
+    return ask, fit, suitors
+
+
+def build_user_transfer_state(
+    conn, season_id, user_club_id, root_seed, config: ContractConfig = DEFAULT_CONTRACTS
+) -> dict:
+    """Assemble the user's Transfer Period beat state with default decisions
+    (re-sign every expiring player at his ask; refuse every incoming buyout).
+    Pure read — no roster mutation; cached at offseason init and adjusted by the
+    user's actions before the commit-on-advance applies it."""
+    from .motivations import grade_letter
+
+    expiring = []
+    for player in expiring_players(conn, user_club_id):
+        ask, fit, suitors = _expiring_context(conn, season_id, user_club_id, player, root_seed, config)
+        top = suitors[0] if suitors else None
+        expiring.append({
+            "player_id": player.id,
+            "name": player.name,
+            "ovr": player.overall_skill(),
+            "current_salary_k": player.salary_k,
+            "ask_k": ask,
+            "user_offer_k": ask,            # default: meet his ask
+            "fit": round(fit.fit, 3),
+            "veto": fit.veto,
+            "dealbreaker": fit.dealbreaker,
+            "dealbreaker_letter": grade_letter(fit.grades[fit.dealbreaker].score),
+            "top_suitor": (
+                {"club_name": top.club_name, "tier": top.tier, "offer_k": top.offer_salary_k}
+                if top else None
+            ),
+            "decision": "resign",
+        })
+    buyouts = [
+        {
+            "player_id": o.player_id, "name": o.player_name, "fee_k": o.fee_k,
+            "buyer_club_name": o.buyer_club_name, "buyer_tier": o.buyer_tier,
+            "buyer_club_id": o.buyer_club_id, "decision": "refuse",
+        }
+        for o in incoming_buyout_offers(conn, season_id, user_club_id, root_seed, config)
+    ]
+    return {"season_id": season_id, "expiring": expiring, "buyouts": buyouts}
+
+
+def load_user_transfer_state(conn) -> Optional[dict]:
+    import json
+    from .persistence import get_state
+
+    raw = get_state(conn, _USER_STATE_KEY)
+    return json.loads(raw) if raw else None
+
+
+def save_user_transfer_state(conn, state: dict) -> None:
+    import json
+    from .persistence import set_state
+
+    set_state(conn, _USER_STATE_KEY, json.dumps(state))
+
+
+def set_expiring_decision(conn, player_id, decision, user_offer_k=None) -> Optional[dict]:
+    """User action: keep ('resign') or let walk ('release') an expiring player,
+    optionally raising the re-sign offer to fight off a poacher."""
+    state = load_user_transfer_state(conn)
+    if not state:
+        return None
+    for row in state["expiring"]:
+        if row["player_id"] == player_id:
+            row["decision"] = "release" if decision == "release" else "resign"
+            if user_offer_k is not None:
+                row["user_offer_k"] = max(0, int(user_offer_k))
+            if row["decision"] == "release":
+                row["user_offer_k"] = 0
+            break
+    save_user_transfer_state(conn, state)
+    return state
+
+
+def set_buyout_decision(conn, player_id, decision) -> Optional[dict]:
+    """User action: accept (sell) or refuse (keep) an incoming buyout."""
+    state = load_user_transfer_state(conn)
+    if not state:
+        return None
+    for row in state["buyouts"]:
+        if row["player_id"] == player_id:
+            row["decision"] = "accept" if decision == "accept" else "refuse"
+            break
+    save_user_transfer_state(conn, state)
+    return state
+
+
+def apply_user_transfer_decisions(
+    conn, season_id, user_club_id, root_seed, config: ContractConfig = DEFAULT_CONTRACTS
+) -> dict:
+    """Commit the user's Transfer Period decisions once (idempotent per season).
+
+    Each expiring player is resolved through the SAME contested poach logic the
+    AI faces: a re-sign offer competes with rival suitors (a star can still be
+    outbid), a 'release' is a zero offer (he walks/poached). Accepted buyouts
+    sell the player for treasury income. Departures carry receipts + dev comp.
+    """
+    import json
+    from dataclasses import replace
+
+    from .economy import set_treasury_k, treasury_k
+    from .motivations import grade_letter
+    from .persistence import (
+        add_free_agent, get_state, load_all_rosters, load_clubs, save_club, set_state,
+    )
+
+    if get_state(conn, _USER_COMMITTED_KEY) == season_id:
+        raw = get_state(conn, _USER_RESULTS_KEY)
+        return json.loads(raw) if raw else {"resigned": [], "departed": [], "sold": []}
+
+    state = load_user_transfer_state(conn) or {"expiring": [], "buyouts": []}
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+    roster = {p.id: p for p in rosters.get(user_club_id, [])}
+    decisions = {r["player_id"]: r for r in state.get("expiring", [])}
+
+    resigned, departed, sold = [], [], []
+
+    # 1) Sold players (accepted incoming buyouts) — money in, player out.
+    for b in state.get("buyouts", []):
+        if b.get("decision") != "accept":
+            continue
+        offer = BuyoutOffer(
+            buyer_club_id=b["buyer_club_id"], buyer_club_name=b["buyer_club_name"],
+            buyer_tier=b["buyer_tier"], player_id=b["player_id"],
+            player_name=b["name"], fee_k=b["fee_k"], receipt="",
+        )
+        fee = accept_buyout(conn, user_club_id, offer)
+        if fee:
+            roster.pop(b["player_id"], None)
+            sold.append({"name": b["name"], "fee_k": fee, "buyer": b["buyer_club_name"]})
+
+    # Re-read after any sales mutated rosters.
+    rosters = load_all_rosters(conn)
+    roster = {p.id: p for p in rosters.get(user_club_id, [])}
+
+    # 2) Expiring players — contested resolution per decision.
+    for player_id, dec in decisions.items():
+        player = roster.get(player_id)
+        if player is None:
+            continue  # already sold above
+        ask, fit, suitors = _expiring_context(conn, season_id, user_club_id, player, root_seed, config)
+        user_offer = int(dec.get("user_offer_k", ask)) if dec.get("decision") != "release" else 0
+        res = resolve_poaching(
+            player_id=player_id, user_offer_k=user_offer, expected_salary_k=ask,
+            fit=fit.fit, veto=fit.veto, dealbreaker_letter=grade_letter(fit.grades[fit.dealbreaker].score),
+            suitors=suitors, salary_k=player.salary_k, term_remaining=max(1, player.contract_term),
+            config=config,
+        )
+        if res.stayed:
+            roster[player_id] = replace(player, salary_k=user_offer, contract_term=config.resign_term_default)
+            resigned.append({"name": player.name, "salary_k": user_offer})
+        else:
+            roster.pop(player_id, None)
+            if res.winner_club_id and res.winner_club_id in clubs:
+                buyer_roster = list(rosters.get(res.winner_club_id, [])) + [replace(player, club_id=res.winner_club_id)]
+                save_club(conn, clubs[res.winner_club_id], buyer_roster)
+                set_treasury_k(conn, treasury_k(conn) + res.dev_compensation_k)
+            else:
+                add_free_agent(conn, replace(player, club_id=None), season_id)
+            departed.append({"name": player.name, "receipt": res.receipt, "dev_compensation_k": res.dev_compensation_k})
+
+    save_club(conn, clubs[user_club_id], list(roster.values()))
+    results = {"resigned": resigned, "departed": departed, "sold": sold}
+    set_state(conn, _USER_RESULTS_KEY, json.dumps(results))
+    set_state(conn, _USER_COMMITTED_KEY, season_id)
+    if departed or sold:
+        record_transfers(conn, [
+            {"season_id": season_id, "type": "user_out", "club_id": user_club_id,
+             "player_name": d["name"], "receipt": d["receipt"]}
+            for d in departed
+        ])
+    conn.commit()
+    return results
+
+
 __all__ = [
     "motivation_view",
     "expiring_players",
@@ -597,4 +796,10 @@ __all__ = [
     "record_transfers",
     "load_transfers",
     "run_ai_transfer_period",
+    "build_user_transfer_state",
+    "load_user_transfer_state",
+    "save_user_transfer_state",
+    "set_expiring_decision",
+    "set_buyout_decision",
+    "apply_user_transfer_decisions",
 ]

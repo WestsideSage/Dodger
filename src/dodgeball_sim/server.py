@@ -134,6 +134,7 @@ from dodgeball_sim.offseason_service import (
     begin_next_season_payload,
     get_offseason_beat_payload,
     recruit_offseason_payload,
+    transfer_action_payload,
 )
 from dodgeball_sim.offseason_presentation import build_beat_payload
 from dodgeball_sim.save_service import (
@@ -327,6 +328,14 @@ class OffseasonRecruitRequest(BaseModel):
     # Playtest 3 F-8 sign-over-cut: at a full roster, the player named here is
     # released to free agency when (and only when) the contested pick lands.
     release_player_id: str | None = None
+
+
+class OffseasonTransferRequest(BaseModel):
+    # V25 Transfer Period: action is one of resign | release | accept_buyout |
+    # refuse_buyout; offer_k optionally raises a re-sign offer to fight a poacher.
+    action: str
+    player_id: str
+    offer_k: int | None = None
 
 
 class CareerStateResponse(BaseModel):
@@ -1200,6 +1209,16 @@ def offseason_recruit(request: OffseasonRecruitRequest | None = None, conn = Dep
             conn,
             request.prospect_id if request else None,
             release_player_id=request.release_player_id if request else None,
+        )
+    except OffseasonError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+@app.post("/api/offseason/transfer")
+def offseason_transfer(request: OffseasonTransferRequest, conn = Depends(get_db)):
+    try:
+        return transfer_action_payload(
+            conn, request.action, request.player_id, request.offer_k
         )
     except OffseasonError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc

@@ -166,6 +166,11 @@ export function RecapStandings({
                         <span>
                             Staff payroll <strong style={{ color: '#f87171' }}>{formatKSigned(-finances.staff_payroll_k)}</strong>
                         </span>
+                        {finances.player_wage_bill_k != null && finances.player_wage_bill_k > 0 && (
+                            <span>
+                                Player wages <strong style={{ color: '#f87171' }}>{formatKSigned(-finances.player_wage_bill_k)}</strong>
+                            </span>
+                        )}
                         <span>
                             Net <strong style={{ color: finances.net_k >= 0 ? '#10b981' : '#f87171' }}>{formatKSigned(finances.net_k)}</strong>
                         </span>

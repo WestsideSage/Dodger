@@ -1136,6 +1136,8 @@ export interface RecapBeatPayload {
         league_payout_k: number;
         playoff_bonus_k: number;
         staff_payroll_k: number;
+        /** V25: the user club's player wage bill (0 on legacy / non-pyramid saves). */
+        player_wage_bill_k?: number;
         net_k: number;
         opening_treasury_k: number;
         closing_treasury_k: number;
@@ -1383,6 +1385,43 @@ interface OffseasonBeatBase {
     released_broken_promise?: { player_name?: string; promise_type?: string } | null;
 }
 
+/** V25 The Market — the offseason Transfer Period beat. */
+export interface TransferExpiringRow {
+    player_id: string;
+    name: string;
+    ovr: number;
+    current_salary_k: number;
+    ask_k: number;
+    user_offer_k: number;
+    fit: number;
+    veto: boolean;
+    dealbreaker: string;
+    dealbreaker_letter: string;
+    top_suitor: { club_name: string; tier: number; offer_k: number } | null;
+    decision: 'resign' | 'release';
+}
+export interface TransferBuyoutRow {
+    player_id: string;
+    name: string;
+    fee_k: number;
+    buyer_club_name: string;
+    buyer_tier: number;
+    buyer_club_id: string;
+    decision: 'accept' | 'refuse';
+}
+export interface TransferPeriodBeatPayload {
+    expiring: TransferExpiringRow[];
+    buyouts: TransferBuyoutRow[];
+    results: {
+        resigned: Array<{ name: string; salary_k: number }>;
+        departed: Array<{ name: string; receipt: string; dev_compensation_k: number }>;
+        sold: Array<{ name: string; fee_k: number; buyer: string }>;
+    } | null;
+    committed: boolean;
+    treasury_k: number;
+    wage_bill_k: number;
+}
+
 // Discriminated union — `key` is the discriminant
 export type OffseasonBeat =
     | (OffseasonBeatBase & { key: 'champion'; payload: ChampionBeatPayload })
@@ -1392,6 +1431,7 @@ export type OffseasonBeat =
     | (OffseasonBeatBase & { key: 'hof_induction'; payload: HofInductionBeatPayload })
     | (OffseasonBeatBase & { key: 'development'; payload: DevelopmentBeatPayload })
     | (OffseasonBeatBase & { key: 'retirements'; payload: RetirementsBeatPayload })
+    | (OffseasonBeatBase & { key: 'transfer_period'; payload: TransferPeriodBeatPayload })
     | (OffseasonBeatBase & { key: 'rookie_class_preview'; payload: RookieClassPreviewBeatPayload })
     | (OffseasonBeatBase & { key: 'recruitment'; payload: RecruitmentBeatPayload })
     | (OffseasonBeatBase & { key: 'schedule_reveal'; payload: ScheduleRevealBeatPayload });

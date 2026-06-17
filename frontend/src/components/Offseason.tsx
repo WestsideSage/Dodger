@@ -10,6 +10,7 @@ import { DevelopmentResults } from './ceremonies/DevelopmentResults';
 import { RookieClassPreview } from './ceremonies/RookieClassPreview';
 import { RecordsRatified, HallOfFameInduction } from './ceremonies/StructuredOffseasonBeats';
 import { RecruitmentChoice } from './ceremonies/RecruitmentChoice';
+import { TransferPeriod } from './ceremonies/TransferPeriod';
 
 export function Offseason({ onBeatChange }: { onBeatChange?: (title: string | null) => void } = {}) {
   const { data: beat, error, loading, setData: setBeat, setError } = useApiResource<OffseasonBeat>('/api/offseason/beat');
@@ -55,6 +56,13 @@ export function Offseason({ onBeatChange }: { onBeatChange?: (title: string | nu
       ...(releasePlayerId ? { release_player_id: releasePlayerId } : {}),
     });
   const beginSeason = () => act('/api/offseason/begin-season');
+  // V25: adjust a Transfer Period decision; the roster commits on advance.
+  const transfer = (action: string, playerId: string, offerK?: number) =>
+    act('/api/offseason/transfer', {
+      action,
+      player_id: playerId,
+      ...(offerK != null ? { offer_k: offerK } : {}),
+    });
 
   let content = (
     <StatusMessage title="Offseason beat unavailable" tone="danger">
@@ -65,6 +73,7 @@ export function Offseason({ onBeatChange }: { onBeatChange?: (title: string | nu
   else if (beat.key === 'recap') content = <RecapStandings beat={beat} onComplete={advance} acting={acting} />;
   else if (beat.key === 'awards') content = <AwardsNight beat={beat} onComplete={advance} acting={acting} />;
   else if (beat.key === 'retirements') content = <Graduation beat={beat} onComplete={advance} acting={acting} />;
+  else if (beat.key === 'transfer_period') content = <TransferPeriod beat={beat} onTransfer={transfer} onComplete={advance} acting={acting} />;
   else if (beat.key === 'development') content = <DevelopmentResults beat={beat} onComplete={advance} acting={acting} />;
   else if (beat.key === 'rookie_class_preview') content = <RookieClassPreview beat={beat} onComplete={advance} acting={acting} />;
   else if (beat.key === 'records_ratified') content = <RecordsRatified beat={beat} onComplete={advance} acting={acting} />;

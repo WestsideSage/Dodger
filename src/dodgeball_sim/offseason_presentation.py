@@ -89,6 +89,27 @@ def build_beat_payload(
                     return player
         return None
 
+    if beat_key == "transfer_period":
+        import json as _json
+
+        from .economy import player_wage_bill_k, treasury_k
+        from .persistence import get_state as _get_state
+        from .transfer_market import load_user_transfer_state
+
+        state = load_user_transfer_state(conn) or {"expiring": [], "buyouts": []}
+        results_raw = _get_state(conn, "v25_user_transfer_results_json")
+        committed = season is not None and (
+            _get_state(conn, "v25_user_transfer_committed_for") == season.season_id
+        )
+        return {
+            "expiring": state.get("expiring", []),
+            "buyouts": state.get("buyouts", []),
+            "results": _json.loads(results_raw) if (results_raw and committed) else None,
+            "committed": committed,
+            "treasury_k": treasury_k(conn),
+            "wage_bill_k": player_wage_bill_k(conn, player_club_id) if player_club_id else 0,
+        }
+
     if beat_key == "awards":
         _AWARD_PRESTIGE = {
             "mvp": 3,
