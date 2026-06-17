@@ -288,6 +288,17 @@ class ContractConfig:
     resign_fit_discount: float = 0.4
     resign_low_fit_premium: float = 0.5
     resign_term_default: int = 3
+    # Poaching: a perfect-fit player will stay for up to this many $k below a
+    # rival's offer (loyalty buffer); a zero-fit player leaves for any premium.
+    poach_loyalty_money_k: int = 30
+    # A poacher offers est-wage scaled up to (1 + interest/100) — money is the
+    # uphill pull; a club with no wage headroom for the est wage sits out.
+    poach_offer_interest_scale: float = 1.0
+    # Buyouts: a higher-tier club only tables an offer for a contracted player
+    # whose pursuit interest crosses this bar (so not every squad player draws a
+    # bid). Roster floor a buyout may never breach.
+    buyout_interest_threshold: int = 70
+    min_roster_after_transfer: int = 6
 
 
 DEFAULT_CONTRACTS = ContractConfig()
