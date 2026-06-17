@@ -15,6 +15,11 @@ class FacilityType(str, Enum):
     FILM_ROOM = "film_room"
     ANALYTICS_DEPT = "analytics_dept"
     CHEMISTRY_LOUNGE = "chemistry_lounge"
+    # V26 The Crowd — the web facility catalog. Training Hall lifts development;
+    # Stadium + Merch Center feed the V26 fan economy (matchday + merch income).
+    TRAINING_HALL = "training_hall"
+    STADIUM = "stadium"
+    MERCH_CENTER = "merch_center"
 
 
 @dataclass(frozen=True)
@@ -24,9 +29,6 @@ class DevelopmentModifiers:
     catch_growth_multiplier: float = 1.0
     stamina_recovery_multiplier: float = 1.0
     overuse_injury_risk_delta: float = 0.0
-    scouting_budget_tier_bonus: int = 0
-    scouting_precision_bonus: int = 0
-    unlocks_sync_throw: bool = False
 
 
 @dataclass(frozen=True)
@@ -38,6 +40,9 @@ class FacilityDefinition:
 
 
 MAX_ACTIVE_FACILITIES = 3
+# V26: the web treats facilities as permanent owned buildings (not the CLI's
+# per-season pick-3), so a club may hold more than MAX_ACTIVE_FACILITIES.
+MAX_WEB_FACILITIES = 9
 FACILITY_DEFINITIONS = {
     FacilityType.VELOCITY_LAB: FacilityDefinition(
         facility_type=FacilityType.VELOCITY_LAB,
@@ -75,6 +80,24 @@ FACILITY_DEFINITIONS = {
         category="tactical_unlock",
         prestige_cost=2,
     ),
+    FacilityType.TRAINING_HALL: FacilityDefinition(
+        facility_type=FacilityType.TRAINING_HALL,
+        display_name="Training Hall",
+        category="development",
+        prestige_cost=3,
+    ),
+    FacilityType.STADIUM: FacilityDefinition(
+        facility_type=FacilityType.STADIUM,
+        display_name="Stadium Expansion",
+        category="fan_economy",
+        prestige_cost=4,
+    ),
+    FacilityType.MERCH_CENTER: FacilityDefinition(
+        facility_type=FacilityType.MERCH_CENTER,
+        display_name="Merch Center",
+        category="fan_economy",
+        prestige_cost=3,
+    ),
 }
 
 
@@ -105,7 +128,7 @@ def apply_facility_effects(
     """Return typed non-engine facility modifiers for development systems."""
     del player
     del season_stats
-    selected = set(normalize_facility_selection(facilities))
+    selected = set(normalize_facility_selection(facilities, max_active=MAX_WEB_FACILITIES))
 
     return DevelopmentModifiers(
         power_growth_multiplier=1.15 if FacilityType.VELOCITY_LAB in selected else 1.0,
@@ -113,9 +136,6 @@ def apply_facility_effects(
         catch_growth_multiplier=1.15 if FacilityType.REACTION_WALL in selected else 1.0,
         stamina_recovery_multiplier=1.20 if FacilityType.RECOVERY_SUITE in selected else 1.0,
         overuse_injury_risk_delta=0.05 if FacilityType.VELOCITY_LAB in selected else 0.0,
-        scouting_budget_tier_bonus=1 if FacilityType.FILM_ROOM in selected else 0,
-        scouting_precision_bonus=3 if FacilityType.ANALYTICS_DEPT in selected else 0,
-        unlocks_sync_throw=FacilityType.CHEMISTRY_LOUNGE in selected,
     )
 
 
@@ -132,6 +152,9 @@ def _normalize_facility_type(value: FacilityType | str) -> FacilityType:
         "analytics_dept": FacilityType.ANALYTICS_DEPT,
         "analytics_department": FacilityType.ANALYTICS_DEPT,
         "chemistry_lounge": FacilityType.CHEMISTRY_LOUNGE,
+        "training_hall": FacilityType.TRAINING_HALL,
+        "stadium": FacilityType.STADIUM,
+        "merch_center": FacilityType.MERCH_CENTER,
     }
     try:
         return aliases[normalized]
@@ -143,6 +166,7 @@ __all__ = [
     "DevelopmentModifiers",
     "FACILITY_DEFINITIONS",
     "MAX_ACTIVE_FACILITIES",
+    "MAX_WEB_FACILITIES",
     "FacilityDefinition",
     "FacilityType",
     "apply_facility_effects",

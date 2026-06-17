@@ -338,6 +338,11 @@ class OffseasonTransferRequest(BaseModel):
     offer_k: int | None = None
 
 
+class FacilityUpgradeRequest(BaseModel):
+    # V26: the facility_type to build (treasury sink).
+    facility_type: str
+
+
 class CareerStateResponse(BaseModel):
     state: str
     season_number: int
@@ -1003,6 +1008,18 @@ def recruiting_network_upgrade(conn = Depends(get_db)):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return {"status": "success", "network": result}
+
+
+@app.post("/api/dynasty-office/facilities/upgrade")
+def dynasty_office_facilities_upgrade(request: FacilityUpgradeRequest, conn = Depends(get_db)):
+    """V26 The Crowd: spend treasury to build a facility permanently."""
+    from dodgeball_sim.facilities_office import buy_facility
+
+    try:
+        result = buy_facility(conn, request.facility_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"status": "success", "facilities": result}
 
 
 @app.post("/api/recruiting/pitch-angle")

@@ -532,6 +532,72 @@ function ScoutingNetworkPanel({
   );
 }
 
+function FacilitiesUpgradePanel({
+  facilities,
+  reload,
+}: {
+  facilities: NonNullable<DynastyOfficeResponse['facilities']>;
+  reload: () => void;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const build = (facilityType: string) => {
+    setBusy(facilityType);
+    setError(null);
+    dynastyApi
+      .upgradeFacility(facilityType)
+      .then(() => reload())
+      .catch((e) => setError(e instanceof Error ? e.message : 'Build failed.'))
+      .finally(() => setBusy(null));
+  };
+  return (
+    <div className="do-panel" aria-label="Facilities">
+      <div className="do-panel-head">
+        <span className="dm-kicker">Facilities</span>
+        <h4>Build your program — Training Hall develops, Stadium &amp; Merch draw fan income.</h4>
+      </div>
+      <div style={{ display: 'grid', gap: '0.4rem' }}>
+        {facilities.catalog.map((f) => (
+          <div
+            key={f.facility_type}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap',
+              padding: '0.45rem 0.6rem', borderRadius: '6px',
+              border: `1px solid ${f.owned ? '#065f46' : '#1e293b'}`,
+              background: f.owned ? 'rgba(16,185,129,0.06)' : 'rgba(15,23,42,0.4)',
+            }}
+          >
+            <span style={{ fontWeight: 600, color: '#e2e8f0' }}>{f.display_name}</span>
+            <span style={{ color: '#64748b', fontSize: '0.7rem' }}>{f.category}</span>
+            <span style={{ marginLeft: 'auto' }}>
+              {f.owned ? (
+                <span style={{ color: '#10b981', fontSize: '0.74rem', fontWeight: 600 }}>Built ✓</span>
+              ) : (
+                <button
+                  type="button"
+                  className="dm-action"
+                  disabled={busy !== null || !f.can_afford}
+                  onClick={() => build(f.facility_type)}
+                  title={
+                    f.can_afford
+                      ? `Spend ${formatK(f.treasury_cost_k)} from your treasury`
+                      : `Treasury ${formatK(facilities.treasury_k)} — not enough`
+                  }
+                >
+                  {busy === f.facility_type ? 'Building…' : `Build — ${formatK(f.treasury_cost_k)}`}
+                </button>
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+      {error && (
+        <p style={{ color: '#f87171', fontSize: '0.68rem', marginTop: '0.4rem' }}>{error}</p>
+      )}
+    </div>
+  );
+}
+
 function RecruitBoard({
   budget,
   prospects,
@@ -694,9 +760,11 @@ function RecruitBoard({
 function StaffTab({
   data,
   onStaffUpdate,
+  reload,
 }: {
   data: DynastyOfficeResponse;
   onStaffUpdate: (next: DynastyOfficeResponse) => void;
+  reload: () => void;
 }) {
   const staff = data.staff_market.current_staff;
   const candidates = data.staff_market.candidates;
@@ -735,6 +803,8 @@ function StaffTab({
           <span className="trend">{data.staff_market.recent_actions.length} recent staff moves</span>
         </div>
       </div>
+
+      {data.facilities && <FacilitiesUpgradePanel facilities={data.facilities} reload={reload} />}
 
       <div className="do-staff-grid">
         {staff.map((member) => (
@@ -989,7 +1059,7 @@ export function DynastyOffice() {
           </div>
         )}
 
-        {activeSubTab === 'staff' && <StaffTab data={data} onStaffUpdate={setData} />}
+        {activeSubTab === 'staff' && <StaffTab data={data} onStaffUpdate={setData} reload={reload} />}
       </div>
 
       {showSettings && planContext && (

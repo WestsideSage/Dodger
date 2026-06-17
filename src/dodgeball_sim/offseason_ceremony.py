@@ -762,6 +762,26 @@ def initialize_manager_offseason(
         for club_id in rosters
     }
 
+    # V26: the user club's permanently-built facilities feed development (the web
+    # path historically fed () for every club, silently suppressing the effects).
+    # AI clubs stay abstracted — facilities are a user program-building feature.
+    from .world import pyramid_world_active as _pyramid_active
+    from . import facilities_office as _facilities_office
+
+    _user_facilities = (
+        tuple(_facilities_office.owned_facilities(conn))
+        if (_player_club_id and _pyramid_active(conn))
+        else ()
+    )
+    # V26: the Training Hall adds headroom-capped practice growth for the user
+    # club (the V19b practice-credit channel) — the meaningful development effect.
+    if "training_hall" in _user_facilities:
+        from .config import DEFAULT_FACILITIES as _DF
+
+        practice_credit_by_club[_player_club_id] = (
+            practice_credit_by_club.get(_player_club_id, 0.0) + _DF.training_hall_dev_ovr
+        )
+
     for club_id, roster in rosters.items():
         next_roster: List[Player] = []
         is_player_club = club_id == get_state(conn, "player_club_id")
@@ -770,7 +790,7 @@ def initialize_manager_offseason(
             developed = apply_season_development(
                 player,
                 stats,
-                facilities=(),
+                facilities=_user_facilities if is_player_club else (),
                 rng=DeterministicRNG(derive_seed(root_seed, "manager_development", season.season_id, player.id)),
                 trajectory=load_player_trajectory(conn, player.id),
                 dev_focus=player_dev_focus if is_player_club else "BALANCED",

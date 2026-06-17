@@ -58,8 +58,6 @@ def test_apply_facility_effects_returns_typed_modifiers():
     assert modifiers.catch_growth_multiplier == 1.15
     assert modifiers.stamina_recovery_multiplier == 1.0
     assert modifiers.overuse_injury_risk_delta == 0.05
-    assert modifiers.scouting_budget_tier_bonus == 0
-    assert modifiers.unlocks_sync_throw is True
 
 
 def test_apply_facility_effects_information_and_recovery_effects_are_bounded():
@@ -75,9 +73,9 @@ def test_apply_facility_effects_information_and_recovery_effects_are_bounded():
 
     assert modifiers.power_growth_multiplier == 1.0
     assert modifiers.stamina_recovery_multiplier == 1.20
-    assert modifiers.scouting_budget_tier_bonus == 1
-    assert modifiers.scouting_precision_bonus == 3
-    assert modifiers.unlocks_sync_throw is False
+    # V26: Film Room / Analytics produce no web development effect (their dead
+    # scouting modifier fields were removed); they remain CLI-legacy facilities.
+    assert modifiers.dodge_growth_multiplier == 1.0
 
 
 def test_facility_catalog_covers_all_supported_facilities():

@@ -265,6 +265,12 @@ export const dynastyApi = {
     }>('/api/recruiting/network/upgrade'),
   hireStaff: (candidateId: string) =>
     apiPost<DynastyOfficeResponse>('/api/dynasty-office/staff/hire', { candidate_id: candidateId }),
+  // V26 The Crowd: spend treasury to build a facility permanently.
+  upgradeFacility: (facilityType: string) =>
+    apiPost<{ status: string; facilities: { owned: string[]; cost_k: number; treasury_k: number } }>(
+      '/api/dynasty-office/facilities/upgrade',
+      { facility_type: facilityType },
+    ),
   // V19b: promises are mechanical — results feed credibility, which feeds
   // prospect interest and therefore your contested Signing Day offer.
   makePromise: (playerId: string, promiseType: string) =>

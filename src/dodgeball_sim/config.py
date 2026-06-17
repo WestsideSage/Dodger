@@ -309,6 +309,35 @@ class ContractConfig:
 DEFAULT_CONTRACTS = ContractConfig()
 
 
+# V26 The Crowd — facility build costs (treasury, permanent one-time buy). The
+# web catalog offers only facilities with real web effects; the legacy CLI
+# information/tactical facilities keep their prestige_cost in facilities.py.
+@dataclass(frozen=True)
+class FacilityConfig:
+    treasury_cost_k: Mapping[str, int] = field(default_factory=lambda: {
+        "training_hall": 160,
+        "stadium": 200,
+        "merch_center": 140,
+        "velocity_lab": 120,
+        "reaction_wall": 120,
+        "recovery_suite": 90,
+    })
+    # The facilities offered in the web Dynasty Office (those with real web
+    # effects). Film Room / Analytics / Chemistry Lounge stay CLI-legacy until
+    # their web effects are wired.
+    web_catalog: tuple = (
+        "velocity_lab", "reaction_wall", "recovery_suite",
+        "training_hall", "stadium", "merch_center",
+    )
+    # Training Hall: extra offseason practice-growth OVR for the user club (the
+    # V19b practice-credit channel, headroom-capped). The meaningful, visible
+    # development effect — the labs add small per-stat passive edges.
+    training_hall_dev_ovr: float = 2.0
+
+
+DEFAULT_FACILITIES = FacilityConfig()
+
+
 def get_config(version: str | None = None) -> BalanceConfig:
     """Return the requested config, defaulting to the latest entry."""
 
@@ -329,6 +358,8 @@ __all__ = [
     "BalanceConfig",
     "ContractConfig",
     "DEFAULT_CONTRACTS",
+    "FacilityConfig",
+    "DEFAULT_FACILITIES",
     "CONTESTED_USER_OFFER_BASE",
     "CONTESTED_USER_OFFER_INTEREST_WEIGHT",
     "CONTESTED_VETO_OFFER_FLOOR",

@@ -1630,6 +1630,19 @@ export interface DynastyOfficeResponse {
             economy?: string;
         };
     };
+    /** V26 The Crowd: buildable facilities (treasury sink). Null on legacy/non-pyramid saves. */
+    facilities?: {
+        catalog: Array<{
+            facility_type: string;
+            display_name: string;
+            category: string;
+            treasury_cost_k: number;
+            owned: boolean;
+            can_afford: boolean;
+        }>;
+        owned: string[];
+        treasury_k: number;
+    } | null;
 }
 
 export interface SaveInfo {
