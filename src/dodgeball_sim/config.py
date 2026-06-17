@@ -282,6 +282,12 @@ class ContractConfig:
     buyout_fee_factor: float = 2.0
     # Dev-compensation credit when a homegrown player is poached (fraction of fee).
     dev_compensation_fraction: float = 0.5
+    # Retention (re-sign): how motivation fit bends a player's salary ask. A
+    # perfect-fit player re-signs for ``resign_fit_discount`` below his ask; a
+    # zero-fit player demands ``resign_low_fit_premium`` above it.
+    resign_fit_discount: float = 0.4
+    resign_low_fit_premium: float = 0.5
+    resign_term_default: int = 3
 
 
 DEFAULT_CONTRACTS = ContractConfig()

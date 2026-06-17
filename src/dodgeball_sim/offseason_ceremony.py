@@ -565,6 +565,40 @@ def _load_player_dev_focus(
     return plan.get("department_orders", {}).get("dev_focus", "BALANCED")
 
 
+def _decrement_contract_terms(conn: sqlite3.Connection, season_id: str) -> None:
+    """V25 Phase 2: a season was consumed — tick every contract down by one.
+
+    Runs once per offseason (season-scoped guard, independent of the outer
+    init guard) at the TOP of the offseason, BEFORE ``_seed_v25_contracts``
+    re-prices the unpriced. A priced veteran whose term reaches 0 is *expiring*
+    this Transfer Period; a still-unpriced player (founder / fresh FA / depth
+    fill) ticks to 0 here and is immediately given a fresh deal by the seeding
+    pass, so he never spuriously reads as expiring. Pyramid-only; legacy /
+    non-pyramid saves are untouched.
+    """
+    from .world import pyramid_world_active
+
+    if not pyramid_world_active(conn):
+        return
+    if get_state(conn, "v25_term_decremented_for") == season_id:
+        return
+
+    from .persistence import save_club
+
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+    for club_id, roster in rosters.items():
+        if club_id not in clubs:
+            continue
+        new_roster = [
+            replace(player, contract_term=max(0, player.contract_term - 1))
+            for player in roster
+        ]
+        save_club(conn, clubs[club_id], new_roster)
+    set_state(conn, "v25_term_decremented_for", season_id)
+    conn.commit()
+
+
 def _seed_v25_contracts(
     conn: sqlite3.Connection, season_id: str, root_seed: int
 ) -> Optional[Dict[str, List[Player]]]:
@@ -633,11 +667,14 @@ def initialize_manager_offseason(
     if get_state(conn, "offseason_initialized_for") == season.season_id:
         return load_all_rosters(conn)
 
-    # V25: ensure every rostered player is priced before the books settle, so
-    # wage bills are real from the first V25 offseason and depth/FA fills never
-    # sit at $0. Pyramid-only; the helper re-reads the DB authoritatively, so on
+    # V25: tick contracts down (a season was consumed), THEN ensure every
+    # rostered player is priced before the books settle — so wage bills are real
+    # from the first V25 offseason and depth/FA fills never sit at $0. Decrement
+    # before seed so a just-priced player is never decremented in the same pass.
+    # Pyramid-only; the seed helper re-reads the DB authoritatively, so on
     # pyramid saves the passed-in `rosters` is replaced by the priced DB state
     # (every current caller passes load_all_rosters, so this is equivalent).
+    _decrement_contract_terms(conn, season.season_id)
     _priced_rosters = _seed_v25_contracts(conn, season.season_id, root_seed)
     if _priced_rosters is not None:
         rosters = _priced_rosters
