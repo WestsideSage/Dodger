@@ -1219,6 +1219,27 @@ def sign_chosen_rookie_contested(
     return None, snipe
 
 
+def ensure_ai_transfer_period(conn: sqlite3.Connection) -> None:
+    """V25: resolve every AI club's expiring contracts once per offseason
+    (idempotent), BEFORE the AI Signing Day sweep so released veterans land in
+    the free-agent pool the sweep and roster repair can draw from. Pyramid-only.
+    """
+    from .world import pyramid_world_active
+
+    if not pyramid_world_active(conn):
+        return
+    season_id = get_state(conn, "active_season_id")
+    if not season_id:
+        return
+    if get_state(conn, "offseason_ai_transfer_done_for") == season_id:
+        return
+    from .transfer_market import run_ai_transfer_period
+
+    run_ai_transfer_period(conn, season_id, stored_root_seed(conn))
+    set_state(conn, "offseason_ai_transfer_done_for", season_id)
+    conn.commit()
+
+
 def ensure_ai_offseason_signings(conn: sqlite3.Connection) -> None:
     """Run the AI Signing Day sweep once per offseason (idempotent).
 
@@ -1231,6 +1252,8 @@ def ensure_ai_offseason_signings(conn: sqlite3.Connection) -> None:
     season_id = get_state(conn, "active_season_id")
     if not season_id:
         return
+    # V25: AI clubs resolve their expiring squads before they sign the new class.
+    ensure_ai_transfer_period(conn)
     if get_state(conn, "offseason_ai_signings_done_for") == season_id:
         return
     player_club_id = get_state(conn, "player_club_id")

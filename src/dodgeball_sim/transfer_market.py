@@ -460,6 +460,124 @@ def outgoing_bid(
                              f"Signed {target.name} for ${bid_k}k (asking ${asking}k).")
 
 
+# --- Phase 5: AI symmetry, transfer ledger, news --------------------------------
+
+_TRANSFERS_STATE_KEY = "v25_transfers_json"
+
+
+def record_transfers(conn, entries: List[dict]) -> None:
+    """Append movement records to the persistent league transfer ledger."""
+    import json
+
+    from .persistence import get_state, set_state
+
+    if not entries:
+        return
+    existing = json.loads(get_state(conn, _TRANSFERS_STATE_KEY) or "[]")
+    existing.extend(entries)
+    set_state(conn, _TRANSFERS_STATE_KEY, json.dumps(existing))
+
+
+def load_transfers(conn, season_id: Optional[str] = None) -> List[dict]:
+    import json
+
+    from .persistence import get_state
+
+    everything = json.loads(get_state(conn, _TRANSFERS_STATE_KEY) or "[]")
+    if season_id is None:
+        return everything
+    return [e for e in everything if e.get("season_id") == season_id]
+
+
+def run_ai_transfer_period(
+    conn, season_id: str, root_seed: int, config: ContractConfig = DEFAULT_CONTRACTS
+) -> dict:
+    """Resolve every AI club's expiring players: re-sign affordable keepers,
+    release the rest to free agency. The tier wage budget binds, so a strapped
+    club really loses players (the 'AI mistake' / real churn the cap enforces).
+    A dealbreaker veto walks a player regardless of money. Notable departures
+    are logged to the league transfer ledger and surfaced as news. The user
+    club is skipped — the user resolves his own expiring squad in the Transfer
+    Period beat. Deterministic; idempotency is the caller's responsibility.
+    """
+    from dataclasses import replace
+
+    from . import contracts
+    from .motivations import build_club_context, club_fit
+    from .persistence import (
+        add_free_agent,
+        get_state,
+        load_all_rosters,
+        load_clubs,
+        load_division_map,
+        save_club,
+        save_news_headlines,
+    )
+
+    division_map = load_division_map(conn, season_id)
+    if not division_map:
+        return {"resigned": 0, "released": 0, "moved": 0}
+    user_club = get_state(conn, "player_club_id")
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+
+    entries: List[dict] = []
+    headlines: List[dict] = []
+    resigned = released = 0
+    for club_id, seat in sorted(division_map.items()):
+        if club_id == user_club:
+            continue
+        roster = rosters.get(club_id, [])
+        expiring = [p for p in roster if p.contract_term <= 0]
+        if not expiring:
+            continue
+        ctx = build_club_context(conn, club_id, season_id)
+        keepers = [p for p in roster if p.contract_term > 0]
+        bill = contracts.wage_bill_k(keepers, config)
+        budget = contracts.wage_budget_for_tier(seat.tier, config)
+        new_roster = list(keepers)
+        for player in sorted(expiring, key=lambda p: -p.overall_skill()):
+            ovr = player.overall_skill()
+            wage = contracts.second_contract_salary_k(ovr, seat.tier, config)
+            fit = club_fit(ctx, motivation_view(player))
+            must_keep = len(new_roster) < config.min_roster_after_transfer
+            if (not fit.veto and bill + wage <= budget) or must_keep:
+                new_roster.append(
+                    replace(player, salary_k=wage, contract_term=config.resign_term_default)
+                )
+                bill += wage
+                resigned += 1
+                entries.append({
+                    "season_id": season_id, "type": "resign", "club_id": club_id,
+                    "player_id": player.id, "player_name": player.name, "ovr": ovr,
+                })
+            else:
+                released += 1
+                add_free_agent(conn, replace(player, club_id=None), season_id)
+                reason = "dealbreaker" if fit.veto else "cap"
+                entries.append({
+                    "season_id": season_id, "type": "release", "club_id": club_id,
+                    "player_id": player.id, "player_name": player.name, "ovr": ovr,
+                    "reason": reason,
+                })
+                if ovr >= config.transfer_news_ovr_threshold:
+                    club_name = getattr(clubs.get(club_id), "name", club_id)
+                    why = "couldn't meet his terms" if reason == "dealbreaker" else "the wage budget bit"
+                    headlines.append({
+                        "headline_id": f"v25_release_{season_id}_{player.id}",
+                        "category": "transfer",
+                        "headline_text": f"{club_name} let {player.name} ({ovr} OVR) walk — {why}.",
+                        "entity_ids": [player.id, club_id],
+                    })
+        save_club(conn, clubs[club_id], new_roster)
+
+    record_transfers(conn, entries)
+    if headlines:
+        save_news_headlines(conn, season_id, 0, headlines)
+    conn.commit()
+    return {"resigned": resigned, "released": released, "moved": len(entries)}
+
+
 __all__ = [
     "motivation_view",
     "expiring_players",
@@ -476,4 +594,7 @@ __all__ = [
     "accept_buyout",
     "OutgoingBidResult",
     "outgoing_bid",
+    "record_transfers",
+    "load_transfers",
+    "run_ai_transfer_period",
 ]

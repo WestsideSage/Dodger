@@ -299,6 +299,8 @@ class ContractConfig:
     # bid). Roster floor a buyout may never breach.
     buyout_interest_threshold: int = 70
     min_roster_after_transfer: int = 6
+    # AI re-signs get this term; a departing player at/above this OVR is news.
+    transfer_news_ovr_threshold: int = 80
 
 
 DEFAULT_CONTRACTS = ContractConfig()
