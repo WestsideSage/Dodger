@@ -138,6 +138,15 @@ def test_accept_buyout_sells_for_treasury_income():
     assert "keep_star" not in {p.id for p in load_club_roster(conn, user_club)}
 
 
+def test_max_offseason_beat_index_matches_canonical_tuple():
+    # The persistence clamp literal must equal the canonical last-beat index, or
+    # the final schedule_reveal beat becomes unreachable (V25 added a beat).
+    from dodgeball_sim.offseason_ceremony import OFFSEASON_CEREMONY_BEATS
+    from dodgeball_sim.persistence import _MAX_OFFSEASON_BEAT_INDEX
+
+    assert _MAX_OFFSEASON_BEAT_INDEX == len(OFFSEASON_CEREMONY_BEATS) - 1
+
+
 def test_compute_active_beats_gates_transfer_period():
     from dodgeball_sim.offseason_ceremony import compute_active_beats
 

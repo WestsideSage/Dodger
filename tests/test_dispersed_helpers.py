@@ -1109,6 +1109,7 @@ def test_build_offseason_ceremony_uses_expected_beats_and_real_rows():
         "hof_induction",
         "development",
         "retirements",
+        "transfer_period",
         "rookie_class_preview",
         "recruitment",
         "schedule_reveal",
@@ -1228,7 +1229,7 @@ def test_draft_beat_copy_switches_to_recruitment_when_prospect_pool_exists():
     rosters = load_all_rosters(conn)
 
     beat = build_offseason_ceremony_beat(
-        8,
+        OFFSEASON_CEREMONY_BEATS.index("recruitment"),
         load_season(conn, "season_1"),
         clubs,
         rosters,

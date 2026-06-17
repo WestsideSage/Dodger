@@ -157,8 +157,11 @@ def test_load_career_state_cursor_clamps_negative_numbers_and_excessive_beat():
 
     loaded = load_career_state_cursor(conn)
 
+    from dodgeball_sim.persistence import _MAX_OFFSEASON_BEAT_INDEX
+
     assert loaded.state == CareerState.SEASON_COMPLETE_OFFSEASON_BEAT
     assert loaded.season_number == 0
     assert loaded.week == 0
-    assert loaded.offseason_beat_index == 9
+    # 999 is clamped to the last valid beat index (V25 added a beat → 10).
+    assert loaded.offseason_beat_index == _MAX_OFFSEASON_BEAT_INDEX
     assert loaded.match_id == "m1"
