@@ -565,6 +565,55 @@ def _load_player_dev_focus(
     return plan.get("department_orders", {}).get("dev_focus", "BALANCED")
 
 
+def _seed_v25_contracts(
+    conn: sqlite3.Connection, season_id: str, root_seed: int
+) -> Optional[Dict[str, List[Player]]]:
+    """V25 one-time contract backfill: price every existing rostered player.
+
+    Pyramid-gated and sentinel-guarded (idempotent). New careers price at
+    signing (``recruitment.sign_prospect_to_club``); this catches mid-save
+    adoption and the founding/curated rosters that never went through the
+    signing path. Existing veterans are priced on their *established* deal
+    (the second-contract formula on current OVR), with terms spread across
+    ``1..entry_term`` so the expiry cohort does not collapse to one season.
+    Returns the priced rosters (so the caller can carry them into settlement),
+    or ``None`` when it did not run.
+    """
+    from .world import pyramid_world_active
+
+    if not pyramid_world_active(conn):
+        return None
+    if get_state(conn, "v25_contracts_seeded_for"):
+        return None
+
+    from . import contracts
+    from .persistence import load_division_map, save_club
+
+    division_map = load_division_map(conn, season_id)
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+    terms = tuple(range(1, contracts.entry_term() + 1))
+    priced: Dict[str, List[Player]] = {}
+    for club_id, roster in rosters.items():
+        seat = division_map.get(club_id)
+        tier = seat.tier if seat is not None else 3
+        new_roster: List[Player] = []
+        for player in roster:
+            if player.salary_k and player.salary_k > 0:
+                new_roster.append(player)
+                continue
+            rng = DeterministicRNG(derive_seed(root_seed, "v25_contract", player.id))
+            salary = contracts.second_contract_salary_k(player.overall_skill(), tier)
+            term = rng.choice(terms)
+            new_roster.append(replace(player, salary_k=salary, contract_term=term))
+        priced[club_id] = new_roster
+        if club_id in clubs:
+            save_club(conn, clubs[club_id], new_roster)
+    set_state(conn, "v25_contracts_seeded_for", season_id)
+    conn.commit()
+    return priced
+
+
 def initialize_manager_offseason(
     conn: sqlite3.Connection,
     season: Season,
@@ -575,6 +624,12 @@ def initialize_manager_offseason(
     """Apply v1 off-season roster changes once and persist factual summaries."""
     if get_state(conn, "offseason_initialized_for") == season.season_id:
         return load_all_rosters(conn)
+
+    # V25: price existing rosters before the books settle, so wage bills are
+    # real from the first V25 offseason. Only mutates on pyramid saves, once.
+    _priced_rosters = _seed_v25_contracts(conn, season.season_id, root_seed)
+    if _priced_rosters is not None:
+        rosters = _priced_rosters
 
     season_stats = fetch_season_player_stats(conn, season.season_id)
     # Appearance counts feed the development reps gate (a year-round starter

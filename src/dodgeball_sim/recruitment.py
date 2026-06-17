@@ -333,12 +333,30 @@ def sign_prospect_to_club(
         throw_selection_iq=prospect.hidden_ratings.get("throw_selection_iq", 50.0),
         conditioning_curve=prospect.hidden_ratings.get("conditioning_curve", 50.0),
     ).apply_bounds()
+    # V25: every signing lands a STANDARD, ability-blind entry deal priced by the
+    # signing club's tier (money enters at the second contract). Pyramid-gated so
+    # legacy single-league signings keep the byte-identical free 0/1 default.
+    entry_salary_k = 0
+    entry_contract_term = 1
+    from .world import pyramid_world_active
+
+    if pyramid_world_active(conn):
+        from . import contracts
+        from .persistence import get_state, load_division_map
+
+        season_id = get_state(conn, "active_season_id")
+        seat = load_division_map(conn, season_id).get(club_id) if season_id else None
+        tier = seat.tier if seat is not None else 3
+        entry_salary_k = contracts.entry_salary_k(tier)
+        entry_contract_term = contracts.entry_term()
     player = Player(
         id=prospect.player_id,
         name=prospect.name,
         age=prospect.age,
         club_id=club_id,
         newcomer=True,
+        salary_k=entry_salary_k,
+        contract_term=entry_contract_term,
         ratings=ratings,
         archetype=derive_archetype(ratings),
         traits=PlayerTraits(

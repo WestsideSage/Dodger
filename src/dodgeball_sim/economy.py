@@ -93,6 +93,22 @@ def staff_payroll_k(
     )
 
 
+def player_wage_bill_k(conn: sqlite3.Connection, club_id: str) -> int:
+    """V25: the user club's active-roster wage bill (sum of player salaries).
+
+    Pyramid-gated — legacy / non-pyramid saves return 0 so their finances stay
+    byte-identical (the whole contract layer is a V25-on-pyramid feature).
+    """
+    from .world import pyramid_world_active
+
+    if not pyramid_world_active(conn):
+        return 0
+    from .contracts import wage_bill_k
+    from .persistence import load_club_roster
+
+    return wage_bill_k(load_club_roster(conn, club_id) or [])
+
+
 def season_income_k(
     *,
     rank: int,
@@ -204,8 +220,9 @@ def apply_season_finances(
     league_payout_k = round(income["league_payout_k"] * tier_multiplier)
     playoff_bonus_k = round(income["playoff_bonus_k"] * tier_multiplier)
     payroll = staff_payroll_k(conn, config)
+    wage_bill = player_wage_bill_k(conn, club_id)
     opening = treasury_k(conn, config)
-    net = league_payout_k + playoff_bonus_k - payroll
+    net = league_payout_k + playoff_bonus_k - payroll - wage_bill
     closing = opening + net
 
     rules_line = (
@@ -232,6 +249,8 @@ def apply_season_finances(
         "league_payout_k": league_payout_k,
         "playoff_bonus_k": playoff_bonus_k,
         "staff_payroll_k": payroll,
+        # V25: the user club's wage bill (0 on legacy / non-pyramid saves).
+        "player_wage_bill_k": wage_bill,
         "net_k": net,
         "opening_treasury_k": opening,
         "closing_treasury_k": closing,
@@ -272,6 +291,7 @@ __all__ = [
     "format_k",
     "hiring_frozen",
     "load_season_finances",
+    "player_wage_bill_k",
     "playoff_result_for_club",
     "season_income_k",
     "set_treasury_k",
