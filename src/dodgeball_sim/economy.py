@@ -106,7 +106,13 @@ def player_wage_bill_k(conn: sqlite3.Connection, club_id: str) -> int:
     from .contracts import wage_bill_k
     from .persistence import load_club_roster
 
-    return wage_bill_k(load_club_roster(conn, club_id) or [])
+    try:
+        roster = load_club_roster(conn, club_id)
+    except KeyError:
+        # No roster row (partially-built or corrupt save) → no wage bill, never
+        # abort the settlement.
+        return 0
+    return wage_bill_k(roster)
 
 
 def season_income_k(
@@ -225,9 +231,12 @@ def apply_season_finances(
     net = league_payout_k + playoff_bonus_k - payroll - wage_bill
     closing = opening + net
 
+    # V25: name the player wage bill as an outflow when it bites. Legacy /
+    # non-pyramid saves have wage_bill == 0 and keep the byte-identical text.
+    outflow = "staff payroll and player wages out" if wage_bill > 0 else "staff payroll out"
     rules_line = (
-        "Club finances cover the user program only — league payouts in, staff "
-        "payroll out. AI club budgets stay abstracted."
+        f"Club finances cover the user program only — league payouts in, {outflow}. "
+        "AI club budgets stay abstracted."
     )
     if division_name is not None:
         if tier_multiplier == 1.0:

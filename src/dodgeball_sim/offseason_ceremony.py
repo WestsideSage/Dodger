@@ -568,22 +568,26 @@ def _load_player_dev_focus(
 def _seed_v25_contracts(
     conn: sqlite3.Connection, season_id: str, root_seed: int
 ) -> Optional[Dict[str, List[Player]]]:
-    """V25 one-time contract backfill: price every existing rostered player.
+    """V25 contract-pricing pass: ensure every rostered player carries a deal.
 
-    Pyramid-gated and sentinel-guarded (idempotent). New careers price at
-    signing (``recruitment.sign_prospect_to_club``); this catches mid-save
-    adoption and the founding/curated rosters that never went through the
-    signing path. Existing veterans are priced on their *established* deal
-    (the second-contract formula on current OVR), with terms spread across
-    ``1..entry_term`` so the expiry cohort does not collapse to one season.
-    Returns the priced rosters (so the caller can carry them into settlement),
-    or ``None`` when it did not run.
+    Self-healing and idempotent — it prices any player still on the free 0/1
+    default (``salary_k == 0``) and leaves priced players untouched, so it can
+    run every offseason. Prospect signings price cheaply at signing
+    (``recruitment.sign_prospect_to_club`` → entry deal); this catches every
+    OTHER join point that bypasses that path — founding/curated rosters,
+    user/AI free-agent signings, and AI roster-shortfall depth fills — which
+    would otherwise sit at a permanent $0 wage and (a) let the user dodge the
+    wage squeeze and (b) bias the AI wage bill Phase 5 reads. Such players are
+    priced on their *established* deal (the second-contract formula on current
+    OVR), with terms spread across ``1..entry_term`` (a per-player derived seed,
+    so the price is stable no matter which offseason first prices him) so the
+    expiry cohort does not collapse to one season. Returns the full priced
+    rosters (so the caller can carry them into settlement), or ``None`` on
+    legacy / non-pyramid saves (which keep the byte-identical default).
     """
     from .world import pyramid_world_active
 
     if not pyramid_world_active(conn):
-        return None
-    if get_state(conn, "v25_contracts_seeded_for"):
         return None
 
     from . import contracts
@@ -594,10 +598,12 @@ def _seed_v25_contracts(
     rosters = load_all_rosters(conn)
     terms = tuple(range(1, contracts.entry_term() + 1))
     priced: Dict[str, List[Player]] = {}
+    changed = False
     for club_id, roster in rosters.items():
         seat = division_map.get(club_id)
         tier = seat.tier if seat is not None else 3
         new_roster: List[Player] = []
+        club_changed = False
         for player in roster:
             if player.salary_k and player.salary_k > 0:
                 new_roster.append(player)
@@ -606,11 +612,13 @@ def _seed_v25_contracts(
             salary = contracts.second_contract_salary_k(player.overall_skill(), tier)
             term = rng.choice(terms)
             new_roster.append(replace(player, salary_k=salary, contract_term=term))
+            club_changed = True
         priced[club_id] = new_roster
-        if club_id in clubs:
+        if club_changed and club_id in clubs:
             save_club(conn, clubs[club_id], new_roster)
-    set_state(conn, "v25_contracts_seeded_for", season_id)
-    conn.commit()
+            changed = True
+    if changed:
+        conn.commit()
     return priced
 
 
@@ -625,8 +633,11 @@ def initialize_manager_offseason(
     if get_state(conn, "offseason_initialized_for") == season.season_id:
         return load_all_rosters(conn)
 
-    # V25: price existing rosters before the books settle, so wage bills are
-    # real from the first V25 offseason. Only mutates on pyramid saves, once.
+    # V25: ensure every rostered player is priced before the books settle, so
+    # wage bills are real from the first V25 offseason and depth/FA fills never
+    # sit at $0. Pyramid-only; the helper re-reads the DB authoritatively, so on
+    # pyramid saves the passed-in `rosters` is replaced by the priced DB state
+    # (every current caller passes load_all_rosters, so this is equivalent).
     _priced_rosters = _seed_v25_contracts(conn, season.season_id, root_seed)
     if _priced_rosters is not None:
         rosters = _priced_rosters

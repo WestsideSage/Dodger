@@ -269,10 +269,35 @@ def test_backfill_prices_existing_roster_once_and_spreads_terms():
     assert len(all_terms) >= 2 and all_terms <= set(range(1, contracts.entry_term() + 1))
 
     before = [(p.id, p.salary_k, p.contract_term) for p in roster]
-    # Idempotent: the sentinel blocks a second pass.
-    assert _seed_v25_contracts(conn, season_id, root_seed) is None
+    # Idempotent on already-priced players: a second pass leaves them unchanged.
+    _seed_v25_contracts(conn, season_id, root_seed)
     after = [(p.id, p.salary_k, p.contract_term) for p in load_club_roster(conn, "aurora")]
     assert after == before
+
+
+def test_seed_self_heals_players_that_joined_unpriced():
+    # The squeeze-dodge fix: a player who joined a roster OUTSIDE the prospect
+    # path (free-agent signing, AI depth fill) sits at salary 0 until the next
+    # pricing pass catches him — he must not stay a permanent $0 wage.
+    from dataclasses import replace as _r
+    from dodgeball_sim.offseason_ceremony import _seed_v25_contracts, stored_root_seed
+
+    conn = _pyramid_conn()
+    season_id = get_state(conn, "active_season_id")
+    root_seed = stored_root_seed(conn)
+    _seed_v25_contracts(conn, season_id, root_seed)  # prices the founders
+
+    club = load_clubs(conn)["aurora"]
+    roster = load_club_roster(conn, "aurora")
+    intruder = _replace(roster[0], id="fa_intruder", salary_k=0, contract_term=1)
+    save_club(conn, club, roster + [intruder])
+    conn.commit()
+
+    _seed_v25_contracts(conn, season_id, root_seed)  # self-heal pass
+    healed = {p.id: p for p in load_club_roster(conn, "aurora")}
+    assert healed["fa_intruder"].salary_k > 0
+    # Priced incumbents untouched by the heal pass.
+    assert all(p.salary_k > 0 for p in healed.values())
 
 
 def test_backfill_skips_legacy_world():
