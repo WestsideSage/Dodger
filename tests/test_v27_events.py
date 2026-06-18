@@ -185,3 +185,36 @@ class TestEmitEventNews:
         wire = [h for h in load_news_headlines(conn, season_id)
                 if h["category"] == "event_news"]
         assert len(wire) == 1
+
+
+# ---------------------------------------------------------------------------
+# Task 1.2 — widen the news filter (event_news surfaces in the wire)
+# ---------------------------------------------------------------------------
+
+
+class TestNewsPayloadSurfacesEventNews:
+    def test_event_news_appears_in_news_payload(self):
+        from dodgeball_sim.web_status_service import build_news_payload
+
+        conn, season_id = _pyramid_career()
+        save_news_headlines(conn, season_id, 0, [{
+            "headline_id": "event_domestic_cup_s1",
+            "category": "event_news",
+            "headline_text": "Aurora Sentinels lift the Domestic Cup",
+            "entity_ids": ["aurora"],
+        }])
+        payload = build_news_payload(conn)
+        assert any("Domestic Cup" in item["text"] for item in payload["items"])
+
+    def test_class_wire_still_surfaces_after_widening(self):
+        from dodgeball_sim.web_status_service import build_news_payload
+
+        conn, season_id = _pyramid_career()
+        save_news_headlines(conn, season_id, 0, [{
+            "headline_id": "classwire_still_here",
+            "category": "class_wire",
+            "headline_text": "Aurora land star-arc prospect Marquee Kid",
+            "entity_ids": ["p", "aurora"],
+        }])
+        payload = build_news_payload(conn)
+        assert any("star-arc prospect" in item["text"] for item in payload["items"])

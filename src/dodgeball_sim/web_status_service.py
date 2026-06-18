@@ -748,16 +748,19 @@ def build_news_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         {"tag": item.tag, "text": item.text, "match_id": item.match_id, "player_id": item.player_id}
         for item in items[:20]
     ]
-    # V24 class wire: league-wide elite-signing lines (news_headlines, category
-    # "class_wire") ride at the top of the wire — the chase target's destination.
+    # V24 class wire + V27 event news: league-wide headline lines (news_headlines)
+    # ride at the top of the wire — the chase target's destination (class_wire)
+    # and the season's event journalism (event_news: cup/invitational/MSI/Founders'
+    # results). The filter is additive: class_wire still passes.
     from .persistence import load_news_headlines
 
+    _WIRE_CATEGORIES = {"class_wire", "event_news"}
     for headline in load_news_headlines(conn, season_id):
-        if headline.get("category") != "class_wire":
+        if headline.get("category") not in _WIRE_CATEGORIES:
             continue
         entity_ids = headline.get("entity_ids") or []
         payload_items.insert(0, {
-            "tag": "Class Wire",
+            "tag": "Class Wire" if headline.get("category") == "class_wire" else "Event Wire",
             "text": headline["headline_text"],
             "match_id": None,
             "player_id": entity_ids[0] if entity_ids else None,
