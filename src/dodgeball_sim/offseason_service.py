@@ -80,6 +80,15 @@ def advance_offseason_beat_payload(conn: sqlite3.Connection) -> dict[str, Any]:
             apply_user_transfer_decisions(
                 conn, season_id, player_club_id, stored_root_seed(conn)
             )
+
+    # V26: advancing past the Media Moment commits the user's choice (default:
+    # the first option). Effects land only in fans/prestige/credibility.
+    if current_key == "media_event":
+        season_id = get_state(conn, "active_season_id")
+        if season_id:
+            from .media_events import apply_media_choice
+
+            apply_media_choice(conn, season_id)
     if (
         cursor.state == CareerState.SEASON_COMPLETE_OFFSEASON_BEAT
         and current_key == "recruitment"
@@ -320,6 +329,20 @@ def transfer_action_payload(
     if state is None:
         raise OffseasonError("No transfer state to act on.", status_code=409)
     conn.commit()
+    return build_beat_response(conn, cursor)
+
+
+def media_choice_payload(conn: sqlite3.Connection, option_key: str) -> dict[str, Any]:
+    """Record the user's Media Moment choice (committed when they advance)."""
+    cursor = _require_offseason_cursor(conn)
+    active_beats = load_active_beats(conn)
+    if "media_event" not in active_beats:
+        raise OffseasonError("No media moment this offseason.", status_code=409)
+    if get_state(conn, "v26_media_done_for") == get_state(conn, "active_season_id"):
+        raise OffseasonError("Media Moment already resolved.", status_code=409)
+    from .media_events import set_media_choice
+
+    set_media_choice(conn, option_key)
     return build_beat_response(conn, cursor)
 
 

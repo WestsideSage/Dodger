@@ -61,6 +61,7 @@ OFFSEASON_CEREMONY_BEATS = (
     "retirements",
     "transfer_period",
     "rookie_class_preview",
+    "media_event",
     "recruitment",
     "schedule_reveal",
 )
@@ -106,6 +107,7 @@ def compute_active_beats(
     player_club_id: str = "",
     training_credit_weeks: int = 0,
     has_transfer_content: bool = False,
+    has_media_event: bool = False,
 ) -> List[str]:
     """Return the ordered subset of OFFSEASON_CEREMONY_BEATS that have real content.
 
@@ -138,6 +140,8 @@ def compute_active_beats(
         # V25: the Transfer Period shows only when the user has an expiring
         # player to keep/lose or an incoming buyout to weigh.
         "transfer_period": lambda: has_transfer_content,
+        # V26: the media beat shows only when an event fires this offseason.
+        "media_event": lambda: has_media_event,
     }
     return [
         beat for beat in OFFSEASON_CEREMONY_BEATS
@@ -953,6 +957,16 @@ def initialize_manager_offseason(
         has_transfer_content = bool(
             transfer_state.get("expiring") or transfer_state.get("buyouts")
         )
+    # V26: occasionally a media mini-event fires (deterministic). Cache it so the
+    # beat appears; its effects land only in fans/prestige/credibility.
+    has_media_event = False
+    if player_club_id and pyramid_world_active(conn):
+        from .media_events import cache_media_event, select_media_event
+
+        media_event = select_media_event(conn, season.season_id, root_seed)
+        if media_event is not None:
+            cache_media_event(conn, media_event)
+            has_media_event = True
     # Compute and store the active beat list for this offseason
     active_beats = compute_active_beats(
         records_payload_json=get_state(conn, "offseason_records_ratified_json"),
@@ -966,6 +980,7 @@ def initialize_manager_offseason(
         if player_club_id
         else 0,
         has_transfer_content=has_transfer_content,
+        has_media_event=has_media_event,
     )
     set_state(conn, "offseason_active_beats_json", json.dumps(active_beats))
     set_state(conn, "offseason_initialized_for", season.season_id)
@@ -1768,6 +1783,17 @@ def build_offseason_ceremony_beat(
             "Re-sign your expiring players, weigh incoming buyout offers, and see "
             "which rival clubs are chasing your best. Higher-tier money hunts your "
             "stars — keep who you can, and let the rest go for what they're worth.",
+        )
+
+    if key == "media_event":
+        # Text layer only — the web client renders the choice card from
+        # build_beat_payload's "media_event" branch.
+        return OffseasonCeremonyBeat(
+            key,
+            "Media Moment",
+            "The press comes calling. How you play it shapes your fans, your "
+            "program's reputation, and how recruits hear about you — but never "
+            "what happens on the court.",
         )
 
     if key == "recruitment":

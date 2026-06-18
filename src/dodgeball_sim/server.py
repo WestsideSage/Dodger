@@ -133,6 +133,7 @@ from dodgeball_sim.offseason_service import (
     advance_offseason_beat_payload,
     begin_next_season_payload,
     get_offseason_beat_payload,
+    media_choice_payload,
     recruit_offseason_payload,
     transfer_action_payload,
 )
@@ -347,6 +348,11 @@ class BenchRoleRequest(BaseModel):
     # V26: assign (or clear, role=None/"none") a bench role to a non-starter.
     player_id: str
     role: str | None = None
+
+
+class MediaChoiceRequest(BaseModel):
+    # V26: the chosen Media Moment option key.
+    option_key: str
 
 
 class CareerStateResponse(BaseModel):
@@ -1256,6 +1262,14 @@ def offseason_transfer(request: OffseasonTransferRequest, conn = Depends(get_db)
         return transfer_action_payload(
             conn, request.action, request.player_id, request.offer_k
         )
+    except OffseasonError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+@app.post("/api/offseason/media")
+def offseason_media(request: MediaChoiceRequest, conn = Depends(get_db)):
+    try:
+        return media_choice_payload(conn, request.option_key)
     except OffseasonError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 

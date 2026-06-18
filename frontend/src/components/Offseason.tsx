@@ -11,6 +11,7 @@ import { RookieClassPreview } from './ceremonies/RookieClassPreview';
 import { RecordsRatified, HallOfFameInduction } from './ceremonies/StructuredOffseasonBeats';
 import { RecruitmentChoice } from './ceremonies/RecruitmentChoice';
 import { TransferPeriod } from './ceremonies/TransferPeriod';
+import { MediaEvent } from './ceremonies/MediaEvent';
 
 export function Offseason({ onBeatChange }: { onBeatChange?: (title: string | null) => void } = {}) {
   const { data: beat, error, loading, setData: setBeat, setError } = useApiResource<OffseasonBeat>('/api/offseason/beat');
@@ -63,6 +64,8 @@ export function Offseason({ onBeatChange }: { onBeatChange?: (title: string | nu
       player_id: playerId,
       ...(offerK != null ? { offer_k: offerK } : {}),
     });
+  // V26: record a media-moment choice; the effect commits when you advance.
+  const mediaChoose = (optionKey: string) => act('/api/offseason/media', { option_key: optionKey });
 
   let content = (
     <StatusMessage title="Offseason beat unavailable" tone="danger">
@@ -74,6 +77,7 @@ export function Offseason({ onBeatChange }: { onBeatChange?: (title: string | nu
   else if (beat.key === 'awards') content = <AwardsNight beat={beat} onComplete={advance} acting={acting} />;
   else if (beat.key === 'retirements') content = <Graduation beat={beat} onComplete={advance} acting={acting} />;
   else if (beat.key === 'transfer_period') content = <TransferPeriod beat={beat} onTransfer={transfer} onComplete={advance} acting={acting} />;
+  else if (beat.key === 'media_event') content = <MediaEvent beat={beat} onChoose={mediaChoose} onComplete={advance} acting={acting} />;
   else if (beat.key === 'development') content = <DevelopmentResults beat={beat} onComplete={advance} acting={acting} />;
   else if (beat.key === 'rookie_class_preview') content = <RookieClassPreview beat={beat} onComplete={advance} acting={acting} />;
   else if (beat.key === 'records_ratified') content = <RecordsRatified beat={beat} onComplete={advance} acting={acting} />;

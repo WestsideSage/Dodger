@@ -1111,6 +1111,7 @@ def test_build_offseason_ceremony_uses_expected_beats_and_real_rows():
         "retirements",
         "transfer_period",
         "rookie_class_preview",
+        "media_event",
         "recruitment",
         "schedule_reveal",
     )

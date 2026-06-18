@@ -89,6 +89,23 @@ def build_beat_payload(
                     return player
         return None
 
+    if beat_key == "media_event":
+        from .media_events import load_media_event
+        from .persistence import get_state as _get_state
+
+        event = load_media_event(conn)
+        committed = season is not None and (
+            _get_state(conn, "v26_media_done_for") == season.season_id
+        )
+        result_raw = _get_state(conn, "v26_media_result_json")
+        import json as _mjson
+
+        return {
+            "event": event,
+            "committed": committed,
+            "result": _mjson.loads(result_raw) if (result_raw and committed) else None,
+        }
+
     if beat_key == "transfer_period":
         import json as _json
 

@@ -1425,6 +1425,21 @@ export interface TransferPeriodBeatPayload {
     wage_bill_k: number;
 }
 
+/** V26 The Crowd — an offseason media mini-event choice beat. */
+export interface MediaEventOption {
+    key: string;
+    label: string;
+    fans: number;
+    prestige: number;
+    credibility: number;
+    receipt: string;
+}
+export interface MediaEventBeatPayload {
+    event: { event_id: string; prompt: string; options: MediaEventOption[] } | null;
+    committed: boolean;
+    result: { event_id: string; chosen: string; receipt: string } | null;
+}
+
 // Discriminated union — `key` is the discriminant
 export type OffseasonBeat =
     | (OffseasonBeatBase & { key: 'champion'; payload: ChampionBeatPayload })
@@ -1435,6 +1450,7 @@ export type OffseasonBeat =
     | (OffseasonBeatBase & { key: 'development'; payload: DevelopmentBeatPayload })
     | (OffseasonBeatBase & { key: 'retirements'; payload: RetirementsBeatPayload })
     | (OffseasonBeatBase & { key: 'transfer_period'; payload: TransferPeriodBeatPayload })
+    | (OffseasonBeatBase & { key: 'media_event'; payload: MediaEventBeatPayload })
     | (OffseasonBeatBase & { key: 'rookie_class_preview'; payload: RookieClassPreviewBeatPayload })
     | (OffseasonBeatBase & { key: 'recruitment'; payload: RecruitmentBeatPayload })
     | (OffseasonBeatBase & { key: 'schedule_reveal'; payload: ScheduleRevealBeatPayload });

@@ -129,9 +129,14 @@ def _credibility(
     kept = sum(1 for p in promises if p.get("status") == "fulfilled")
     broken = sum(1 for p in promises if p.get("status") == "broken")
     promise_delta = max(-15, min(15, kept * 4 - broken * 6))
+    # V26: a media mini-event choice can grant a one-season credibility bonus
+    # (effects land only in fans/prestige/credibility — never match outcomes).
+    from .media_events import media_credibility_bonus
+
+    media_bonus = media_credibility_bonus(conn)
     score = max(
         0,
-        min(100, 50 + prestige * 2 + wins * 4 - losses * 3 + youth_weeks * 2 + promise_delta),
+        min(100, 50 + prestige * 2 + wins * 4 - losses * 3 + youth_weeks * 2 + promise_delta + media_bonus),
     )
     evidence = [
         f"{wins} wins and {losses} losses across your career.",
