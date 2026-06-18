@@ -60,6 +60,9 @@ class EventResult:
     ruleset: str
     purse_k: int
     bracket: Tuple[EventBracketRow, ...] = field(default_factory=tuple)
+    # Optional per-event metadata (e.g. the MSI Worlds-seeding marker). Additive:
+    # empty by default so legacy/other events serialize unchanged.
+    meta: Mapping[str, object] = field(default_factory=dict)
 
 
 def apply_event_purse(
@@ -119,6 +122,7 @@ def _event_to_dict(result: EventResult) -> dict:
         "ruleset": result.ruleset,
         "purse_k": int(result.purse_k),
         "bracket": [asdict(row) for row in result.bracket],
+        "meta": dict(result.meta),
     }
 
 

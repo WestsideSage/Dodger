@@ -1011,6 +1011,12 @@ def initialize_manager_offseason(
         # beat surfaces the full season of events. Fame-gated field; champion
         # purse + warmth land only when the user wins (idempotent per event).
         resolve_ruleset_invitationals(conn, season.season_id, root_seed)
+        # V27 Phase 5: MSI (Premier + Circuit leaders, foam) — prestige +
+        # purse + a Worlds-seeding marker. Foam knockout (NOT run_invitational,
+        # which refuses foam); keyed on division_id, not tier.
+        from .invitationals import resolve_msi
+
+        resolve_msi(conn, season.season_id, root_seed)
         has_events = bool(load_events(conn, season.season_id))
     # Compute and store the active beat list for this offseason
     active_beats = compute_active_beats(

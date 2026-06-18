@@ -613,6 +613,252 @@ class TestLegacyByteIdentical:
 
 
 # ---------------------------------------------------------------------------
+# Phase 5 — Midseason International (MSI) + Founders' Exhibition
+# ---------------------------------------------------------------------------
+
+
+from dodgeball_sim.season import StandingsRow  # noqa: E402
+from dodgeball_sim.persistence import (  # noqa: E402
+    load_division_memberships,
+    save_standings,
+)
+
+
+def _division_clubs(conn, season_id, division_id):
+    """Club ids seated in a given division this season (by division_id)."""
+    return [
+        m.club_id
+        for m in load_division_memberships(conn, season_id)
+        if m.division_id == division_id
+    ]
+
+
+def _seed_standings(conn, season_id, points_by_club):
+    """Write season_standings rows giving each club a points total (and zero
+    elsewhere). Controls the load_standings ranking (points-desc)."""
+    rows = []
+    clubs = load_clubs(conn)
+    for cid in clubs:
+        rows.append(StandingsRow(
+            club_id=cid, wins=0, losses=0, draws=0,
+            elimination_differential=0,
+            points=int(points_by_club.get(cid, 0)),
+        ))
+    save_standings(conn, season_id, rows)
+    conn.commit()
+
+
+def _seed_fans(conn, fans_by_club, season_id):
+    """Set each club's fan count via the receipted ledger (V26)."""
+    from dodgeball_sim import fan_ledger
+
+    for cid, n in fans_by_club.items():
+        fan_ledger.add_fans(conn, cid, int(n), season_id, "test", f"+{n} test fans")
+    conn.commit()
+
+
+class TestMsiInvitees:
+    def test_returns_exactly_the_premier_leader_and_circuit_leader(self):
+        """msi_invitees returns exactly two clubs: the Premier leader + the
+        Circuit leader, each the best-ranked club within its division."""
+        from dodgeball_sim.invitationals import msi_invitees
+        from dodgeball_sim.world import CIRCUIT, PREMIER
+
+        conn, season_id = _pyramid_career()
+        premier = _division_clubs(conn, season_id, PREMIER.division_id)
+        circuit = _division_clubs(conn, season_id, CIRCUIT.division_id)
+        # Make the first premier club and the second circuit club the leaders.
+        points = {premier[0]: 30, circuit[1]: 25}
+        _seed_standings(conn, season_id, points)
+
+        invitees = msi_invitees(conn, season_id)
+
+        assert len(invitees) == 2
+        assert invitees[0] == premier[0]
+        assert invitees[1] == circuit[1]
+
+    def test_keys_on_division_id_not_tier_the_landmine(self):
+        """Premier and Circuit are BOTH tier 1. Naive tier==1 filtering would
+        grab both divisions' clubs mixed and rank them together. Construct
+        standings where the top-2 tier-1 clubs by points are BOTH Circuit clubs
+        — a tier-based selector would return two Circuit clubs. Keying on
+        division_id must still return one Premier + one Circuit leader."""
+        from dodgeball_sim.invitationals import msi_invitees
+        from dodgeball_sim.persistence import load_division_map
+        from dodgeball_sim.world import CIRCUIT, PREMIER
+
+        conn, season_id = _pyramid_career()
+        premier = _division_clubs(conn, season_id, PREMIER.division_id)
+        circuit = _division_clubs(conn, season_id, CIRCUIT.division_id)
+        # Two Circuit clubs occupy the top-2 tier-1 spots; the Premier leader
+        # is 3rd overall but 1st within Premier.
+        points = {circuit[0]: 40, circuit[1]: 35, premier[0]: 20}
+        _seed_standings(conn, season_id, points)
+
+        invitees = msi_invitees(conn, season_id)
+
+        dmap = load_division_map(conn, season_id)
+        assert len(invitees) == 2
+        divisions = {dmap[c].division_id for c in invitees}
+        assert divisions == {PREMIER.division_id, CIRCUIT.division_id}
+        # The Premier invitee is the Premier leader (premier[0]); the Circuit
+        # invitee is the Circuit leader (circuit[0], the top tier-1 club).
+        assert invitees[0] == premier[0]
+        assert invitees[1] == circuit[0]
+
+    def test_empty_when_either_division_has_no_seat(self):
+        from dodgeball_sim.invitationals import msi_invitees
+
+        conn, season_id = _legacy_career()
+        # Legacy single-league has no division memberships.
+        assert msi_invitees(conn, season_id) == []
+
+
+class TestResolveMsi:
+    def test_foam_knockout_resolves_to_a_champion_in_the_two_leaders(self):
+        from dodgeball_sim.invitationals import msi_invitees, resolve_msi
+        from dodgeball_sim.world import CIRCUIT, PREMIER
+
+        conn, season_id = _pyramid_career()
+        premier = _division_clubs(conn, season_id, PREMIER.division_id)
+        circuit = _division_clubs(conn, season_id, CIRCUIT.division_id)
+        _seed_standings(conn, season_id, {premier[0]: 30, circuit[0]: 25})
+
+        result = resolve_msi(conn, season_id, _SEED)
+
+        assert result is not None
+        assert result["champion_club_id"] in msi_invitees(conn, season_id)
+        # 2 clubs -> a single Final.
+        assert any(row["round"] == "Final" for row in result["bracket"])
+
+    def test_champion_gets_purse_prestige_and_worlds_seeding_note(self):
+        from dodgeball_sim import cup_service
+        from dodgeball_sim.event_calendar import EventResult, load_events
+        from dodgeball_sim.invitationals import resolve_msi
+        from dodgeball_sim.persistence import get_state, load_club_prestige
+        from dodgeball_sim.world import CIRCUIT, PREMIER
+
+        conn, season_id = _pyramid_career()
+        user = get_state(conn, "player_club_id")
+        premier = _division_clubs(conn, season_id, PREMIER.division_id)
+        circuit = _division_clubs(conn, season_id, CIRCUIT.division_id)
+        _seed_standings(conn, season_id, {premier[0]: 30, circuit[0]: 25})
+
+        def stub(conn, sid, event_key, event_name, invitees, root_seed, ns, meta=None):
+            return EventResult(
+                event_key=event_key, event_name=event_name, season_id=sid,
+                champion_club_id=user, champion_club_name="User",
+                ruleset="official_foam", purse_k=0, bracket=(),
+                meta={"worlds_seeding": True},
+            )
+
+        original = cup_service.run_foam_knockout
+        cup_service.run_foam_knockout = stub
+        try:
+            before_treasury = treasury_k(conn)
+            before_prestige = load_club_prestige(conn, user)
+            result = resolve_msi(conn, season_id, _SEED)
+            assert treasury_k(conn) - before_treasury == DEFAULT_EVENTS.msi_purse_champion_k
+            assert load_club_prestige(conn, user) > before_prestige
+            # The Worlds-seeding note is recorded in v27_events_json.
+            events = load_events(conn, season_id)
+            msi = [e for e in events if e["event_key"] == "msi"][0]
+            assert msi["meta"].get("worlds_seeding") is True
+            # Purse guard fired.
+            assert get_state(conn, "v27_msi_purse_for") == season_id
+        finally:
+            cup_service.run_foam_knockout = original
+
+    def test_resolve_is_idempotent_no_double_pay(self):
+        from dodgeball_sim import cup_service
+        from dodgeball_sim.event_calendar import EventResult
+        from dodgeball_sim.invitationals import resolve_msi
+        from dodgeball_sim.persistence import get_state, load_club_prestige
+        from dodgeball_sim.world import CIRCUIT, PREMIER
+
+        conn, season_id = _pyramid_career()
+        user = get_state(conn, "player_club_id")
+        premier = _division_clubs(conn, season_id, PREMIER.division_id)
+        circuit = _division_clubs(conn, season_id, CIRCUIT.division_id)
+        _seed_standings(conn, season_id, {premier[0]: 30, circuit[0]: 25})
+
+        def stub(conn, sid, event_key, event_name, invitees, root_seed, ns, meta=None):
+            return EventResult(
+                event_key=event_key, event_name=event_name, season_id=sid,
+                champion_club_id=user, champion_club_name="User",
+                ruleset="official_foam", purse_k=0, bracket=(),
+                meta={"worlds_seeding": True},
+            )
+
+        original = cup_service.run_foam_knockout
+        cup_service.run_foam_knockout = stub
+        try:
+            resolve_msi(conn, season_id, _SEED)
+            after = treasury_k(conn)
+            prestige_after = load_club_prestige(conn, user)
+            # Re-resolve must not double-pay or re-award prestige.
+            resolve_msi(conn, season_id, _SEED)
+            assert treasury_k(conn) == after
+            assert load_club_prestige(conn, user) == prestige_after
+            assert get_state(conn, "v27_msi_resolved_for") == season_id
+        finally:
+            cup_service.run_foam_knockout = original
+
+    def test_determinism_same_seed_same_champion(self):
+        from dodgeball_sim.invitationals import resolve_msi
+        from dodgeball_sim.world import CIRCUIT, PREMIER
+
+        conn1, sid1 = _pyramid_career()
+        p1 = _division_clubs(conn1, sid1, PREMIER.division_id)
+        c1 = _division_clubs(conn1, sid1, CIRCUIT.division_id)
+        _seed_standings(conn1, sid1, {p1[0]: 30, c1[0]: 25})
+        r1 = resolve_msi(conn1, sid1, _SEED)
+
+        conn2, sid2 = _pyramid_career()
+        p2 = _division_clubs(conn2, sid2, PREMIER.division_id)
+        c2 = _division_clubs(conn2, sid2, CIRCUIT.division_id)
+        _seed_standings(conn2, sid2, {p2[0]: 30, c2[0]: 25})
+        r2 = resolve_msi(conn2, sid2, _SEED)
+
+        assert r1["champion_club_id"] == r2["champion_club_id"]
+        assert r1["bracket"] == r2["bracket"]
+
+    def test_ai_champion_gets_prestige_but_no_user_purse(self):
+        from dodgeball_sim import cup_service
+        from dodgeball_sim.event_calendar import EventResult
+        from dodgeball_sim.invitationals import resolve_msi
+        from dodgeball_sim.persistence import get_state, load_club_prestige
+        from dodgeball_sim.world import CIRCUIT, PREMIER
+
+        conn, season_id = _pyramid_career()
+        user = get_state(conn, "player_club_id")
+        premier = _division_clubs(conn, season_id, PREMIER.division_id)
+        circuit = _division_clubs(conn, season_id, CIRCUIT.division_id)
+        _seed_standings(conn, season_id, {premier[0]: 30, circuit[0]: 25})
+        ai_champ = premier[1]
+
+        def stub(conn, sid, event_key, event_name, invitees, root_seed, ns, meta=None):
+            return EventResult(
+                event_key=event_key, event_name=event_name, season_id=sid,
+                champion_club_id=ai_champ, champion_club_name="AI",
+                ruleset="official_foam", purse_k=0, bracket=(),
+                meta={"worlds_seeding": True},
+            )
+
+        original = cup_service.run_foam_knockout
+        cup_service.run_foam_knockout = stub
+        try:
+            before = treasury_k(conn)
+            ai_prestige_before = load_club_prestige(conn, ai_champ)
+            resolve_msi(conn, season_id, _SEED)
+            assert treasury_k(conn) == before  # no user purse
+            assert load_club_prestige(conn, ai_champ) > ai_prestige_before
+            assert get_state(conn, "v27_msi_purse_for") is None
+        finally:
+            cup_service.run_foam_knockout = original
+
+
+# ---------------------------------------------------------------------------
 # small helpers reused above
 # ---------------------------------------------------------------------------
 

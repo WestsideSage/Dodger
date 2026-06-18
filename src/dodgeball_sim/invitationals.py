@@ -218,7 +218,161 @@ __all__ = [
     "invitational_warmth",
     "reset_invitational_warmth",
     "apply_invitational_warmth",
+    "msi_invitees",
+    "resolve_msi",
 ]
+
+
+# ---------------------------------------------------------------------------
+# Phase 5 — Midseason International (MSI): Premier + Circuit leaders
+# ---------------------------------------------------------------------------
+
+_MSI_EVENT_KEY = "msi"
+_MSI_EVENT_NAME = "Midseason International"
+_MSI_RESOLVED_GUARD = "v27_msi_resolved_for"
+_MSI_PRESTIGE_GUARD = "v27_msi_prestige_for"
+# A modest prestige bump for the MSI champion (the CLI cup champion awards +6;
+# MSI is the Premier-vs-Circuit summit, so the same order of magnitude). A
+# module constant, not an EventConfig field — no config additions needed.
+_MSI_PRESTIGE_AWARD = 6
+
+
+def msi_invitees(conn: sqlite3.Connection, season_id: str) -> List[str]:
+    """The two MSI participants: the Premier leader + the Circuit leader.
+
+    Keyed on ``division_id`` ("premier" + "circuit"), NOT on ``tier`` — both
+    are tier 1 (Premier = domestic top flight, Circuit = international), so a
+    tier-based selector would mix both divisions' clubs and rank them
+    together. "Leader" = the best-ranked club within its division, per
+    ``load_standings`` (the league sort order). When no standings exist yet
+    (e.g. a season with no recorded matches), the division seat order from
+    ``load_division_memberships`` is the deterministic fallback.
+
+    Returns ``[premier_leader, circuit_leader]`` or ``[]`` when either
+    division has no seated club this season.
+    """
+    from .persistence import load_division_memberships, load_standings
+    from .world import CIRCUIT, PREMIER
+
+    memberships = load_division_memberships(conn, season_id)
+    standings_order = [row.club_id for row in load_standings(conn, season_id)]
+    seat_by_club = {m.club_id: m for m in memberships}
+
+    def _leader(division_id: str) -> str | None:
+        ranked = [
+            cid for cid in standings_order
+            if seat_by_club.get(cid)
+            and seat_by_club[cid].division_id == division_id
+        ]
+        if ranked:
+            return ranked[0]
+        # Fallback: no standings rows yet — use the membership seat order
+        # (load_division_memberships ORDER BY tier, division_id, club_id).
+        for m in memberships:
+            if m.division_id == division_id:
+                return m.club_id
+        return None
+
+    premier_leader = _leader(PREMIER.division_id)
+    circuit_leader = _leader(CIRCUIT.division_id)
+    if premier_leader is None or circuit_leader is None:
+        return []
+    return [premier_leader, circuit_leader]
+
+
+def resolve_msi(
+    conn: sqlite3.Connection, season_id: str, root_seed: int
+) -> Optional[dict]:
+    """Resolve the Midseason International: the Premier leader vs the Circuit
+    leader in a single foam final (2 clubs → one match), then award the
+    champion prestige + a purse (user only, idempotent) + record the event in
+    ``v27_events_json`` with a Worlds-seeding marker on ``meta`` (recording the
+    marker only — consuming it for Worlds seeding is a later milestone, out of
+    scope here).
+
+    Idempotent on ``v27_msi_resolved_for`` (holds season_id): a re-call
+    returns the already-recorded event result without re-simming, re-awarding
+    prestige, or re-paying the purse. Foam engine only; pyramid + user gated
+    by the caller (the offseason wiring). Effects land ONLY in prestige /
+    treasury — never match outcomes or standings (the V26 isolation invariant).
+
+    Returns the recorded event-result dict (the shape stored in
+    ``v27_events_json``), or ``None`` when no two division leaders can be
+    formed.
+    """
+    from dataclasses import asdict
+
+    from . import cup_service
+    from .config import DEFAULT_EVENTS
+    from .event_calendar import (
+        apply_event_purse,
+        emit_event_news,
+        load_events,
+        record_event,
+    )
+    from .persistence import get_state, load_club_prestige, save_club_prestige, set_state
+
+    guard = _MSI_RESOLVED_GUARD
+    if get_state(conn, guard) == season_id:
+        recorded = [e for e in load_events(conn, season_id)
+                    if e.get("event_key") == _MSI_EVENT_KEY]
+        return recorded[0] if recorded else None
+
+    invitees = msi_invitees(conn, season_id)
+    if len(invitees) < 2:
+        return None
+
+    run_result = cup_service.run_foam_knockout(
+        conn, season_id, _MSI_EVENT_KEY, _MSI_EVENT_NAME, invitees,
+        root_seed, "v27_msi", meta={"worlds_seeding": True},
+    )
+    if run_result is None:
+        return None
+    champion_club_id = run_result.champion_club_id
+    player_club_id = get_state(conn, "player_club_id") or ""
+
+    # Prestige: award to the champion club (any club — prestige is a world
+    # property, not user-treasury), idempotent per season.
+    if get_state(conn, _MSI_PRESTIGE_GUARD) != season_id:
+        save_club_prestige(
+            conn, champion_club_id,
+            load_club_prestige(conn, champion_club_id) + _MSI_PRESTIGE_AWARD,
+        )
+        set_state(conn, _MSI_PRESTIGE_GUARD, season_id)
+
+    # Purse: credit the USER treasury only when the user won (idempotent).
+    purse_k = 0
+    if champion_club_id == player_club_id:
+        purse_k = int(DEFAULT_EVENTS.msi_purse_champion_k)
+        apply_event_purse(conn, _MSI_EVENT_KEY, purse_k, season_id)
+
+    recorded = EventResult(
+        event_key=_MSI_EVENT_KEY,
+        event_name=_MSI_EVENT_NAME,
+        season_id=season_id,
+        champion_club_id=champion_club_id,
+        champion_club_name=run_result.champion_club_name,
+        ruleset="official_foam",
+        purse_k=purse_k,
+        bracket=run_result.bracket,
+        meta={"worlds_seeding": True},
+    )
+    record_event(conn, season_id, recorded)
+    emit_event_news(conn, season_id, recorded)
+
+    set_state(conn, guard, season_id)
+    conn.commit()
+    return {
+        "event_key": _MSI_EVENT_KEY,
+        "event_name": _MSI_EVENT_NAME,
+        "season_id": season_id,
+        "champion_club_id": champion_club_id,
+        "champion_club_name": run_result.champion_club_name,
+        "ruleset": "official_foam",
+        "purse_k": purse_k,
+        "bracket": [asdict(r) for r in run_result.bracket],
+        "meta": {"worlds_seeding": True},
+    }
 
 
 def _round_label(round_number: int, total_rounds: int) -> str:

@@ -463,4 +463,143 @@ __all__ = [
     "ensure_domestic_cup",
     "resolve_domestic_cup",
     "detect_giant_killings",
+    "run_foam_knockout",
 ]
+
+
+# ---------------------------------------------------------------------------
+# Shared foam knockout runner (MSI / Founders' Exhibition)
+# ---------------------------------------------------------------------------
+
+
+def _foam_resolve_side(side, results: dict) -> str | None:
+    """Resolve one side of a pure ``CupEntrant`` bracket match to a club id."""
+    if side is None:
+        return None
+    if side.club_id:
+        return str(side.club_id)
+    if side.source_match_id:
+        return results.get(str(side.source_match_id))
+    return None
+
+
+def _round_slug(label: str) -> str:
+    return label.lower().replace(" ", "_")
+
+
+def _foam_knockout_match_id(
+    *, event_key: str, season_id: str, label: str, slot: int,
+    home_id: str, away_id: str,
+) -> str:
+    """A foam knockout match-id that ENCODES THE ROUND LABEL so
+    ``run_autonomous_match``'s clock resolution picks the right clock (the
+    trap — ``final`` -> 40 min, ``semifinal`` -> 30 min, else 24 min)."""
+    slug = _round_slug(label)
+    return f"{event_key}_{season_id}_{slug}_m{slot}_{home_id}_vs_{away_id}"
+
+
+def run_foam_knockout(
+    conn: sqlite3.Connection,
+    season_id: str,
+    event_key: str,
+    event_name: str,
+    invitees: List[str],
+    root_seed: int,
+    seed_namespace: str,
+    meta: dict | None = None,
+):
+    """Auto-sim a single-elimination FOAM knockout to one champion through the
+    real foam engine (``simulate_match`` + ``official_foam``), resolving the
+    pure ``generate_cup_bracket`` structure IN MEMORY (no ``cup_brackets`` row
+    — MSI / Founders' are not the Domestic Cup). Mirrors the cup resolver's
+    foam path: match-ids encode the round label (the clock trap), draws are
+    impossible (survivor count -> overall skill -> seeded alphabetical
+    tiebreak via ``_pick_cup_winner``).
+
+    Returns an :class:`EventResult` (champion + bracket rows, ``purse_k=0``
+    — the caller awards any purse), or ``None`` when fewer than 2 invitees
+    cannot form a bracket. Pure sim: no match_records persisted (the event is
+    not a league fixture); only the caller records the returned result.
+
+    Deterministic per ``(root_seed, season_id, invitees, seed_namespace)``.
+    Foam-only (``official_foam``); ``meta_patch=None`` (MetaPatch is retired).
+    """
+    from .cup import generate_cup_bracket
+    from .event_calendar import EventBracketRow, EventResult
+    from .franchise import simulate_match
+    from .persistence import load_club_roster, load_clubs
+    from .scheduler import ScheduledMatch
+
+    if len(invitees) < 2:
+        return None
+
+    bracket = generate_cup_bracket(
+        sorted(str(cid) for cid in invitees),
+        DeterministicRNG(derive_seed(root_seed, seed_namespace, season_id)),
+    )
+    clubs = load_clubs(conn)
+    rosters = {cid: load_club_roster(conn, cid) for cid in clubs}
+    total_rounds = bracket.total_rounds
+    results: dict[str, str] = {}
+    bracket_rows: list[EventBracketRow] = []
+
+    for round_ in bracket.rounds:
+        round_number = round_.round_number
+        label = _round_label(round_number, total_rounds)
+        for slot_index, match in enumerate(round_.matches, start=1):
+            match_id = match.match_id
+            if match.is_bye:
+                results[match_id] = str(match.auto_advance_club_id)
+                continue
+            home_id = _foam_resolve_side(match.side_a, results)
+            away_id = _foam_resolve_side(match.side_b, results)
+            if home_id is None or away_id is None:
+                continue
+            scheduled = ScheduledMatch(
+                match_id=_foam_knockout_match_id(
+                    event_key=event_key, season_id=season_id, label=label,
+                    slot=slot_index, home_id=home_id, away_id=away_id,
+                ),
+                season_id=season_id,
+                week=110 + round_number,
+                home_club_id=home_id,
+                away_club_id=away_id,
+            )
+            record, _ = simulate_match(
+                scheduled=scheduled,
+                home_club=clubs[home_id],
+                away_club=clubs[away_id],
+                home_roster=rosters[home_id],
+                away_roster=rosters[away_id],
+                root_seed=derive_seed(
+                    root_seed, f"{seed_namespace}_match", season_id,
+                    scheduled.match_id,
+                ),
+                config_version="phase1.v1",
+                difficulty="pro",
+                meta_patch=None,
+                ruleset_selection="official_foam",
+            )
+            winner_id, _tiebreak = _pick_cup_winner(record, rosters)
+            results[match_id] = winner_id
+            bracket_rows.append(EventBracketRow(
+                round=label,
+                home_club_id=home_id,
+                away_club_id=away_id,
+                winner_club_id=winner_id,
+                home_club_name=clubs[home_id].name,
+                away_club_name=clubs[away_id].name,
+            ))
+
+    champion_club_id = results[bracket.final_match_id]
+    return EventResult(
+        event_key=event_key,
+        event_name=event_name,
+        season_id=season_id,
+        champion_club_id=champion_club_id,
+        champion_club_name=clubs[champion_club_id].name,
+        ruleset="official_foam",
+        purse_k=0,
+        bracket=tuple(bracket_rows),
+        meta=dict(meta) if meta else {},
+    )
