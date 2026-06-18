@@ -71,9 +71,13 @@ def user_fan_income_k(conn, season_id: str, config: FanConfig = DEFAULT_FANS) ->
     except KeyError:
         followings = 0
     capacity = stadium_capacity(tier, "stadium" in owned, config)
+    # V26: a bench-role Ambassador monetizes his own following into merch income.
+    from .bench_roles import ambassador_income_k
+
+    merch = merch_income_k(fans, followings, "merch_center" in owned, config) + ambassador_income_k(conn)
     return {
         "matchday_income_k": matchday_income_k(fans, capacity, config),
-        "merch_income_k": merch_income_k(fans, followings, "merch_center" in owned, config),
+        "merch_income_k": merch,
     }
 
 

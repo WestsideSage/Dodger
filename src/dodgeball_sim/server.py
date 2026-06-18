@@ -343,6 +343,12 @@ class FacilityUpgradeRequest(BaseModel):
     facility_type: str
 
 
+class BenchRoleRequest(BaseModel):
+    # V26: assign (or clear, role=None/"none") a bench role to a non-starter.
+    player_id: str
+    role: str | None = None
+
+
 class CareerStateResponse(BaseModel):
     state: str
     season_number: int
@@ -1020,6 +1026,19 @@ def dynasty_office_facilities_upgrade(request: FacilityUpgradeRequest, conn = De
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return {"status": "success", "facilities": result}
+
+
+@app.post("/api/dynasty-office/bench-role")
+def dynasty_office_bench_role(request: BenchRoleRequest, conn = Depends(get_db)):
+    """V26 The Crowd: assign a bench role (mentor / analyst / ambassador) to a
+    non-starter, or clear it."""
+    from dodgeball_sim.bench_roles import assign_role
+
+    try:
+        roles = assign_role(conn, request.player_id, request.role)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"status": "success", "bench_roles": roles}
 
 
 @app.post("/api/recruiting/pitch-angle")

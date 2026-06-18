@@ -1646,6 +1646,8 @@ export interface DynastyOfficeResponse {
         owned: string[];
         treasury_k: number;
     } | null;
+    /** V26: bench roles assigned this season ({player_id: role}). */
+    bench_roles?: Record<string, 'mentor' | 'analyst' | 'ambassador'>;
 }
 
 export interface SaveInfo {

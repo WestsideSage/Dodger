@@ -797,6 +797,14 @@ def initialize_manager_offseason(
         is_player_club = club_id == get_state(conn, "player_club_id")
         for player in roster:
             stats = season_stats.get(player.id, PlayerMatchStats())
+            # V26: a Mentor bench role adds per-youngster practice growth (the
+            # identity traits' first honest consumer). Reuses the practice-credit
+            # channel; only the user club, only youngsters, only with a mentor.
+            _mentor_bonus = 0.0
+            if is_player_club and _v26_pyramid_active(conn):
+                from .bench_roles import mentor_dev_bonus_for
+
+                _mentor_bonus = mentor_dev_bonus_for(conn, player)
             developed = apply_season_development(
                 player,
                 stats,
@@ -807,7 +815,7 @@ def initialize_manager_offseason(
                 staff_development_modifier=_staff_dev_modifier if is_player_club else 0.0,
                 matches_played=matches_by_player.get(player.id, 0),
                 club_matches=club_match_counts.get(club_id, 0),
-                practice_credit_ovr=practice_credit_by_club.get(club_id, 0.0),
+                practice_credit_ovr=practice_credit_by_club.get(club_id, 0.0) + _mentor_bonus,
                 decline_mitigation_modifier=_decline_mitigation if is_player_club else 0.0,
             )
             aged = replace(developed, age=developed.age + 1)

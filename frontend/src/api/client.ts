@@ -271,6 +271,12 @@ export const dynastyApi = {
       '/api/dynasty-office/facilities/upgrade',
       { facility_type: facilityType },
     ),
+  // V26 The Crowd: assign (or clear) a bench role on a non-starter.
+  assignBenchRole: (playerId: string, role: string | null) =>
+    apiPost<{ status: string; bench_roles: Record<string, string> }>(
+      '/api/dynasty-office/bench-role',
+      { player_id: playerId, role },
+    ),
   // V19b: promises are mechanical — results feed credibility, which feeds
   // prospect interest and therefore your contested Signing Day offer.
   makePromise: (playerId: string, promiseType: string) =>

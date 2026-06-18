@@ -94,7 +94,7 @@ def build_dynasty_office_state(conn: sqlite3.Connection) -> dict[str, Any]:
     week = current_week(conn, season) or 0
     from .economy import hiring_frozen, treasury_k
     from .world import pyramid_world_active
-    from . import facilities_office
+    from . import bench_roles, facilities_office
 
     return {
         "season_id": season_id,
@@ -124,6 +124,8 @@ def build_dynasty_office_state(conn: sqlite3.Connection) -> dict[str, Any]:
         "facilities": (
             facilities_office.facilities_state(conn) if pyramid_world_active(conn) else None
         ),
+        # V26: bench roles assigned this season ({player_id: role}).
+        "bench_roles": bench_roles.assigned_roles(conn) if pyramid_world_active(conn) else {},
     }
 
 

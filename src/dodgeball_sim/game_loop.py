@@ -103,6 +103,19 @@ def simulate_scheduled_match(
         load_weekly_command_plan(conn, scheduled.season_id, scheduled.week, scheduled.away_club_id),
         user_head_ratings if scheduled.away_club_id == player_club_id else None,
     )
+    # V26: a bench-role Analyst adds a targeting-read bonus to the USER club's
+    # prep, scaling with his tactical_iq. 0 when none is assigned -> byte-identical.
+    if player_club_id in (scheduled.home_club_id, scheduled.away_club_id):
+        from .bench_roles import analyst_targeting_bonus
+        from .world import pyramid_world_active
+
+        if pyramid_world_active(conn):
+            _analyst = analyst_targeting_bonus(conn)
+            if _analyst > 0:
+                _user_prep = home_prep if scheduled.home_club_id == player_club_id else away_prep
+                _user_prep["targeting_read_bonus"] = (
+                    _user_prep.get("targeting_read_bonus", 0.0) + _analyst
+                )
     record, _ = simulate_match(
         scheduled=scheduled,
         home_club=clubs[scheduled.home_club_id],

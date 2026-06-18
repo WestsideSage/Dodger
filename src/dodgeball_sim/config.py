@@ -369,6 +369,20 @@ class FanConfig:
 DEFAULT_FANS = FanConfig()
 
 
+# V26 The Crowd — bench roles (one per non-starter, per season). Mentor scales
+# with the mentor's identity traits (their first honest consumer); Analyst with
+# tactical_iq; Ambassador monetizes his following.
+@dataclass(frozen=True)
+class BenchRoleConfig:
+    mentor_base_dev_ovr: float = 2.5      # max practice-growth bonus to a youngster
+    mentor_youth_age_max: int = 23
+    analyst_base_targeting: float = 12.0  # max targeting_read_bonus added to user preps
+    ambassador_income_per_1k_followers_k: float = 1.4
+
+
+DEFAULT_BENCH_ROLES = BenchRoleConfig()
+
+
 def get_config(version: str | None = None) -> BalanceConfig:
     """Return the requested config, defaulting to the latest entry."""
 
@@ -393,6 +407,8 @@ __all__ = [
     "DEFAULT_FACILITIES",
     "FanConfig",
     "DEFAULT_FANS",
+    "BenchRoleConfig",
+    "DEFAULT_BENCH_ROLES",
     "CONTESTED_USER_OFFER_BASE",
     "CONTESTED_USER_OFFER_INTEREST_WEIGHT",
     "CONTESTED_VETO_OFFER_FLOOR",
