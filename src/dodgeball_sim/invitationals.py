@@ -220,6 +220,8 @@ __all__ = [
     "apply_invitational_warmth",
     "msi_invitees",
     "resolve_msi",
+    "founders_invitees",
+    "resolve_founders",
 ]
 
 
@@ -549,3 +551,128 @@ def run_invitational(
         purse_k=0,
         bracket=tuple(bracket_rows),
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 5 — Founders' Exhibition (fan-invited, declared no-seeding, money only)
+# ---------------------------------------------------------------------------
+
+_FOUNDERS_EVENT_KEY = "founders"
+_FOUNDERS_EVENT_NAME = "Founders' Exhibition"
+_FOUNDERS_RESOLVED_GUARD = "v27_founders_resolved_for"
+
+
+def founders_invitees(
+    conn: sqlite3.Connection, season_id: str, top_n: int
+) -> List[str]:
+    """The Founders' Exhibition field: the top-N clubs by ``fan_ledger.club_fans``
+    (being beloved is the ticket). Declared no-seeding, money only — no
+    prestige, no standing, no Worlds-seeding. Ties in fan count are broken
+    deterministically (alphabetical by club id) so the field is stable per
+    save state.
+
+    Returns the top-N club ids ordered by fan count descending, or ``[]`` when
+    ``top_n < 2`` (a bracket cannot form). When fewer clubs carry fans than
+    ``top_n``, all fan-carrying clubs are returned (still ordered) — the
+    bracket pads to a power of two via ``generate_cup_bracket`` byes.
+    """
+    from .fan_ledger import club_fans
+    from .persistence import load_clubs
+
+    if top_n < 2:
+        return []
+    clubs = load_clubs(conn)
+    ranked = sorted(
+        clubs.keys(),
+        key=lambda cid: (-club_fans(conn, cid), cid),
+    )
+    return ranked[:top_n]
+
+
+def resolve_founders(
+    conn: sqlite3.Connection, season_id: str, root_seed: int
+) -> Optional[dict]:
+    """Resolve the Founders' Exhibition: a fan-invited foam knockout (top-N by
+    ``fan_ledger.club_fans``) to one champion, then award the champion a purse
+    (user only, idempotent). Declared NO-SEEDING, MONEY ONLY — winning grants
+    NO prestige, records NO Worlds-seeding marker, and grants NO recruiting
+    warmth (``meta`` is empty). Being beloved is the ticket; nothing else.
+
+    Idempotent on ``v27_founders_resolved_for`` (holds season_id): a re-call
+    returns the already-recorded event result without re-simming or
+    re-paying. Foam engine only (``run_foam_knockout`` — NOT
+    ``run_invitational``, which refuses foam); pyramid + user gated by the
+    caller. Effects land ONLY in treasury — never prestige, match outcomes,
+    or standings (the V26 isolation invariant).
+
+    Returns the recorded event-result dict (the shape stored in
+    ``v27_events_json``), or ``None`` when fewer than 2 fan-carriers can form
+    a bracket.
+    """
+    from dataclasses import asdict
+
+    from . import cup_service
+    from .config import DEFAULT_EVENTS
+    from .event_calendar import (
+        apply_event_purse,
+        emit_event_news,
+        load_events,
+        record_event,
+    )
+    from .persistence import get_state, set_state
+
+    guard = _FOUNDERS_RESOLVED_GUARD
+    if get_state(conn, guard) == season_id:
+        recorded = [e for e in load_events(conn, season_id)
+                    if e.get("event_key") == _FOUNDERS_EVENT_KEY]
+        return recorded[0] if recorded else None
+
+    invitees = founders_invitees(
+        conn, season_id, int(DEFAULT_EVENTS.founders_invite_count)
+    )
+    if len(invitees) < 2:
+        return None
+
+    run_result = cup_service.run_foam_knockout(
+        conn, season_id, _FOUNDERS_EVENT_KEY, _FOUNDERS_EVENT_NAME, invitees,
+        root_seed, "v27_founders",
+    )
+    if run_result is None:
+        return None
+    champion_club_id = run_result.champion_club_id
+    player_club_id = get_state(conn, "player_club_id") or ""
+
+    # Money only: purse to the USER treasury when the user won (idempotent).
+    # NO prestige, NO warmth, NO Worlds-seeding marker (meta stays empty).
+    purse_k = 0
+    if champion_club_id == player_club_id:
+        purse_k = int(DEFAULT_EVENTS.founders_purse_champion_k)
+        apply_event_purse(conn, _FOUNDERS_EVENT_KEY, purse_k, season_id)
+
+    recorded = EventResult(
+        event_key=_FOUNDERS_EVENT_KEY,
+        event_name=_FOUNDERS_EVENT_NAME,
+        season_id=season_id,
+        champion_club_id=champion_club_id,
+        champion_club_name=run_result.champion_club_name,
+        ruleset="official_foam",
+        purse_k=purse_k,
+        bracket=run_result.bracket,
+        meta={},
+    )
+    record_event(conn, season_id, recorded)
+    emit_event_news(conn, season_id, recorded)
+
+    set_state(conn, guard, season_id)
+    conn.commit()
+    return {
+        "event_key": _FOUNDERS_EVENT_KEY,
+        "event_name": _FOUNDERS_EVENT_NAME,
+        "season_id": season_id,
+        "champion_club_id": champion_club_id,
+        "champion_club_name": run_result.champion_club_name,
+        "ruleset": "official_foam",
+        "purse_k": purse_k,
+        "bracket": [asdict(r) for r in run_result.bracket],
+        "meta": {},
+    }

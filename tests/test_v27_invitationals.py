@@ -863,6 +863,300 @@ class TestResolveMsi:
 # ---------------------------------------------------------------------------
 
 
+class TestFoundersInvitees:
+    def test_returns_top_n_clubs_by_fan_count(self):
+        """founders_invitees returns the top-N clubs by fan_ledger.club_fans
+        (DEFAULT_EVENTS.founders_invite_count). Being beloved is the ticket —
+        no prestige, no standing."""
+        from dodgeball_sim.invitationals import founders_invitees
+
+        conn, season_id = _pyramid_career()
+        clubs = list(load_clubs(conn).values())
+        # Give the last N clubs the most fans so the ordering is non-trivial
+        # (not just the roster/club-id order).
+        top = clubs[-DEFAULT_EVENTS.founders_invite_count:]
+        fans = {c.club_id: (1000 + i * 100) for i, c in enumerate(top)}
+        # Everyone else gets a small fan count.
+        for c in clubs:
+            if c.club_id not in fans:
+                fans[c.club_id] = 10
+        _seed_fans(conn, fans, season_id)
+
+        invitees = founders_invitees(conn, season_id, DEFAULT_EVENTS.founders_invite_count)
+
+        assert len(invitees) == DEFAULT_EVENTS.founders_invite_count
+        # The invitees are exactly the high-fan clubs.
+        assert set(invitees) == {c.club_id for c in top}
+        # Ordered by fan count descending.
+        from dodgeball_sim import fan_ledger
+        ranks = [fan_ledger.club_fans(conn, c) for c in invitees]
+        assert ranks == sorted(ranks, reverse=True)
+
+    def test_ties_broken_deterministically(self):
+        """When two clubs have equal fan counts, the tiebreak is deterministic
+        (alphabetical by club id) — the same call with the same data returns
+        the same order."""
+        from dodgeball_sim.invitationals import founders_invitees
+
+        conn, season_id = _pyramid_career()
+        clubs = list(load_clubs(conn).values())
+        # Give six clubs identical fan counts so the tiebreak decides.
+        tied = clubs[:6]
+        fans = {c.club_id: 500 for c in tied}
+        for c in clubs:
+            if c.club_id not in fans:
+                fans[c.club_id] = 0
+        _seed_fans(conn, fans, season_id)
+
+        a = founders_invitees(conn, season_id, 5)
+        b = founders_invitees(conn, season_id, 5)
+        assert a == b
+        # Top-5 of the six tied clubs, ordered by the deterministic tiebreak.
+        assert len(a) == 5
+        assert set(a).issubset({c.club_id for c in tied})
+
+    def test_respects_top_n_argument(self):
+        from dodgeball_sim.invitationals import founders_invitees
+
+        conn, season_id = _pyramid_career()
+        clubs = list(load_clubs(conn).values())
+        fans = {c.club_id: (i + 1) * 50 for i, c in enumerate(clubs)}
+        _seed_fans(conn, fans, season_id)
+
+        assert len(founders_invitees(conn, season_id, 3)) == 3
+        assert len(founders_invitees(conn, season_id, 4)) == 4
+
+    def test_fewer_than_two_fan_carriers_is_empty(self):
+        from dodgeball_sim.invitationals import founders_invitees
+
+        conn, season_id = _pyramid_career()
+        # No fans seeded for any club -> all zero; top-N by zero fans still
+        # returns N clubs (the exhibition fields a bracket). But if we ask for
+        # top_n < 2, the bracket cannot form.
+        assert founders_invitees(conn, season_id, 1) == []
+
+
+class TestResolveFounders:
+    def _stub_champion(self, champion_id):
+        from dodgeball_sim import cup_service
+        from dodgeball_sim.event_calendar import EventResult
+
+        def stub(conn, sid, event_key, event_name, invitees, root_seed, ns, meta=None):
+            return EventResult(
+                event_key=event_key, event_name=event_name, season_id=sid,
+                champion_club_id=champion_id, champion_club_name="Champ",
+                ruleset="official_foam", purse_k=0, bracket=(),
+                meta=dict(meta) if meta else {},
+            )
+
+        return stub
+
+    def test_foam_knockout_resolves_to_a_champion(self):
+        from dodgeball_sim.invitationals import founders_invitees, resolve_founders
+
+        conn, season_id = _pyramid_career()
+        clubs = list(load_clubs(conn).values())
+        fans = {c.club_id: (i + 1) * 100 for i, c in enumerate(clubs)}
+        _seed_fans(conn, fans, season_id)
+
+        result = resolve_founders(conn, season_id, _SEED)
+
+        assert result is not None
+        assert result["champion_club_id"] in founders_invitees(
+            conn, season_id, DEFAULT_EVENTS.founders_invite_count
+        )
+        assert result["bracket"]
+
+    def test_champion_purse_credited_once_and_idempotent_when_user_wins(self):
+        from dodgeball_sim import cup_service
+        from dodgeball_sim.invitationals import resolve_founders
+        from dodgeball_sim.persistence import get_state
+
+        conn, season_id = _pyramid_career()
+        user = get_state(conn, "player_club_id")
+        clubs = list(load_clubs(conn).values())
+        _seed_fans(conn, {c.club_id: 100 for c in clubs}, season_id)
+
+        original = cup_service.run_foam_knockout
+        cup_service.run_foam_knockout = self._stub_champion(user)
+        try:
+            before = treasury_k(conn)
+            resolve_founders(conn, season_id, _SEED)
+            assert treasury_k(conn) - before == DEFAULT_EVENTS.founders_purse_champion_k
+            assert get_state(conn, "v27_founders_purse_for") == season_id
+            after = treasury_k(conn)
+            # Re-resolve must NOT double-pay (idempotent).
+            resolve_founders(conn, season_id, _SEED)
+            assert treasury_k(conn) == after
+            assert get_state(conn, "v27_founders_resolved_for") == season_id
+        finally:
+            cup_service.run_foam_knockout = original
+
+    def test_founders_is_money_only_no_prestige_no_seeding_no_warmth(self):
+        """The declared no-seeding property: Founders' is money-only. Winning
+        it grants NO prestige, records NO Worlds-seeding marker, and grants NO
+        recruiting warmth. Being beloved is the ticket; nothing else."""
+        from dodgeball_sim import cup_service, invitationals
+        from dodgeball_sim.event_calendar import load_events
+        from dodgeball_sim.invitationals import resolve_founders
+        from dodgeball_sim.persistence import get_state, load_club_prestige
+
+        conn, season_id = _pyramid_career()
+        user = get_state(conn, "player_club_id")
+        clubs = list(load_clubs(conn).values())
+        _seed_fans(conn, {c.club_id: 100 for c in clubs}, season_id)
+
+        prestige_before = load_club_prestige(conn, user)
+        original = cup_service.run_foam_knockout
+        cup_service.run_foam_knockout = self._stub_champion(user)
+        try:
+            resolve_founders(conn, season_id, _SEED)
+            # No prestige change.
+            assert load_club_prestige(conn, user) == prestige_before
+            # No recruiting warmth (the invitational warmth channel is untouched).
+            assert invitationals.invitational_warmth(conn) == 0
+            # No Worlds-seeding marker on the recorded event (money-only).
+            events = load_events(conn, season_id)
+            founders = [e for e in events if e["event_key"] == "founders"][0]
+            assert not founders["meta"].get("worlds_seeding")
+            # No prestige guard fired.
+            assert get_state(conn, "v27_founders_prestige_for") is None
+        finally:
+            cup_service.run_foam_knockout = original
+
+    def test_ai_champion_gets_no_user_purse_and_no_prestige(self):
+        from dodgeball_sim import cup_service
+        from dodgeball_sim.invitationals import resolve_founders
+        from dodgeball_sim.persistence import get_state, load_club_prestige
+
+        conn, season_id = _pyramid_career()
+        user = get_state(conn, "player_club_id")
+        clubs = list(load_clubs(conn).values())
+        ai_champ = next(c.club_id for c in clubs if c.club_id != user)
+        _seed_fans(conn, {c.club_id: 100 for c in clubs}, season_id)
+
+        before = treasury_k(conn)
+        ai_prestige_before = load_club_prestige(conn, ai_champ)
+        original = cup_service.run_foam_knockout
+        cup_service.run_foam_knockout = self._stub_champion(ai_champ)
+        try:
+            resolve_founders(conn, season_id, _SEED)
+            assert treasury_k(conn) == before  # no user purse
+            assert load_club_prestige(conn, ai_champ) == ai_prestige_before  # no prestige
+            assert get_state(conn, "v27_founders_purse_for") is None
+        finally:
+            cup_service.run_foam_knockout = original
+
+    def test_records_into_v27_events_json_and_surfaces_in_events_beat(self):
+        from dodgeball_sim.event_calendar import load_events
+        from dodgeball_sim.invitationals import resolve_founders
+
+        conn, season_id = _pyramid_career()
+        clubs = list(load_clubs(conn).values())
+        _seed_fans(conn, {c.club_id: 100 for c in clubs}, season_id)
+
+        resolve_founders(conn, season_id, _SEED)
+        events = load_events(conn, season_id)
+        keys = {e["event_key"] for e in events}
+        assert "founders" in keys
+        founders = [e for e in events if e["event_key"] == "founders"][0]
+        assert founders["champion_club_id"]
+        assert founders["event_name"] == "Founders' Exhibition"
+
+    def test_determinism_same_seed_same_champion(self):
+        from dodgeball_sim.invitationals import resolve_founders
+
+        conn1, sid1 = _pyramid_career()
+        clubs1 = list(load_clubs(conn1).values())
+        _seed_fans(conn1, {c.club_id: (i + 1) * 100 for i, c in enumerate(clubs1)}, sid1)
+        r1 = resolve_founders(conn1, sid1, _SEED)
+
+        conn2, sid2 = _pyramid_career()
+        clubs2 = list(load_clubs(conn2).values())
+        _seed_fans(conn2, {c.club_id: (i + 1) * 100 for i, c in enumerate(clubs2)}, sid2)
+        r2 = resolve_founders(conn2, sid2, _SEED)
+
+        assert r1["champion_club_id"] == r2["champion_club_id"]
+        assert r1["bracket"] == r2["bracket"]
+
+
+class TestPhase5WiringAndLegacy:
+    def test_offseason_init_resolves_msi_and_founders_on_pyramid(self):
+        """A pyramid offseason init resolves MSI (when division leaders exist)
+        and Founders' (when fan carriers exist), recording both into
+        v27_events_json, and the events beat stays active."""
+        import json as _json
+        from dodgeball_sim.event_calendar import load_events
+        from dodgeball_sim.offseason_ceremony import initialize_manager_offseason
+        from dodgeball_sim.persistence import (
+            get_state as _gs,
+            load_all_rosters,
+            load_clubs,
+            load_season,
+        )
+        from dodgeball_sim.world import CIRCUIT, PREMIER
+
+        conn, season_id = _pyramid_career()
+        # Seed standings so MSI has division leaders; seed fans so Founders'
+        # has a field.
+        premier = _division_clubs(conn, season_id, PREMIER.division_id)
+        circuit = _division_clubs(conn, season_id, CIRCUIT.division_id)
+        _seed_standings(conn, season_id, {premier[0]: 30, circuit[0]: 25})
+        clubs = list(load_clubs(conn).values())
+        _seed_fans(conn, {c.club_id: 100 for c in clubs}, season_id)
+
+        season = load_season(conn, season_id)
+        initialize_manager_offseason(
+            conn, season, load_clubs(conn), load_all_rosters(conn), root_seed=_SEED
+        )
+        events = load_events(conn, season_id)
+        keys = {e["event_key"] for e in events}
+        assert "msi" in keys
+        assert "founders" in keys
+        active = _json.loads(_gs(conn, "offseason_active_beats_json") or "[]")
+        assert "events" in active
+
+    def test_legacy_offseason_init_writes_no_msi_or_founders(self):
+        """Legacy single-league byte-identical: no MSI, no Founders', no
+        purse, no prestige, no seeding marker, no events beat."""
+        import json as _json
+        from dodgeball_sim.offseason_ceremony import initialize_manager_offseason
+        from dodgeball_sim.persistence import (
+            get_state,
+            load_all_rosters,
+            load_clubs,
+            load_season,
+        )
+
+        conn, season_id = _legacy_career()
+        season = load_season(conn, season_id)
+        initialize_manager_offseason(
+            conn, season, load_clubs(conn), load_all_rosters(conn), root_seed=_SEED
+        )
+        for key in (
+            "v27_msi_resolved_for",
+            "v27_msi_purse_for",
+            "v27_msi_prestige_for",
+            "v27_founders_resolved_for",
+            "v27_founders_purse_for",
+            "v27_founders_prestige_for",
+        ):
+            assert get_state(conn, key) is None, key
+        raw = get_state(conn, "v27_events_json")
+        if raw:
+            rows = _json.loads(raw)
+            assert not any(
+                r.get("event_key") in ("msi", "founders") for r in rows
+            )
+        active = _json.loads(get_state(conn, "offseason_active_beats_json") or "[]")
+        assert "events" not in active
+
+
+# ---------------------------------------------------------------------------
+# small helpers reused above
+# ---------------------------------------------------------------------------
+
+
 def _media_event_by_id(event_id):
     from dodgeball_sim import media_events as me
     for ev in me._CATALOG:
