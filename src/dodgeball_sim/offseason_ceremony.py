@@ -967,24 +967,35 @@ def initialize_manager_offseason(
             transfer_state.get("expiring") or transfer_state.get("buyouts")
         )
     # V26: occasionally a media mini-event fires (deterministic). Cache it so the
-    # beat appears; its effects land only in fans/prestige/credibility.
+    # beat appears; its effects land only in fans/prestige/credibility. Also
+    # reset any stale credibility bonus from a prior offseason: the bonus is a
+    # one-offseason effect, and a media event only fires ~55% of offseasons, so
+    # without this reset a previous bonus would persist forever (apply_media_choice
+    # is the only writer and does not run in a no-event offseason). The reset
+    # precedes any new apply_media_choice this offseason, so same-offseason
+    # consumption is preserved.
     has_media_event = False
     if player_club_id and pyramid_world_active(conn):
-        from .media_events import cache_media_event, select_media_event
+        from .media_events import cache_media_event, reset_credibility_bonus, select_media_event
 
+        reset_credibility_bonus(conn)
         media_event = select_media_event(conn, season.season_id, root_seed)
         if media_event is not None:
             cache_media_event(conn, media_event)
             has_media_event = True
     # V27: the events beat surfaces the season's resolved events (cup,
-    # invitationals, MSI, Founders'). Phase 1 has no event resolvers yet, so
-    # cache load_events — empty until Phase 2 wires the cup and later phases
-    # the invitationals. Pyramid + user only; legacy/non-pyramid worlds never
-    # touch the v27_events_json store (byte-identical — the beat stays absent).
+    # invitationals, MSI, Founders'). Phase 2 wires the Domestic Cup: generate
+    # + auto-sim the cross-division bracket to a champion through the real foam
+    # engine, recording the result in v27_events_json (trophy + purse + fans +
+    # news). Pyramid + user only; legacy/non-pyramid worlds never touch the
+    # v27_events_json store (byte-identical — the beat stays absent).
     has_events = False
     if player_club_id and pyramid_world_active(conn):
+        from .cup_service import ensure_domestic_cup, resolve_domestic_cup
         from .event_calendar import load_events
 
+        ensure_domestic_cup(conn, season.season_id, root_seed)
+        resolve_domestic_cup(conn, season.season_id, root_seed)
         has_events = bool(load_events(conn, season.season_id))
     # Compute and store the active beat list for this offseason
     active_beats = compute_active_beats(

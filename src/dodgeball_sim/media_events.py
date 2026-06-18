@@ -102,6 +102,22 @@ def media_credibility_bonus(conn) -> int:
         return 0
 
 
+def reset_credibility_bonus(conn) -> None:
+    """Clear any stale credibility bonus at the start of a new offseason.
+
+    The bonus is a ONE-offseason effect: this offseason's recruiting reads it,
+    the next offseason's must not. Because a media event only fires ~55% of
+    offseasons, ``apply_media_choice`` (the only writer) does not run in a
+    no-event offseason, so without this reset a previous bonus would persist
+    and keep inflating the recruiting credibility score forever. Call this
+    from offseason init, inside the player_club_id + pyramid_world_active gate
+    so legacy/non-pyramid worlds stay byte-identical.
+    """
+    from .persistence import set_state
+
+    set_state(conn, _CREDIBILITY_BONUS_KEY, "0")
+
+
 def apply_media_choice(conn, season_id: str) -> Optional[dict]:
     """Commit the user's media choice (default: the first option) — effects land
     ONLY in fans / prestige / a one-season credibility bonus. Idempotent."""
@@ -128,7 +144,10 @@ def apply_media_choice(conn, season_id: str) -> Optional[dict]:
                             f"{option['receipt']} (media)")
     if option["prestige"]:
         save_club_prestige(conn, user, load_club_prestige(conn, user) + option["prestige"])
-    # The credibility bonus is a single value the next season's recruiting reads.
+    # The credibility bonus is a one-offseason value: THIS offseason's
+    # recruiting reads it; offseason init resets it before the next offseason's
+    # recruiting runs (see reset_credibility_bonus), so a no-event offseason
+    # cannot leak a stale bonus forward.
     set_state(conn, _CREDIBILITY_BONUS_KEY, str(int(option["credibility"])))
 
     result = {"event_id": event["event_id"], "chosen": option["key"], "receipt": option["receipt"]}
@@ -147,5 +166,6 @@ __all__ = [
     "load_media_event",
     "set_media_choice",
     "media_credibility_bonus",
+    "reset_credibility_bonus",
     "apply_media_choice",
 ]

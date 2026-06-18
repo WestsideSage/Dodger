@@ -188,7 +188,7 @@ class TestEmitEventNews:
 
 
 # ---------------------------------------------------------------------------
-# Task 1.2 — widen the news filter (event_news surfaces in the wire)
+# Task 1.2 ï¿½ widen the news filter (event_news surfaces in the wire)
 # ---------------------------------------------------------------------------
 
 
@@ -221,7 +221,7 @@ class TestNewsPayloadSurfacesEventNews:
 
 
 # ---------------------------------------------------------------------------
-# Task 1.3 — the conditional `events` offseason beat scaffold
+# Task 1.3 ï¿½ the conditional `events` offseason beat scaffold
 # ---------------------------------------------------------------------------
 
 
@@ -237,7 +237,7 @@ class TestEventsBeatClampAndTuple:
         from dodgeball_sim.offseason_ceremony import OFFSEASON_CEREMONY_BEATS
 
         beats = OFFSEASON_CEREMONY_BEATS
-        # "After the recap area" — recap/champion/awards are the season-summary
+        # "After the recap area" ï¿½ recap/champion/awards are the season-summary
         # honors block; events (the season's competitions) follow it.
         assert beats.index("events") > beats.index("awards")
         assert beats.index("events") < beats.index("records_ratified")
@@ -283,7 +283,12 @@ class TestEventsBeatPresence:
         active = _json.loads(_gs(conn, "offseason_active_beats_json") or "[]")
         assert "events" in active
 
-    def test_beat_absent_when_no_events_recorded(self):
+    def test_beat_present_on_pyramid_world_after_offseason_init(self):
+        """Phase 2 truth: on a pyramid world the offseason init now resolves the
+        Domestic Cup (Phase 2 wiring), so an event IS recorded and the events
+        beat is present. (Phase 1 asserted absence; Phase 2 obsoletes that â€”
+        the cup always resolves on a 28-club pyramid world.) The legacy
+        absence case is covered by test_beat_absent_on_legacy_world_*."""
         from dodgeball_sim.offseason_ceremony import initialize_manager_offseason
         from dodgeball_sim.persistence import get_state, load_all_rosters, load_clubs, load_season
         import json
@@ -294,7 +299,7 @@ class TestEventsBeatPresence:
             conn, season, load_clubs(conn), load_all_rosters(conn), root_seed=_SEED
         )
         active = json.loads(get_state(conn, "offseason_active_beats_json") or "[]")
-        assert "events" not in active
+        assert "events" in active
 
     def test_beat_absent_on_legacy_world_even_if_event_somehow_recorded(self):
         """Legacy byte-identical: the events beat never appears on a non-pyramid
