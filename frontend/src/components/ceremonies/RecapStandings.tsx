@@ -163,6 +163,16 @@ export function RecapStandings({
                                 Playoff bonus <strong style={{ color: '#10b981' }}>{formatKSigned(finances.playoff_bonus_k)}</strong>
                             </span>
                         )}
+                        {finances.matchday_income_k != null && finances.matchday_income_k > 0 && (
+                            <span>
+                                Matchday <strong style={{ color: '#10b981' }}>{formatKSigned(finances.matchday_income_k)}</strong>
+                            </span>
+                        )}
+                        {finances.merch_income_k != null && finances.merch_income_k > 0 && (
+                            <span>
+                                Merch <strong style={{ color: '#10b981' }}>{formatKSigned(finances.merch_income_k)}</strong>
+                            </span>
+                        )}
                         <span>
                             Staff payroll <strong style={{ color: '#f87171' }}>{formatKSigned(-finances.staff_payroll_k)}</strong>
                         </span>

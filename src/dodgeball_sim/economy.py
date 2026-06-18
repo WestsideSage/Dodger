@@ -227,8 +227,18 @@ def apply_season_finances(
     playoff_bonus_k = round(income["playoff_bonus_k"] * tier_multiplier)
     payroll = staff_payroll_k(conn, config)
     wage_bill = player_wage_bill_k(conn, club_id)
+    # V26: fan income — matchday (capped by stadium) + merch. A meaningful margin,
+    # never prize money's rival; 0 on legacy / non-pyramid saves.
+    from .fan_economy import user_fan_income_k
+
+    fan_income = user_fan_income_k(conn, season_id)
+    matchday_income_k = int(fan_income["matchday_income_k"])
+    merch_income_k = int(fan_income["merch_income_k"])
     opening = treasury_k(conn, config)
-    net = league_payout_k + playoff_bonus_k - payroll - wage_bill
+    net = (
+        league_payout_k + playoff_bonus_k + matchday_income_k + merch_income_k
+        - payroll - wage_bill
+    )
     closing = opening + net
 
     # V25: name the player wage bill as an outflow when it bites. Legacy /
@@ -260,6 +270,9 @@ def apply_season_finances(
         "staff_payroll_k": payroll,
         # V25: the user club's wage bill (0 on legacy / non-pyramid saves).
         "player_wage_bill_k": wage_bill,
+        # V26: fan income (0 on legacy / non-pyramid saves or with no fans).
+        "matchday_income_k": matchday_income_k,
+        "merch_income_k": merch_income_k,
         "net_k": net,
         "opening_treasury_k": opening,
         "closing_treasury_k": closing,

@@ -1138,6 +1138,9 @@ export interface RecapBeatPayload {
         staff_payroll_k: number;
         /** V25: the user club's player wage bill (0 on legacy / non-pyramid saves). */
         player_wage_bill_k?: number;
+        /** V26: fan income — matchday + merch (0 on legacy / non-pyramid saves). */
+        matchday_income_k?: number;
+        merch_income_k?: number;
         net_k: number;
         opening_treasury_k: number;
         closing_treasury_k: number;

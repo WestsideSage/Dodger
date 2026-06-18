@@ -14,6 +14,7 @@ from .config import DEFAULT_FANS, FanConfig
 
 _PRESTIGE_GUARD = "prestige_awarded_for"
 _FANS_GUARD = "v26_fans_awarded_for"
+_FOLLOWERS_GUARD = "v26_followers_awarded_for"
 
 
 def club_fans_for_event(event_type: str, config: FanConfig = DEFAULT_FANS) -> int:
@@ -26,6 +27,54 @@ def club_fans_for_event(event_type: str, config: FanConfig = DEFAULT_FANS) -> in
         "worlds_win": config.fans_worlds_win,
     }
     return int(table.get(event_type, 0))
+
+
+# --- Phase 4: fan income (matchday + merch) -------------------------------------
+
+def stadium_capacity(tier: int, has_stadium: bool, config: FanConfig = DEFAULT_FANS) -> int:
+    base = int(config.stadium_tier_capacity.get(tier, config.stadium_base_capacity))
+    return base + (config.stadium_facility_bonus if has_stadium else 0)
+
+
+def matchday_income_k(club_fans: int, capacity: int, config: FanConfig = DEFAULT_FANS) -> int:
+    """Fans drawn this season (capped by stadium capacity) x the matchday rate."""
+    return round(min(int(club_fans), int(capacity)) * config.matchday_per_fan_k)
+
+
+def merch_income_k(
+    club_fans: int, followings_total: int, has_merch: bool, config: FanConfig = DEFAULT_FANS
+) -> int:
+    """Club fans + star followings, per 1k, x the merch rate (x1.5 with a Merch Center)."""
+    base = (int(club_fans) + int(followings_total)) / 1000.0 * config.merch_per_1k_fans_k
+    return round(base * (1.5 if has_merch else 1.0))
+
+
+def user_fan_income_k(conn, season_id: str, config: FanConfig = DEFAULT_FANS) -> dict[str, int]:
+    """The user club's matchday + merch income for the season settlement (0 with
+    no fans / off pyramid)."""
+    from .facilities_office import owned_facilities
+    from .persistence import get_state, load_club_roster, load_division_map
+    from . import fan_ledger
+    from .world import pyramid_world_active
+
+    if not pyramid_world_active(conn):
+        return {"matchday_income_k": 0, "merch_income_k": 0}
+    user = get_state(conn, "player_club_id")
+    if not user:
+        return {"matchday_income_k": 0, "merch_income_k": 0}
+    seat = load_division_map(conn, season_id).get(user)
+    tier = seat.tier if seat is not None else 3
+    owned = set(owned_facilities(conn))
+    fans = fan_ledger.club_fans(conn, user)
+    try:
+        followings = sum(fan_ledger.player_followers(conn, p.id) for p in load_club_roster(conn, user))
+    except KeyError:
+        followings = 0
+    capacity = stadium_capacity(tier, "stadium" in owned, config)
+    return {
+        "matchday_income_k": matchday_income_k(fans, capacity, config),
+        "merch_income_k": merch_income_k(fans, followings, "merch_center" in owned, config),
+    }
 
 
 def grow_prestige_for_season(conn, season_id: str) -> None:
@@ -95,17 +144,71 @@ def award_season_fans(conn, season_id: str, config: FanConfig = DEFAULT_FANS) ->
     return summary
 
 
+def award_season_followers(conn, season_id: str, config: FanConfig = DEFAULT_FANS) -> dict[str, Any]:
+    """Grow the USER club's players' personal followings from this season's
+    awards (MVP + best-thrower/catcher/newcomer in ``signature_moments``), each a
+    receipt. A star who won MVP gains a following a benchwarmer does not.
+
+    (In-game ``MomentKind`` events are replay-only / not persisted, and players
+    carry no district — both are disclosed deferrals; followings draw from the
+    persisted award moments + records.)
+    """
+    from . import fan_ledger
+    from .persistence import get_state, load_club_roster, set_state
+
+    summary = {"events": 0, "followers_gained": 0}
+    if get_state(conn, _FOLLOWERS_GUARD) == season_id:
+        return summary
+    user = get_state(conn, "player_club_id")
+    if not user:
+        set_state(conn, _FOLLOWERS_GUARD, season_id)
+        return summary
+    try:
+        roster = {p.id: p.name for p in load_club_roster(conn, user)}
+    except KeyError:
+        roster = {}
+
+    moments = conn.execute(
+        "SELECT player_id, moment_type FROM signature_moments WHERE season_id = ?",
+        (season_id,),
+    ).fetchall()
+    for moment in moments:
+        pid = moment["player_id"]
+        if pid not in roster:
+            continue
+        mtype = moment["moment_type"]
+        if mtype == "mvp":
+            gain, label = config.followers_mvp, "Season MVP"
+        else:
+            gain, label = config.followers_milestone, f"{mtype.replace('_', ' ').title()} of the season"
+        fan_ledger.add_followers(conn, pid, gain, season_id, mtype, f"+{gain} — {label}")
+        summary["events"] += 1
+        summary["followers_gained"] += gain
+
+    set_state(conn, _FOLLOWERS_GUARD, season_id)
+    return summary
+
+
 def award_season_fans_and_prestige(conn, season_id: str, config: FanConfig = DEFAULT_FANS) -> dict[str, Any]:
-    """The offseason rollup: grow prestige (all clubs) AND the user's fan ledger."""
+    """The offseason rollup: grow prestige (all clubs), the user's club fans, AND
+    the user's player followings."""
     grow_prestige_for_season(conn, season_id)
     summary = award_season_fans(conn, season_id, config)
+    followers = award_season_followers(conn, season_id, config)
+    summary["follower_events"] = followers["events"]
+    summary["followers_gained"] = followers["followers_gained"]
     conn.commit()
     return summary
 
 
 __all__ = [
     "club_fans_for_event",
+    "stadium_capacity",
+    "matchday_income_k",
+    "merch_income_k",
+    "user_fan_income_k",
     "grow_prestige_for_season",
     "award_season_fans",
+    "award_season_followers",
     "award_season_fans_and_prestige",
 ]
