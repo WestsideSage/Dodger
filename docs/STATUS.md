@@ -15,6 +15,17 @@ fans/facilities/bench roles, the event calendar, and the emergent-meta layer —
 in that order (V23 World first). That doc is the planning authority for what
 comes next; this file remains build-state truth.
 
+**Arc status (2026-06-17):** V23–V26 are **built** on `feature/v24-the-board`
+(not yet on main — the arc merges as a unit). **V27 — The Calendar** and
+**V28 — The Weather** are **fully spec'd + implementation-planned but NOT YET
+BUILT** (`docs/specs/2026-06-17-v27-the-calendar-spec.md` + `…-sprint-plan.md`;
+`docs/specs/2026-06-17-v28-the-weather-spec.md` + `…-sprint-plan.md`) — planning
+was completed ahead of implementation by owner direction; their build is a later
+session. V27 decision: events run as deterministic auto-simmed real-engine
+knockouts at dedicated windows (not an in-season schedule rebuild). V28 #1
+constraint: the officiating-emphasis shift adds NO new RNG draw in `resolve_throw`
+so a default (no-bulletin) season is byte-identical.
+
 **V26 — The Crowd: DONE on the branch `feature/v24-the-board` (2026-06-17;
 NOT yet on main).** Spec: `docs/specs/2026-06-17-v26-the-crowd-spec.md`; plan:
 `docs/specs/2026-06-17-v26-the-crowd-sprint-plan.md`; retro:
