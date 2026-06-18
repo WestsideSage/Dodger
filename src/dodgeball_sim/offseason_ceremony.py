@@ -55,6 +55,11 @@ OFFSEASON_CEREMONY_BEATS = (
     "recap",
     "champion",
     "awards",
+    # V27: the season's resolved events (cup/invitationals/MSI/Founders') sit
+    # after the recap-area honors (recap/champion/awards) and before records are
+    # ratified — the competitions are season results, honored with the rest of
+    # the year. Conditional: only when events were recorded this season.
+    "events",
     "records_ratified",
     "hof_induction",
     "development",
@@ -108,6 +113,7 @@ def compute_active_beats(
     training_credit_weeks: int = 0,
     has_transfer_content: bool = False,
     has_media_event: bool = False,
+    has_events: bool = False,
 ) -> List[str]:
     """Return the ordered subset of OFFSEASON_CEREMONY_BEATS that have real content.
 
@@ -142,6 +148,9 @@ def compute_active_beats(
         "transfer_period": lambda: has_transfer_content,
         # V26: the media beat shows only when an event fires this offseason.
         "media_event": lambda: has_media_event,
+        # V27: the events beat shows only when the season produced resolved
+        # events (cup/invitationals/MSI/Founders') recorded in v27_events_json.
+        "events": lambda: has_events,
     }
     return [
         beat for beat in OFFSEASON_CEREMONY_BEATS
@@ -967,6 +976,16 @@ def initialize_manager_offseason(
         if media_event is not None:
             cache_media_event(conn, media_event)
             has_media_event = True
+    # V27: the events beat surfaces the season's resolved events (cup,
+    # invitationals, MSI, Founders'). Phase 1 has no event resolvers yet, so
+    # cache load_events — empty until Phase 2 wires the cup and later phases
+    # the invitationals. Pyramid + user only; legacy/non-pyramid worlds never
+    # touch the v27_events_json store (byte-identical — the beat stays absent).
+    has_events = False
+    if player_club_id and pyramid_world_active(conn):
+        from .event_calendar import load_events
+
+        has_events = bool(load_events(conn, season.season_id))
     # Compute and store the active beat list for this offseason
     active_beats = compute_active_beats(
         records_payload_json=get_state(conn, "offseason_records_ratified_json"),
@@ -981,6 +1000,7 @@ def initialize_manager_offseason(
         else 0,
         has_transfer_content=has_transfer_content,
         has_media_event=has_media_event,
+        has_events=has_events,
     )
     set_state(conn, "offseason_active_beats_json", json.dumps(active_beats))
     set_state(conn, "offseason_initialized_for", season.season_id)
@@ -1567,6 +1587,7 @@ def build_offseason_ceremony_beat(
     hof_payload_json: Optional[str] = None,
     rookie_preview_payload_json: Optional[str] = None,
     records_book_empty: bool = False,
+    conn: Optional[sqlite3.Connection] = None,
 ) -> OffseasonCeremonyBeat:
     """Build factual v1 offseason ceremony copy from persisted season data."""
     clamped_index = clamp_offseason_beat_index(beat_index)
@@ -1626,6 +1647,34 @@ def build_offseason_ceremony_beat(
                 )
             body = "\n".join(lines)
         return OffseasonCeremonyBeat(key, "Awards", body)
+
+    if key == "events":
+        # V27: the season's resolved events (cup, invitationals, MSI, Founders').
+        # Phase 1 scaffold — no event resolvers yet, so this renders whatever
+        # events were recorded in v27_events_json (empty until Phase 2 wires the
+        # cup). The beat is conditional (compute_active_beats has_events), so this
+        # body only renders when at least one event was recorded.
+        event_rows: List[Dict[str, Any]] = []
+        if conn is not None:
+            from .event_calendar import load_events
+
+            season_id_for_events = (
+                season.season_id if season is not None
+                else get_state(conn, "active_season_id")
+            )
+            if season_id_for_events:
+                event_rows = load_events(conn, season_id_for_events)
+        if not event_rows:
+            body = "No events were contested this season."
+        else:
+            lines = [f"Season events — {len(event_rows)} contest{'s' if len(event_rows) != 1 else ''} resolved:"]
+            for row in event_rows:
+                champ = row.get("champion_club_name") or club_name(row.get("champion_club_id", ""))
+                lines.append(
+                    f"  {row.get('event_name', row.get('event_key', '?'))}: won by {champ}"
+                )
+            body = "\n".join(lines)
+        return OffseasonCeremonyBeat(key, "Events", body)
 
     if key == "records_ratified":
         entries = []

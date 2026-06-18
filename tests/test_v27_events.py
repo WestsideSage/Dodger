@@ -218,3 +218,151 @@ class TestNewsPayloadSurfacesEventNews:
         }])
         payload = build_news_payload(conn)
         assert any("star-arc prospect" in item["text"] for item in payload["items"])
+
+
+# ---------------------------------------------------------------------------
+# Task 1.3 — the conditional `events` offseason beat scaffold
+# ---------------------------------------------------------------------------
+
+
+class TestEventsBeatClampAndTuple:
+    def test_max_offseason_beat_index_equals_len_beats_minus_one(self):
+        from dodgeball_sim.offseason_ceremony import OFFSEASON_CEREMONY_BEATS
+        from dodgeball_sim.persistence import _MAX_OFFSEASON_BEAT_INDEX
+
+        assert "events" in OFFSEASON_CEREMONY_BEATS
+        assert _MAX_OFFSEASON_BEAT_INDEX == len(OFFSEASON_CEREMONY_BEATS) - 1
+
+    def test_events_beat_sits_after_recap_area(self):
+        from dodgeball_sim.offseason_ceremony import OFFSEASON_CEREMONY_BEATS
+
+        beats = OFFSEASON_CEREMONY_BEATS
+        # "After the recap area" — recap/champion/awards are the season-summary
+        # honors block; events (the season's competitions) follow it.
+        assert beats.index("events") > beats.index("awards")
+        assert beats.index("events") < beats.index("records_ratified")
+
+    def test_pinned_beat_tuple_witness_matches(self):
+        from dodgeball_sim.offseason_ceremony import OFFSEASON_CEREMONY_BEATS
+
+        assert OFFSEASON_CEREMONY_BEATS == (
+            "recap",
+            "champion",
+            "awards",
+            "events",
+            "records_ratified",
+            "hof_induction",
+            "development",
+            "retirements",
+            "transfer_period",
+            "rookie_class_preview",
+            "media_event",
+            "recruitment",
+            "schedule_reveal",
+        )
+
+
+class TestEventsBeatPresence:
+    def test_beat_present_when_an_event_is_recorded_on_pyramid_world(self):
+        from dodgeball_sim.event_calendar import EventResult, record_event
+        from dodgeball_sim.offseason_ceremony import initialize_manager_offseason
+        from dodgeball_sim.persistence import load_all_rosters, load_clubs, load_season
+
+        conn, season_id = _pyramid_career()
+        record_event(conn, season_id, EventResult(
+            event_key="domestic_cup", event_name="Domestic Cup", season_id=season_id,
+            champion_club_id="aurora", champion_club_name="Aurora Sentinels",
+            ruleset="official_foam", purse_k=80, bracket=(),
+        ))
+        season = load_season(conn, season_id)
+        initialize_manager_offseason(
+            conn, season, load_clubs(conn), load_all_rosters(conn), root_seed=_SEED
+        )
+        from dodgeball_sim.persistence import get_state as _gs
+        import json as _json
+        active = _json.loads(_gs(conn, "offseason_active_beats_json") or "[]")
+        assert "events" in active
+
+    def test_beat_absent_when_no_events_recorded(self):
+        from dodgeball_sim.offseason_ceremony import initialize_manager_offseason
+        from dodgeball_sim.persistence import get_state, load_all_rosters, load_clubs, load_season
+        import json
+
+        conn, season_id = _pyramid_career()
+        season = load_season(conn, season_id)
+        initialize_manager_offseason(
+            conn, season, load_clubs(conn), load_all_rosters(conn), root_seed=_SEED
+        )
+        active = json.loads(get_state(conn, "offseason_active_beats_json") or "[]")
+        assert "events" not in active
+
+    def test_beat_absent_on_legacy_world_even_if_event_somehow_recorded(self):
+        """Legacy byte-identical: the events beat never appears on a non-pyramid
+        world, and offseason init never touches the v27_events_json store."""
+        from dodgeball_sim.event_calendar import EventResult, record_event
+        from dodgeball_sim.offseason_ceremony import initialize_manager_offseason
+        from dodgeball_sim.persistence import get_state, load_all_rosters, load_clubs, load_season
+        import json
+
+        conn, season_id = _legacy_career()
+        record_event(conn, season_id, EventResult(
+            event_key="domestic_cup", event_name="Domestic Cup", season_id=season_id,
+            champion_club_id="aurora", champion_club_name="Aurora Sentinels",
+            ruleset="official_foam", purse_k=80, bracket=(),
+        ))
+        store_before = get_state(conn, "v27_events_json")
+        season = load_season(conn, season_id)
+        initialize_manager_offseason(
+            conn, season, load_clubs(conn), load_all_rosters(conn), root_seed=_SEED
+        )
+        active = json.loads(get_state(conn, "offseason_active_beats_json") or "[]")
+        assert "events" not in active
+        # Offseason init must not rewrite/clear the events store on a legacy world.
+        assert get_state(conn, "v27_events_json") == store_before
+
+
+class TestEventsBeatPayload:
+    def test_build_offseason_ceremony_beat_renders_events_beat(self):
+        from dodgeball_sim.offseason_ceremony import (
+            OFFSEASON_CEREMONY_BEATS,
+            build_offseason_ceremony_beat,
+        )
+        from dodgeball_sim.persistence import load_all_rosters, load_clubs
+        from dodgeball_sim.event_calendar import EventResult, record_event
+
+        conn, season_id = _pyramid_career()
+        record_event(conn, season_id, EventResult(
+            event_key="domestic_cup", event_name="Domestic Cup", season_id=season_id,
+            champion_club_id="aurora", champion_club_name="Aurora Sentinels",
+            ruleset="official_foam", purse_k=80, bracket=(),
+        ))
+        beat = build_offseason_ceremony_beat(
+            OFFSEASON_CEREMONY_BEATS.index("events"),
+            None, load_clubs(conn), load_all_rosters(conn), [], [], "aurora",
+            conn=conn,
+        )
+        assert beat.key == "events"
+        assert "Domestic Cup" in beat.body
+        assert "Aurora Sentinels" in beat.body
+
+    def test_build_beat_payload_events_branch_returns_event_list(self):
+        from dodgeball_sim.offseason_presentation import build_beat_payload
+        from dodgeball_sim.persistence import load_all_rosters, load_clubs
+        from dodgeball_sim.event_calendar import EventResult, record_event
+
+        conn, season_id = _pyramid_career()
+        record_event(conn, season_id, EventResult(
+            event_key="domestic_cup", event_name="Domestic Cup", season_id=season_id,
+            champion_club_id="aurora", champion_club_name="Aurora Sentinels",
+            ruleset="official_foam", purse_k=80, bracket=(),
+        ))
+        payload = build_beat_payload(
+            "events",
+            awards=[], clubs=load_clubs(conn), rosters=load_all_rosters(conn),
+            standings=[], ret_rows=[], season=None, season_outcome=None,
+            next_preview=None, signed_player_id="", player_club_id="aurora",
+            conn=conn,
+        )
+        assert payload["beat_key"] == "events"
+        assert len(payload["events"]) == 1
+        assert payload["events"][0]["event_key"] == "domestic_cup"

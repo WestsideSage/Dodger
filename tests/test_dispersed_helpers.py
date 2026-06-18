@@ -1105,6 +1105,7 @@ def test_build_offseason_ceremony_uses_expected_beats_and_real_rows():
         "recap",
         "champion",
         "awards",
+        "events",
         "records_ratified",
         "hof_induction",
         "development",

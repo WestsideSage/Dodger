@@ -89,6 +89,19 @@ def build_beat_payload(
                     return player
         return None
 
+    if beat_key == "events":
+        # V27: the season's resolved events (cup/invitationals/MSI/Founders').
+        # Phase 1 scaffold — surfaces whatever was recorded in v27_events_json
+        # (empty until Phase 2 wires the cup). The beat is conditional, so this
+        # only renders when at least one event was recorded.
+        from .event_calendar import load_events
+
+        season_id_for_events = (
+            season.season_id if season is not None else get_state(conn, "active_season_id")
+        )
+        event_rows = load_events(conn, season_id_for_events) if season_id_for_events else []
+        return {"beat_key": "events", "events": event_rows}
+
     if beat_key == "media_event":
         from .media_events import load_media_event
         from .persistence import get_state as _get_state
