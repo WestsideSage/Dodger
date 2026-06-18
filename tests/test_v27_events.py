@@ -1,0 +1,187 @@
+"""V27 The Calendar — Phase 1: event foundation.
+
+Per docs/specs/2026-06-17-v27-the-calendar-spec.md (Phase 1): the event-result
+model + an idempotent ``apply_event_purse`` (the FINANCES_APPLIED_KEY guard
+pattern — ``set_treasury_k`` has no guard of its own) + a per-season
+``v27_events_json`` store + an ``emit_event_news`` helper, plus a widened news
+filter and a conditional ``events`` offseason beat scaffold. Pyramid-gated;
+legacy single-league saves stay byte-identical.
+"""
+from __future__ import annotations
+
+import sqlite3
+
+from dodgeball_sim.career_setup import initialize_curated_manager_career
+from dodgeball_sim.config import DEFAULT_EVENTS, EventConfig
+from dodgeball_sim.economy import set_treasury_k, treasury_k
+from dodgeball_sim.persistence import (
+    create_schema,
+    get_state,
+    load_news_headlines,
+    save_news_headlines,
+)
+
+_SEED = 20260617
+
+
+def _pyramid_career():
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_curated_manager_career(
+        conn, "aurora", _SEED, ruleset_selection="official_foam", world="pyramid"
+    )
+    set_treasury_k(conn, 500)
+    conn.commit()
+    return conn, get_state(conn, "active_season_id")
+
+
+def _legacy_career():
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_curated_manager_career(
+        conn, "aurora", _SEED, ruleset_selection="official_foam"
+    )
+    set_treasury_k(conn, 500)
+    conn.commit()
+    return conn, get_state(conn, "active_season_id")
+
+
+# ---------------------------------------------------------------------------
+# Task 1.1 — EventConfig + events.py (idempotent purse + per-season store)
+# ---------------------------------------------------------------------------
+
+
+class TestEventConfig:
+    def test_default_events_config_has_required_knobs(self):
+        cfg: EventConfig = DEFAULT_EVENTS
+        # Founders' invite count is a small top-N by fan count (spec table: 4-6).
+        assert 4 <= cfg.founders_invite_count <= 6
+        # Invitational fame threshold gates cloth/no-sting invites by prestige.
+        assert cfg.invitational_fame_min > 0
+        # Prospect-showcase warmth is a one-season credibility bump (>=0).
+        assert cfg.warmth_credibility >= 0
+        # Purses are tier-scaled (a mapping keyed by tier 1/2/3) for the cup.
+        assert set(cfg.cup_purse_champion_k.keys()) == {1, 2, 3}
+
+    def test_cup_purses_are_a_margin_not_league_rival(self):
+        cfg = DEFAULT_EVENTS
+        # The cup purse must stay a MODEST margin relative to league payout —
+        # never dwarf the V22 economy. The D3 champion payout base+step is 240k;
+        # a cup champion purse well under that keeps the squeeze invariant.
+        for tier, purse in cfg.cup_purse_champion_k.items():
+            assert 0 < purse <= 200, f"tier {tier} cup purse {purse} too rich"
+
+
+class TestApplyEventPurse:
+    def test_credits_treasury_once_and_is_idempotent(self):
+        from dodgeball_sim.event_calendar import apply_event_purse
+
+        conn, season_id = _pyramid_career()
+        before = treasury_k(conn)
+        first = apply_event_purse(conn, "domestic_cup", purse_k=80, season_id=season_id)
+        assert treasury_k(conn) == before + 80
+        assert first is not None
+        # A second call must NOT double-pay — the per-event guard keys on season_id.
+        second = apply_event_purse(conn, "domestic_cup", purse_k=80, season_id=season_id)
+        assert treasury_k(conn) == before + 80
+        assert second == first  # same ledger, no re-apply
+
+    def test_per_event_guard_is_distinct_per_event_key(self):
+        """Two different events in the same season each pay once (distinct guards)."""
+        from dodgeball_sim.event_calendar import apply_event_purse
+
+        conn, season_id = _pyramid_career()
+        before = treasury_k(conn)
+        apply_event_purse(conn, "domestic_cup", purse_k=80, season_id=season_id)
+        apply_event_purse(conn, "cloth_classic", purse_k=40, season_id=season_id)
+        assert treasury_k(conn) == before + 120
+
+    def test_guard_key_namespaced_per_event(self):
+        from dodgeball_sim.event_calendar import apply_event_purse
+
+        conn, season_id = _pyramid_career()
+        apply_event_purse(conn, "domestic_cup", purse_k=80, season_id=season_id)
+        # The guard must be the per-event namespaced key, never finances_applied_for.
+        assert get_state(conn, "v27_domestic_cup_purse_for") == season_id
+        assert get_state(conn, "finances_applied_for") is None
+
+
+class TestEventStoreRoundTrip:
+    def test_record_event_and_load_events_round_trip(self):
+        from dodgeball_sim.event_calendar import EventBracketRow, EventResult, load_events, record_event
+
+        conn, season_id = _pyramid_career()
+        result = EventResult(
+            event_key="domestic_cup",
+            event_name="Domestic Cup",
+            season_id=season_id,
+            champion_club_id="aurora",
+            champion_club_name="Aurora Sentinels",
+            ruleset="official_foam",
+            purse_k=80,
+            bracket=(
+                EventBracketRow(round="Final", home_club_id="aurora", away_club_id="lunar",
+                                winner_club_id="aurora", home_club_name="Aurora Sentinels",
+                                away_club_name="Lunar Eclipse"),
+            ),
+        )
+        record_event(conn, season_id, result)
+        loaded = load_events(conn, season_id)
+        assert len(loaded) == 1
+        assert loaded[0]["event_key"] == "domestic_cup"
+        assert loaded[0]["champion_club_id"] == "aurora"
+        assert loaded[0]["purse_k"] == 80
+        assert loaded[0]["bracket"][0]["winner_club_id"] == "aurora"
+
+    def test_load_events_empty_when_none_recorded(self):
+        from dodgeball_sim.event_calendar import load_events
+
+        conn, season_id = _pyramid_career()
+        assert load_events(conn, season_id) == []
+
+    def test_record_event_appends_not_overwrites(self):
+        from dodgeball_sim.event_calendar import EventResult, load_events, record_event
+
+        conn, season_id = _pyramid_career()
+        for key in ("domestic_cup", "cloth_classic"):
+            record_event(conn, season_id, EventResult(
+                event_key=key, event_name=key, season_id=season_id,
+                champion_club_id="aurora", champion_club_name="Aurora Sentinels",
+                ruleset="official_foam", purse_k=10, bracket=(),
+            ))
+        loaded = load_events(conn, season_id)
+        assert {e["event_key"] for e in loaded} == {"domestic_cup", "cloth_classic"}
+
+
+class TestEmitEventNews:
+    def test_emits_an_event_news_headline(self):
+        from dodgeball_sim.event_calendar import EventResult, emit_event_news
+
+        conn, season_id = _pyramid_career()
+        result = EventResult(
+            event_key="domestic_cup", event_name="Domestic Cup", season_id=season_id,
+            champion_club_id="aurora", champion_club_name="Aurora Sentinels",
+            ruleset="official_foam", purse_k=80, bracket=(),
+        )
+        emit_event_news(conn, season_id, result)
+        wire = [h for h in load_news_headlines(conn, season_id)
+                if h["category"] == "event_news"]
+        assert wire, "emit_event_news must write an event_news headline"
+        assert "Aurora Sentinels" in wire[0]["headline_text"]
+
+    def test_emit_event_news_is_idempotent(self):
+        from dodgeball_sim.event_calendar import EventResult, emit_event_news
+
+        conn, season_id = _pyramid_career()
+        result = EventResult(
+            event_key="domestic_cup", event_name="Domestic Cup", season_id=season_id,
+            champion_club_id="aurora", champion_club_name="Aurora Sentinels",
+            ruleset="official_foam", purse_k=80, bracket=(),
+        )
+        emit_event_news(conn, season_id, result)
+        emit_event_news(conn, season_id, result)
+        wire = [h for h in load_news_headlines(conn, season_id)
+                if h["category"] == "event_news"]
+        assert len(wire) == 1

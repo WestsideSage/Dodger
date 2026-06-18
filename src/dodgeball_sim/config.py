@@ -383,6 +383,48 @@ class BenchRoleConfig:
 DEFAULT_BENCH_ROLES = BenchRoleConfig()
 
 
+# V27 The Calendar — event purses + invite/fame thresholds. Proposed sim-design
+# (the spec's "disclosed constants" table); each ships with probe evidence in its
+# phase. Purses are integer thousands, tier-scaled so the Domestic Cup pays a
+# MODEST margin of league payout (the squeeze invariant — never its rival). All
+# defaults safe for legacy (no events -> no purses). Pyramid-only.
+@dataclass(frozen=True)
+class EventConfig:
+    # Domestic Cup champion purse by division tier (1=Premier, 2=Challenger,
+    # 3=District). A margin, not a league-payout rival; tuned in Phase 2 against
+    # the V22 economy (cup_probe + finances margin).
+    cup_purse_champion_k: Mapping[int, int] = field(
+        default_factory=lambda: {1: 120, 2: 90, 3: 60}
+    )
+    # Runner-up + per-round-win purses (tier-scaled anchors). A modest participation
+    # margin so a cup run pays something without dwarfing league money.
+    cup_purse_runner_up_k: Mapping[int, int] = field(
+        default_factory=lambda: {1: 50, 2: 35, 3: 25}
+    )
+    cup_purse_per_win_k: Mapping[int, int] = field(
+        default_factory=lambda: {1: 12, 2: 9, 3: 6}
+    )
+    # Ruleset Invitational (Cloth Classic / No-Sting Open) champion purse — flat,
+    # not tier-scaled (invitationals are cross-tier by fame). Modest.
+    invitational_purse_champion_k: int = 70
+    invitational_purse_runner_up_k: int = 30
+    # MSI (Premier + Circuit leaders) champion purse — prestige + a modest purse.
+    msi_purse_champion_k: int = 100
+    # Founders' Exhibition (fan-invited, declared no-seeding, money only) purse.
+    founders_purse_champion_k: int = 80
+    # Founders' invite count: top-N clubs by fan_ledger.club_fans (spec: 4-6).
+    founders_invite_count: int = 5
+    # Ruleset-invitational fame threshold: a club's prestige must reach this to
+    # receive an invitational invite (the fame gate).
+    invitational_fame_min: int = 20
+    # Prospect-showcase warmth: a one-season credibility bump granted to the
+    # invitational champion's club (the V26 recruiting-credibility channel).
+    warmth_credibility: int = 4
+
+
+DEFAULT_EVENTS = EventConfig()
+
+
 def get_config(version: str | None = None) -> BalanceConfig:
     """Return the requested config, defaulting to the latest entry."""
 
@@ -409,6 +451,8 @@ __all__ = [
     "DEFAULT_FANS",
     "BenchRoleConfig",
     "DEFAULT_BENCH_ROLES",
+    "EventConfig",
+    "DEFAULT_EVENTS",
     "CONTESTED_USER_OFFER_BASE",
     "CONTESTED_USER_OFFER_INTEREST_WEIGHT",
     "CONTESTED_VETO_OFFER_FLOOR",
