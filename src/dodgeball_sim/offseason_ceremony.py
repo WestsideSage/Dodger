@@ -976,9 +976,15 @@ def initialize_manager_offseason(
     # consumption is preserved.
     has_media_event = False
     if player_club_id and pyramid_world_active(conn):
+        from .invitationals import reset_invitational_warmth
         from .media_events import cache_media_event, reset_credibility_bonus, select_media_event
 
         reset_credibility_bonus(conn)
+        # V27: reset the invitational warmth too (it is a one-offseason
+        # credibility effect on a separate key from v26_credibility_bonus, so
+        # a media bonus + an invitational warmth coexist this offseason and
+        # BOTH clear before next offseason's recruiting runs).
+        reset_invitational_warmth(conn)
         media_event = select_media_event(conn, season.season_id, root_seed)
         if media_event is not None:
             cache_media_event(conn, media_event)
@@ -987,15 +993,24 @@ def initialize_manager_offseason(
     # invitationals, MSI, Founders'). Phase 2 wires the Domestic Cup: generate
     # + auto-sim the cross-division bracket to a champion through the real foam
     # engine, recording the result in v27_events_json (trophy + purse + fans +
-    # news). Pyramid + user only; legacy/non-pyramid worlds never touch the
+    # news). Phase 4 wires the ruleset invitationals (Cloth Classic / No-Sting
+    # Open): fame-gated field, auto-sim each knockout under a non-foam ruleset,
+    # champion purse + prospect-showcase warmth in the recruiting-credibility
+    # channel. Pyramid + user only; legacy/non-pyramid worlds never touch the
     # v27_events_json store (byte-identical — the beat stays absent).
     has_events = False
     if player_club_id and pyramid_world_active(conn):
         from .cup_service import ensure_domestic_cup, resolve_domestic_cup
         from .event_calendar import load_events
+        from .invitationals import resolve_ruleset_invitationals
 
         ensure_domestic_cup(conn, season.season_id, root_seed)
         resolve_domestic_cup(conn, season.season_id, root_seed)
+        # V27 Phase 4: resolve the ruleset invitationals (Cloth Classic + No-Sting
+        # Open) AFTER the warmth reset above and AFTER the cup, so the events
+        # beat surfaces the full season of events. Fame-gated field; champion
+        # purse + warmth land only when the user wins (idempotent per event).
+        resolve_ruleset_invitationals(conn, season.season_id, root_seed)
         has_events = bool(load_events(conn, season.season_id))
     # Compute and store the active beat list for this offseason
     active_beats = compute_active_beats(

@@ -134,9 +134,27 @@ def _credibility(
     from .media_events import media_credibility_bonus
 
     media_bonus = media_credibility_bonus(conn)
+    # V27: an invitational champion's prospect-showcase warmth is a SECOND
+    # one-season credibility bonus on a SEPARATE state key
+    # (v27_invitational_warmth — NOT v26_credibility_bonus) so a media bonus
+    # and an invitational warmth in the same offseason both reach recruiting
+    # SUMMED, never clobbering each other. Both reset next offseason init.
+    from .invitationals import invitational_warmth
+
+    warmth_bonus = invitational_warmth(conn)
     score = max(
         0,
-        min(100, 50 + prestige * 2 + wins * 4 - losses * 3 + youth_weeks * 2 + promise_delta + media_bonus),
+        min(
+            100,
+            50
+            + prestige * 2
+            + wins * 4
+            - losses * 3
+            + youth_weeks * 2
+            + promise_delta
+            + media_bonus
+            + warmth_bonus,
+        ),
     )
     evidence = [
         f"{wins} wins and {losses} losses across your career.",
