@@ -15,6 +15,36 @@ fans/facilities/bench roles, the event calendar, and the emergent-meta layer —
 in that order (V23 World first). That doc is the planning authority for what
 comes next; this file remains build-state truth.
 
+**V26 — The Crowd: DONE on the branch `feature/v24-the-board` (2026-06-17;
+NOT yet on main).** Spec: `docs/specs/2026-06-17-v26-the-crowd-spec.md`; plan:
+`docs/specs/2026-06-17-v26-the-crowd-sprint-plan.md`; retro:
+`docs/retrospectives/2026-06-17-v26-the-crowd-retrospective.md`. All 7 phases
+shipped, full `python -m pytest -q` green (real exit code), build + lint clean.
+Mostly **revives dormant-but-built code**: facilities (the web offseason fed
+`facilities=()`) are now permanent treasury-bought buildings (`facilities_office.py`;
+Training Hall = a headroom-capped practice-credit dev effect via the V19b channel;
+Stadium/Merch feed income; the dead `DevelopmentModifiers` scouting/sync fields
+removed; legacy CLI per-season path untouched). First Climb-Era schema migration
+`_migrate_v19` (club_fans / player_fans / append-only fan_ledger receipts).
+`fan_economy.py` grows the user club's fans from real logged events (wins,
+promotion, titles/cups, Worlds finals) with receipts AND ports the dormant CLI
+prestige award to the web offseason (V24 Contender/credibility now rise on web).
+Player followings from persisted award moments (MVP + best-X). Matchday + merch
+income in `apply_season_finances` (3–42% of prize money — a margin, never its
+rival; `tools/fan_income_probe.py`). Bench roles (`bench_roles.py`): Mentor
+(per-youngster dev, scaled by the mentor's identity traits — their first honest
+consumer), Analyst (`targeting_read_bonus` scaling with `tactical_iq`), Ambassador
+(monetizes his following). A conditional `media_event` offseason choice beat whose
+effects land ONLY in fans/prestige/credibility (the isolation fence). Frontend:
+`FacilitiesUpgradePanel`, `MediaEvent.tsx`, Recap income rows, bench-role API.
+Behind `pyramid_world_active`; legacy byte-identical. **Findings:** facility
+effects were sub-rounding (rerouted Training Hall through practice credit);
+prestige growth was CLI-only (ported); `_MAX_OFFSEASON_BEAT_INDEX` bumped 10→11
+(the second beat to hit the V25 clamp lesson); v18→v19 schema-witness churn fixed.
+**Disclosed deferrals:** bench-role visual assignment control, player-district +
+in-game-moment followings, info/tactical facilities (CLI-legacy), in-season media,
+live browser walk — see the retro.
+
 **V25 — The Market: DONE on the branch `feature/v24-the-board` (2026-06-17;
 NOT yet on main).** Spec: `docs/specs/2026-06-17-v25-the-market-spec.md`;
 plan: `docs/specs/2026-06-17-v25-the-market-sprint-plan.md`; retro:
