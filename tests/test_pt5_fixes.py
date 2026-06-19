@@ -205,6 +205,21 @@ class TestSigningReceiptOffers:
         assert hi != lo and float(hi) >= float(lo)
 
 
+class TestPremierStakesCopy:
+    """PT5: the Premier stakes related the Top-4 playoff cut and the Top-2 Worlds
+    berth as two unrelated facts ('Top two reach WORLDS' beside a 'Top 4' cut).
+    The fix relates them — accurately (Worlds is vs the International Circuit, not
+    'every region')."""
+
+    def test_premier_summary_relates_playoffs_and_worlds(self):
+        from dodgeball_sim.web_status_service import _division_movement_rules
+
+        summary = _division_movement_rules("premier")["summary"].lower()
+        assert "playoff" in summary and "worlds" in summary
+        assert "international circuit" in summary
+        assert "every region" not in summary
+
+
 class TestLauncherPort:
     """PT5 setup: `--port 8010` was ignored (the launcher took no args and always
     started from 8000, killing the owner's same-repo game)."""
