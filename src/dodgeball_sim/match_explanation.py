@@ -207,6 +207,8 @@ def derive_match_explanation(
     name_map: Mapping[str, str] | None = None,
     point_margin: int = 0,
     ovr_edge: int = 0,
+    player_game_points: int | None = None,
+    opponent_game_points: int | None = None,
 ) -> MatchExplanation:
     """Rank supported factors and return the dominant one (or a soft fallback).
 
@@ -287,6 +289,8 @@ def derive_match_explanation(
             decisive=decisive,
             point_margin=point_margin,
             ovr_edge=ovr_edge,
+            player_game_points=player_game_points,
+            opponent_game_points=opponent_game_points,
         )
         considered = tuple([c.factor for c in candidates[:3]])
         return MatchExplanation(primary_factor=primary, considered=considered)
@@ -543,17 +547,30 @@ def _upset_variance_factor(
     decisive: bool = False,
     point_margin: int = 0,
     ovr_edge: int = 0,
+    player_game_points: int | None = None,
+    opponent_game_points: int | None = None,
 ) -> PrimaryFactor:
-    margin = abs(player_survivors - opponent_survivors)
-    chips: tuple[str, ...] = (
-        f"Survivors {player_survivors}-{opponent_survivors}",
-        f"Margin {margin}",
-    )
+    # PT6: on an official (set-scored) match the scoreboard is GAME POINTS, but
+    # the final set's survivor counts are routinely 0-0 — so a 7-5 win read
+    # "Survivors 0-0 / Margin 0" (the V20/WT-2 lie). Show the real game-point
+    # scoreline when present; legacy/generic matches keep survivor chips.
+    if player_game_points is not None and opponent_game_points is not None:
+        pg, og = int(player_game_points), int(opponent_game_points)
+        chips: tuple[str, ...] = (
+            f"Game points {pg}-{og}",
+            f"Set margin {abs(pg - og)}",
+        )
+    else:
+        margin = abs(player_survivors - opponent_survivors)
+        chips = (
+            f"Survivors {player_survivors}-{opponent_survivors}",
+            f"Margin {margin}",
+        )
     if decisive:
         # 4.4 fix: a 0-4 / 6-0 set result is NOT "inconclusive". When the
         # scoreline was decisive but no single tactical factor stood out, say
         # so honestly instead of claiming the match "stayed close".
-        if point_margin > 0:
+        if point_margin > 0 and player_game_points is None:
             chips = chips + (f"Set margin {point_margin}",)
         if result == "Win":
             title = "Controlled across the sets"

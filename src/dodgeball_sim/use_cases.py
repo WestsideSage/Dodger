@@ -1183,6 +1183,17 @@ def _build_aftermath(
                     _fielded_ovr_total(snapshots.get(player_club_id, []))
                     - _fielded_ovr_total(snapshots.get(opponent_club_id, []))
                 )
+                # PT6: feed the per-team GAME POINTS so the Primary Factor fallback
+                # chip shows the real scoreline (e.g. "Game points 7-5") instead of
+                # the official final set's "Survivors 0-0 / Margin 0" lie. home_game_pts
+                # / away_game_pts are the team_a_id-guarded totals from the match card
+                # above; map them to player/opponent. None on legacy => survivor chips.
+                _pf_official = scoring_model != "legacy"
+                _player_gp = _opp_gp = None
+                if _pf_official:
+                    _player_is_home = player_club_id == record.home_club_id
+                    _player_gp = home_game_pts if _player_is_home else away_game_pts
+                    _opp_gp = away_game_pts if _player_is_home else home_game_pts
                 explanation = derive_match_explanation(
                     result=result_pf,
                     player_survivors=int(box[player_club_id]["totals"]["living"]),
@@ -1198,6 +1209,8 @@ def _build_aftermath(
                     name_map=name_map_pf,
                     point_margin=point_margin,
                     ovr_edge=ovr_edge,
+                    player_game_points=_player_gp,
+                    opponent_game_points=_opp_gp,
                 )
                 aftermath["primary_factor"] = explanation.primary_factor.as_dict()
 
