@@ -218,6 +218,9 @@ class TestPremierStakesCopy:
         assert "playoff" in summary and "worlds" in summary
         assert "international circuit" in summary
         assert "every region" not in summary
+        # PT6: Worlds entrants are the two PLAYOFF finalists, not the standings
+        # top two — the copy must not imply a standings berth.
+        assert "finalist" in summary
 
 
 class TestLauncherPort:

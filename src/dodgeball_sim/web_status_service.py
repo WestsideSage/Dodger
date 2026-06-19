@@ -543,7 +543,7 @@ def _division_movement_rules(division_id: str) -> dict[str, Any]:
             "promotion_playoff": False,
             "relegation_count": 2,
             "worlds_slots": 2,
-            "summary": "Top 4 reach the playoffs, top 2 go to Worlds (vs the International Circuit's top 2 finalists). Bottom two teams face relegation.",
+            "summary": "Top 4 reach the playoffs; the two finalists go to Worlds (vs the International Circuit's two finalists). Bottom two teams face relegation.",
         },
         "challenger": {
             "auto_promotion": True,

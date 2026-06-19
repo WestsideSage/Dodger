@@ -118,6 +118,14 @@ function ExpiringRow({
         : pendingAction === 'resign' ? 'resign'
         : row.decision;
     const releasing = decision === 'release';
+    // PT6: a dealbreaker veto means he WON'T re-sign (the Re-sign button is
+    // disabled) — the latch badge must say so, not "Re-signing", or it
+    // contradicts the "won't re-sign" warning on the same row.
+    const badge = row.veto
+        ? { text: "✗ Won't re-sign", color: '#f87171' }
+        : releasing
+        ? { text: '✗ Letting walk', color: '#f87171' }
+        : { text: '✓ Re-signing', color: '#38bdf8' };
     return (
         <div
             data-testid={`transfer-expiring-${row.player_id}`}
@@ -131,9 +139,10 @@ function ExpiringRow({
             <span style={{ fontWeight: 700, color: '#e2e8f0' }}>{row.name}</span>
             <span style={{ color: '#64748b', fontSize: '0.78rem' }}>OVR {row.ovr}</span>
             <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>asks {formatK(row.ask_k)}</span>
-            {/* PT5: an explicit, unambiguous latch of the current decision. */}
-            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: releasing ? '#f87171' : '#38bdf8' }}>
-                {releasing ? '✗ Letting walk' : '✓ Re-signing'}
+            {/* PT5/PT6: an explicit, unambiguous latch of the current decision
+                (veto-aware — a "won't re-sign" player never reads as "Re-signing"). */}
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: badge.color }}>
+                {badge.text}
             </span>
             {row.veto && (
                 <span title={`Dealbreaker: ${row.dealbreaker} (${row.dealbreaker_letter})`} style={{ color: '#f87171', fontSize: '0.72rem', fontWeight: 600 }}>
