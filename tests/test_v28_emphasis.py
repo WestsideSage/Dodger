@@ -27,12 +27,13 @@ import pytest
 from dodgeball_sim.config import DEFAULT_WEATHER
 from dodgeball_sim.models import CatchPosture, CoachPolicy
 from dodgeball_sim.official_engine import OfficialMatchEngineDriver
-from dodgeball_sim.official_resolution import resolve_throw
+from dodgeball_sim.official_resolution import compute_throw_probabilities, resolve_throw
+from dodgeball_sim.official_translator import collect_official_metadata
 from dodgeball_sim.player_state import OfficialPlayerState, OfficialPlayerStatus
 from dodgeball_sim.rulesets import RulesetSelection
 from dodgeball_sim.season_emphasis import SeasonEmphasis
 from dodgeball_sim.sequence import SequenceLedger, SequenceOfPlay
-from tools.probe_lib import make_match_input
+from tools.probe_lib import make_match_input, make_player
 
 _PROFILE = RulesetSelection("official_foam").to_profile()
 
@@ -149,6 +150,85 @@ class TestEmphasisBites:
         emph = SeasonEmphasis(catch_delta=DEFAULT_WEATHER.emphasis_catch_delta_max)
         diverged = any(_driver_fp(None, seed) != _driver_fp(emph, seed) for seed in range(24))
         assert diverged, "bounded catch emphasis changed no engine outcome over 24 seeds"
-        # (block emphasis bites + symmetry + logging are pinned in Task 3.2, which
-        # uses a held-ball decliner fixture that actually exercises the block roll —
-        # the uniform-63 engine fixture rarely declines a catch.)
+
+
+# ---------------------------------------------------------------------------
+# Task 3.2 — symmetry + discretion logging
+# ---------------------------------------------------------------------------
+
+
+class TestEmphasisSymmetry:
+    def test_catch_emphasis_applies_to_both_sides(self):
+        """The shift is a global sigmoid bias, not a per-team buff: a positive
+        catch_delta raises catch leniency in BOTH throwing directions."""
+        fast = make_player("x", "alpha", 70.0)
+        slow = make_player("y", "beta", 55.0)
+        emph = DEFAULT_WEATHER.emphasis_catch_delta_max
+        base_xy = compute_throw_probabilities(thrower=fast, target=slow).p_catch_given_attempt
+        emph_xy = compute_throw_probabilities(
+            thrower=fast, target=slow, catch_emphasis=emph
+        ).p_catch_given_attempt
+        base_yx = compute_throw_probabilities(thrower=slow, target=fast).p_catch_given_attempt
+        emph_yx = compute_throw_probabilities(
+            thrower=slow, target=fast, catch_emphasis=emph
+        ).p_catch_given_attempt
+        assert emph_xy > base_xy, "catch emphasis did not raise leniency for x->y"
+        assert emph_yx > base_yx, "catch emphasis did not raise leniency for y->x"
+
+    def test_identical_matchup_is_mirror_identical(self):
+        """Two identical players: the emphasized catch prob is the same whichever
+        side throws (no home/away favoritism — symmetry by construction)."""
+        p = make_player("p", "alpha", 63.0)
+        q = make_player("q", "beta", 63.0)
+        emph = DEFAULT_WEATHER.emphasis_catch_delta_max
+        pq = compute_throw_probabilities(thrower=p, target=q, catch_emphasis=emph).p_catch_given_attempt
+        qp = compute_throw_probabilities(thrower=q, target=p, catch_emphasis=emph).p_catch_given_attempt
+        assert pq == qp
+
+
+class TestBlockEmphasis:
+    def test_block_emphasis_raises_block_rate(self):
+        """A positive block_delta is monotonic on the held-ball decliner fixture:
+        every seed that blocked at delta 0 still blocks, plus some new ones."""
+        emph = SeasonEmphasis(block_delta=DEFAULT_WEATHER.emphasis_block_delta_max)
+        base = sum(_throw(s, block_branch=True)[0] == "blocked" for s in range(300))
+        bumped = sum(
+            _throw(s, season_emphasis=emph, block_branch=True)[0] == "blocked"
+            for s in range(300)
+        )
+        assert bumped > base, f"block emphasis did not raise the block rate ({bumped} <= {base})"
+
+
+class TestEmphasisLogging:
+    def _emphasis_disc(self, out):
+        events = collect_official_metadata(out.events)["discretion_events"]
+        return [
+            d for d in events
+            if str(d["payload"].get("selection_basis", "")).startswith("emphasis_")
+        ]
+
+    def test_flips_emit_emphasis_discretion_events(self):
+        """A flipped call emits a RuleDiscretionEvent(selection_basis=
+        'emphasis_<season>') visible in collect_official_metadata."""
+        emph = SeasonEmphasis(
+            catch_delta=DEFAULT_WEATHER.emphasis_catch_delta_max,
+            selection_basis="emphasis_season_3",
+        )
+        total = 0
+        for seed in range(24):
+            driver = OfficialMatchEngineDriver()
+            mi = make_match_input(seed=seed)
+            mi = dc_replace(mi, config={**mi.config, "season_emphasis": emph})
+            recs = self._emphasis_disc(driver.run(mi))
+            total += len(recs)
+            for d in recs:
+                assert d["payload"]["selection_basis"] == "emphasis_season_3"
+                # an emitted discretion is an actual flip: default != selected.
+                assert d["payload"]["default_ruling"] != d["payload"]["selected_ruling"]
+        assert total > 0, "no emphasis discretion events emitted over 24 seeds"
+
+    def test_default_emphasis_emits_no_discretion(self):
+        """A no-bulletin season logs no emphasis discretion events."""
+        for seed in range(8):
+            driver = OfficialMatchEngineDriver()
+            assert self._emphasis_disc(driver.run(make_match_input(seed=seed))) == []

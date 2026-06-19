@@ -17,6 +17,7 @@ from typing import Dict, Tuple
 from .models import CatchPosture, CoachPolicy, Player
 from .official_tactics import decide_catch_attempt
 from .player_state import OfficialPlayerState
+from .rule_discretion import RuleDiscretionEvent
 from .season_emphasis import SeasonEmphasis
 from .sequence import (
     SequenceContact,
@@ -151,6 +152,37 @@ def _shaded(value: float, shade: float) -> float:
     return max(0.0, min(1.0, value + shade))
 
 
+def _emphasis_discretion(
+    season_emphasis: SeasonEmphasis,
+    *,
+    kind: str,
+    default_ruling: str,
+    selected_ruling: str,
+) -> RuleDiscretionEvent:
+    """Build the DISCRETION record for a call the season emphasis flipped.
+
+    ``rule_section='emphasis'`` is deliberately NON-numeric: the points of
+    emphasis are sim-design weather within the rulebook's discretion space, never
+    a sourced USAD section (see
+    ``official_conformance_ledger.NON_SECTION_ENFORCEMENT_NOTES``). The record is
+    emitted ONLY when the bounded delta actually changed this call's outcome
+    (``default_ruling != selected_ruling``), so the log is an honest list of the
+    calls the emphasis decided.
+    """
+    return RuleDiscretionEvent(
+        rule_section="emphasis",
+        trigger=f"emphasis_{kind}_shift",
+        default_ruling=default_ruling,
+        alternative_rulings=(selected_ruling,),
+        selected_ruling=selected_ruling,
+        selection_basis=season_emphasis.selection_basis,
+        replay_summary=(
+            f"Officiating emphasis shifted a {kind} call "
+            f"({default_ruling} -> {selected_ruling})."
+        ),
+    )
+
+
 def compute_throw_probabilities(
     *,
     thrower: Player,
@@ -225,6 +257,7 @@ def resolve_throw(
     target_shade: float = 0.0,
     thrower_tiq_bonus: float = 0.0,
     season_emphasis: SeasonEmphasis = SeasonEmphasis(),
+    discretion_sink: list | None = None,
 ) -> Tuple[ThrowProbabilities, str]:
     """Resolve one throw against one primary target and mutate the sequence.
 
@@ -267,7 +300,30 @@ def resolve_throw(
     )
     if decision.attempt:
         p_catch = min(0.97, probs.p_catch_given_attempt * opening_catch_factor)
-        if rng.random() <= p_catch:
+        catch_roll = rng.random()  # same single draw — capture, don't add one
+        caught = catch_roll <= p_catch
+        if discretion_sink is not None and season_emphasis.catch_delta:
+            # Counterfactual against the SAME roll with the emphasis removed —
+            # pure arithmetic, no new RNG draw. Log only a call the delta flipped.
+            base_probs = compute_throw_probabilities(
+                thrower=thrower,
+                target=target,
+                thrower_shade=thrower_shade,
+                target_shade=target_shade,
+                thrower_tiq_bonus=thrower_tiq_bonus,
+                catch_emphasis=0.0,
+            )
+            caught_base = catch_roll <= min(
+                0.97, base_probs.p_catch_given_attempt * opening_catch_factor
+            )
+            if caught != caught_base:
+                discretion_sink.append(_emphasis_discretion(
+                    season_emphasis,
+                    kind="catch",
+                    default_ruling="caught" if caught_base else "hit",
+                    selected_ruling="caught" if caught else "hit",
+                ))
+        if caught:
             seq.add_catch(catcher_id=target_state.player_id, timestamp_ms=seq.release_time_ms + 10)
             seq.add_contact(SequenceContact(
                 kind=SequenceContactKind.CATCH,
@@ -299,7 +355,22 @@ def resolve_throw(
             _BLOCK_SLOPE * (block_skill - _BLOCK_THROW_POWER_WEIGHT * power_thr)
             + block_bias
         )
-        if rng.random() <= p_block:
+        block_roll = rng.random()  # same single draw — capture, don't add one
+        blocked = block_roll <= p_block
+        if discretion_sink is not None and season_emphasis.block_delta:
+            # Counterfactual against the SAME roll with the emphasis removed.
+            blocked_base = block_roll <= _sigmoid(
+                _BLOCK_SLOPE * (block_skill - _BLOCK_THROW_POWER_WEIGHT * power_thr)
+                + _BLOCK_BIAS
+            )
+            if blocked != blocked_base:
+                discretion_sink.append(_emphasis_discretion(
+                    season_emphasis,
+                    kind="block",
+                    default_ruling="blocked" if blocked_base else "no_block",
+                    selected_ruling="blocked" if blocked else "no_block",
+                ))
+        if blocked:
             seq.add_contact(SequenceContact(
                 kind=SequenceContactKind.BLOCK,
                 player_id=target_state.player_id,

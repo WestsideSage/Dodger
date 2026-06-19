@@ -881,6 +881,11 @@ def run_autonomous_game(
             )
         else:
             opening_catch_factor = 1.0
+        # V28 officiating emphasis: collect any call the season's bounded delta
+        # flipped (no sink ⇒ default emphasis ⇒ byte-identical, no events added).
+        emphasis_sink = (
+            [] if (season_emphasis.catch_delta or season_emphasis.block_delta) else None
+        )
         _probs, outcome_label = resolve_throw(
             seq=seq,
             thrower_state=thrower_state,
@@ -907,7 +912,17 @@ def run_autonomous_game(
             # V28 officiating emphasis: the season's catch/block leniency shift,
             # applied symmetrically (every throw shares this same shaded bias).
             season_emphasis=season_emphasis,
+            discretion_sink=emphasis_sink,
         )
+        # Stamp + log any emphasis-flipped call as a DISCRETION event (the
+        # ANNOUNCED-vs-ENFORCED honesty record; see official_conformance_ledger).
+        if emphasis_sink:
+            for record in emphasis_sink:
+                events.append(record.to_official_event(
+                    event_id=f"emphasis-{ticks}-{len(events)}",
+                    match_id=match_id,
+                    team_ids=(target_state.team_id,),
+                ))
         ruling = ledger.close_sequence(seq.sequence_id)
         events.append(sequence_event(seq))
 
