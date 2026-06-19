@@ -178,3 +178,28 @@ class TestScoutingNetworkBoardCount:
         upgrade_scouting_network(conn)
         l3 = count()
         assert l2 >= l1 and l3 >= l2, f"paid upgrade shrank the board: L1={l1} L2={l2} L3={l3}"
+
+
+class TestSigningReceiptOffers:
+    """PT5: the snipe receipt 'their offer 106 beat yours 106' was self-
+    contradictory — integer rounding collapsed two distinct 4-decimal offers."""
+
+    def test_offer_pair_reveals_a_sub_unit_gap(self):
+        from dodgeball_sim.offseason_ceremony import _format_offer_pair
+
+        hi, lo = _format_offer_pair(106.51, 106.48)  # both bare round() to 106
+        assert hi != lo, "rounding collapsed distinct offers to one number"
+        assert float(hi) >= float(lo)
+
+    def test_offer_pair_keeps_integers_when_clean(self):
+        from dodgeball_sim.offseason_ceremony import _format_offer_pair
+
+        assert _format_offer_pair(110.0, 104.0) == ("110", "104")
+
+    def test_offer_pair_guards_bankers_rounding_inversion(self):
+        from dodgeball_sim.offseason_ceremony import _format_offer_pair
+
+        # round(106.5)->106 and round(105.5)->106 (round-half-to-even): must not
+        # display the winner <= the loser.
+        hi, lo = _format_offer_pair(106.5, 105.5)
+        assert hi != lo and float(hi) >= float(lo)

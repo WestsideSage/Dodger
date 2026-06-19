@@ -1273,6 +1273,26 @@ def _commit_free_agent_signing(
     return signed
 
 
+def _format_offer_pair(higher: float, lower: float) -> tuple[str, str]:
+    """Format a winning vs losing offer-strength pair so the displayed winner is
+    never <= the displayed loser.
+
+    The offers are compared at 4-decimal precision but were displayed via bare
+    ``round()`` to an integer, which collapsed e.g. 106.51 vs 106.48 to "106"
+    vs "106" (and banker's rounding could even invert them) — a self-
+    contradictory "their offer 106 beat yours 106" (PT5). Escalate precision
+    only as far as needed to reveal the real gap; a genuine 4-decimal tie (won on
+    a secondary key) falls through to the raw values.
+    """
+    for ndigits in (0, 1, 2, 4):
+        hi = round(higher, ndigits)
+        lo = round(lower, ndigits)
+        if hi > lo:
+            fmt = "{:.0f}" if ndigits == 0 else f"{{:.{ndigits}f}}"
+            return fmt.format(hi), fmt.format(lo)
+    return f"{higher}", f"{lower}"
+
+
 def sign_chosen_rookie_contested(
     conn: sqlite3.Connection,
     player_club_id: str,
@@ -1334,9 +1354,11 @@ def sign_chosen_rookie_contested(
         if outcome.rival_club_id is not None:
             rival_club = clubs.get(outcome.rival_club_id)
             rival_name = rival_club.name if rival_club else outcome.rival_club_id
+            _your, _rival = _format_offer_pair(
+                outcome.user_offer_strength, outcome.rival_offer_strength
+            )
             win_line = (
-                f"Your offer {round(outcome.user_offer_strength)} beat "
-                f"{rival_name}'s {round(outcome.rival_offer_strength)} — interest "
+                f"Your offer {_your} beat {rival_name}'s {_rival} — interest "
                 f"{outcome.interest}% strengthened it."
             )
         else:
@@ -1381,9 +1403,10 @@ def sign_chosen_rookie_contested(
         "actions_taken": outcome.actions_taken,
         "explanation": (
             f"{winning_club_name} signed {chosen.name} — their offer "
-            f"{round(outcome.winning_offer_strength)} beat yours "
-            f"{round(outcome.user_offer_strength)}. Your interest was "
-            f"{outcome.interest}%, built from {action_label}."
+            f"{_format_offer_pair(outcome.winning_offer_strength, outcome.user_offer_strength)[0]} "
+            f"beat yours "
+            f"{_format_offer_pair(outcome.winning_offer_strength, outcome.user_offer_strength)[1]}. "
+            f"Your interest was {outcome.interest}%, built from {action_label}."
         ),
     }
     conn.commit()
