@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { OffseasonBeat, TransferExpiringRow, TransferBuyoutRow } from '../../types';
 import { formatK } from '../../money';
 import { ActionButton, PageHeader } from '../ui';
@@ -16,6 +17,15 @@ export function TransferPeriod({
     acting?: boolean;
 }) {
     const { expiring, buyouts, results, treasury_k, wage_bill_k } = beat.payload;
+    // PT5: latch each decision optimistically so the row's selected state updates
+    // the instant you click (the default 'resign'/'refuse' already styled one
+    // button, so clicking the default showed no change — the choice "didn't
+    // latch"). Keyed by player_id -> the onTransfer action string.
+    const [pending, setPending] = useState<Record<string, string>>({});
+    const handleTransfer = (action: string, playerId: string, offerK?: number) => {
+        setPending((prev) => ({ ...prev, [playerId]: action }));
+        onTransfer(action, playerId, offerK);
+    };
 
     return (
         <section className="command-offseason-shell" data-testid="offseason-transfer">
@@ -40,7 +50,13 @@ export function TransferPeriod({
                             <p className="dm-kicker" style={{ margin: '0 0 0.6rem' }}>Expiring Contracts ({expiring.length})</p>
                             <div style={{ display: 'grid', gap: '0.5rem' }}>
                                 {expiring.map((row) => (
-                                    <ExpiringRow key={row.player_id} row={row} onTransfer={onTransfer} acting={acting} />
+                                    <ExpiringRow
+                                        key={row.player_id}
+                                        row={row}
+                                        onTransfer={handleTransfer}
+                                        pendingAction={pending[row.player_id]}
+                                        acting={acting}
+                                    />
                                 ))}
                             </div>
                         </div>
@@ -51,7 +67,13 @@ export function TransferPeriod({
                             <p className="dm-kicker" style={{ margin: '0 0 0.6rem' }}>Incoming Buyout Offers ({buyouts.length})</p>
                             <div style={{ display: 'grid', gap: '0.5rem' }}>
                                 {buyouts.map((row) => (
-                                    <BuyoutRow key={row.player_id} row={row} onTransfer={onTransfer} acting={acting} />
+                                    <BuyoutRow
+                                        key={row.player_id}
+                                        row={row}
+                                        onTransfer={handleTransfer}
+                                        pendingAction={pending[row.player_id]}
+                                        acting={acting}
+                                    />
                                 ))}
                             </div>
                         </div>
@@ -83,13 +105,19 @@ export function TransferPeriod({
 function ExpiringRow({
     row,
     onTransfer,
+    pendingAction,
     acting,
 }: {
     row: TransferExpiringRow;
     onTransfer: (action: string, playerId: string, offerK?: number) => void;
+    pendingAction?: string;
     acting?: boolean;
 }) {
-    const releasing = row.decision === 'release';
+    // The just-clicked decision wins (optimistic); else the committed one.
+    const decision = pendingAction === 'release' ? 'release'
+        : pendingAction === 'resign' ? 'resign'
+        : row.decision;
+    const releasing = decision === 'release';
     return (
         <div
             data-testid={`transfer-expiring-${row.player_id}`}
@@ -103,6 +131,10 @@ function ExpiringRow({
             <span style={{ fontWeight: 700, color: '#e2e8f0' }}>{row.name}</span>
             <span style={{ color: '#64748b', fontSize: '0.78rem' }}>OVR {row.ovr}</span>
             <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>asks {formatK(row.ask_k)}</span>
+            {/* PT5: an explicit, unambiguous latch of the current decision. */}
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: releasing ? '#f87171' : '#38bdf8' }}>
+                {releasing ? '✗ Letting walk' : '✓ Re-signing'}
+            </span>
             {row.veto && (
                 <span title={`Dealbreaker: ${row.dealbreaker} (${row.dealbreaker_letter})`} style={{ color: '#f87171', fontSize: '0.72rem', fontWeight: 600 }}>
                     ⚠ {row.dealbreaker} {row.dealbreaker_letter} — won't re-sign
@@ -136,13 +168,18 @@ function ExpiringRow({
 function BuyoutRow({
     row,
     onTransfer,
+    pendingAction,
     acting,
 }: {
     row: TransferBuyoutRow;
     onTransfer: (action: string, playerId: string, offerK?: number) => void;
+    pendingAction?: string;
     acting?: boolean;
 }) {
-    const accepting = row.decision === 'accept';
+    const decision = pendingAction === 'accept_buyout' ? 'accept'
+        : pendingAction === 'refuse_buyout' ? 'refuse'
+        : row.decision;
+    const accepting = decision === 'accept';
     return (
         <div
             data-testid={`transfer-buyout-${row.player_id}`}
@@ -156,6 +193,10 @@ function BuyoutRow({
             <span style={{ fontWeight: 700, color: '#e2e8f0' }}>{row.name}</span>
             <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>
                 {row.buyer_club_name} (Tier {row.buyer_tier}) bids <strong style={{ color: '#10b981' }}>{formatK(row.fee_k)}</strong>
+            </span>
+            {/* PT5: explicit latch of the current decision. */}
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: accepting ? '#10b981' : '#38bdf8' }}>
+                {accepting ? '✓ Selling' : '✓ Keeping him'}
             </span>
             <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem' }}>
                 <ActionButton

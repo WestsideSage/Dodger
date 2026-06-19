@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { OffseasonBeat, MediaEventOption } from '../../types';
 import { ActionButton, PageHeader } from '../ui';
 
@@ -23,6 +24,13 @@ export function MediaEvent({
     acting?: boolean;
 }) {
     const { event, committed, result } = beat.payload;
+    // PT5: latch the picked option visually so it's clear what will commit
+    // before "Confirm & Continue" (the choice previously showed no selected state).
+    const [chosenKey, setChosenKey] = useState<string | null>(null);
+    const handleChoose = (key: string) => {
+        setChosenKey(key);
+        onChoose(key);
+    };
 
     return (
         <section className="command-offseason-shell" data-testid="offseason-media">
@@ -41,24 +49,33 @@ export function MediaEvent({
                 <div className="dm-panel" data-testid="media-event" style={{ padding: '0.85rem 1rem' }}>
                     <p style={{ margin: '0 0 0.7rem', color: '#e2e8f0', fontWeight: 600 }}>{event.prompt}</p>
                     <div style={{ display: 'grid', gap: '0.5rem' }}>
-                        {event.options.map((o) => (
+                        {event.options.map((o) => {
+                            const selected = o.key === chosenKey;
+                            return (
                             <div
                                 key={o.key}
+                                aria-pressed={selected}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
                                     padding: '0.55rem 0.75rem', borderRadius: '6px',
-                                    border: '1px solid #1e293b', background: 'rgba(15,23,42,0.4)',
+                                    border: selected ? '1px solid #38bdf8' : '1px solid #1e293b',
+                                    background: selected ? 'rgba(56,189,248,0.12)' : 'rgba(15,23,42,0.4)',
                                 }}
                             >
                                 <span style={{ color: '#e2e8f0' }}>{o.label}</span>
                                 <span style={{ color: '#64748b', fontSize: '0.74rem' }}>{effectChips(o)}</span>
                                 <span style={{ marginLeft: 'auto' }}>
-                                    <ActionButton variant="primary" onClick={() => onChoose(o.key)} disabled={acting}>
-                                        Choose
+                                    <ActionButton
+                                        variant={selected ? 'secondary' : 'primary'}
+                                        onClick={() => handleChoose(o.key)}
+                                        disabled={acting}
+                                    >
+                                        {selected ? 'Selected ✓' : 'Choose'}
                                     </ActionButton>
                                 </span>
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             ) : (
