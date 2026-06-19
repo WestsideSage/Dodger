@@ -1,0 +1,134 @@
+"""Playtest 5 fixes — regression guards for the trust-breaks Codex's PT5 audit
+found (PLAYTEST_JOURNAL_5.md). Each test reproduces a journal symptom and was
+RED before its fix.
+
+This file collects the PT5 regressions; some also extend the relevant
+per-feature suites. See docs / the PT5 findings memory for the root causes.
+"""
+from __future__ import annotations
+
+import sqlite3
+
+import pytest
+
+
+# ---------------------------------------------------------------------------
+# P0 — falsifying final score (V20 survivors-vs-game-points family)
+# ---------------------------------------------------------------------------
+
+
+class _Club:
+    def __init__(self, club_id, name):
+        self.club_id = club_id
+        self.name = name
+
+
+def _row(**kwargs):
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    cols = ", ".join(f"? AS {k}" for k in kwargs)
+    return conn.execute(f"SELECT {cols}", tuple(kwargs.values())).fetchone()
+
+
+class TestLeagueWireScore:
+    def test_official_wire_uses_game_points_not_survivors(self):
+        """Surface B: an official (foam) match's League Wire item must read game
+        points, never the 0-0 survivors of the final game."""
+        from dodgeball_sim.view_models import build_wire_items
+
+        row = _row(
+            match_id="season_1_w1_m1", season_id="season_1", week=1,
+            home_club_id="aurora", away_club_id="lunar", winner_club_id="aurora",
+            home_survivors=0, away_survivors=0,
+            scoring_model="foam", home_game_points=12, away_game_points=2,
+        )
+        clubs = {"aurora": _Club("aurora", "Aurora"), "lunar": _Club("lunar", "Lunar")}
+        items = build_wire_items([row], clubs)
+        result = next(i for i in items if i.match_id == "season_1_w1_m1")
+        assert "12-2 on game points" in result.text
+        assert "survivors" not in result.text
+
+
+# ---------------------------------------------------------------------------
+# P0 + V28 follow-up — the standings ticker's wire_headlines must carry only the
+# NEWS headlines (class/event/meta/league_bulletin), NOT the match-result rows
+# (recent_matches already shows those — folding build_news_payload["items"]
+# wholesale duplicated them and surfaced the survivors bug).
+# ---------------------------------------------------------------------------
+
+
+def _pyramid_conn():
+    from dodgeball_sim.career_setup import initialize_curated_manager_career
+    from dodgeball_sim.persistence import create_schema
+
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    create_schema(conn)
+    initialize_curated_manager_career(
+        conn, "aurora", 20260619, ruleset_selection="official_foam", world="pyramid"
+    )
+    conn.commit()
+    return conn
+
+
+class TestStandingsWireHeadlines:
+    def test_wire_headlines_are_headlines_only_not_match_rows(self):
+        from dodgeball_sim.persistence import get_state, save_match_result, save_news_headlines
+        from dodgeball_sim.web_status_service import build_standings_payload
+
+        conn = _pyramid_conn()
+        sid = get_state(conn, "active_season_id")
+        # A persisted official match (a RESULT row the recent-results strip owns).
+        save_match_result(
+            conn, match_id=f"{sid}_w1_m1", season_id=sid, week=1,
+            home_club_id="aurora", away_club_id="ridgeline", winner_club_id="aurora",
+            home_survivors=0, away_survivors=0, home_roster_hash="h", away_roster_hash="a",
+            config_version="official:official_foam", ruleset_version="v1", seed=1,
+            event_log_hash="e", final_state_hash="f", scoring_model="foam",
+            home_game_points=12, away_game_points=2,
+        )
+        # A news bulletin (a headline the ticker SHOULD surface).
+        save_news_headlines(conn, sid, 0, [{
+            "headline_id": f"meta_x_{sid}", "category": "meta_report",
+            "headline_text": "META WIRE LINE", "entity_ids": [],
+        }])
+        conn.commit()
+        payload = build_standings_payload(conn)
+        wire = payload["wire_headlines"]
+        texts = [w["text"] for w in wire]
+        assert "META WIRE LINE" in texts, "news bulletin missing from wire_headlines"
+        # No match-RESULT rows: those belong to recent_matches, not wire_headlines.
+        assert all(w.get("tag") != "RESULT" for w in wire), (
+            "wire_headlines leaked match-result rows (duplicate of recent_matches)"
+        )
+        assert not any("survivors" in w["text"] for w in wire)
+
+
+class TestMatchCardHeroScore:
+    """Surface A: the debrief hero must show the real game-point total, not 0-0,
+    even when a reloaded official_metadata carries `games` but omits the totals."""
+
+    def test_totals_derived_from_games_when_metadata_omits_them(self):
+        from dodgeball_sim.use_cases import _official_card_score
+
+        games = (
+            [{"game_number": i + 1, "winner_team_id": "tacoma",
+              "team_a_points": 1, "team_b_points": 0, "result_type": "win"} for i in range(12)]
+            + [{"game_number": 13, "winner_team_id": "riverton",
+                "team_a_points": 0, "team_b_points": 1, "result_type": "loss"},
+               {"game_number": 14, "winner_team_id": "riverton",
+                "team_a_points": 0, "team_b_points": 1, "result_type": "loss"}]
+        )
+        meta = {"team_a_id": "tacoma", "games": games}  # totals ABSENT (reload)
+        sm, home, away, card_games = _official_card_score(meta, "official:official_foam", "tacoma")
+        assert sm == "foam"
+        assert (home, away) == (12, 2), "hero totals must derive from the per-game story, not 0-0"
+        assert len(card_games) == 14
+
+    def test_totals_guarded_by_team_a_id_when_team_a_is_away(self):
+        from dodgeball_sim.use_cases import _official_card_score
+
+        # team_a is the AWAY club; home must get team_b's points (guarded mapping).
+        meta = {"team_a_id": "riverton", "team_a_game_points": 2, "team_b_game_points": 12, "games": []}
+        _sm, home, away, _games = _official_card_score(meta, "official:official_foam", "tacoma")
+        assert (home, away) == (12, 2), "unguarded team_a->home swaps the scoreboard"

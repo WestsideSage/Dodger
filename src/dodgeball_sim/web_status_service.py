@@ -520,11 +520,12 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         # V23: the player's division + the full pyramid (None on legacy saves).
         "division": division_payload,
         "divisions": divisions_payload,
-        # V28: the league news wire (class_wire / event_news / meta_report /
-        # league_bulletin) rides the standings payload so the existing League
-        # Wire ticker surfaces it — these headlines were written but had no
-        # frontend consumer. Empty list when there are no headlines.
-        "wire_headlines": build_news_payload(conn).get("items", []),
+        # V28: the league news wire HEADLINES (class_wire / event_news /
+        # meta_report / league_bulletin) ride the standings payload so the
+        # existing League Wire ticker surfaces them. HEADLINES ONLY — the
+        # recent_matches block above already owns the match-result rows, so
+        # folding the full news payload here double-printed results (PT5 fix).
+        "wire_headlines": news_headline_items(conn, season_id),
     }
 
 
@@ -740,7 +741,8 @@ def build_news_payload(conn: sqlite3.Connection) -> dict[str, Any]:
     match_rows = conn.execute(
         """
         SELECT match_id, season_id, week, home_club_id, away_club_id,
-               winner_club_id, home_survivors, away_survivors
+               winner_club_id, home_survivors, away_survivors,
+               scoring_model, home_game_points, away_game_points
         FROM match_records
         WHERE season_id = ?
         ORDER BY week DESC, match_id DESC
@@ -753,29 +755,44 @@ def build_news_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         {"tag": item.tag, "text": item.text, "match_id": item.match_id, "player_id": item.player_id}
         for item in items[:20]
     ]
-    # V24 class wire + V27 event news + V28 meta journalism: league-wide
-    # headline lines (news_headlines) ride at the top of the wire — the chase
-    # target's destination (class_wire), the season's event journalism
-    # (event_news: cup/invitational/MSI/Founders' results), and the data-derived
-    # league trend reports (meta_report). The filter is additive.
+    # The league-wide news HEADLINES ride at the top of the wire.
+    payload_items = news_headline_items(conn, season_id) + payload_items
+    return {"season_id": season_id, "items": payload_items}
+
+
+# V24 class wire + V27 event news + V28 meta journalism / league bulletins:
+# league-wide headline lines (news_headlines) — the chase target's destination
+# (class_wire), the season's event journalism (event_news), the data-derived
+# trend reports (meta_report), and the officiating bulletins (league_bulletin).
+_WIRE_CATEGORIES = ("class_wire", "event_news", "meta_report", "league_bulletin")
+_WIRE_CATEGORY_TAGS = {
+    "class_wire": "Class Wire",
+    "event_news": "Event Wire",
+    "meta_report": "Meta Wire",
+    "league_bulletin": "League Wire",
+}
+
+
+def news_headline_items(conn: sqlite3.Connection, season_id: str) -> list[dict[str, Any]]:
+    """The league news-wire HEADLINES as wire items — NOT match results.
+
+    Shared by ``build_news_payload`` and the standings ticker so headlines
+    surface without duplicating the recent-results rows (which the standings
+    ``recent_matches`` block already owns; folding the full news payload into the
+    ticker double-printed every result and leaked the survivors scoreline).
+    """
     from .persistence import load_news_headlines
 
-    _WIRE_CATEGORIES = {"class_wire", "event_news", "meta_report", "league_bulletin"}
-    _CATEGORY_TAGS = {
-        "class_wire": "Class Wire",
-        "event_news": "Event Wire",
-        "meta_report": "Meta Wire",
-        "league_bulletin": "League Wire",
-    }
+    out: list[dict[str, Any]] = []
     for headline in load_news_headlines(conn, season_id):
         cat = headline.get("category")
         if cat not in _WIRE_CATEGORIES:
             continue
         entity_ids = headline.get("entity_ids") or []
-        payload_items.insert(0, {
-            "tag": _CATEGORY_TAGS.get(cat, "League Wire"),
+        out.append({
+            "tag": _WIRE_CATEGORY_TAGS.get(cat, "League Wire"),
             "text": headline["headline_text"],
             "match_id": None,
             "player_id": entity_ids[0] if entity_ids else None,
         })
-    return {"season_id": season_id, "items": payload_items}
+    return out
