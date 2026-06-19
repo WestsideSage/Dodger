@@ -520,6 +520,11 @@ def build_standings_payload(conn: sqlite3.Connection) -> dict[str, Any]:
         # V23: the player's division + the full pyramid (None on legacy saves).
         "division": division_payload,
         "divisions": divisions_payload,
+        # V28: the league news wire (class_wire / event_news / meta_report /
+        # league_bulletin) rides the standings payload so the existing League
+        # Wire ticker surfaces it — these headlines were written but had no
+        # frontend consumer. Empty list when there are no headlines.
+        "wire_headlines": build_news_payload(conn).get("items", []),
     }
 
 

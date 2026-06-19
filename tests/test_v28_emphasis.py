@@ -336,3 +336,43 @@ class TestSeasonEmphasisSelection:
             if h["category"] == "league_bulletin"
         ]
         assert bulletins == []
+
+
+# ---------------------------------------------------------------------------
+# Task 4.1 — frontend surfaces (Python guards on the rendered backend strings)
+# ---------------------------------------------------------------------------
+
+
+class TestSeasonPreviewSurface:
+    def test_build_season_preview_carries_officiating_emphasis(self):
+        from dodgeball_sim.season_preview import build_season_preview
+
+        preview = build_season_preview(
+            regular_season_weeks=10, bye_week=4, playoff_cut=4, total_clubs=8,
+            roster=[], officiating_emphasis="Points of emphasis: reward catches.",
+        )
+        assert preview["officiating_emphasis"] == "Points of emphasis: reward catches."
+
+    def test_default_preview_emphasis_is_none(self):
+        from dodgeball_sim.season_preview import build_season_preview
+
+        preview = build_season_preview(
+            regular_season_weeks=10, bye_week=4, playoff_cut=4, total_clubs=8, roster=[],
+        )
+        assert preview["officiating_emphasis"] is None
+
+
+class TestNewsWireSurface:
+    def test_standings_payload_carries_wire_headlines(self):
+        from dodgeball_sim.web_status_service import build_standings_payload
+
+        conn = _pyramid_conn()
+        # Write a league_bulletin for the active season and confirm it rides the
+        # standings payload (the existing League Wire ticker's data source).
+        sid = get_state(conn, "active_season_id")
+        generate_officiating_bulletin(conn, sid, _SEED)
+        payload = build_standings_payload(conn)
+        assert "wire_headlines" in payload
+        texts = {item["text"] for item in payload["wire_headlines"]}
+        emph = select_season_emphasis(conn, sid, _SEED)
+        assert emph.announcement in texts

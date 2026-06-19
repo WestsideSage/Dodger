@@ -139,6 +139,27 @@ export function SeasonPreview({
         </div>
       )}
 
+      {/* V28 The Weather: the season's officiating points of emphasis, announced
+          preseason. Absent on season 1 / legacy / a called-straight season. */}
+      {preview.officiating_emphasis && (
+        <div
+          data-testid="season-preview-officiating"
+          style={{
+            padding: '0.6rem 0.75rem',
+            borderRadius: '6px',
+            background: 'rgba(245,158,11,0.08)',
+            borderLeft: '3px solid #f59e0b',
+          }}
+        >
+          <div style={{ color: '#fbbf24', fontSize: '0.65rem', fontWeight: 900, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            League Bulletin
+          </div>
+          <p style={{ margin: '0.3rem 0 0', color: '#e2e8f0', fontSize: '0.82rem', fontWeight: 600, lineHeight: 1.45 }}>
+            {preview.officiating_emphasis}
+          </p>
+        </div>
+      )}
+
       {/* Season-shape strip */}
       <div>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: '2.2rem' }} aria-hidden="true">

@@ -171,6 +171,12 @@ def _build_season_preview_payload(
                         "WORLDS between the Premier and Circuit top two."
                     ),
                 }
+        # V28: surface the season's preseason officiating points of emphasis
+        # (None on legacy / season 1 / a called-straight season). load is
+        # defensive and pyramid-aware, so this is safe to call unconditionally.
+        from .season_emphasis import load_season_emphasis
+
+        officiating_note = load_season_emphasis(conn, season_id).announcement or None
         return build_season_preview(
             regular_season_weeks=facts["regular_season_weeks"],
             bye_week=facts["bye_week"],
@@ -179,6 +185,7 @@ def _build_season_preview_payload(
             roster=roster_rows,
             skipped=skipped,
             division=division_context,
+            officiating_emphasis=officiating_note,
         )
     except Exception:
         return None

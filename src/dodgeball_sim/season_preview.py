@@ -41,6 +41,7 @@ def build_season_preview(
     roster: list[dict[str, Any]],
     skipped: bool = False,
     division: dict[str, Any] | None = None,
+    officiating_emphasis: str | None = None,
 ) -> dict[str, Any]:
     """Assemble the season-preview payload.
 
@@ -49,6 +50,9 @@ def build_season_preview(
     ``division`` (PT4-01, pyramid saves): ``{name, short_name, tier, kind,
     stakes}`` — the preview must carry where this season sits in the world
     and what's at the top and bottom of the table, not just the playoff cut.
+    ``officiating_emphasis`` (V28, pyramid saves): the season's preseason
+    points-of-emphasis bulletin text, or ``None`` when there is none (season 1 /
+    legacy / a called-straight season) — the preview surfaces it as orientation.
     """
 
     strength = strongest_position_group(roster)
@@ -66,6 +70,8 @@ def build_season_preview(
         # PT4-01: None on legacy saves; the preview screen renders the climb
         # context when present.
         "division": division,
+        # V28: the season's officiating points of emphasis (None when none).
+        "officiating_emphasis": officiating_emphasis,
         "strength": (
             {
                 "archetype": archetype_display_name(strength["archetype"]),

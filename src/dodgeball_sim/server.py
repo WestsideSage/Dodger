@@ -437,6 +437,9 @@ class StandingsResponse(BaseModel):
     # single-league saves. Declared or FastAPI strips them (WT-2/WT-3 family).
     division: dict[str, Any] | None = None
     divisions: list[dict[str, Any]] | None = None
+    # V28: the league news wire (class_wire / event_news / meta_report /
+    # league_bulletin) for the League Wire ticker. Declared or FastAPI strips it.
+    wire_headlines: list[dict[str, Any]] | None = None
 
 
 class ScheduleItem(BaseModel):

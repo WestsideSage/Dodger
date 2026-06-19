@@ -472,6 +472,9 @@ export interface StandingsResponse {
     // V23: the player's division + the full pyramid (null on legacy saves).
     division?: DivisionInfo | null;
     divisions?: DivisionStandingsBlock[] | null;
+    // V28: the league news wire (class/event/meta/league_bulletin headlines)
+    // for the League Wire ticker. Empty/absent when there are none.
+    wire_headlines?: NewsItem[] | null;
 }
 
 export interface RecentMatchSummary {
@@ -901,6 +904,9 @@ export interface SeasonPreview {
         stakes: string;
         world_note?: string;
     } | null;
+    /** V28: the season's preseason officiating points-of-emphasis bulletin
+     * (null/absent when none — season 1, legacy, or a called-straight season). */
+    officiating_emphasis?: string | null;
 }
 
 // A post-match body paragraph carries its own audience, assigned by the
