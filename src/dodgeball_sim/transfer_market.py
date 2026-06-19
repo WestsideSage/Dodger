@@ -614,13 +614,19 @@ def build_user_transfer_state(
     for player in expiring_players(conn, user_club_id):
         ask, fit, suitors = _expiring_context(conn, season_id, user_club_id, player, root_seed, config)
         top = suitors[0] if suitors else None
+        # PT5 fix: the displayed ask + default offer must be the FIT-ADJUSTED
+        # salary the player will actually accept (resolve_poaching tests the
+        # offer against this), not the raw second-contract wage. A low-fit
+        # player asks a premium; defaulting to the raw ask silently undershot it,
+        # so clicking 'Re-sign' walked him to free agency even with no suitor.
+        required = resign_required_salary_k(ask, fit.fit, config)
         expiring.append({
             "player_id": player.id,
             "name": player.name,
             "ovr": player.overall_skill(),
             "current_salary_k": player.salary_k,
-            "ask_k": ask,
-            "user_offer_k": ask,            # default: meet his ask
+            "ask_k": required,
+            "user_offer_k": required,       # default: meet what he actually asks
             "fit": round(fit.fit, 3),
             "veto": fit.veto,
             "dealbreaker": fit.dealbreaker,

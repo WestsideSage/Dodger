@@ -117,6 +117,35 @@ def test_resign_keeps_player_when_outbidding():
     assert _EXP_ID in survivors and survivors[_EXP_ID].contract_term > 0
 
 
+def test_resign_at_default_offer_keeps_low_fit_player(monkeypatch):
+    """PT5: clicking 'Re-sign' and accepting the displayed default offer must
+    keep a low-fit expiring player when NO rival poaches him — not silently walk
+    him to free agency (the Hugo-Reyes symptom). The default offer must meet the
+    fit-adjusted ask, not the raw second-contract wage that silently undershot it.
+    (A rival suitor outbidding him is a separate, INTENDED outcome.)"""
+    from dodgeball_sim.persistence import load_free_agents
+
+    # Isolate the no-suitor case: with a rival suitor he can be legitimately
+    # outbid (the intended poach), which is NOT the bug under test.
+    monkeypatch.setattr(tm, "poach_suitors", lambda *a, **k: [])
+
+    conn, user_club = _founding_conn()
+    _seed_user(conn, user_club)
+    season_id = get_state(conn, "active_season_id")
+    state = _state(conn, user_club, season_id)
+    row = next(r for r in state["expiring"] if r["player_id"] == _EXP_ID)
+    # The default decision is a re-sign at the displayed ask (no explicit change).
+    assert row["decision"] == "resign" and row["user_offer_k"] == row["ask_k"]
+    assert row["fit"] < 0.5556, "fixture must be low-fit so the raw ask undershoots the true ask"
+    tm.apply_user_transfer_decisions(conn, season_id, user_club, _SEED, _OPEN)
+    survivors = {p.id: p for p in load_club_roster(conn, user_club)}
+    assert _EXP_ID in survivors, "re-signed player walked despite 'Re-sign' with no poacher"
+    assert survivors[_EXP_ID].contract_term > 0, "re-signed player has no contract"
+    assert _EXP_ID not in {p.id for p in load_free_agents(conn)}, (
+        "re-signed player leaked into the free-agent pool"
+    )
+
+
 def test_release_departs_with_receipt():
     conn, user_club = _founding_conn()
     _seed_user(conn, user_club)
