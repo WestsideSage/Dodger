@@ -15,16 +15,65 @@ fans/facilities/bench roles, the event calendar, and the emergent-meta layer —
 in that order (V23 World first). That doc is the planning authority for what
 comes next; this file remains build-state truth.
 
-**Arc status (2026-06-17):** V23–V26 are **built** on `feature/v24-the-board`
-(not yet on main — the arc merges as a unit). **V27 — The Calendar** and
-**V28 — The Weather** are **fully spec'd + implementation-planned but NOT YET
-BUILT** (`docs/specs/2026-06-17-v27-the-calendar-spec.md` + `…-sprint-plan.md`;
-`docs/specs/2026-06-17-v28-the-weather-spec.md` + `…-sprint-plan.md`) — planning
-was completed ahead of implementation by owner direction; their build is a later
+**Arc status (2026-06-18):** V23–V27 are **built** on `feature/v24-the-board`
+(not yet on main — the arc merges as a unit). **V28 — The Weather** is
+**fully spec'd + implementation-planned but NOT YET BUILT**
+(`docs/specs/2026-06-17-v28-the-weather-spec.md` + `…-sprint-plan.md`) — planning
+was completed ahead of implementation by owner direction; its build is a later
 session. V27 decision: events run as deterministic auto-simmed real-engine
 knockouts at dedicated windows (not an in-season schedule rebuild). V28 #1
 constraint: the officiating-emphasis shift adds NO new RNG draw in `resolve_throw`
 so a default (no-bulletin) season is byte-identical.
+
+**V27 — The Calendar: DONE on the branch `feature/v24-the-board` (2026-06-18;
+NOT yet on main).** Spec: `docs/specs/2026-06-17-v27-the-calendar-spec.md`; plan:
+`docs/specs/2026-06-17-v27-the-calendar-sprint-plan.md`; retro:
+`docs/retrospectives/2026-06-18-v27-the-calendar-retrospective.md`. All 7 phases
+shipped, full `python -m pytest -q` green (real exit code 0, **1792 tests**),
+`npm run build` + `npm run lint` clean. The season gets a calendar of real
+competitions — each a deterministic auto-simmed real-engine knockout at its
+thematic window (decision 1: NOT an in-season weekly-schedule rebuild). The
+dormant CLI `cup.py` (kept import-pure) gets a web home in `cup_service.py`
+(cross-division Domestic Cup, foam, giant-killings + receipts); cloth/no-sting
+**Ruleset Invitationals** (Cloth Classic / No-Sting Open) run through
+`OfficialEngineAdapter` behind per-ruleset balance gates (the V17 precedent —
+no imbalance found, caps pinned from the recorded run); **MSI** (Premier +
+Circuit leaders, by `division_id` not tier, foam, Worlds-seeding note) +
+**Founders' Exhibition** (fan-invited, no-seeding, money-only); and an elevated
+**Worlds crowning ceremony** beat (`is_first` credits-roll on the save's first
+title, defending-champion thereafter; no post-summit ratchet — the vision law).
+Idempotent purses (`apply_event_purse`'s per-event guard, the
+`FINANCES_APPLIED_KEY` pattern), a per-season `v27_events_json` store
+(`event_calendar.py` — NOT the engine `events.py`, which is `MatchEvent`s), and
+widened event journalism (the news-wire filter now passes `event_news`).
+Frontend: `EventsBeat.tsx` (one card per resolved event: cup champion +
+giant-killings, invitational winners, MSI, Founders' + the dedicated
+`EventBracket.tsx`), `WorldsCrowning.tsx` (a `CeremonyShell` staged reveal),
+`types.ts` union + `Offseason.tsx` dispatch for both new beats. Behind
+`pyramid_world_active`; legacy byte-identical. **Hard-won lessons (see retro):**
+the `events.py`→`event_calendar.py` rename (the engine `events.py` was taken);
+the clamp lockstep (`_MAX_OFFSEASON_BEAT_INDEX` 11→13 with both new beats + the
+pinned beat-tuple witness — the V25/V26 clamp bug, now bit three times); the
+round-clock match-id encoding (`invitationals._invitational_match_id` encodes
+the round slug so `run_autonomous_match`'s clock resolution picks the right
+clock); and the **strip-trap structural absence** — the offseason beat endpoints
+declare NO `response_model=`, so the new payloads pass through verbatim (verified
+end-to-end by `tests/test_v27_phase7_frontend_payloads.py`, a real-TestClient
+regression that fires if a future developer ever adds one). **Probes:**
+`tools/cup_probe.py` (valid champion 20/20 seeds, giant-killing 45%, determinism),
+`tools/ruleset_balance_probe.py` (cloth cap 0.72 / no-sting cap 0.68, 3 distinct
+champions each, no liabilities, slopes +55.3/+56.7pp), and the new
+`tools/event_finance_probe.py` (every event purse 5–21% of a league champion's
+payout — a declared margin, never a league-payout rival). **API-level walk**
+(`tools/v27_api_walk.py`, port 8010, isolated temp save dir): the events payload
+(domestic_cup + MSI + Founders) came through `/api/offseason/beat` un-stripped
+across 5 seeds; the Worlds crowning is a conditional beat requiring a real
+Worlds win and did not land on auto-pilot in 5 seeds — its strip-trap is pinned
+end-to-end by the TestClient guard (the live crowning fires on the owner's
+browser acceptance walk). Walk save purged. **Disclosed deferrals:** the
+invitationals did not fire in season 1 of the walk (no club met the fame
+threshold — honest; their payload shape is the same `EventResult` row the cup
+verifies); the live crowning browser walk is the owner's final acceptance.
 
 **V26 — The Crowd: DONE on the branch `feature/v24-the-board` (2026-06-17;
 NOT yet on main).** Spec: `docs/specs/2026-06-17-v26-the-crowd-spec.md`; plan:
