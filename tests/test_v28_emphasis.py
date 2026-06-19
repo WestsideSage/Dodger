@@ -232,3 +232,107 @@ class TestEmphasisLogging:
         for seed in range(8):
             driver = OfficialMatchEngineDriver()
             assert self._emphasis_disc(driver.run(make_match_input(seed=seed))) == []
+
+
+# ---------------------------------------------------------------------------
+# Task 3.3 — select_season_emphasis / generate_officiating_bulletin / load
+# ---------------------------------------------------------------------------
+
+import sqlite3 as _sqlite3  # noqa: E402
+
+from dodgeball_sim.career_setup import initialize_curated_manager_career  # noqa: E402
+from dodgeball_sim.persistence import (  # noqa: E402
+    create_schema,
+    get_state,
+    load_news_headlines,
+    set_state,
+)
+from dodgeball_sim.season_emphasis import (  # noqa: E402
+    generate_officiating_bulletin,
+    load_season_emphasis,
+    select_season_emphasis,
+)
+
+_SEED = 20260618
+
+
+def _pyramid_conn():
+    conn = _sqlite3.connect(":memory:", check_same_thread=False)
+    conn.row_factory = _sqlite3.Row
+    create_schema(conn)
+    initialize_curated_manager_career(
+        conn, "aurora", _SEED, ruleset_selection="official_foam", world="pyramid"
+    )
+    conn.commit()
+    return conn
+
+
+def _legacy_conn():
+    conn = _sqlite3.connect(":memory:", check_same_thread=False)
+    conn.row_factory = _sqlite3.Row
+    create_schema(conn)
+    initialize_curated_manager_career(conn, "aurora", _SEED, ruleset_selection="official_foam")
+    conn.commit()
+    return conn
+
+
+class TestSeasonEmphasisSelection:
+    def test_select_is_deterministic_bounded_and_tagged(self):
+        conn = _pyramid_conn()
+        e1 = select_season_emphasis(conn, "season_2", _SEED)
+        e2 = select_season_emphasis(conn, "season_2", _SEED)  # idempotent
+        assert (e1.catch_delta, e1.block_delta, e1.announcement) == (
+            e2.catch_delta, e2.block_delta, e2.announcement
+        )
+        assert abs(e1.catch_delta) <= DEFAULT_WEATHER.emphasis_catch_delta_max
+        assert abs(e1.block_delta) <= DEFAULT_WEATHER.emphasis_block_delta_max
+        assert e1.selection_basis == "emphasis_season_2"
+        assert e1.announcement  # always announced (even a neutral "call it straight")
+
+    def test_select_persists_and_load_round_trips(self):
+        conn = _pyramid_conn()
+        selected = select_season_emphasis(conn, "season_2", _SEED)
+        set_state(conn, "active_season_id", "season_2")
+        loaded = load_season_emphasis(conn)
+        assert (loaded.catch_delta, loaded.block_delta, loaded.selection_basis) == (
+            selected.catch_delta, selected.block_delta, selected.selection_basis
+        )
+
+    def test_generate_writes_league_bulletin(self):
+        conn = _pyramid_conn()
+        generate_officiating_bulletin(conn, "season_2", _SEED)
+        bulletins = [
+            h for h in load_news_headlines(conn, "season_2")
+            if h["category"] == "league_bulletin"
+        ]
+        assert bulletins, "no league_bulletin headline written"
+        emph = select_season_emphasis(conn, "season_2", _SEED)
+        assert any(h["headline_text"] == emph.announcement for h in bulletins)
+
+    def test_generate_surfaces_in_news_payload(self):
+        from dodgeball_sim.web_status_service import build_news_payload
+
+        conn = _pyramid_conn()
+        generate_officiating_bulletin(conn, "season_2", _SEED)
+        set_state(conn, "active_season_id", "season_2")
+        conn.commit()
+        texts = {item["text"] for item in build_news_payload(conn)["items"]}
+        emph = select_season_emphasis(conn, "season_2", _SEED)
+        assert emph.announcement in texts
+
+    def test_load_default_when_absent(self):
+        conn = _pyramid_conn()
+        set_state(conn, "active_season_id", "season_1")
+        e = load_season_emphasis(conn)
+        assert e.catch_delta == 0.0 and e.block_delta == 0.0
+
+    def test_legacy_save_is_byte_identical(self):
+        conn = _legacy_conn()
+        e = select_season_emphasis(conn, get_state(conn, "active_season_id"), _SEED)
+        assert e.catch_delta == 0.0 and e.block_delta == 0.0
+        generate_officiating_bulletin(conn, get_state(conn, "active_season_id"), _SEED)
+        bulletins = [
+            h for h in load_news_headlines(conn, get_state(conn, "active_season_id"))
+            if h["category"] == "league_bulletin"
+        ]
+        assert bulletins == []

@@ -1036,12 +1036,19 @@ def initialize_manager_offseason(
     # V28 Phase 2: emergent meta — drift AI tactics toward the season's winning
     # dimensions (+ a contrarian fraction away). The overlay is consumed by
     # get_ai_tactics next season; the user club is never drifted.
+    # V28 Phase 3: officiating points of emphasis — select + announce the
+    # UPCOMING season's bounded catch/block leniency shift (preseason bulletin on
+    # the news wire; read by the match runner for next season's official matches).
+    # Default/neutral selections stay byte-identical; first season has no preceding
+    # offseason so it is emphasis-free (honest — the bulletin starts season 2).
     if player_club_id and pyramid_world_active(conn):
         from .meta_drift import apply_meta_drift
         from .meta_journalism import generate_league_bulletin
+        from .season_emphasis import generate_officiating_bulletin
 
         generate_league_bulletin(conn, season.season_id)
         apply_meta_drift(conn, season.season_id, root_seed)
+        generate_officiating_bulletin(conn, next_season_id, root_seed)
     # V27 Phase 6: the Worlds crowning beat fires only when the user club won
     # Worlds this postseason. Pyramid-gated; legacy single-league worlds have
     # no postseason ledger and stay byte-identical (no beat). The crowning is a

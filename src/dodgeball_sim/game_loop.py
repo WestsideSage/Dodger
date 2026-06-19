@@ -116,6 +116,12 @@ def simulate_scheduled_match(
                 _user_prep["targeting_read_bonus"] = (
                     _user_prep.get("targeting_read_bonus", 0.0) + _analyst
                 )
+    # V28 officiating points of emphasis: the active season's bounded catch/block
+    # leniency shift (default SeasonEmphasis() on legacy / unselected seasons ⇒
+    # byte-identical). Applies symmetrically to both clubs in this league match.
+    from .season_emphasis import load_season_emphasis
+
+    season_emphasis = load_season_emphasis(conn, scheduled.season_id)
     record, _ = simulate_match(
         scheduled=scheduled,
         home_club=clubs[scheduled.home_club_id],
@@ -131,6 +137,7 @@ def simulate_scheduled_match(
         ruleset_selection=ruleset_selection,
         home_prep=home_prep or None,
         away_prep=away_prep or None,
+        season_emphasis=season_emphasis,
     )
     persist_match_record(
         conn,
