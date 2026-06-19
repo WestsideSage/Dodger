@@ -17,6 +17,7 @@ from typing import Dict, Tuple
 from .models import CatchPosture, CoachPolicy, Player
 from .official_tactics import decide_catch_attempt
 from .player_state import OfficialPlayerState
+from .season_emphasis import SeasonEmphasis
 from .sequence import (
     SequenceContact,
     SequenceContactKind,
@@ -157,6 +158,7 @@ def compute_throw_probabilities(
     thrower_shade: float = 0.0,
     target_shade: float = 0.0,
     thrower_tiq_bonus: float = 0.0,
+    catch_emphasis: float = 0.0,
 ) -> ThrowProbabilities:
     """Return the on-target and catch probabilities for one throw.
 
@@ -191,11 +193,16 @@ def compute_throw_probabilities(
     # over a weak one express more; the throw-quality term (V17) makes an
     # accurate throw harder to catch, so accuracy buys catch-economy defense
     # instead of feeding the opponent's catch counterplay.
+    # V28 officiating emphasis: shift the EXISTING catch bias before the roll
+    # (no new RNG draw). A positive ``catch_emphasis`` lowers the effective bias,
+    # raising the catch rate. ``catch_emphasis == 0.0`` ⇒ ``_CATCH_BIAS - 0.0 ==
+    # _CATCH_BIAS`` exactly in IEEE-754, so the default path is byte-identical.
+    catch_bias = _CATCH_BIAS - catch_emphasis
     p_catch_given_attempt = _sigmoid(
         _CATCH_SLOPE * (catch_eff - _CATCH_POWER_WEIGHT * power_eff)
         - _CATCH_THROW_QUALITY_SLOPE * accuracy_eff
         - _TIQ_TIMING_CATCH * tiq_centered
-        - _CATCH_BIAS
+        - catch_bias
     )
     return ThrowProbabilities(
         p_on_target=p_on_target,
@@ -217,6 +224,7 @@ def resolve_throw(
     thrower_shade: float = 0.0,
     target_shade: float = 0.0,
     thrower_tiq_bonus: float = 0.0,
+    season_emphasis: SeasonEmphasis = SeasonEmphasis(),
 ) -> Tuple[ThrowProbabilities, str]:
     """Resolve one throw against one primary target and mutate the sequence.
 
@@ -241,6 +249,7 @@ def resolve_throw(
         thrower_shade=thrower_shade,
         target_shade=target_shade,
         thrower_tiq_bonus=thrower_tiq_bonus,
+        catch_emphasis=season_emphasis.catch_delta,
     )
 
     on_target = rng.random() <= probs.p_on_target
@@ -282,9 +291,13 @@ def resolve_throw(
     if target_holds_ball and not no_blocking_active:
         power_thr = _shaded(thrower.ratings.normalized_power(), thrower_shade)
         block_skill = _shaded(target.ratings.normalized_catch(), target_shade)
+        # V28 officiating emphasis: shift the EXISTING block bias before the roll
+        # (no new RNG draw). ``block_delta == 0.0`` ⇒ ``_BLOCK_BIAS + 0.0 ==
+        # _BLOCK_BIAS`` exactly, so the default path is byte-identical.
+        block_bias = _BLOCK_BIAS + season_emphasis.block_delta
         p_block = _sigmoid(
             _BLOCK_SLOPE * (block_skill - _BLOCK_THROW_POWER_WEIGHT * power_thr)
-            + _BLOCK_BIAS
+            + block_bias
         )
         if rng.random() <= p_block:
             seq.add_contact(SequenceContact(

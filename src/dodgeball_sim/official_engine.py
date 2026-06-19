@@ -499,6 +499,7 @@ from .moment_events import (
 )
 from .official_resolution import resolve_throw
 from .official_tactics import select_target
+from .season_emphasis import SeasonEmphasis
 
 # Phase 4a moment thresholds (mirror the rec driver's recognition intent).
 _LATE_ESCAPE_ATTACKERS = 3
@@ -535,6 +536,7 @@ def run_autonomous_game(
     match_clock_limit: int = 0,
     prep_a: dict | None = None,
     prep_b: dict | None = None,
+    season_emphasis: SeasonEmphasis = SeasonEmphasis(),
 ) -> AutonomousGameResult:
     """Run a full official game with autonomous tactics.
 
@@ -902,6 +904,9 @@ def run_autonomous_game(
             thrower_tiq_bonus=float(
                 preps.get(offense_team, {}).get("targeting_read_bonus", 0.0)
             ),
+            # V28 officiating emphasis: the season's catch/block leniency shift,
+            # applied symmetrically (every throw shares this same shaded bias).
+            season_emphasis=season_emphasis,
         )
         ruling = ledger.close_sequence(seq.sequence_id)
         events.append(sequence_event(seq))
@@ -1156,6 +1161,7 @@ def run_autonomous_match(
     seed: int,
     prep_a: dict | None = None,
     prep_b: dict | None = None,
+    season_emphasis: SeasonEmphasis = SeasonEmphasis(),
 ) -> AutonomousMatchResult:
     """Simulate a full official match containing a series of timed games.
 
@@ -1233,6 +1239,7 @@ def run_autonomous_match(
             match_clock_limit=match_clock_limit,
             prep_a=prep_a,
             prep_b=prep_b,
+            season_emphasis=season_emphasis,
         )
 
         last_game_res = game_res
@@ -1413,6 +1420,9 @@ class OfficialMatchEngineDriver:
             # V19b staff-focus match preps ride the free-form config channel.
             prep_a=match_input.config.get("prep_a"),
             prep_b=match_input.config.get("prep_b"),
+            # V28 officiating emphasis rides the same free-form config channel;
+            # absent ⇒ SeasonEmphasis() default (byte-identical).
+            season_emphasis=match_input.config.get("season_emphasis") or SeasonEmphasis(),
         )
         score = res.official_match_score
         return DriverMatchOutput(
