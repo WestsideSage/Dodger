@@ -132,3 +132,49 @@ class TestMatchCardHeroScore:
         meta = {"team_a_id": "riverton", "team_a_game_points": 2, "team_b_game_points": 12, "games": []}
         _sm, home, away, _games = _official_card_score(meta, "official:official_foam", "tacoma")
         assert (home, away) == (12, 2), "unguarded team_a->home swaps the scoreboard"
+
+
+class TestScoutingNetworkBoardCount:
+    def test_paid_upgrade_never_shrinks_the_board(self):
+        """PT5: a paid Scouting Network upgrade must never show FEWER recruit-board
+        rows (the founder/custom-home path dropped 30->26 as the teaser tail
+        shrank under the 25-visible cap). Total must be non-decreasing in level."""
+        from dodgeball_sim.career_setup import (
+            build_expansion_club, generate_expansion_roster, initialize_curated_manager_career,
+        )
+        from dodgeball_sim.economy import set_treasury_k
+        from dodgeball_sim.persistence import create_schema, get_state
+        from dodgeball_sim.recruiting_office import (
+            build_recruiting_state, network_level, upgrade_scouting_network,
+        )
+
+        conn = sqlite3.connect(":memory:", check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        create_schema(conn)
+        # home_region "Eastside" is NOT a district => home_recognized=False, the
+        # founder path the playtester hit (the curated D3 club instead RISES).
+        club = build_expansion_club(
+            name="Founders FC", primary_color="#101010", secondary_color="#FAFAFA",
+            venue_name="The Yard", home_region="Eastside", tagline="x",
+        )
+        roster = generate_expansion_roster(club.club_id, 3)
+        initialize_curated_manager_career(
+            conn, club.club_id, 3, custom_club=club, custom_roster=roster,
+            ruleset_selection="official_foam", world="pyramid",
+        )
+        conn.commit()
+        sid = get_state(conn, "active_season_id")
+        set_treasury_k(conn, 10_000)  # afford both upgrades
+
+        def count():
+            return len(build_recruiting_state(
+                conn, season_id=sid, player_club_id=club.club_id, root_seed=3, history=[]
+            )["prospects"])
+
+        assert network_level(conn) == 1
+        l1 = count()
+        upgrade_scouting_network(conn)
+        l2 = count()
+        upgrade_scouting_network(conn)
+        l3 = count()
+        assert l2 >= l1 and l3 >= l2, f"paid upgrade shrank the board: L1={l1} L2={l2} L3={l3}"

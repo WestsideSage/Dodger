@@ -657,7 +657,15 @@ def _prospect_rows(
             (p for p in ranked if not visible_map.get(p.player_id)),
             key=lambda p: (-_REACH_ORDER.get(reach_map.get(p.player_id, ""), 0), p.player_id),
         )
-        board_prospects = visible_ranked[:_RECRUIT_BOARD_SIZE] + hidden_ranked[:_HIDDEN_TEASER_CAP]
+        # PT5 fix: a FIXED-SIZE board (visible sheets first, then teaser names to
+        # fill the target). A Scouting Network upgrade converts teaser names into
+        # full sheets WITHOUT shrinking the total — previously the 25-visible cap
+        # clipped the new sheets while the teaser tail shrank, so a PAID upgrade
+        # showed FEWER rows. The board total is now monotonic in level.
+        _board_target = _RECRUIT_BOARD_SIZE + _HIDDEN_TEASER_CAP
+        board_prospects = visible_ranked[:_board_target]
+        if len(board_prospects) < _board_target:
+            board_prospects += hidden_ranked[: _board_target - len(board_prospects)]
     else:
         board_prospects = ranked[:_RECRUIT_BOARD_SIZE]
     board_ids = {p.player_id for p in board_prospects}
