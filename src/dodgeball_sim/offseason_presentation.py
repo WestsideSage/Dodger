@@ -89,6 +89,33 @@ def build_beat_payload(
                     return player
         return None
 
+    if beat_key == "worlds_champion":
+        # V27 Phase 6: the Worlds crowning ceremony payload. First-ever crown
+        # => is_first (the elevated credits-roll treatment in Phase 7's
+        # WorldsCrowning component); later crowns => defending-champion beat.
+        # Pyramid-gated via worlds_crowning_for_user (returns None on legacy /
+        # non-champion). Presentation only — never carries a ratchet/NG+ field
+        # (the vision law: post-summit is legacy play).
+        from .pyramid_postseason import worlds_crowning_for_user
+
+        season_id_for_crowning = (
+            season.season_id if season is not None else get_state(conn, "active_season_id")
+        )
+        crowning = (
+            worlds_crowning_for_user(conn, season_id_for_crowning, player_club_id)
+            if (season_id_for_crowning and player_club_id)
+            else None
+        )
+        if crowning is None:
+            return {}
+        return {
+            "beat_key": "worlds_champion",
+            "champion_club_id": crowning["champion_club_id"],
+            "champion_name": crowning["champion_name"],
+            "season_id": crowning["season_id"],
+            "is_first": bool(crowning["is_first"]),
+        }
+
     if beat_key == "events":
         # V27: the season's resolved events (cup/invitationals/MSI/Founders').
         # Phase 1 scaffold — surfaces whatever was recorded in v27_events_json

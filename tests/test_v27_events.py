@@ -247,6 +247,7 @@ class TestEventsBeatClampAndTuple:
 
         assert OFFSEASON_CEREMONY_BEATS == (
             "recap",
+            "worlds_champion",
             "champion",
             "awards",
             "events",

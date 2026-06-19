@@ -26,8 +26,9 @@ CURRENT_SCHEMA_VERSION = 19
 # MUST equal len(offseason_ceremony.OFFSEASON_CEREMONY_BEATS) - 1. Kept as a
 # literal here to avoid a circular import; update both together when a beat is
 # added (V25 added 'transfer_period'; V26 added 'media_event'; V27 added
-# 'events' after the recap area, so the final 'schedule_reveal' is now index 12).
-_MAX_OFFSEASON_BEAT_INDEX = 12
+# 'events' after the recap area and 'worlds_champion' after 'recap', so the
+# final 'schedule_reveal' is now index 13).
+_MAX_OFFSEASON_BEAT_INDEX = 13
 
 
 class CorruptSaveError(RuntimeError):

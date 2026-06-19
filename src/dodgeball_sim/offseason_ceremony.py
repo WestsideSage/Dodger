@@ -53,6 +53,11 @@ from .view_models import normalize_root_seed
 
 OFFSEASON_CEREMONY_BEATS = (
     "recap",
+    # V27 Phase 6: the Worlds crowning ceremony sits immediately after the
+    # recap (spec §6 / line 129 — "after the recap"). The first-ever Worlds
+    # title is the save's crowning beat; later crowns a defending-champion
+    # beat. Conditional: only when the user club won Worlds this postseason.
+    "worlds_champion",
     "champion",
     "awards",
     # V27: the season's resolved events (cup/invitationals/MSI/Founders') sit
@@ -114,6 +119,7 @@ def compute_active_beats(
     has_transfer_content: bool = False,
     has_media_event: bool = False,
     has_events: bool = False,
+    has_worlds_champion: bool = False,
 ) -> List[str]:
     """Return the ordered subset of OFFSEASON_CEREMONY_BEATS that have real content.
 
@@ -151,6 +157,9 @@ def compute_active_beats(
         # V27: the events beat shows only when the season produced resolved
         # events (cup/invitationals/MSI/Founders') recorded in v27_events_json.
         "events": lambda: has_events,
+        # V27 Phase 6: the Worlds crowning beat shows only when the user club
+        # won Worlds this postseason (the ledger + worlds_history gate).
+        "worlds_champion": lambda: has_worlds_champion,
     }
     return [
         beat for beat in OFFSEASON_CEREMONY_BEATS
@@ -1020,6 +1029,18 @@ def initialize_manager_offseason(
         # Founders' Exhibition (fan-invited, foam, money-only / no-seeding).
         resolve_founders(conn, season.season_id, root_seed)
         has_events = bool(load_events(conn, season.season_id))
+    # V27 Phase 6: the Worlds crowning beat fires only when the user club won
+    # Worlds this postseason. Pyramid-gated; legacy single-league worlds have
+    # no postseason ledger and stay byte-identical (no beat). The crowning is a
+    # presentation beat — it sets no state and changes no mechanic (the vision
+    # law: post-summit is legacy play, never an NG+ / difficulty ratchet).
+    has_worlds_champion = False
+    if player_club_id and pyramid_world_active(conn):
+        from .pyramid_postseason import worlds_crowning_for_user
+
+        has_worlds_champion = (
+            worlds_crowning_for_user(conn, season.season_id, player_club_id) is not None
+        )
     # Compute and store the active beat list for this offseason
     active_beats = compute_active_beats(
         records_payload_json=get_state(conn, "offseason_records_ratified_json"),
@@ -1035,6 +1056,7 @@ def initialize_manager_offseason(
         has_transfer_content=has_transfer_content,
         has_media_event=has_media_event,
         has_events=has_events,
+        has_worlds_champion=has_worlds_champion,
     )
     set_state(conn, "offseason_active_beats_json", json.dumps(active_beats))
     set_state(conn, "offseason_initialized_for", season.season_id)
@@ -1654,6 +1676,42 @@ def build_offseason_ceremony_beat(
             champion = ordered_standings[0]
             body = f"Champion: {club_name(champion.club_id)}"
         return OffseasonCeremonyBeat(key, "Champion", body)
+
+    if key == "worlds_champion":
+        # V27 Phase 6: the Worlds crowning ceremony. The first-ever Worlds
+        # title is the save's crowning beat (credits-roll energy, surfaced via
+        # CeremonyShell in Phase 7); later crowns a smaller defending-champion
+        # beat. The web client renders the structured payload from
+        # build_beat_payload's "worlds_champion" branch; this text layer is the
+        # honest fallback. Post-summit is legacy play — no NG+ / ratchet.
+        crowning = None
+        if conn is not None and player_club_id:
+            from .pyramid_postseason import worlds_crowning_for_user
+
+            season_id_for_crowning = (
+                season.season_id if season is not None
+                else get_state(conn, "active_season_id")
+            )
+            if season_id_for_crowning:
+                crowning = worlds_crowning_for_user(
+                    conn, season_id_for_crowning, player_club_id
+                )
+        if crowning is None:
+            body = "Worlds crowning: no Worlds title this season."
+        else:
+            champ = crowning.get("champion_name") or crowning.get("champion_club_id") or ""
+            if crowning.get("is_first"):
+                body = (
+                    f"WORLDS CHAMPIONS — {champ}.\n"
+                    "The first Worlds title in this club's history: the save's "
+                    "crowning moment. The summit is reached; the climb continues."
+                )
+            else:
+                body = (
+                    f"Worlds defending champions — {champ}.\n"
+                    "Another Worlds title. The summit holds."
+                )
+        return OffseasonCeremonyBeat(key, "Worlds Crowning", body)
 
     if key == "recap":
         if not ordered_standings:

@@ -1103,6 +1103,7 @@ def test_build_offseason_ceremony_uses_expected_beats_and_real_rows():
 
     assert OFFSEASON_CEREMONY_BEATS == (
         "recap",
+        "worlds_champion",
         "champion",
         "awards",
         "events",
