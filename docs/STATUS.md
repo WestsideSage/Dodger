@@ -15,15 +15,75 @@ fans/facilities/bench roles, the event calendar, and the emergent-meta layer —
 in that order (V23 World first). That doc is the planning authority for what
 comes next; this file remains build-state truth.
 
-**Arc status (2026-06-18):** V23–V27 are **built** on `feature/v24-the-board`
-(not yet on main — the arc merges as a unit). **V28 — The Weather** is
-**fully spec'd + implementation-planned but NOT YET BUILT**
-(`docs/specs/2026-06-17-v28-the-weather-spec.md` + `…-sprint-plan.md`) — planning
-was completed ahead of implementation by owner direction; its build is a later
-session. V27 decision: events run as deterministic auto-simmed real-engine
-knockouts at dedicated windows (not an in-season schedule rebuild). V28 #1
-constraint: the officiating-emphasis shift adds NO new RNG draw in `resolve_throw`
-so a default (no-bulletin) season is byte-identical.
+**Arc status (2026-06-18):** V23–V28 are **all built** on `feature/v24-the-board`
+(not yet on main — the Climb-Era arc merges as a unit). **The Climb-Era arc
+(V23–V28) is now CODE-COMPLETE on the branch.** V27 decision: events run as
+deterministic auto-simmed real-engine knockouts at dedicated windows (not an
+in-season schedule rebuild). V28 #1 constraint held: the officiating-emphasis
+shift adds NO new RNG draw in `resolve_throw` and the default `SeasonEmphasis()`
+is byte-identical (the pre-V28 official-engine golden suite stays green).
+
+**V28 — The Weather: DONE on the branch `feature/v24-the-board` (2026-06-18;
+NOT yet on main) — CLOSES THE CLIMB-ERA ARC (V23–V28).** Spec:
+`docs/specs/2026-06-17-v28-the-weather-spec.md`; plan: `…-sprint-plan.md`; retro:
+`docs/retrospectives/2026-06-18-v28-the-weather-retrospective.md`. Three
+independent halves, all from real match data, behind `pyramid_world_active`
+(legacy + season 1 byte-identical), full `python -m pytest -q` green (real exit
+code), `npm run build` + `npm run lint` clean. **(1) Meta journalism**
+(`meta_journalism.py`): `compute_league_trends` (per-division catch rate /
+elimination rate / game-point margin + posture win-correlation from
+`team_policies`, playoff match-ids excluded) and `generate_league_bulletin`
+(`category='meta_report'` headlines whose every claim recomputes from the queried
+rows — the derived-from-data fence; `tools/meta_journalism_probe.py`). **(2)
+Emergent meta** (`meta_drift.py`): each offseason `winning_tactics` reads which
+`CoachPolicy` value won most, `apply_meta_drift` nudges each AI club's
+`v28_tactic_drift_json` overlay toward the winners (bounded by
+`WeatherConfig.drift_rate`) with a deterministic contrarian fraction
+(`v28_meta_drift` stream) pushing the runner-up UP so a new generation breaks the
+orthodoxy; `tactic_drift_for` is consumed by `ai_tactics.get_ai_tactics` after the
+intent override (archetype base → intent → drift; the user club is never drifted).
+`tools/meta_drift_probe.py`: drift-toward-winner + a contrarian generation across
+8 simulated seasons. **(3) Officiating points of emphasis** (`season_emphasis.py`,
+the engine-touching half): a frozen `SeasonEmphasis(catch_delta, block_delta,
+announcement, selection_basis)` threaded as a SEPARATE arg (NOT on the frozen
+`RulesetProfile`) through `run_autonomous_match → run_autonomous_game →
+resolve_throw → compute_throw_probabilities`. **THE #1 LANDMINE HELD:** the deltas
+shade the EXISTING catch/block sigmoid bias BEFORE the EXISTING roll with NO new
+RNG draw — `catch_bias = _CATCH_BIAS - catch_emphasis` and `block_bias =
+_BLOCK_BIAS + block_delta`, so the default (deltas 0.0) is provably byte-identical
+(`0.7 - 0.0 == 0.7`, `-0.1 + 0.0 == -0.1`) and every pre-V28 official-engine
+golden (`test_official_engine_balance` `_WT7_BASELINE_*`, `test_attribute_consumers`
+fingerprints, `test_wt20_live_rules` block pins) stays green. The shift is
+symmetric by construction (every throw shares the same shaded bias) and every call
+the bounded delta flips is logged as a `RuleDiscretionEvent(rule_section='emphasis',
+selection_basis='emphasis_<season>')` (counterfactual recomputed against the SAME
+captured roll — no extra draw) collected into `discretion_events`;
+`select_season_emphasis` picks a bounded emphasis on the new `v28_season_emphasis`
+stream (idempotent via the per-season store), `generate_officiating_bulletin`
+announces it preseason (a `league_bulletin` headline for the UPCOMING season at the
+offseason sweep), and `load_season_emphasis` is threaded `game_loop →
+simulate_match → OfficialEngineAdapter → run_autonomous_match` so league matches
+play under the active emphasis. Honest `NON_SECTION_ENFORCEMENT_NOTES` entry
+(ENFORCED as DISCLOSED SIM-DESIGN — emphasis is NOT a sourced USAD section).
+`tools/emphasis_probe.py`: default byte-identical; active emphasis bites
+(21/24 seeds), is symmetric, and is logged; deterministic bounded selection.
+**Frontend:** the Week-1 Season Preview gains a "League Bulletin" block
+(`SeasonPreview.tsx`; `build_season_preview` `officiating_emphasis` fed by
+`load_season_emphasis`), and the league news wire (`class_wire`/`event_news`/
+`meta_report`/`league_bulletin`) now rides the `/api/standings` payload
+(`wire_headlines` + the `StandingsResponse` field) and renders at the front of the
+existing League Wire ticker — these headlines were written since V24/V27/V28 but
+had no frontend consumer. `tests/test_v28_frontend_payloads.py` is the real-
+TestClient strip-trap regression (both `wire_headlines` and
+`season_preview.officiating_emphasis` reach the client un-stripped). **`meta.py`/
+MetaPatch stays retired** (weather is computed from data, never an injected dial;
+the `test_meta_module_has_no_db_boundary_imports` fence holds). **Disclosed
+deferral:** the full multi-season live browser acceptance walk (read a meta report,
+see a preseason officiating bulletin, watch AI tactics drift across seasons) is the
+owner's final acceptance pass — the V27 precedent — since the surfaces require a
+multi-season playthrough; the data path to the client is pinned by the
+TestClient strip-trap guards + the three probes + build/lint, per the
+frontend-has-no-test-runner policy.
 
 **V27 — The Calendar: DONE on the branch `feature/v24-the-board` (2026-06-18;
 NOT yet on main).** Spec: `docs/specs/2026-06-17-v27-the-calendar-spec.md`; plan:
