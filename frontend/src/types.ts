@@ -1440,11 +1440,58 @@ export interface MediaEventBeatPayload {
     result: { event_id: string; chosen: string; receipt: string } | null;
 }
 
+/** V27 The Calendar — a resolved event's bracket row (the simpler EventBracketRow
+ *  shape the backend records, distinct from PlayoffBracketMatch: no scoreline,
+ *  no decided_by, no narrative_note — just who played and who won). */
+export interface EventBracketRow {
+    round: string;
+    home_club_id: string;
+    away_club_id: string;
+    winner_club_id: string;
+    home_club_name: string;
+    away_club_name: string;
+}
+
+/** A resolved event (Domestic Cup / Cloth Classic / No-Sting Open / MSI /
+ *  Founders' Exhibition). Mirrors the dict event_calendar._event_to_dict emits. */
+export interface EventResultRow {
+    event_key: string;
+    event_name: string;
+    season_id: string;
+    champion_club_id: string;
+    champion_club_name: string;
+    ruleset: string;
+    purse_k: number;
+    bracket: EventBracketRow[];
+    meta: Record<string, unknown>;
+}
+
+/** V27 The Calendar — the `events` offseason beat: the season's resolved
+ *  competitions, each a deterministic auto-simmed real-engine knockout. */
+export interface EventsBeatPayload {
+    beat_key: 'events';
+    events: EventResultRow[];
+}
+
+/** V27 The Calendar — the `worlds_champion` crowning ceremony beat. `is_first`
+ *  flags the save's first Worlds title (the elevated credits-roll treatment);
+ *  later crowns render as a defending-champion beat. Presentation only — never
+ *  carries a ratchet/NG+ field (the vision law: post-summit is legacy play). */
+export interface WorldsChampionBeatPayload {
+    beat_key: 'worlds_champion';
+    champion_club_id: string;
+    champion_name: string;
+    season_id: string;
+    is_first: boolean;
+}
+
 // Discriminated union — `key` is the discriminant
 export type OffseasonBeat =
     | (OffseasonBeatBase & { key: 'champion'; payload: ChampionBeatPayload })
     | (OffseasonBeatBase & { key: 'recap'; payload: RecapBeatPayload })
     | (OffseasonBeatBase & { key: 'awards'; payload: AwardsBeatPayload })
+    | (OffseasonBeatBase & { key: 'worlds_champion'; payload: WorldsChampionBeatPayload })
+    | (OffseasonBeatBase & { key: 'events'; payload: EventsBeatPayload })
     | (OffseasonBeatBase & { key: 'records_ratified'; payload: RecordsRatifiedBeatPayload })
     | (OffseasonBeatBase & { key: 'hof_induction'; payload: HofInductionBeatPayload })
     | (OffseasonBeatBase & { key: 'development'; payload: DevelopmentBeatPayload })

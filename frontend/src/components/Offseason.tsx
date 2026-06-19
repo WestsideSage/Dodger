@@ -12,6 +12,8 @@ import { RecordsRatified, HallOfFameInduction } from './ceremonies/StructuredOff
 import { RecruitmentChoice } from './ceremonies/RecruitmentChoice';
 import { TransferPeriod } from './ceremonies/TransferPeriod';
 import { MediaEvent } from './ceremonies/MediaEvent';
+import { EventsBeat } from './ceremonies/EventsBeat';
+import { WorldsCrowning } from './ceremonies/WorldsCrowning';
 
 export function Offseason({ onBeatChange }: { onBeatChange?: (title: string | null) => void } = {}) {
   const { data: beat, error, loading, setData: setBeat, setError } = useApiResource<OffseasonBeat>('/api/offseason/beat');
@@ -74,7 +76,9 @@ export function Offseason({ onBeatChange }: { onBeatChange?: (title: string | nu
   );
   if (beat.key === 'champion') content = <ChampionReveal beat={beat} onComplete={advance} acting={acting} />;
   else if (beat.key === 'recap') content = <RecapStandings beat={beat} onComplete={advance} acting={acting} />;
+  else if (beat.key === 'worlds_champion') content = <WorldsCrowning beat={beat} onComplete={advance} acting={acting} />;
   else if (beat.key === 'awards') content = <AwardsNight beat={beat} onComplete={advance} acting={acting} />;
+  else if (beat.key === 'events') content = <EventsBeat beat={beat} onComplete={advance} acting={acting} />;
   else if (beat.key === 'retirements') content = <Graduation beat={beat} onComplete={advance} acting={acting} />;
   else if (beat.key === 'transfer_period') content = <TransferPeriod beat={beat} onTransfer={transfer} onComplete={advance} acting={acting} />;
   else if (beat.key === 'media_event') content = <MediaEvent beat={beat} onChoose={mediaChoose} onComplete={advance} acting={acting} />;
