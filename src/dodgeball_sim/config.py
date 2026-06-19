@@ -425,6 +425,35 @@ class EventConfig:
 DEFAULT_EVENTS = EventConfig()
 
 
+@dataclass(frozen=True)
+class WeatherConfig:
+    """V28 — The Weather: ecosystem weather tuning (data-derived, no injected dials).
+
+    All constants are proposed sim-design with measured probe evidence; never
+    claimed as real-world fidelity. ``meta.py``/MetaPatch stays retired.
+    """
+
+    # Meta journalism: minimum absolute delta in a per-division rate for a trend
+    # to be reported as "notable" in the league bulletin (keeps the ticker honest
+    # — small noise is not narrated as a shift).
+    trend_notable_delta: float = 0.04
+    # Emergent meta: per-offseason nudge magnitude applied to each AI club's
+    # tactic-drift overlay toward the prior season's winning dimensions. Bounded
+    # so tactics drift but don't snap in one offseason.
+    drift_rate: float = 0.15
+    # Emergent meta: deterministic fraction of AI clubs that drift AWAY from the
+    # winning trend (the contrarian generation that breaks a permanent solve).
+    contrarian_fraction: float = 0.20
+    # Officiating emphasis: bounded delta applied to the existing catch/block
+    # sigmoid bias before the existing roll (within the rulebook's discretion
+    # space; never an invented enforcement). Default 0.0 ⇒ byte-identical.
+    emphasis_catch_delta_max: float = 0.08
+    emphasis_block_delta_max: float = 0.06
+
+
+DEFAULT_WEATHER = WeatherConfig()
+
+
 def get_config(version: str | None = None) -> BalanceConfig:
     """Return the requested config, defaulting to the latest entry."""
 
@@ -453,6 +482,8 @@ __all__ = [
     "DEFAULT_BENCH_ROLES",
     "EventConfig",
     "DEFAULT_EVENTS",
+    "WeatherConfig",
+    "DEFAULT_WEATHER",
     "CONTESTED_USER_OFFER_BASE",
     "CONTESTED_USER_OFFER_INTEREST_WEIGHT",
     "CONTESTED_VETO_OFFER_FLOOR",

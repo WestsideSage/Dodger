@@ -1029,6 +1029,14 @@ def initialize_manager_offseason(
         # Founders' Exhibition (fan-invited, foam, money-only / no-seeding).
         resolve_founders(conn, season.season_id, root_seed)
         has_events = bool(load_events(conn, season.season_id))
+    # V28 The Weather — Phase 1: data-derived league trend journalism. Compute
+    # the season's meta trends from real match data and write meta_report
+    # headlines for the news ticker (the ecosystem's own weather report).
+    # Pyramid-gated; legacy single-league saves stay byte-identical (no call).
+    if player_club_id and pyramid_world_active(conn):
+        from .meta_journalism import generate_league_bulletin
+
+        generate_league_bulletin(conn, season.season_id)
     # V27 Phase 6: the Worlds crowning beat fires only when the user club won
     # Worlds this postseason. Pyramid-gated; legacy single-league worlds have
     # no postseason ledger and stay byte-identical (no beat). The crowning is a
