@@ -28,7 +28,7 @@ by its listed test strategy. Test strategy ∈ {python-guard, vitest, e2e, manua
 | 90, 93–95 | Optimistic policy rollback; FALLBACK_BRIEFING; plan alignment; recent-results/stakes | vitest |
 
 ## Phases 3–8 — assigned by area (each phase's own plan finalizes per-item test strategy)
-- Phase 3 Roster/lineup/player: #36, #51–#58
+- Phase 3 Roster/lineup/player: #36, #51–#58, #92
 - Phase 4 Standings/league: #6, #7, #15, #16, #33, #34, #38, #96
 - Phase 5 Dynasty/recruiting/history: #19–#28, #30, #59–#66, #97
 - Phase 6 Ceremonies/offseason: #17, #18, #29, #31, #32, #35, #67–#75
