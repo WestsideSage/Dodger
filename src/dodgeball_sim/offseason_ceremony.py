@@ -1033,10 +1033,15 @@ def initialize_manager_offseason(
     # the season's meta trends from real match data and write meta_report
     # headlines for the news ticker (the ecosystem's own weather report).
     # Pyramid-gated; legacy single-league saves stay byte-identical (no call).
+    # V28 Phase 2: emergent meta — drift AI tactics toward the season's winning
+    # dimensions (+ a contrarian fraction away). The overlay is consumed by
+    # get_ai_tactics next season; the user club is never drifted.
     if player_club_id and pyramid_world_active(conn):
+        from .meta_drift import apply_meta_drift
         from .meta_journalism import generate_league_bulletin
 
         generate_league_bulletin(conn, season.season_id)
+        apply_meta_drift(conn, season.season_id, root_seed)
     # V27 Phase 6: the Worlds crowning beat fires only when the user club won
     # Worlds this postseason. Pyramid-gated; legacy single-league worlds have
     # no postseason ledger and stay byte-identical (no beat). The crowning is a

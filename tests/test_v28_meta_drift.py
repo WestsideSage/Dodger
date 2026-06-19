@@ -212,11 +212,15 @@ class TestApplyMetaDrift:
         conn, season_id, clubs, user_club = _drift_fixture()
         cfg = WeatherConfig(contrarian_fraction=1.0, drift_rate=0.5)
         apply_meta_drift(conn, season_id, _SEED, config=cfg)
-        # All AI clubs should drift AWAY from go_for_catches (toward play_safe).
+        # All AI clubs should drift AWAY from go_for_catches — contrarians push
+        # the runner-up (play_safe) UP, not the winner DOWN.
         for club_id in clubs:
             raw = _raw_drift(conn, club_id)
-            # Contrarians push the winning value DOWN (or the losing value UP).
-            assert raw["catch_posture"]["go_for_catches"] <= 0.0
+            # The runner-up (play_safe) should have a positive bias.
+            assert raw["catch_posture"]["play_safe"] > 0.0
+            # And go_for_catches should NOT be the top value.
+            top_val = max(raw["catch_posture"], key=raw["catch_posture"].get)
+            assert top_val != "go_for_catches"
 
     def test_idempotent_per_season(self):
         from dodgeball_sim.meta_drift import apply_meta_drift, tactic_drift_for

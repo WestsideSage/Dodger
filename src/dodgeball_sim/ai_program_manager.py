@@ -95,6 +95,7 @@ def build_ai_weekly_plan(
     standings_row: StandingsRow | None,
     total_weeks: int,
     adapt_to_user: bool = False,
+    conn: sqlite3.Connection | None = None,
 ) -> dict:
     """Builds a weekly plan for an AI club tailored to its archetype, intent, and roster shape."""
     intent = choose_ai_intent(
@@ -108,7 +109,15 @@ def build_ai_weekly_plan(
     players_by_id = {player.id: player for player in roster}
 
     orders = get_ai_department_orders(club.program_archetype, intent)
-    tactics = get_ai_tactics(club.program_archetype, intent)
+    # V28 The Weather: consume the per-club tactic-drift overlay (emergent meta).
+    # The drift folds in after the intent override in get_ai_tactics. Pyramid-
+    # gated; legacy saves return {} (no overlay) so tactics are byte-identical.
+    drift = None
+    if conn is not None:
+        from .meta_drift import tactic_drift_for
+
+        drift = tactic_drift_for(conn, club.club_id) or None
+    tactics = get_ai_tactics(club.program_archetype, intent, drift=drift)
 
     plan = {
         "season_id": season_id,
@@ -182,6 +191,7 @@ def prepare_ai_plans_for_matches(
                     standings_row=standings_by_club.get(club_id),
                     total_weeks=season.total_weeks(),
                     adapt_to_user=adapt_to_user,
+                    conn=conn,
                 )
                 save_plan(conn, ai_plan)
             apply_plan(conn, ai_plan, match.match_id, club_id)

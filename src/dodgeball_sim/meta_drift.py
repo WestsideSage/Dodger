@@ -170,6 +170,66 @@ def apply_meta_drift(
 
     store = _load_drift_store(conn)
 
+    # Compute full win counts per dimension so contrarians can push a real
+    # alternative (the runner-up) UP, not just the winner DOWN.
+    dim_counts: Dict[str, Dict[str, int]] = {d: {} for d in _POLICY_DIMENSIONS}
+    rows = conn.execute(
+        """
+        SELECT match_id, official_score_json, winner_club_id
+        FROM match_records
+        WHERE season_id = ? AND official_score_json IS NOT NULL
+        """,
+        (season_id,),
+    ).fetchall()
+    for r in rows:
+        if _is_playoff(r["match_id"], season_id):
+            continue
+        try:
+            score = json.loads(r["official_score_json"])
+        except (json.JSONDecodeError, TypeError):
+            continue
+        policies = score.get("team_policies") or {}
+        winner = r["winner_club_id"]
+        if not winner:
+            continue
+        winner_policy = policies.get(winner)
+        if not isinstance(winner_policy, dict):
+            continue
+        for dim in _POLICY_DIMENSIONS:
+            val = winner_policy.get(dim)
+            if val is not None:
+                dim_counts[dim][val] = dim_counts[dim].get(val, 0) + 1
+
+    # Per dimension: the winning value and a runner-up (the second-most-won
+    # value, or a deterministic fallback from the enum if only one value won).
+    from .models import (
+        Approach,
+        CatchPosture,
+        OpeningRushCommit,
+        OpeningRushTarget,
+        TargetFocus,
+    )
+
+    _DIM_ENUMS = {
+        "approach": [e.value for e in Approach],
+        "target_focus": [e.value for e in TargetFocus],
+        "catch_posture": [e.value for e in CatchPosture],
+        "rush_commit": [e.value for e in OpeningRushCommit],
+        "rush_target": [e.value for e in OpeningRushTarget],
+    }
+
+    def _runner_up(dim: str, winner: str) -> str:
+        counts = dim_counts.get(dim, {})
+        sorted_vals = sorted(counts, key=counts.get, reverse=True)
+        for v in sorted_vals:
+            if v != winner:
+                return v
+        # No runner-up in the data — pick the first enum value that isn't the winner.
+        for v in _DIM_ENUMS.get(dim, []):
+            if v != winner:
+                return v
+        return winner
+
     # Deterministic contrarian selection on the v28_meta_drift stream.
     contrarian_seed = derive_seed(root_seed, "v28_meta_drift", season_id)
     rng = DeterministicRNG(contrarian_seed)
@@ -187,8 +247,11 @@ def apply_meta_drift(
                 continue
             dim_store = club_store.setdefault(dim, {})
             if is_contrarian:
-                # Contrarian: push the winning value DOWN (drift AWAY).
-                dim_store[winning_val] = dim_store.get(winning_val, 0.0) - config.drift_rate
+                # Contrarian: push a real alternative (the runner-up) UP so the
+                # contrarian generation produces a visible alternative tactic,
+                # not just a suppressed winner.
+                runner = _runner_up(dim, winning_val)
+                dim_store[runner] = dim_store.get(runner, 0.0) + config.drift_rate
             else:
                 # Conformist: push the winning value UP (drift TOWARD).
                 dim_store[winning_val] = dim_store.get(winning_val, 0.0) + config.drift_rate
