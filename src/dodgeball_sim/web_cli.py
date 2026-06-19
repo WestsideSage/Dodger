@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 from dataclasses import dataclass
 import json
 import os
@@ -130,8 +131,11 @@ def _first_available_port(start: int, blocked: set[int] | None = None) -> int:
     return port
 
 
-def _choose_launch_ports(*, dev_mode: bool) -> LaunchPorts:
-    backend_port = _first_available_port(DEFAULT_BACKEND_PORT)
+def _choose_launch_ports(*, dev_mode: bool, explicit_port: int | None = None) -> LaunchPorts:
+    # An explicit --port is honored verbatim (no auto-increment): the caller
+    # asked for THAT port (e.g. a playtest on 8010 that must not collide with a
+    # live game on 8000). Otherwise scan up from the default.
+    backend_port = explicit_port if explicit_port else _first_available_port(DEFAULT_BACKEND_PORT)
     if not dev_mode:
         return LaunchPorts(backend=backend_port)
     frontend_port = _first_available_port(DEFAULT_FRONTEND_PORT, {backend_port})
@@ -178,11 +182,13 @@ def _build_frontend(root: Path) -> None:
     print("Frontend built successfully.")
 
 
-def _run_dev(root: Path) -> None:
-    stopped = _stop_previous_launch(root)
-    if stopped:
-        print("Stopped previous Dodgeball Manager dev server.")
-    ports = _choose_launch_ports(dev_mode=True)
+def _run_dev(root: Path, explicit_port: int | None = None, open_browser: bool = True) -> None:
+    secondary = explicit_port is not None
+    if not secondary:
+        stopped = _stop_previous_launch(root)
+        if stopped:
+            print("Stopped previous Dodgeball Manager dev server.")
+    ports = _choose_launch_ports(dev_mode=True, explicit_port=explicit_port)
     _print_port_notice(ports)
     assert ports.frontend is not None
 
@@ -197,16 +203,18 @@ def _run_dev(root: Path) -> None:
         env=_frontend_env(ports.backend, ports.frontend),
         **_child_process_kwargs(),
     )
-    _write_launch_state(
-        root,
-        backend_port=ports.backend,
-        frontend_port=ports.frontend,
-        backend_pid=os.getpid(),
-        vite_pid=vite_proc.pid,
-    )
-    threading.Thread(
-        target=_open_browser, args=(f"http://localhost:{ports.frontend}", 2.5), daemon=True
-    ).start()
+    if not secondary:
+        _write_launch_state(
+            root,
+            backend_port=ports.backend,
+            frontend_port=ports.frontend,
+            backend_pid=os.getpid(),
+            vite_pid=vite_proc.pid,
+        )
+    if open_browser:
+        threading.Thread(
+            target=_open_browser, args=(f"http://localhost:{ports.frontend}", 2.5), daemon=True
+        ).start()
 
     try:
         uvicorn.run(
@@ -218,15 +226,24 @@ def _run_dev(root: Path) -> None:
         )
     finally:
         _terminate_pid(vite_proc.pid)
-        _remove_launch_state(root)
+        if not secondary:
+            _remove_launch_state(root)
 
 
-def _run_prod(root: Path) -> None:
-    stopped = _stop_previous_launch(root)
-    if stopped:
-        print("Stopped previous Dodgeball Manager server.")
-    ports = _choose_launch_ports(dev_mode=False)
+def _run_prod(root: Path, explicit_port: int | None = None, open_browser: bool = True) -> None:
+    # An explicit --port is a deliberate SECONDARY instance (e.g. a playtest on
+    # 8010): never stop or clobber the launch-state of a live game, and never
+    # silently fall back to another port — the caller asked for THIS one.
+    secondary = explicit_port is not None
+    if not secondary:
+        stopped = _stop_previous_launch(root)
+        if stopped:
+            print("Stopped previous Dodgeball Manager server.")
+    ports = _choose_launch_ports(dev_mode=False, explicit_port=explicit_port)
     _print_port_notice(ports)
+    if secondary and _port_in_use(ports.backend):
+        print(f"Error: port {ports.backend} is already in use; pick a free --port.")
+        sys.exit(1)
 
     if Path("frontend/dist").exists():
         frontend_dist = Path("frontend/dist")
@@ -243,15 +260,17 @@ def _run_prod(root: Path) -> None:
     # is a CSRF guard auto-injected into the served page (it shields the
     # mutating API from cross-origin requests), not a URL secret.
     print("  CSRF launch token active (auto-injected into the app page; local browser needs no extra setup).")
-    _write_launch_state(
-        root,
-        backend_port=ports.backend,
-        frontend_port=None,
-        backend_pid=os.getpid(),
-    )
-    threading.Thread(
-        target=_open_browser, args=(f"http://localhost:{ports.backend}",), daemon=True
-    ).start()
+    if not secondary:
+        _write_launch_state(
+            root,
+            backend_port=ports.backend,
+            frontend_port=None,
+            backend_pid=os.getpid(),
+        )
+    if open_browser:
+        threading.Thread(
+            target=_open_browser, args=(f"http://localhost:{ports.backend}",), daemon=True
+        ).start()
     try:
         uvicorn.run(
             "dodgeball_sim.server:app",
@@ -260,16 +279,36 @@ def _run_prod(root: Path) -> None:
             log_level="info",
         )
     finally:
-        _remove_launch_state(root)
+        if not secondary:
+            _remove_launch_state(root)
 
 
-def main() -> None:
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="dodgeball-manager",
+        description="Launch the Dodgeball Manager web app.",
+    )
+    parser.add_argument(
+        "--port", type=int, default=None,
+        help="Backend/app port. Honored verbatim (no auto-increment); default "
+             "scans up from 8000. Use a free port like 8010 to run a second "
+             "instance alongside a live game without disturbing it.",
+    )
+    parser.add_argument(
+        "--no-browser", action="store_true",
+        help="Do not auto-open the browser on launch.",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = _parse_args(argv)
     dev_mode = os.environ.get("DODGEBALL_DEV", "").lower() in ("1", "true", "yes")
     root = _project_root()
     if dev_mode:
-        _run_dev(root)
+        _run_dev(root, explicit_port=args.port, open_browser=not args.no_browser)
     else:
-        _run_prod(root)
+        _run_prod(root, explicit_port=args.port, open_browser=not args.no_browser)
 
 
 if __name__ == "__main__":

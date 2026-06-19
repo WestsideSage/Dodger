@@ -203,3 +203,26 @@ class TestSigningReceiptOffers:
         # display the winner <= the loser.
         hi, lo = _format_offer_pair(106.5, 105.5)
         assert hi != lo and float(hi) >= float(lo)
+
+
+class TestLauncherPort:
+    """PT5 setup: `--port 8010` was ignored (the launcher took no args and always
+    started from 8000, killing the owner's same-repo game)."""
+
+    def test_parse_args_honors_port(self):
+        from dodgeball_sim.web_cli import _parse_args
+
+        args = _parse_args(["--port", "8010"])
+        assert args.port == 8010 and args.no_browser is False
+
+    def test_parse_args_defaults(self):
+        from dodgeball_sim.web_cli import _parse_args
+
+        args = _parse_args([])
+        assert args.port is None and args.no_browser is False
+
+    def test_explicit_port_is_honored_verbatim(self):
+        from dodgeball_sim.web_cli import _choose_launch_ports
+
+        # No auto-increment: the caller asked for 8010, gets 8010.
+        assert _choose_launch_ports(dev_mode=False, explicit_port=8010).backend == 8010
