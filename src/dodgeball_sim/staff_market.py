@@ -69,7 +69,20 @@ def build_staff_market_state(
         }
         for head in load_department_heads(conn)
     ]
-    facilities = load_club_facilities(conn, player_club_id, season_id)
+    # PT5 fix: on pyramid (web) saves, facilities are permanent owned buildings
+    # in v26_owned_facilities_json (facilities_office), NOT the legacy per-season
+    # club_facilities table that only the CLI pick-3 flow writes. Reading the
+    # legacy table here made the Staff summary show "Facilities 0" even after a
+    # web purchase the Facilities panel already showed as Built. Legacy
+    # single-league saves keep the old table read (byte-identical).
+    from .world import pyramid_world_active
+
+    if pyramid_world_active(conn):
+        from .facilities_office import owned_facilities
+
+        facilities = owned_facilities(conn)
+    else:
+        facilities = load_club_facilities(conn, player_club_id, season_id)
     recent_actions = list(load_json_state(conn, STAFF_ACTION_STATE_KEY, []))
     filled_departments = {action.get("department") for action in recent_actions}
     candidates = [

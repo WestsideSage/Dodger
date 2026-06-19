@@ -144,3 +144,25 @@ def test_dynasty_office_payload_facilities_none_on_legacy():
 
     conn = _legacy_conn()
     assert build_dynasty_office_state(conn)["facilities"] is None
+
+
+def test_built_web_facility_shows_in_staff_market_active_facilities():
+    """PT5: a web-built facility (v26 owned) must show in the Staff summary's
+    active_facilities, not just the Facilities panel — the summary read the
+    legacy club_facilities table the web flow never writes ('Facilities 0')."""
+    from dodgeball_sim.dynasty_office import build_dynasty_office_state
+
+    conn = _pyramid_conn(treasury=1000)
+    fo.buy_facility(conn, "training_hall")
+    state = build_dynasty_office_state(conn)
+    assert "training_hall" in state["facilities"]["owned"], "Facilities panel control"
+    assert "training_hall" in state["staff_market"]["active_facilities"], (
+        "Staff summary still reads the stale legacy facilities source"
+    )
+
+
+def test_legacy_world_staff_market_active_facilities_empty():
+    from dodgeball_sim.dynasty_office import build_dynasty_office_state
+
+    conn = _legacy_conn()
+    assert build_dynasty_office_state(conn)["staff_market"]["active_facilities"] == []
