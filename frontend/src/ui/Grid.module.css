@@ -1,0 +1,6 @@
+.grid {
+  display: grid;
+  /* min() guard => columns never exceed the container => never overflows (kills P3/P10) */
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--grid-min, 240px), 100%), 1fr));
+  gap: var(--grid-gap, var(--space-4));
+}
