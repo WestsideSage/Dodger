@@ -38,7 +38,7 @@ def _career_conn() -> sqlite3.Connection:
 def test_v5_schema_creates_department_plan_and_history_tables_sixteen():
     conn = _career_conn()
 
-    assert get_schema_version(conn) == 18
+    assert get_schema_version(conn) == 19
     assert load_department_heads(conn)
     assert conn.execute("SELECT COUNT(*) FROM weekly_command_plans").fetchone()[0] == 0
     assert conn.execute("SELECT COUNT(*) FROM command_history").fetchone()[0] == 0
@@ -199,6 +199,36 @@ def test_result_scoreline_official_uses_game_points_not_contradictory_survivors(
         },
     )
     assert _result_scoreline(legacy_win, "home", "away") == ("4-1", "survivors")
+
+
+def test_post_week_dashboard_exposes_player_perspective_scoreline():
+    """PT6: the Command Center wire needs a real scoreline, not a bare
+    Win/Loss/Draw. The dashboard exposes score + score_unit, player-perspective
+    (the player's points first, so a Win never reads backwards on an away win)."""
+    conn = _career_conn()
+    state = build_command_center_state(conn)
+    plan = build_default_weekly_plan(state)
+    season = load_season(conn, plan["season_id"])
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+    completed = load_completed_match_ids(conn, plan["season_id"])
+    user_match = next(
+        m for m in season.scheduled_matches
+        if m.match_id not in completed
+        and plan["player_club_id"] in (m.home_club_id, m.away_club_id)
+    )
+    record = simulate_scheduled_match(
+        conn, scheduled=user_match, clubs=clubs, rosters=rosters,
+        root_seed=normalize_root_seed("20260426", default_on_invalid=True), difficulty="pro",
+    )
+    dashboard = build_post_week_dashboard(conn, plan, record)
+    assert "score" in dashboard and "score_unit" in dashboard
+    assert dashboard["score"] and "-" in dashboard["score"]
+    a, b = (int(x) for x in dashboard["score"].split("-"))
+    if dashboard["result"] == "Win":
+        assert a > b, f"player-perspective Win scoreline backwards: {dashboard['score']}"
+    elif dashboard["result"] == "Loss":
+        assert a < b, f"player-perspective Loss scoreline backwards: {dashboard['score']}"
 
 
 def test_build_matchup_details_is_importable():

@@ -131,9 +131,9 @@ def test_load_club_roster_raises_corrupt_save_error_for_bad_json():
         raise AssertionError("Expected CorruptSaveError")
 
 
-def test_current_schema_version_is_18():
-    # V23: division_membership (the pyramid world's per-season seats).
-    assert CURRENT_SCHEMA_VERSION == 18
+def test_current_schema_version_is_19():
+    # V26: club_fans / player_fans / fan_ledger (the fan economy).
+    assert CURRENT_SCHEMA_VERSION == 19
 
 
 def test_v1_database_migrates_to_current_schema():

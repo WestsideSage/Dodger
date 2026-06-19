@@ -50,6 +50,46 @@ from dodgeball_sim.pyramid_postseason import load_postseason_ledger  # noqa: E40
 from dodgeball_sim.use_cases import auto_pilot_weeks  # noqa: E402
 
 
+def _division_scoped_eligible(conn, season_id, user_club_id):
+    """The pre-V24 division-scoped AI market, reimplemented for the --division-scoped
+    'before' comparison (whole-world recruiting is the V24 fix)."""
+    from dodgeball_sim.config import (
+        AI_OFFSEASON_MAX_ROSTER,
+        AI_OFFSEASON_SIGNINGS_PER_CLUB,
+    )
+    from dodgeball_sim.persistence import (
+        load_all_rosters,
+        load_division_map,
+        load_recruitment_signings,
+    )
+    from dodgeball_sim.world import pyramid_world_active
+
+    division_club_ids = None
+    if user_club_id is not None and pyramid_world_active(conn):
+        division_map = load_division_map(conn, season_id)
+        seat = division_map.get(user_club_id)
+        if seat is not None:
+            division_club_ids = {
+                cid for cid, m in division_map.items() if m.division_id == seat.division_id
+            }
+    signings_per_club = {}
+    for signing in load_recruitment_signings(conn, season_id):
+        if signing.source == "ai":
+            signings_per_club[signing.club_id] = signings_per_club.get(signing.club_id, 0) + 1
+    eligible = set()
+    for club_id, roster in load_all_rosters(conn).items():
+        if user_club_id is not None and club_id == user_club_id:
+            continue
+        if division_club_ids is not None and club_id not in division_club_ids:
+            continue
+        if signings_per_club.get(club_id, 0) >= AI_OFFSEASON_SIGNINGS_PER_CLUB:
+            continue
+        if len(roster) >= AI_OFFSEASON_MAX_ROSTER:
+            continue
+        eligible.add(club_id)
+    return eligible
+
+
 def walk_offseason(conn: sqlite3.Connection) -> None:
     payload = get_offseason_beat_payload(conn)
     for _ in range(24):
@@ -70,7 +110,18 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seasons", type=int, default=6)
     parser.add_argument("--seed", type=int, default=20260613)
+    parser.add_argument(
+        "--division-scoped",
+        action="store_true",
+        help="Restore pre-V24 division-scoped AI recruiting (the 'before')",
+    )
     args = parser.parse_args()
+
+    if args.division_scoped:
+        import dodgeball_sim.recruitment as _recruitment
+
+        _recruitment._eligible_ai_offer_clubs = _division_scoped_eligible
+        print("[before] AI recruiting forced division-scoped (pre-V24)")
 
     conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.row_factory = sqlite3.Row
@@ -130,7 +181,7 @@ def main() -> None:
     user = club.club_id
 
     print(f"{'S':>2} {'tier':<10} {'record':<8} {'userOVR':>7} {'rivalOVR':>8} "
-          f"{'maxJump':>7} outcome")
+          f"{'D1ovr':>6} {'INTovr':>6} {'maxJump':>7} outcome")
     prev_ovr: dict[str, float] = {}
     for season_num in range(1, args.seasons + 1):
         season_id = get_state(conn, "active_season_id")
@@ -161,6 +212,18 @@ def main() -> None:
         rival_ovr = mean(
             fielded_mean(r.club_id) for r in rows if r.club_id != user
         )
+
+        def division_mean(div_id: str) -> float:
+            ids = [cid for cid, m in division_map.items() if m.division_id == div_id]
+            vals = [fielded_mean(cid) for cid in ids]
+            return mean(vals) if vals else 0.0
+
+        # The Worlds feeders: domestic top flight + the international Circuit.
+        # End-state dominance = these flatline (no new blood) while the user
+        # compounds. Whole-world recruiting must keep them climbing.
+        premier_ovr = division_mean("premier")
+        circuit_ovr = division_mean("circuit")
+
         ledger = load_postseason_ledger(conn, season_id) or {}
         champs = ledger.get("champions", {})
         outcome_bits = []
@@ -191,6 +254,7 @@ def main() -> None:
         print(
             f"{season_num:>2} {'D' + str(seat.tier) + ' ' + seat.division_id:<10} "
             f"{me.wins}-{me.losses}-{me.draws:<3} {user_ovr:>7.1f} {rival_ovr:>8.1f} "
+            f"{premier_ovr:>6.1f} {circuit_ovr:>6.1f} "
             f"{max_jump:>+7.1f} {'; '.join(outcome_bits)}{move}"
         )
 

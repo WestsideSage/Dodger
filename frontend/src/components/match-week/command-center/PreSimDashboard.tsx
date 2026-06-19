@@ -453,7 +453,10 @@ export function PreSimDashboard({
   const wk = String(displayWeek).padStart(2, '0');
   const recentLeagueWire = data.history.slice(-3).map(h => ({
     week: h.week ?? '?',
-    summary: h.dashboard?.result ? `${h.dashboard.result} vs ${h.dashboard.opponent_name ?? 'opponent'}` : 'No result',
+    // PT6: show the real game-point scoreline, not a bare Win/Loss/Draw.
+    summary: h.dashboard?.result
+      ? `${h.dashboard.result}${h.dashboard.score ? ` ${h.dashboard.score}` : ''} vs ${h.dashboard.opponent_name ?? 'opponent'}`
+      : 'No result',
   }));
   // Ticker items — only real news rides the wire (your recent results plus
   // the league leader); an empty league shows one honest static line.

@@ -53,13 +53,25 @@ from .view_models import normalize_root_seed
 
 OFFSEASON_CEREMONY_BEATS = (
     "recap",
+    # V27 Phase 6: the Worlds crowning ceremony sits immediately after the
+    # recap (spec §6 / line 129 — "after the recap"). The first-ever Worlds
+    # title is the save's crowning beat; later crowns a defending-champion
+    # beat. Conditional: only when the user club won Worlds this postseason.
+    "worlds_champion",
     "champion",
     "awards",
+    # V27: the season's resolved events (cup/invitationals/MSI/Founders') sit
+    # after the recap-area honors (recap/champion/awards) and before records are
+    # ratified — the competitions are season results, honored with the rest of
+    # the year. Conditional: only when events were recorded this season.
+    "events",
     "records_ratified",
     "hof_induction",
     "development",
     "retirements",
+    "transfer_period",
     "rookie_class_preview",
+    "media_event",
     "recruitment",
     "schedule_reveal",
 )
@@ -104,6 +116,10 @@ def compute_active_beats(
     development_rows: Optional[List[Dict[str, Any]]] = None,
     player_club_id: str = "",
     training_credit_weeks: int = 0,
+    has_transfer_content: bool = False,
+    has_media_event: bool = False,
+    has_events: bool = False,
+    has_worlds_champion: bool = False,
 ) -> List[str]:
     """Return the ordered subset of OFFSEASON_CEREMONY_BEATS that have real content.
 
@@ -133,6 +149,17 @@ def compute_active_beats(
         "hof_induction": lambda: bool(_parse_json_list(hof_payload_json)),
         "retirements": lambda: bool(retirement_rows),
         "development": _development_has_content,
+        # V25: the Transfer Period shows only when the user has an expiring
+        # player to keep/lose or an incoming buyout to weigh.
+        "transfer_period": lambda: has_transfer_content,
+        # V26: the media beat shows only when an event fires this offseason.
+        "media_event": lambda: has_media_event,
+        # V27: the events beat shows only when the season produced resolved
+        # events (cup/invitationals/MSI/Founders') recorded in v27_events_json.
+        "events": lambda: has_events,
+        # V27 Phase 6: the Worlds crowning beat shows only when the user club
+        # won Worlds this postseason (the ledger + worlds_history gate).
+        "worlds_champion": lambda: has_worlds_champion,
     }
     return [
         beat for beat in OFFSEASON_CEREMONY_BEATS
@@ -565,6 +592,97 @@ def _load_player_dev_focus(
     return plan.get("department_orders", {}).get("dev_focus", "BALANCED")
 
 
+def _decrement_contract_terms(conn: sqlite3.Connection, season_id: str) -> None:
+    """V25 Phase 2: a season was consumed — tick every contract down by one.
+
+    Runs once per offseason (season-scoped guard, independent of the outer
+    init guard) at the TOP of the offseason, BEFORE ``_seed_v25_contracts``
+    re-prices the unpriced. A priced veteran whose term reaches 0 is *expiring*
+    this Transfer Period; a still-unpriced player (founder / fresh FA / depth
+    fill) ticks to 0 here and is immediately given a fresh deal by the seeding
+    pass, so he never spuriously reads as expiring. Pyramid-only; legacy /
+    non-pyramid saves are untouched.
+    """
+    from .world import pyramid_world_active
+
+    if not pyramid_world_active(conn):
+        return
+    if get_state(conn, "v25_term_decremented_for") == season_id:
+        return
+
+    from .persistence import save_club
+
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+    for club_id, roster in rosters.items():
+        if club_id not in clubs:
+            continue
+        new_roster = [
+            replace(player, contract_term=max(0, player.contract_term - 1))
+            for player in roster
+        ]
+        save_club(conn, clubs[club_id], new_roster)
+    set_state(conn, "v25_term_decremented_for", season_id)
+    conn.commit()
+
+
+def _seed_v25_contracts(
+    conn: sqlite3.Connection, season_id: str, root_seed: int
+) -> Optional[Dict[str, List[Player]]]:
+    """V25 contract-pricing pass: ensure every rostered player carries a deal.
+
+    Self-healing and idempotent — it prices any player still on the free 0/1
+    default (``salary_k == 0``) and leaves priced players untouched, so it can
+    run every offseason. Prospect signings price cheaply at signing
+    (``recruitment.sign_prospect_to_club`` → entry deal); this catches every
+    OTHER join point that bypasses that path — founding/curated rosters,
+    user/AI free-agent signings, and AI roster-shortfall depth fills — which
+    would otherwise sit at a permanent $0 wage and (a) let the user dodge the
+    wage squeeze and (b) bias the AI wage bill Phase 5 reads. Such players are
+    priced on their *established* deal (the second-contract formula on current
+    OVR), with terms spread across ``1..entry_term`` (a per-player derived seed,
+    so the price is stable no matter which offseason first prices him) so the
+    expiry cohort does not collapse to one season. Returns the full priced
+    rosters (so the caller can carry them into settlement), or ``None`` on
+    legacy / non-pyramid saves (which keep the byte-identical default).
+    """
+    from .world import pyramid_world_active
+
+    if not pyramid_world_active(conn):
+        return None
+
+    from . import contracts
+    from .persistence import load_division_map, save_club
+
+    division_map = load_division_map(conn, season_id)
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+    terms = tuple(range(1, contracts.entry_term() + 1))
+    priced: Dict[str, List[Player]] = {}
+    changed = False
+    for club_id, roster in rosters.items():
+        seat = division_map.get(club_id)
+        tier = seat.tier if seat is not None else 3
+        new_roster: List[Player] = []
+        club_changed = False
+        for player in roster:
+            if player.salary_k and player.salary_k > 0:
+                new_roster.append(player)
+                continue
+            rng = DeterministicRNG(derive_seed(root_seed, "v25_contract", player.id))
+            salary = contracts.second_contract_salary_k(player.overall_skill(), tier)
+            term = rng.choice(terms)
+            new_roster.append(replace(player, salary_k=salary, contract_term=term))
+            club_changed = True
+        priced[club_id] = new_roster
+        if club_changed and club_id in clubs:
+            save_club(conn, clubs[club_id], new_roster)
+            changed = True
+    if changed:
+        conn.commit()
+    return priced
+
+
 def initialize_manager_offseason(
     conn: sqlite3.Connection,
     season: Season,
@@ -575,6 +693,18 @@ def initialize_manager_offseason(
     """Apply v1 off-season roster changes once and persist factual summaries."""
     if get_state(conn, "offseason_initialized_for") == season.season_id:
         return load_all_rosters(conn)
+
+    # V25: tick contracts down (a season was consumed), THEN ensure every
+    # rostered player is priced before the books settle — so wage bills are real
+    # from the first V25 offseason and depth/FA fills never sit at $0. Decrement
+    # before seed so a just-priced player is never decremented in the same pass.
+    # Pyramid-only; the seed helper re-reads the DB authoritatively, so on
+    # pyramid saves the passed-in `rosters` is replaced by the priced DB state
+    # (every current caller passes load_all_rosters, so this is equivalent).
+    _decrement_contract_terms(conn, season.season_id)
+    _priced_rosters = _seed_v25_contracts(conn, season.season_id, root_seed)
+    if _priced_rosters is not None:
+        rosters = _priced_rosters
 
     season_stats = fetch_season_player_stats(conn, season.season_id)
     # Appearance counts feed the development reps gate (a year-round starter
@@ -627,6 +757,16 @@ def initialize_manager_offseason(
             standings=load_standings(conn, season.season_id),
         )
 
+    # V26: grow club prestige (all clubs — ports the dormant CLI award to web so
+    # V24 Contender/credibility finally rise) and the user's fan ledger from this
+    # season's real events. Pyramid-gated; legacy single-league saves untouched.
+    from .world import pyramid_world_active as _v26_pyramid_active
+
+    if _v26_pyramid_active(conn):
+        from .fan_economy import award_season_fans_and_prestige
+
+        award_season_fans_and_prestige(conn, season.season_id)
+
     # Training owns player GROWTH; medical owns age-DECLINE mitigation
     # (V22 Phase 4 — each head's rating feeds its own development path,
     # disclosed on the hiring cards via staff_effects).
@@ -654,22 +794,50 @@ def initialize_manager_offseason(
         for club_id in rosters
     }
 
+    # V26: the user club's permanently-built facilities feed development (the web
+    # path historically fed () for every club, silently suppressing the effects).
+    # AI clubs stay abstracted — facilities are a user program-building feature.
+    from .world import pyramid_world_active as _pyramid_active
+    from . import facilities_office as _facilities_office
+
+    _user_facilities = (
+        tuple(_facilities_office.owned_facilities(conn))
+        if (_player_club_id and _pyramid_active(conn))
+        else ()
+    )
+    # V26: the Training Hall adds headroom-capped practice growth for the user
+    # club (the V19b practice-credit channel) — the meaningful development effect.
+    if "training_hall" in _user_facilities:
+        from .config import DEFAULT_FACILITIES as _DF
+
+        practice_credit_by_club[_player_club_id] = (
+            practice_credit_by_club.get(_player_club_id, 0.0) + _DF.training_hall_dev_ovr
+        )
+
     for club_id, roster in rosters.items():
         next_roster: List[Player] = []
         is_player_club = club_id == get_state(conn, "player_club_id")
         for player in roster:
             stats = season_stats.get(player.id, PlayerMatchStats())
+            # V26: a Mentor bench role adds per-youngster practice growth (the
+            # identity traits' first honest consumer). Reuses the practice-credit
+            # channel; only the user club, only youngsters, only with a mentor.
+            _mentor_bonus = 0.0
+            if is_player_club and _v26_pyramid_active(conn):
+                from .bench_roles import mentor_dev_bonus_for
+
+                _mentor_bonus = mentor_dev_bonus_for(conn, player)
             developed = apply_season_development(
                 player,
                 stats,
-                facilities=(),
+                facilities=_user_facilities if is_player_club else (),
                 rng=DeterministicRNG(derive_seed(root_seed, "manager_development", season.season_id, player.id)),
                 trajectory=load_player_trajectory(conn, player.id),
                 dev_focus=player_dev_focus if is_player_club else "BALANCED",
                 staff_development_modifier=_staff_dev_modifier if is_player_club else 0.0,
                 matches_played=matches_by_player.get(player.id, 0),
                 club_matches=club_match_counts.get(club_id, 0),
-                practice_credit_ovr=practice_credit_by_club.get(club_id, 0.0),
+                practice_credit_ovr=practice_credit_by_club.get(club_id, 0.0) + _mentor_bonus,
                 decline_mitigation_modifier=_decline_mitigation if is_player_club else 0.0,
             )
             aged = replace(developed, age=developed.age + 1)
@@ -791,6 +959,108 @@ def initialize_manager_offseason(
         else 1
     )
     build_rookie_class_preview(conn, season.season_id, signing_class_year)
+    # V25: assemble the user's Transfer Period state (expiring re-signs + incoming
+    # buyouts) with default decisions, cached for the beat. Pyramid + user only;
+    # empty when there is nothing to decide (the beat then drops out).
+    has_transfer_content = False
+    from .world import pyramid_world_active
+
+    if player_club_id and pyramid_world_active(conn):
+        from .transfer_market import build_user_transfer_state, save_user_transfer_state
+
+        transfer_state = build_user_transfer_state(
+            conn, season.season_id, player_club_id, root_seed
+        )
+        save_user_transfer_state(conn, transfer_state)
+        has_transfer_content = bool(
+            transfer_state.get("expiring") or transfer_state.get("buyouts")
+        )
+    # V26: occasionally a media mini-event fires (deterministic). Cache it so the
+    # beat appears; its effects land only in fans/prestige/credibility. Also
+    # reset any stale credibility bonus from a prior offseason: the bonus is a
+    # one-offseason effect, and a media event only fires ~55% of offseasons, so
+    # without this reset a previous bonus would persist forever (apply_media_choice
+    # is the only writer and does not run in a no-event offseason). The reset
+    # precedes any new apply_media_choice this offseason, so same-offseason
+    # consumption is preserved.
+    has_media_event = False
+    if player_club_id and pyramid_world_active(conn):
+        from .invitationals import reset_invitational_warmth
+        from .media_events import cache_media_event, reset_credibility_bonus, select_media_event
+
+        reset_credibility_bonus(conn)
+        # V27: reset the invitational warmth too (it is a one-offseason
+        # credibility effect on a separate key from v26_credibility_bonus, so
+        # a media bonus + an invitational warmth coexist this offseason and
+        # BOTH clear before next offseason's recruiting runs).
+        reset_invitational_warmth(conn)
+        media_event = select_media_event(conn, season.season_id, root_seed)
+        if media_event is not None:
+            cache_media_event(conn, media_event)
+            has_media_event = True
+    # V27: the events beat surfaces the season's resolved events (cup,
+    # invitationals, MSI, Founders'). Phase 2 wires the Domestic Cup: generate
+    # + auto-sim the cross-division bracket to a champion through the real foam
+    # engine, recording the result in v27_events_json (trophy + purse + fans +
+    # news). Phase 4 wires the ruleset invitationals (Cloth Classic / No-Sting
+    # Open): fame-gated field, auto-sim each knockout under a non-foam ruleset,
+    # champion purse + prospect-showcase warmth in the recruiting-credibility
+    # channel. Pyramid + user only; legacy/non-pyramid worlds never touch the
+    # v27_events_json store (byte-identical — the beat stays absent).
+    has_events = False
+    if player_club_id and pyramid_world_active(conn):
+        from .cup_service import ensure_domestic_cup, resolve_domestic_cup
+        from .event_calendar import load_events
+        from .invitationals import resolve_ruleset_invitationals
+
+        ensure_domestic_cup(conn, season.season_id, root_seed)
+        resolve_domestic_cup(conn, season.season_id, root_seed)
+        # V27 Phase 4: resolve the ruleset invitationals (Cloth Classic + No-Sting
+        # Open) AFTER the warmth reset above and AFTER the cup, so the events
+        # beat surfaces the full season of events. Fame-gated field; champion
+        # purse + warmth land only when the user wins (idempotent per event).
+        resolve_ruleset_invitationals(conn, season.season_id, root_seed)
+        # V27 Phase 5: MSI (Premier + Circuit leaders, foam) — prestige +
+        # purse + a Worlds-seeding marker. Foam knockout (NOT run_invitational,
+        # which refuses foam); keyed on division_id, not tier.
+        from .invitationals import resolve_founders, resolve_msi
+
+        resolve_msi(conn, season.season_id, root_seed)
+        # Founders' Exhibition (fan-invited, foam, money-only / no-seeding).
+        resolve_founders(conn, season.season_id, root_seed)
+        has_events = bool(load_events(conn, season.season_id))
+    # V28 The Weather — Phase 1: data-derived league trend journalism. Compute
+    # the season's meta trends from real match data and write meta_report
+    # headlines for the news ticker (the ecosystem's own weather report).
+    # Pyramid-gated; legacy single-league saves stay byte-identical (no call).
+    # V28 Phase 2: emergent meta — drift AI tactics toward the season's winning
+    # dimensions (+ a contrarian fraction away). The overlay is consumed by
+    # get_ai_tactics next season; the user club is never drifted.
+    # V28 Phase 3: officiating points of emphasis — select + announce the
+    # UPCOMING season's bounded catch/block leniency shift (preseason bulletin on
+    # the news wire; read by the match runner for next season's official matches).
+    # Default/neutral selections stay byte-identical; first season has no preceding
+    # offseason so it is emphasis-free (honest — the bulletin starts season 2).
+    if player_club_id and pyramid_world_active(conn):
+        from .meta_drift import apply_meta_drift
+        from .meta_journalism import generate_league_bulletin
+        from .season_emphasis import generate_officiating_bulletin
+
+        generate_league_bulletin(conn, season.season_id)
+        apply_meta_drift(conn, season.season_id, root_seed)
+        generate_officiating_bulletin(conn, next_season_id, root_seed)
+    # V27 Phase 6: the Worlds crowning beat fires only when the user club won
+    # Worlds this postseason. Pyramid-gated; legacy single-league worlds have
+    # no postseason ledger and stay byte-identical (no beat). The crowning is a
+    # presentation beat — it sets no state and changes no mechanic (the vision
+    # law: post-summit is legacy play, never an NG+ / difficulty ratchet).
+    has_worlds_champion = False
+    if player_club_id and pyramid_world_active(conn):
+        from .pyramid_postseason import worlds_crowning_for_user
+
+        has_worlds_champion = (
+            worlds_crowning_for_user(conn, season.season_id, player_club_id) is not None
+        )
     # Compute and store the active beat list for this offseason
     active_beats = compute_active_beats(
         records_payload_json=get_state(conn, "offseason_records_ratified_json"),
@@ -803,6 +1073,10 @@ def initialize_manager_offseason(
         )[0]
         if player_club_id
         else 0,
+        has_transfer_content=has_transfer_content,
+        has_media_event=has_media_event,
+        has_events=has_events,
+        has_worlds_champion=has_worlds_champion,
     )
     set_state(conn, "offseason_active_beats_json", json.dumps(active_beats))
     set_state(conn, "offseason_initialized_for", season.season_id)
@@ -874,40 +1148,61 @@ def available_recruitment_choices(
         if p.get("status") == "open"
     }
 
+    # V24 Phase 7: the picker must not know less than the in-season board — carry
+    # the same motivation grades + dealbreaker (pyramid only). One club context.
+    from .world import pyramid_world_active
+
+    motivation_ctx = None
+    if pyramid_world_active(conn):
+        from .motivations import build_club_context
+
+        player_club_id = get_state(conn, "player_club_id") or ""
+        season_id = get_state(conn, "active_season_id")
+        if player_club_id:
+            motivation_ctx = build_club_context(conn, player_club_id, season_id)
+
     choices: list[dict[str, Any]] = []
     for prospect in _available_prospect_players(conn, class_year):
         state = actions.get(prospect.player_id, {})
         low, high = _scouted_band(prospect, state)
         from .recruiting_office import _scouted_ceiling_label
 
-        choices.append(
-            {
-                "prospect_id": prospect.player_id,
-                "name": prospect.name,
-                "age": prospect.age,
-                "hometown": prospect.hometown,
-                "archetype": prospect.public_archetype_guess,
-                "kind": "prospect",
-                "pipeline_tier": prospect.pipeline_tier,
-                "public_ovr_band": [low, high],
-                "scouted": bool(state.get("scouted")),
-                # Same scout-gated ceiling grade the in-season board shows —
-                # the picker must not know less than the board the player
-                # built their shortlist on (playtest 3 elite reveal).
-                "ceiling_label": _scouted_ceiling_label(
-                    prospect, bool(state.get("scouted"))
-                ),
-                "contacted": bool(state.get("contacted")),
-                "visited": bool(state.get("visited")),
-                "interest": current_interest(
-                    state,
-                    pipeline_tier=prospect.pipeline_tier,
-                    credibility_score=credibility,
-                ),
-                "fit_score": round((low + high) / 2.0 + credibility * 0.12),
-                "promised": prospect.player_id in promised_ids,
-            }
-        )
+        choice = {
+            "prospect_id": prospect.player_id,
+            "name": prospect.name,
+            "age": prospect.age,
+            "hometown": prospect.hometown,
+            "archetype": prospect.public_archetype_guess,
+            "kind": "prospect",
+            "pipeline_tier": prospect.pipeline_tier,
+            "public_ovr_band": [low, high],
+            "scouted": bool(state.get("scouted")),
+            # Same scout-gated ceiling grade the in-season board shows —
+            # the picker must not know less than the board the player
+            # built their shortlist on (playtest 3 elite reveal).
+            "ceiling_label": _scouted_ceiling_label(
+                prospect, bool(state.get("scouted"))
+            ),
+            "contacted": bool(state.get("contacted")),
+            "visited": bool(state.get("visited")),
+            "interest": current_interest(
+                state,
+                pipeline_tier=prospect.pipeline_tier,
+                credibility_score=credibility,
+            ),
+            "fit_score": round((low + high) / 2.0 + credibility * 0.12),
+            "promised": prospect.player_id in promised_ids,
+        }
+        if motivation_ctx is not None:
+            from .motivations import club_fit
+            from .recruiting_office import _motivation_fields
+
+            choice.update(
+                _motivation_fields(
+                    club_fit(motivation_ctx, prospect), bool(state.get("scouted"))
+                )
+            )
+        choices.append(choice)
     choices.sort(
         key=lambda c: (
             -(c["public_ovr_band"][0] + c["public_ovr_band"][1]),
@@ -978,6 +1273,26 @@ def _commit_free_agent_signing(
     return signed
 
 
+def _format_offer_pair(higher: float, lower: float) -> tuple[str, str]:
+    """Format a winning vs losing offer-strength pair so the displayed winner is
+    never <= the displayed loser.
+
+    The offers are compared at 4-decimal precision but were displayed via bare
+    ``round()`` to an integer, which collapsed e.g. 106.51 vs 106.48 to "106"
+    vs "106" (and banker's rounding could even invert them) — a self-
+    contradictory "their offer 106 beat yours 106" (PT5). Escalate precision
+    only as far as needed to reveal the real gap; a genuine 4-decimal tie (won on
+    a secondary key) falls through to the raw values.
+    """
+    for ndigits in (0, 1, 2, 4):
+        hi = round(higher, ndigits)
+        lo = round(lower, ndigits)
+        if hi > lo:
+            fmt = "{:.0f}" if ndigits == 0 else f"{{:.{ndigits}f}}"
+            return fmt.format(hi), fmt.format(lo)
+    return f"{higher}", f"{lower}"
+
+
 def sign_chosen_rookie_contested(
     conn: sqlite3.Connection,
     player_club_id: str,
@@ -1039,9 +1354,11 @@ def sign_chosen_rookie_contested(
         if outcome.rival_club_id is not None:
             rival_club = clubs.get(outcome.rival_club_id)
             rival_name = rival_club.name if rival_club else outcome.rival_club_id
+            _your, _rival = _format_offer_pair(
+                outcome.user_offer_strength, outcome.rival_offer_strength
+            )
             win_line = (
-                f"Your offer {round(outcome.user_offer_strength)} beat "
-                f"{rival_name}'s {round(outcome.rival_offer_strength)} — interest "
+                f"Your offer {_your} beat {rival_name}'s {_rival} — interest "
                 f"{outcome.interest}% strengthened it."
             )
         else:
@@ -1086,13 +1403,35 @@ def sign_chosen_rookie_contested(
         "actions_taken": outcome.actions_taken,
         "explanation": (
             f"{winning_club_name} signed {chosen.name} — their offer "
-            f"{round(outcome.winning_offer_strength)} beat yours "
-            f"{round(outcome.user_offer_strength)}. Your interest was "
-            f"{outcome.interest}%, built from {action_label}."
+            f"{_format_offer_pair(outcome.winning_offer_strength, outcome.user_offer_strength)[0]} "
+            f"beat yours "
+            f"{_format_offer_pair(outcome.winning_offer_strength, outcome.user_offer_strength)[1]}. "
+            f"Your interest was {outcome.interest}%, built from {action_label}."
         ),
     }
     conn.commit()
     return None, snipe
+
+
+def ensure_ai_transfer_period(conn: sqlite3.Connection) -> None:
+    """V25: resolve every AI club's expiring contracts once per offseason
+    (idempotent), BEFORE the AI Signing Day sweep so released veterans land in
+    the free-agent pool the sweep and roster repair can draw from. Pyramid-only.
+    """
+    from .world import pyramid_world_active
+
+    if not pyramid_world_active(conn):
+        return
+    season_id = get_state(conn, "active_season_id")
+    if not season_id:
+        return
+    if get_state(conn, "offseason_ai_transfer_done_for") == season_id:
+        return
+    from .transfer_market import run_ai_transfer_period
+
+    run_ai_transfer_period(conn, season_id, stored_root_seed(conn))
+    set_state(conn, "offseason_ai_transfer_done_for", season_id)
+    conn.commit()
 
 
 def ensure_ai_offseason_signings(conn: sqlite3.Connection) -> None:
@@ -1107,6 +1446,8 @@ def ensure_ai_offseason_signings(conn: sqlite3.Connection) -> None:
     season_id = get_state(conn, "active_season_id")
     if not season_id:
         return
+    # V25: AI clubs resolve their expiring squads before they sign the new class.
+    ensure_ai_transfer_period(conn)
     if get_state(conn, "offseason_ai_signings_done_for") == season_id:
         return
     player_club_id = get_state(conn, "player_club_id")
@@ -1198,6 +1539,18 @@ def begin_next_season(
     # Signing Day moves before the league rolls into the next season
     # (idempotent — usually already done at recruitment close).
     ensure_ai_offseason_signings(conn)
+
+    # V25 safety net: commit the user's Transfer Period decisions (idempotent)
+    # before the roster rolls forward, in case the advance hook was bypassed
+    # (a fast-forward that jumped straight to begin-season).
+    from .world import pyramid_world_active as _pyramid_active
+
+    _pcid = get_state(conn, "player_club_id")
+    _sid = get_state(conn, "active_season_id")
+    if _pcid and _sid and _pyramid_active(conn):
+        from .transfer_market import apply_user_transfer_decisions
+
+        apply_user_transfer_decisions(conn, _sid, _pcid, stored_root_seed(conn))
 
     _maintain_user_lineup_for_new_season(conn)
 
@@ -1333,6 +1686,7 @@ def build_offseason_ceremony_beat(
     hof_payload_json: Optional[str] = None,
     rookie_preview_payload_json: Optional[str] = None,
     records_book_empty: bool = False,
+    conn: Optional[sqlite3.Connection] = None,
 ) -> OffseasonCeremonyBeat:
     """Build factual v1 offseason ceremony copy from persisted season data."""
     clamped_index = clamp_offseason_beat_index(beat_index)
@@ -1366,6 +1720,42 @@ def build_offseason_ceremony_beat(
             body = f"Champion: {club_name(champion.club_id)}"
         return OffseasonCeremonyBeat(key, "Champion", body)
 
+    if key == "worlds_champion":
+        # V27 Phase 6: the Worlds crowning ceremony. The first-ever Worlds
+        # title is the save's crowning beat (credits-roll energy, surfaced via
+        # CeremonyShell in Phase 7); later crowns a smaller defending-champion
+        # beat. The web client renders the structured payload from
+        # build_beat_payload's "worlds_champion" branch; this text layer is the
+        # honest fallback. Post-summit is legacy play — no NG+ / ratchet.
+        crowning = None
+        if conn is not None and player_club_id:
+            from .pyramid_postseason import worlds_crowning_for_user
+
+            season_id_for_crowning = (
+                season.season_id if season is not None
+                else get_state(conn, "active_season_id")
+            )
+            if season_id_for_crowning:
+                crowning = worlds_crowning_for_user(
+                    conn, season_id_for_crowning, player_club_id
+                )
+        if crowning is None:
+            body = "Worlds crowning: no Worlds title this season."
+        else:
+            champ = crowning.get("champion_name") or crowning.get("champion_club_id") or ""
+            if crowning.get("is_first"):
+                body = (
+                    f"WORLDS CHAMPIONS — {champ}.\n"
+                    "The first Worlds title in this club's history: the save's "
+                    "crowning moment. The summit is reached; the climb continues."
+                )
+            else:
+                body = (
+                    f"Worlds defending champions — {champ}.\n"
+                    "Another Worlds title. The summit holds."
+                )
+        return OffseasonCeremonyBeat(key, "Worlds Crowning", body)
+
     if key == "recap":
         if not ordered_standings:
             body = "No standings rows were recorded."
@@ -1392,6 +1782,34 @@ def build_offseason_ceremony_beat(
                 )
             body = "\n".join(lines)
         return OffseasonCeremonyBeat(key, "Awards", body)
+
+    if key == "events":
+        # V27: the season's resolved events (cup, invitationals, MSI, Founders').
+        # Phase 1 scaffold — no event resolvers yet, so this renders whatever
+        # events were recorded in v27_events_json (empty until Phase 2 wires the
+        # cup). The beat is conditional (compute_active_beats has_events), so this
+        # body only renders when at least one event was recorded.
+        event_rows: List[Dict[str, Any]] = []
+        if conn is not None:
+            from .event_calendar import load_events
+
+            season_id_for_events = (
+                season.season_id if season is not None
+                else get_state(conn, "active_season_id")
+            )
+            if season_id_for_events:
+                event_rows = load_events(conn, season_id_for_events)
+        if not event_rows:
+            body = "No events were contested this season."
+        else:
+            lines = [f"Season events — {len(event_rows)} contest{'s' if len(event_rows) != 1 else ''} resolved:"]
+            for row in event_rows:
+                champ = row.get("champion_club_name") or club_name(row.get("champion_club_id", ""))
+                lines.append(
+                    f"  {row.get('event_name', row.get('event_key', '?'))}: won by {champ}"
+                )
+            body = "\n".join(lines)
+        return OffseasonCeremonyBeat(key, "Events", body)
 
     if key == "records_ratified":
         entries = []
@@ -1539,6 +1957,28 @@ def build_offseason_ceremony_beat(
                     lines.append(f"- {storyline.get('sentence', '')}")
             body = "\n".join(lines)
         return OffseasonCeremonyBeat(key, "Rookie Class Preview", body)
+
+    if key == "transfer_period":
+        # Text layer only — the web client renders the interactive beat from
+        # build_beat_payload's "transfer_period" branch.
+        return OffseasonCeremonyBeat(
+            key,
+            "Transfer Period",
+            "Re-sign your expiring players, weigh incoming buyout offers, and see "
+            "which rival clubs are chasing your best. Higher-tier money hunts your "
+            "stars — keep who you can, and let the rest go for what they're worth.",
+        )
+
+    if key == "media_event":
+        # Text layer only — the web client renders the choice card from
+        # build_beat_payload's "media_event" branch.
+        return OffseasonCeremonyBeat(
+            key,
+            "Media Moment",
+            "The press comes calling. How you play it shapes your fans, your "
+            "program's reputation, and how recruits hear about you — but never "
+            "what happens on the court.",
+        )
 
     if key == "recruitment":
         roster_sizes = sorted((club_id, len(list(roster))) for club_id, roster in rosters.items())

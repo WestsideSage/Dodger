@@ -163,9 +163,24 @@ export function RecapStandings({
                                 Playoff bonus <strong style={{ color: '#10b981' }}>{formatKSigned(finances.playoff_bonus_k)}</strong>
                             </span>
                         )}
+                        {finances.matchday_income_k != null && finances.matchday_income_k > 0 && (
+                            <span>
+                                Matchday <strong style={{ color: '#10b981' }}>{formatKSigned(finances.matchday_income_k)}</strong>
+                            </span>
+                        )}
+                        {finances.merch_income_k != null && finances.merch_income_k > 0 && (
+                            <span>
+                                Merch <strong style={{ color: '#10b981' }}>{formatKSigned(finances.merch_income_k)}</strong>
+                            </span>
+                        )}
                         <span>
                             Staff payroll <strong style={{ color: '#f87171' }}>{formatKSigned(-finances.staff_payroll_k)}</strong>
                         </span>
+                        {finances.player_wage_bill_k != null && finances.player_wage_bill_k > 0 && (
+                            <span>
+                                Player wages <strong style={{ color: '#f87171' }}>{formatKSigned(-finances.player_wage_bill_k)}</strong>
+                            </span>
+                        )}
                         <span>
                             Net <strong style={{ color: finances.net_k >= 0 ? '#10b981' : '#f87171' }}>{formatKSigned(finances.net_k)}</strong>
                         </span>
@@ -230,6 +245,19 @@ export function RecapStandings({
                             <span style={{ marginTop: '0.3rem', color: '#fbbf24' }}>
                                 ★ WORLDS: {pyramid.worlds.champion_name} are World Champions
                                 {pyramid.worlds.runner_up_name ? ` — ${pyramid.worlds.runner_up_name} fall in the final.` : '.'}
+                            </span>
+                        )}
+                        {/* PT6: the global line above names only the final's two clubs.
+                            Receipt the user's OWN Worlds run when they reached it but
+                            exited in the semifinal (champion/runner-up are already named). */}
+                        {pyramid.worlds_user && pyramid.worlds_user.result === 'semifinalist' && (
+                            <span style={{ color: '#fcd34d' }}>
+                                ★ You reached Worlds as the {{
+                                    premier_champion: 'Premier champion',
+                                    premier_runner_up: 'Premier runner-up',
+                                    circuit_champion: 'International Circuit champion',
+                                    circuit_runner_up: 'International Circuit runner-up',
+                                }[pyramid.worlds_user.qualified_as]} — out in the semifinal.
                             </span>
                         )}
                     </div>

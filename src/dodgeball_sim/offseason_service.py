@@ -67,6 +67,28 @@ def advance_offseason_beat_payload(conn: sqlite3.Connection) -> dict[str, Any]:
             "Already at the final beat. Use begin-season to start next season.",
             status_code=409,
         )
+
+    # V25: advancing past the Transfer Period commits the user's decisions
+    # (re-signs/releases resolved through the contested poach logic, accepted
+    # buyouts settled). Idempotent — auto-pilot advance commits the safe defaults.
+    if current_key == "transfer_period":
+        player_club_id = get_state(conn, "player_club_id")
+        season_id = get_state(conn, "active_season_id")
+        if player_club_id and season_id:
+            from .transfer_market import apply_user_transfer_decisions
+
+            apply_user_transfer_decisions(
+                conn, season_id, player_club_id, stored_root_seed(conn)
+            )
+
+    # V26: advancing past the Media Moment commits the user's choice (default:
+    # the first option). Effects land only in fans/prestige/credibility.
+    if current_key == "media_event":
+        season_id = get_state(conn, "active_season_id")
+        if season_id:
+            from .media_events import apply_media_choice
+
+            apply_media_choice(conn, season_id)
     if (
         cursor.state == CareerState.SEASON_COMPLETE_OFFSEASON_BEAT
         and current_key == "recruitment"
@@ -276,6 +298,52 @@ def recruit_offseason_payload(
         "released_player": (released_outcome or {}).get("released_player"),
         "released_broken_promise": (released_outcome or {}).get("broken_promise"),
     }
+
+
+def transfer_action_payload(
+    conn: sqlite3.Connection,
+    action: str,
+    player_id: str,
+    offer_k: int | None = None,
+) -> dict[str, Any]:
+    """Adjust a Transfer Period decision (re-sign/release an expiring player, or
+    accept/refuse an incoming buyout). Mutates only the cached decisions — the
+    roster commits when the user advances past the beat."""
+    cursor = _require_offseason_cursor(conn)
+    active_beats = load_active_beats(conn)
+    if "transfer_period" not in active_beats:
+        raise OffseasonError("No transfer period this offseason.", status_code=409)
+    if get_state(conn, "v25_user_transfer_committed_for") == get_state(conn, "active_season_id"):
+        raise OffseasonError("Transfer Period already committed.", status_code=409)
+
+    from .transfer_market import set_buyout_decision, set_expiring_decision
+
+    if action in ("resign", "release"):
+        state = set_expiring_decision(conn, player_id, action, offer_k)
+    elif action in ("accept_buyout", "refuse_buyout"):
+        state = set_buyout_decision(
+            conn, player_id, "accept" if action == "accept_buyout" else "refuse"
+        )
+    else:
+        raise OffseasonError(f"Unknown transfer action: {action}", status_code=400)
+    if state is None:
+        raise OffseasonError("No transfer state to act on.", status_code=409)
+    conn.commit()
+    return build_beat_response(conn, cursor)
+
+
+def media_choice_payload(conn: sqlite3.Connection, option_key: str) -> dict[str, Any]:
+    """Record the user's Media Moment choice (committed when they advance)."""
+    cursor = _require_offseason_cursor(conn)
+    active_beats = load_active_beats(conn)
+    if "media_event" not in active_beats:
+        raise OffseasonError("No media moment this offseason.", status_code=409)
+    if get_state(conn, "v26_media_done_for") == get_state(conn, "active_season_id"):
+        raise OffseasonError("Media Moment already resolved.", status_code=409)
+    from .media_events import set_media_choice
+
+    set_media_choice(conn, option_key)
+    return build_beat_response(conn, cursor)
 
 
 def begin_next_season_payload(conn: sqlite3.Connection) -> dict[str, Any]:

@@ -844,6 +844,48 @@ def _recruit_reactions(conn, season_id: str, week: int | None) -> list:
         return []
 
 
+def _official_card_score(
+    meta: Mapping[str, Any], config_version: str, home_club_id: str
+) -> tuple[str, int, int, list[dict[str, Any]]]:
+    """Home/away game-point totals + per-game story for the aftermath match card.
+
+    PT5 fix (the debrief hero read 0-0 beside correct 12-2 chips): map team_a/b
+    to home/away by the recorded ``team_a_id`` (mirror
+    ``game_loop._persist_match_result``; absent => team_a is home, the
+    OfficialEngineAdapter invariant), and derive the TOTALS from the per-game
+    story when a reloaded metadata carries ``games`` but omits the totals — never
+    silently fall back to the survivors 0-0 the frozen panel showed.
+    """
+    scoring_model = "cloth" if "cloth" in config_version else "foam"
+    team_a_id = meta.get("team_a_id")
+    team_a_is_home = team_a_id is None or team_a_id == home_club_id
+    games: list[dict[str, Any]] = []
+    for game in meta.get("games", []) or []:
+        if not isinstance(game, dict):
+            continue
+        a_pts = int(game.get("team_a_points", 0) or 0)
+        b_pts = int(game.get("team_b_points", 0) or 0)
+        games.append({
+            "game_number": int(game.get("game_number", 0) or 0),
+            "winner_club_id": game.get("winner_team_id"),
+            "home_points": a_pts if team_a_is_home else b_pts,
+            "away_points": b_pts if team_a_is_home else a_pts,
+            "result_type": str(game.get("result_type", "") or ""),
+        })
+    team_a_gp = meta.get("team_a_game_points")
+    team_b_gp = meta.get("team_b_game_points")
+    if team_a_gp is None and team_b_gp is None and games:
+        # Reloaded metadata kept the per-game story but dropped the totals.
+        home_game_pts = sum(g["home_points"] for g in games)
+        away_game_pts = sum(g["away_points"] for g in games)
+    else:
+        a_total = int(team_a_gp or 0)
+        b_total = int(team_b_gp or 0)
+        home_game_pts = a_total if team_a_is_home else b_total
+        away_game_pts = b_total if team_a_is_home else a_total
+    return scoring_model, home_game_pts, away_game_pts, games
+
+
 def _build_aftermath(
     conn,
     dashboard: dict[str, Any],
@@ -1021,29 +1063,11 @@ def _build_aftermath(
     away_game_pts = 0
     match_card_games: list[dict[str, Any]] = []
     if record.result.official_metadata:
-        meta = record.result.official_metadata
-        if "cloth" in record.result.config_version:
-            scoring_model = "cloth"
-        else:
-            scoring_model = "foam"
-        home_game_pts = meta.get("team_a_game_points", 0)
-        away_game_pts = meta.get("team_b_game_points", 0)
-        # Per-game set story (won/lost/no-point per game, in order) so the
-        # aftermath can show HOW the game points accumulated — a 9-2 win and
-        # a 2-9 collapse read identically without it. Same team_a == home
-        # adapter invariant as the totals above.
-        for game in meta.get("games", []) or []:
-            if not isinstance(game, dict):
-                continue
-            match_card_games.append(
-                {
-                    "game_number": int(game.get("game_number", 0) or 0),
-                    "winner_club_id": game.get("winner_team_id"),
-                    "home_points": int(game.get("team_a_points", 0) or 0),
-                    "away_points": int(game.get("team_b_points", 0) or 0),
-                    "result_type": str(game.get("result_type", "") or ""),
-                }
-            )
+        scoring_model, home_game_pts, away_game_pts, match_card_games = _official_card_score(
+            record.result.official_metadata,
+            record.result.config_version,
+            record.home_club_id,
+        )
 
     aftermath: dict[str, Any] = {
         "headline": headline,
@@ -1159,6 +1183,17 @@ def _build_aftermath(
                     _fielded_ovr_total(snapshots.get(player_club_id, []))
                     - _fielded_ovr_total(snapshots.get(opponent_club_id, []))
                 )
+                # PT6: feed the per-team GAME POINTS so the Primary Factor fallback
+                # chip shows the real scoreline (e.g. "Game points 7-5") instead of
+                # the official final set's "Survivors 0-0 / Margin 0" lie. home_game_pts
+                # / away_game_pts are the team_a_id-guarded totals from the match card
+                # above; map them to player/opponent. None on legacy => survivor chips.
+                _pf_official = scoring_model != "legacy"
+                _player_gp = _opp_gp = None
+                if _pf_official:
+                    _player_is_home = player_club_id == record.home_club_id
+                    _player_gp = home_game_pts if _player_is_home else away_game_pts
+                    _opp_gp = away_game_pts if _player_is_home else home_game_pts
                 explanation = derive_match_explanation(
                     result=result_pf,
                     player_survivors=int(box[player_club_id]["totals"]["living"]),
@@ -1174,6 +1209,8 @@ def _build_aftermath(
                     name_map=name_map_pf,
                     point_margin=point_margin,
                     ovr_edge=ovr_edge,
+                    player_game_points=_player_gp,
+                    opponent_game_points=_opp_gp,
                 )
                 aftermath["primary_factor"] = explanation.primary_factor.as_dict()
 

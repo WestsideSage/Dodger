@@ -651,6 +651,47 @@ def next_season_assignment(
     return assignment
 
 
+def worlds_crowning_for_user(
+    conn: sqlite3.Connection, season_id: str, player_club_id: str
+) -> dict[str, Any] | None:
+    """The user club's Worlds crowning facts for one season, or ``None``.
+
+    V27 Phase 6: the ``worlds_champion`` offseason beat reads this to decide
+    whether to fire and whether the crown is the save's FIRST (the elevated
+    credits-roll treatment) or a defending-champion beat.
+
+    Returns ``None`` when the user did not win Worlds this season (including
+    when no complete postseason ledger exists). When the user IS the Worlds
+    champion, returns ``{champion_club_id, champion_name, season_id, is_first}``
+    where ``is_first`` is True when the user club has no PRIOR Worlds title
+    (the just-won season's entry in ``worlds_history_json`` is excluded from
+    the prior-titles count, so a freshly-appended current-season entry does
+    not flip a first crown into a defending one).
+
+    Pure read — never writes state. Post-summit is legacy play (the vision
+    law): a crowning never changes difficulty, seeds, or any mechanic.
+    """
+    ledger = load_postseason_ledger(conn, season_id)
+    if not (ledger and ledger.get("complete")):
+        return None
+    worlds = ledger.get("worlds") or {}
+    champion_club_id = worlds.get("champion_club_id")
+    if not champion_club_id or champion_club_id != player_club_id:
+        return None
+    history = load_worlds_history(conn)
+    has_prior = any(
+        entry.get("champion_club_id") == player_club_id
+        and entry.get("season_id") != season_id
+        for entry in history
+    )
+    return {
+        "champion_club_id": champion_club_id,
+        "champion_name": worlds.get("champion_name") or "",
+        "season_id": season_id,
+        "is_first": not has_prior,
+    }
+
+
 __all__ = [
     "WORLDS_HISTORY_KEY",
     "advance_pyramid_postseason",
@@ -661,4 +702,5 @@ __all__ = [
     "postseason_ledger_key",
     "pyramid_postseason_complete",
     "user_division_standings_filter",
+    "worlds_crowning_for_user",
 ]

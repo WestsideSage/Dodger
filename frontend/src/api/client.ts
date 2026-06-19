@@ -252,8 +252,31 @@ export const dynastyApi = {
     apiPost<RecruitingActionResponse>(`/api/recruiting/contact/${encodeURIComponent(prospectId)}`),
   visitProspect: (prospectId: string) =>
     apiPost<RecruitingActionResponse>(`/api/recruiting/visit/${encodeURIComponent(prospectId)}`),
+  // V24: toggle a prospect on/off the persistent focus list (shortlist).
+  focusProspect: (prospectId: string) =>
+    apiPost<{ status: string; focused: boolean }>(
+      `/api/recruiting/focus/${encodeURIComponent(prospectId)}`,
+    ),
+  // V24 Phase 6: spend treasury to raise the Scouting Network one level.
+  upgradeNetwork: () =>
+    apiPost<{
+      status: string;
+      network: { level: number; cost_k: number; treasury_k: number };
+    }>('/api/recruiting/network/upgrade'),
   hireStaff: (candidateId: string) =>
     apiPost<DynastyOfficeResponse>('/api/dynasty-office/staff/hire', { candidate_id: candidateId }),
+  // V26 The Crowd: spend treasury to build a facility permanently.
+  upgradeFacility: (facilityType: string) =>
+    apiPost<{ status: string; facilities: { owned: string[]; cost_k: number; treasury_k: number } }>(
+      '/api/dynasty-office/facilities/upgrade',
+      { facility_type: facilityType },
+    ),
+  // V26 The Crowd: assign (or clear) a bench role on a non-starter.
+  assignBenchRole: (playerId: string, role: string | null) =>
+    apiPost<{ status: string; bench_roles: Record<string, string> }>(
+      '/api/dynasty-office/bench-role',
+      { player_id: playerId, role },
+    ),
   // V19b: promises are mechanical — results feed credibility, which feeds
   // prospect interest and therefore your contested Signing Day offer.
   makePromise: (playerId: string, promiseType: string) =>

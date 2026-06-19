@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import type { DivisionStandingsBlock, PlayoffBracketResponse, RecentMatchSummary, StandingRow, StandingsResponse } from '../types';
+import type { DivisionStandingsBlock, NewsItem, PlayoffBracketResponse, RecentMatchSummary, StandingRow, StandingsResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
 import { StatusMessage } from './ui';
 import { PlayoffBracket } from './standings/PlayoffBracket';
@@ -198,6 +198,27 @@ const buildWireRows = (
   });
 };
 
+// V28: the league news wire — class/event/meta/league_bulletin headlines that
+// rode the standings payload. Headlines ride at the FRONT of the ticker (the
+// "top of the wire"), tagged by their wire kind (Meta Wire, League Wire, …).
+const buildHeadlineRows = (
+  headlines: NewsItem[] | null | undefined,
+): React.ReactNode[] => {
+  if (!headlines || headlines.length === 0) {
+    return [];
+  }
+  return headlines.map((headline, index) => (
+    <span
+      key={`wire-headline-${index}`}
+      className="ls-wire-item is-headline"
+      aria-label={`${headline.tag}: ${headline.text}`}
+    >
+      <span className="ls-wire-item-wk">{headline.tag}</span>
+      <span className="ls-wire-item-score">{headline.text}</span>
+    </span>
+  ));
+};
+
 // V23: the world beyond your table. One compact card per division — the
 // player's division is the main table above, so this panel is for watching
 // the rest of the pyramid (and the Circuit) live their own seasons.
@@ -344,7 +365,14 @@ export function Standings() {
           helper: `Regular season finished #${us.rank} of ${standings.length}. The bracket above now decides the title.`,
         }
       : buildNeedCopy(us, leader, cutoffTeam, playoffLine, data.user_games_remaining ?? Math.max(0, data.total_weeks - data.current_week), isOfficial ? 'game-point differential' : 'survivor differential');
-  const wireRows = buildWireRows(data.recent_matches, us.club_name);
+  // V28: prepend the news-wire headlines (meta/league bulletins, class/event
+  // wire) to the recent-results ticker — they ride at the top of the wire.
+  const headlineRows = buildHeadlineRows(data.wire_headlines);
+  const matchRows = buildWireRows(data.recent_matches, us.club_name);
+  const wireRows =
+    headlineRows.length === 0 && matchRows === null
+      ? null
+      : [...headlineRows, ...(matchRows ?? [])];
   const tiebreakRows = standings.slice(0, Math.min(standings.length, playoffLine + 2));
 
   const allZeroPoints = standings.every((s) => s.points === 0);

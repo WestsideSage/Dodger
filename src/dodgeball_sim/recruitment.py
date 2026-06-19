@@ -6,9 +6,9 @@ import sqlite3
 from .archetype_derivation import derive_archetype
 from .config import ScoutingBalanceConfig
 from .models import Player, PlayerArchetype, PlayerRatings, PlayerTraits
-from .rng import DeterministicRNG
+from .rng import DeterministicRNG, derive_seed
 from .scouting_center import Prospect, Trajectory
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Sequence, Tuple
 
 
 @dataclass(frozen=True)
@@ -174,8 +174,17 @@ def generate_prospect_pool(
     class_year: int,
     rng: DeterministicRNG,
     config: ScoutingBalanceConfig,
+    hometown_pool: Optional[Sequence[str]] = None,
 ) -> list[Prospect]:
-    """Generate hidden prospect truths and a wide public baseline."""
+    """Generate hidden prospect truths and a wide public baseline.
+
+    ``hometown_pool`` overrides where each prospect's hometown comes from: the
+    pyramid world passes its seven districts (V24 Hometown), legacy single-league
+    saves keep the surname pool. It is routed through ``rng.choice`` (one draw,
+    any list length), so swapping the pool changes only the hometown string and
+    never shifts the generation stream — downstream prospects stay byte-identical.
+    """
+    pool = _LAST_NAMES if hometown_pool is None else hometown_pool
     prospects: list[Prospect] = []
     used_names: set[str] = set()
     used_last_names: set[str] = set()
@@ -255,7 +264,7 @@ def generate_prospect_pool(
                 class_year=class_year,
                 name=full_name,
                 age=18 + int(rng.roll(0, 4)),
-                hometown=rng.choice(_LAST_NAMES),
+                hometown=rng.choice(pool),
                 hidden_ratings=ratings,
                 hidden_trajectory=trajectory,
                 hidden_traits=traits,
@@ -324,12 +333,30 @@ def sign_prospect_to_club(
         throw_selection_iq=prospect.hidden_ratings.get("throw_selection_iq", 50.0),
         conditioning_curve=prospect.hidden_ratings.get("conditioning_curve", 50.0),
     ).apply_bounds()
+    # V25: every signing lands a STANDARD, ability-blind entry deal priced by the
+    # signing club's tier (money enters at the second contract). Pyramid-gated so
+    # legacy single-league signings keep the byte-identical free 0/1 default.
+    entry_salary_k = 0
+    entry_contract_term = 1
+    from .world import pyramid_world_active
+
+    if pyramid_world_active(conn):
+        from . import contracts
+        from .persistence import get_state, load_division_map
+
+        season_id = get_state(conn, "active_season_id")
+        seat = load_division_map(conn, season_id).get(club_id) if season_id else None
+        tier = seat.tier if seat is not None else 3
+        entry_salary_k = contracts.entry_salary_k(tier)
+        entry_contract_term = contracts.entry_term()
     player = Player(
         id=prospect.player_id,
         name=prospect.name,
         age=prospect.age,
         club_id=club_id,
         newcomer=True,
+        salary_k=entry_salary_k,
+        contract_term=entry_contract_term,
         ratings=ratings,
         archetype=derive_archetype(ratings),
         traits=PlayerTraits(
@@ -451,28 +478,17 @@ def _eligible_ai_offer_clubs(
     (D3) and below the Signing Day roster ceiling. The user club never bids
     through this path.
 
-    V23: on pyramid saves the Signing Day market is the USER'S DIVISION (the
-    V24 Board frame — one 25-prospect class, seven clubs). Clubs in other
-    divisions develop, age, retire, and repair rosters, but deep
-    cross-division recruiting is V24's milestone; the scope line is disclosed
-    on the recruiting surfaces.
+    V24 (The Board): recruiting is whole-world. Every AI club in the universe
+    recruits its own class on merit — not just the user's division — so the
+    pyramid's top clubs (Premier + Circuit) get new blood every offseason
+    instead of stagnating while the user compounds (this closes the V23
+    end-state-dominance gap). Reach/district biases shape WHO each club pursues
+    (recruitment_domain.build_recruitment_board); this gate only decides WHO
+    may bid. Classic (non-pyramid) saves were never division-scoped and stay
+    byte-identical.
     """
     from .config import AI_OFFSEASON_MAX_ROSTER, AI_OFFSEASON_SIGNINGS_PER_CLUB
     from .persistence import load_all_rosters, load_recruitment_signings
-    from .world import pyramid_world_active
-
-    division_club_ids: set[str] | None = None
-    if user_club_id is not None and pyramid_world_active(conn):
-        from .persistence import load_division_map
-
-        division_map = load_division_map(conn, season_id)
-        seat = division_map.get(user_club_id)
-        if seat is not None:
-            division_club_ids = {
-                club_id
-                for club_id, membership in division_map.items()
-                if membership.division_id == seat.division_id
-            }
 
     signings_per_club: dict[str, int] = {}
     for signing in load_recruitment_signings(conn, season_id):
@@ -483,14 +499,90 @@ def _eligible_ai_offer_clubs(
     for club_id, roster in load_all_rosters(conn).items():
         if user_club_id is not None and club_id == user_club_id:
             continue
-        if division_club_ids is not None and club_id not in division_club_ids:
-            continue
         if signings_per_club.get(club_id, 0) >= AI_OFFSEASON_SIGNINGS_PER_CLUB:
             continue
         if len(roster) >= AI_OFFSEASON_MAX_ROSTER:
             continue
         eligible.add(club_id)
     return eligible
+
+
+def _ai_network_visible_prospects(
+    club_id: str,
+    prospects: list,
+    *,
+    division_map: dict,
+    clubs: dict,
+    season_id: str,
+) -> list:
+    """The prospects an AI club's Scouting Network can see (V24 Phase 6).
+
+    Level by division tier (config.AI_NETWORK_LEVEL_BY_TIER) with a deterministic
+    per-(season, club) blind-spot jitter that can drop a club one level. The blind
+    spots are the point: they leave gems unrecruited (a national prodigy that no
+    L2 club can sign that year, a local kid only his region's clubs see)."""
+    from .scouting_network import (
+        ai_network_level,
+        prospect_fully_visible,
+        reach_band_for_trajectory,
+    )
+    from .world import DISTRICT_REGIONS, district_neighbors
+
+    seat = division_map.get(club_id)
+    tier = seat.tier if seat is not None else None
+    jitter = DeterministicRNG(derive_seed(0, "ai_network", season_id, club_id)).roll(0.0, 1.0)
+    level = ai_network_level(tier, jitter=jitter)
+    club = clubs.get(club_id)
+    home = getattr(club, "home_region", "") or ""
+    neighbors = district_neighbors(home)
+    home_recognized = home in DISTRICT_REGIONS
+    return [
+        p
+        for p in prospects
+        if prospect_fully_visible(
+            reach_band=reach_band_for_trajectory(p.hidden_trajectory),
+            hometown=p.hometown,
+            level=level,
+            home_district=home,
+            neighbors=neighbors,
+            home_recognized=home_recognized,
+        )
+    ]
+
+
+def _user_offer_strength(interest: float, fit_score: float, veto: bool) -> float:
+    """The user's contested Signing Day offer strength. ``fit_score=0`` (legacy
+    single-league) reproduces the V16 formula exactly. On pyramid saves, fit is
+    the 0-1 motivation blend. A dealbreaker veto floors the offer — the prospect
+    never verbals, regardless of interest or fit."""
+    from .config import (
+        CONTESTED_USER_OFFER_BASE,
+        CONTESTED_USER_OFFER_INTEREST_WEIGHT,
+        CONTESTED_VETO_OFFER_FLOOR,
+        MOTIVATION_FIT_WEIGHT,
+    )
+
+    if veto:
+        return CONTESTED_VETO_OFFER_FLOOR
+    return round(
+        CONTESTED_USER_OFFER_BASE
+        + interest * CONTESTED_USER_OFFER_INTEREST_WEIGHT
+        + fit_score * MOTIVATION_FIT_WEIGHT,
+        4,
+    )
+
+
+def _tier_ceiling_bonus(tier: int, public_high_band: float) -> float:
+    """V24: how much an AI club in a given division TIER weights a prospect's
+    upside on its board. Top tiers (Premier + the International Circuit, both
+    tier 1) chase ceiling so the Worlds feeders build toward a compounding
+    user instead of treading water; bottom tiers favor ready-now. Rewards
+    upside above the baseline only — never raw signing."""
+    from .config import AI_TIER_CEILING_BASELINE, AI_TIER_CEILING_PREFERENCE
+
+    pref = AI_TIER_CEILING_PREFERENCE.get(tier, 0.0)
+    upside = max(0.0, public_high_band - AI_TIER_CEILING_BASELINE)
+    return round(upside * pref, 4)
 
 
 def _ensure_recruitment_prepared(
@@ -549,13 +641,35 @@ def _ensure_recruitment_prepared(
 
     boards = {}
     from .persistence import load_clubs
+    from .world import pyramid_world_active
     clubs = load_clubs(conn)
+    # V24: in the pyramid, each club's division tier shades how hard it chases
+    # upside (whole-world recruiting fix). Empty on legacy single-league saves.
+    division_map = {}
+    if pyramid_world_active(conn):
+        from .persistence import load_division_map
+
+        division_map = load_division_map(conn, season_id)
     for profile in active_profiles:
+        # V24 Phase 6: AI clubs see only prospects within their Scouting Network
+        # reach (level by division tier + a deterministic blind-spot jitter), so
+        # gems fall through the cracks — a national prodigy is invisible to most
+        # D3 clubs, a far-district kid invisible to clubs outside his region. A
+        # club is never blinded to the WHOLE class (safety fallback). Pyramid
+        # only — division_map is empty on legacy single-league saves.
+        club_prospects = prospects
+        if division_map:
+            visible = _ai_network_visible_prospects(
+                profile.club_id, prospects, division_map=division_map,
+                clubs=clubs, season_id=season_id,
+            )
+            if visible:
+                club_prospects = visible
         board = build_recruitment_board(
             root_seed=root_seed,
             season_id=season_id,
             profile=profile,
-            prospects=prospects,
+            prospects=club_prospects,
             roster_needs=_default_roster_needs(),
         )
 
@@ -578,6 +692,14 @@ def _ensure_recruitment_prepared(
                 # Favors ready-now depth immediately
                 midpoint = (prospect.public_ratings_band["ovr"][0] + prospect.public_ratings_band["ovr"][1]) / 2.0
                 total_score += round((midpoint - 55) * 0.2, 4)
+
+            # V24: division-tier ceiling preference — top tiers chase upside so
+            # the Worlds feeders keep pace with a compounding user.
+            seat = division_map.get(profile.club_id)
+            if seat is not None:
+                total_score += _tier_ceiling_bonus(
+                    seat.tier, prospect.public_ratings_band["ovr"][1]
+                )
 
             adjusted_board.append(
                 RecruitmentBoardRow(
@@ -653,6 +775,10 @@ class ContestedPickOutcome:
     # Best opposing bid on the user's pick (None when uncontested).
     rival_club_id: Optional[str] = None
     rival_offer_strength: Optional[float] = None
+    # V24: the 0-1 motivation fit folded into the user offer, and whether the
+    # prospect's dealbreaker vetoed the verbal (pyramid only).
+    motivation_fit: float = 0.0
+    dealbreaker_veto: bool = False
 
 
 def _apply_round_signings(
@@ -701,7 +827,57 @@ def _apply_round_signings(
             roster = list(load_all_rosters(conn).get(signing.club_id, []))
             save_lineup_default(conn, signing.club_id, optimize_ai_lineup(roster))
         signed_players[signing.player_id] = player
+
+    # V24 class wire: a league-wide news line whenever a STAR/GENERATIONAL
+    # prospect signs anywhere (this chokepoint covers both the user's contested
+    # round and the AI offseason sweep).
+    from .persistence import get_state
+
+    season_id = get_state(conn, "active_season_id")
+    if season_id:
+        _emit_class_wire(conn, season_id, result.signings, prospects_by_id, clubs)
     return signed_players
+
+
+def _emit_class_wire(conn, season_id, signings, prospects_by_id, clubs) -> None:
+    """Write a class-wire headline (reusing news_headlines) for each STAR or
+    GENERATIONAL prospect that signs. Idempotent per (season, prospect)."""
+    from .persistence import load_news_headlines, save_news_headlines
+
+    elite = []
+    for signing in signings:
+        prospect = prospects_by_id.get(signing.player_id)
+        if prospect is None:
+            continue
+        if prospect.hidden_trajectory not in (
+            Trajectory.STAR.value,
+            Trajectory.GENERATIONAL.value,
+        ):
+            continue
+        elite.append((signing, prospect))
+    if not elite:
+        return
+
+    existing = {h["headline_id"] for h in load_news_headlines(conn, season_id)}
+    rows = []
+    for signing, prospect in elite:
+        headline_id = f"classwire_{season_id}_{signing.player_id}"
+        if headline_id in existing:
+            continue
+        club_name = getattr(clubs.get(signing.club_id), "name", signing.club_id)
+        arc = (
+            "generational"
+            if prospect.hidden_trajectory == Trajectory.GENERATIONAL.value
+            else "star"
+        )
+        rows.append({
+            "headline_id": headline_id,
+            "category": "class_wire",
+            "headline_text": f"CLASS WIRE: {club_name} land {arc}-arc prospect {prospect.name}",
+            "entity_ids": [signing.player_id, signing.club_id],
+        })
+    if rows:
+        save_news_headlines(conn, season_id, 0, rows)
 
 
 def conduct_recruitment_round(
@@ -761,9 +937,18 @@ def conduct_recruitment_round(
         pipeline_tier=prospect.pipeline_tier,
         credibility_score=credibility,
     )
-    user_strength = round(
-        CONTESTED_USER_OFFER_BASE + interest * CONTESTED_USER_OFFER_INTEREST_WEIGHT, 4
-    )
+    # V24: on pyramid saves the offer also reflects how well the club satisfies
+    # the prospect's motivations; a dealbreaker veto floors it (never verbals).
+    fit_score = 0.0
+    fit_veto = False
+    from .world import pyramid_world_active
+
+    if pyramid_world_active(conn):
+        from .motivations import build_club_context, club_fit
+
+        fit = club_fit(build_club_context(conn, user_club_id, season_id), prospect)
+        fit_score, fit_veto = fit.fit, fit.veto
+    user_strength = _user_offer_strength(interest, fit_score, fit_veto)
     user_offer = RecruitmentOffer(
         season_id=season_id,
         round_number=round_number,
@@ -821,6 +1006,8 @@ def conduct_recruitment_round(
         winning_offer_strength=round(winner.offer_strength, 4) if winner else None,
         rival_club_id=rival.club_id if rival else None,
         rival_offer_strength=round(rival.offer_strength, 4) if rival else None,
+        motivation_fit=round(fit_score, 4),
+        dealbreaker_veto=fit_veto,
     )
 
 

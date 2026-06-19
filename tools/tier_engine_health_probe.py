@@ -44,6 +44,12 @@ def _build_driver(name: str) -> EngineDriver:
         # run_autonomous_match). See OfficialMatchEngineDriver's docstring.
         from dodgeball_sim.official_engine import OfficialMatchEngineDriver
         return OfficialMatchEngineDriver()
+    if name in ("official_cloth", "official_no_sting"):
+        # V27 Phase 3: extend the OVR-curve health measurement onto the cloth /
+        # no-sting profiles so the ruleset-balance harness can reuse this probe.
+        # Foam path is untouched (the "official" branch above stays the default).
+        from dodgeball_sim.official_engine import OfficialMatchEngineDriver
+        return OfficialMatchEngineDriver(ruleset=name)
     raise ValueError(f"Unknown driver: {name}")
 
 

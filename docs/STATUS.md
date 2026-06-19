@@ -4,7 +4,7 @@ Canonical snapshot of what is actually built and what is still open. When code
 state changes materially, update this file in the same pass. If this file and
 the source disagree, the source wins - then fix this file.
 
-Last updated: 2026-06-12.
+Last updated: 2026-06-14.
 
 **Post-V22 direction DECIDED 2026-06-12 — "The Climb Era" (V23–V28).** The
 owner-confirmed long-range plan lives in
@@ -14,6 +14,298 @@ Worlds, alive from Season 1, real relegation), then contracts/transfer market,
 fans/facilities/bench roles, the event calendar, and the emergent-meta layer —
 in that order (V23 World first). That doc is the planning authority for what
 comes next; this file remains build-state truth.
+
+**Arc status (2026-06-19): THE CLIMB-ERA ARC (V23–V28) SHIPPED TO `main`.**
+V23–V28 built on `feature/v24-the-board` and merged to `main` as a unit on
+2026-06-19, hardened by four fresh-eyes trust playtests (PT3–PT6). PT5 fixed 9
+trust-breaks (headline: the V20 falsifying-score family on the debrief hero +
+League Wire); PT6 confirmed all 9 on screen and fixed 4 more (a Transfer
+selected-state regression PT5 introduced, the Command Center wire — a second
+League Wire surface — the Worlds recap not receipting the user's own semifinal
+exit, and the last survivors-leak on the Primary Factor chip). Capstone:
+`docs/retrospectives/2026-06-19-climb-era-arc-complete.md`. V27 decision: events
+run as deterministic auto-simmed real-engine knockouts at dedicated windows. V28
+#1 constraint held: the officiating-emphasis shift adds NO new RNG draw in
+`resolve_throw` and the default `SeasonEmphasis()` is byte-identical (the pre-V28
+official-engine golden suite stays green). Disclosed legibility deferrals (not
+blockers): AI tactic drift isn't surfaced on standings plan rows; the meta-report
+ticker fires only past `trend_notable_delta`; the emphasis DISCRETION log isn't
+in the replay UI.
+
+**V28 — The Weather: DONE on the branch `feature/v24-the-board` (2026-06-18;
+NOT yet on main) — CLOSES THE CLIMB-ERA ARC (V23–V28).** Spec:
+`docs/specs/2026-06-17-v28-the-weather-spec.md`; plan: `…-sprint-plan.md`; retro:
+`docs/retrospectives/2026-06-18-v28-the-weather-retrospective.md`. Three
+independent halves, all from real match data, behind `pyramid_world_active`
+(legacy + season 1 byte-identical), full `python -m pytest -q` green (real exit
+code), `npm run build` + `npm run lint` clean. **(1) Meta journalism**
+(`meta_journalism.py`): `compute_league_trends` (per-division catch rate /
+elimination rate / game-point margin + posture win-correlation from
+`team_policies`, playoff match-ids excluded) and `generate_league_bulletin`
+(`category='meta_report'` headlines whose every claim recomputes from the queried
+rows — the derived-from-data fence; `tools/meta_journalism_probe.py`). **(2)
+Emergent meta** (`meta_drift.py`): each offseason `winning_tactics` reads which
+`CoachPolicy` value won most, `apply_meta_drift` nudges each AI club's
+`v28_tactic_drift_json` overlay toward the winners (bounded by
+`WeatherConfig.drift_rate`) with a deterministic contrarian fraction
+(`v28_meta_drift` stream) pushing the runner-up UP so a new generation breaks the
+orthodoxy; `tactic_drift_for` is consumed by `ai_tactics.get_ai_tactics` after the
+intent override (archetype base → intent → drift; the user club is never drifted).
+`tools/meta_drift_probe.py`: drift-toward-winner + a contrarian generation across
+8 simulated seasons. **(3) Officiating points of emphasis** (`season_emphasis.py`,
+the engine-touching half): a frozen `SeasonEmphasis(catch_delta, block_delta,
+announcement, selection_basis)` threaded as a SEPARATE arg (NOT on the frozen
+`RulesetProfile`) through `run_autonomous_match → run_autonomous_game →
+resolve_throw → compute_throw_probabilities`. **THE #1 LANDMINE HELD:** the deltas
+shade the EXISTING catch/block sigmoid bias BEFORE the EXISTING roll with NO new
+RNG draw — `catch_bias = _CATCH_BIAS - catch_emphasis` and `block_bias =
+_BLOCK_BIAS + block_delta`, so the default (deltas 0.0) is provably byte-identical
+(`0.7 - 0.0 == 0.7`, `-0.1 + 0.0 == -0.1`) and every pre-V28 official-engine
+golden (`test_official_engine_balance` `_WT7_BASELINE_*`, `test_attribute_consumers`
+fingerprints, `test_wt20_live_rules` block pins) stays green. The shift is
+symmetric by construction (every throw shares the same shaded bias) and every call
+the bounded delta flips is logged as a `RuleDiscretionEvent(rule_section='emphasis',
+selection_basis='emphasis_<season>')` (counterfactual recomputed against the SAME
+captured roll — no extra draw) collected into `discretion_events`;
+`select_season_emphasis` picks a bounded emphasis on the new `v28_season_emphasis`
+stream (idempotent via the per-season store), `generate_officiating_bulletin`
+announces it preseason (a `league_bulletin` headline for the UPCOMING season at the
+offseason sweep), and `load_season_emphasis` is threaded `game_loop →
+simulate_match → OfficialEngineAdapter → run_autonomous_match` so league matches
+play under the active emphasis. Honest `NON_SECTION_ENFORCEMENT_NOTES` entry
+(ENFORCED as DISCLOSED SIM-DESIGN — emphasis is NOT a sourced USAD section).
+`tools/emphasis_probe.py`: default byte-identical; active emphasis bites
+(21/24 seeds), is symmetric, and is logged; deterministic bounded selection.
+**Frontend:** the Week-1 Season Preview gains a "League Bulletin" block
+(`SeasonPreview.tsx`; `build_season_preview` `officiating_emphasis` fed by
+`load_season_emphasis`), and the league news wire (`class_wire`/`event_news`/
+`meta_report`/`league_bulletin`) now rides the `/api/standings` payload
+(`wire_headlines` + the `StandingsResponse` field) and renders at the front of the
+existing League Wire ticker — these headlines were written since V24/V27/V28 but
+had no frontend consumer. `tests/test_v28_frontend_payloads.py` is the real-
+TestClient strip-trap regression (both `wire_headlines` and
+`season_preview.officiating_emphasis` reach the client un-stripped). **`meta.py`/
+MetaPatch stays retired** (weather is computed from data, never an injected dial;
+the `test_meta_module_has_no_db_boundary_imports` fence holds). **Disclosed
+deferral:** the full multi-season live browser acceptance walk (read a meta report,
+see a preseason officiating bulletin, watch AI tactics drift across seasons) is the
+owner's final acceptance pass — the V27 precedent — since the surfaces require a
+multi-season playthrough; the data path to the client is pinned by the
+TestClient strip-trap guards + the three probes + build/lint, per the
+frontend-has-no-test-runner policy.
+
+**V27 — The Calendar: DONE on the branch `feature/v24-the-board` (2026-06-18;
+NOT yet on main).** Spec: `docs/specs/2026-06-17-v27-the-calendar-spec.md`; plan:
+`docs/specs/2026-06-17-v27-the-calendar-sprint-plan.md`; retro:
+`docs/retrospectives/2026-06-18-v27-the-calendar-retrospective.md`. All 7 phases
+shipped, full `python -m pytest -q` green (real exit code 0, **1792 tests**),
+`npm run build` + `npm run lint` clean. The season gets a calendar of real
+competitions — each a deterministic auto-simmed real-engine knockout at its
+thematic window (decision 1: NOT an in-season weekly-schedule rebuild). The
+dormant CLI `cup.py` (kept import-pure) gets a web home in `cup_service.py`
+(cross-division Domestic Cup, foam, giant-killings + receipts); cloth/no-sting
+**Ruleset Invitationals** (Cloth Classic / No-Sting Open) run through
+`OfficialEngineAdapter` behind per-ruleset balance gates (the V17 precedent —
+no imbalance found, caps pinned from the recorded run); **MSI** (Premier +
+Circuit leaders, by `division_id` not tier, foam, Worlds-seeding note) +
+**Founders' Exhibition** (fan-invited, no-seeding, money-only); and an elevated
+**Worlds crowning ceremony** beat (`is_first` credits-roll on the save's first
+title, defending-champion thereafter; no post-summit ratchet — the vision law).
+Idempotent purses (`apply_event_purse`'s per-event guard, the
+`FINANCES_APPLIED_KEY` pattern), a per-season `v27_events_json` store
+(`event_calendar.py` — NOT the engine `events.py`, which is `MatchEvent`s), and
+widened event journalism (the news-wire filter now passes `event_news`).
+Frontend: `EventsBeat.tsx` (one card per resolved event: cup champion +
+giant-killings, invitational winners, MSI, Founders' + the dedicated
+`EventBracket.tsx`), `WorldsCrowning.tsx` (a `CeremonyShell` staged reveal),
+`types.ts` union + `Offseason.tsx` dispatch for both new beats. Behind
+`pyramid_world_active`; legacy byte-identical. **Hard-won lessons (see retro):**
+the `events.py`→`event_calendar.py` rename (the engine `events.py` was taken);
+the clamp lockstep (`_MAX_OFFSEASON_BEAT_INDEX` 11→13 with both new beats + the
+pinned beat-tuple witness — the V25/V26 clamp bug, now bit three times); the
+round-clock match-id encoding (`invitationals._invitational_match_id` encodes
+the round slug so `run_autonomous_match`'s clock resolution picks the right
+clock); and the **strip-trap structural absence** — the offseason beat endpoints
+declare NO `response_model=`, so the new payloads pass through verbatim (verified
+end-to-end by `tests/test_v27_phase7_frontend_payloads.py`, a real-TestClient
+regression that fires if a future developer ever adds one). **Probes:**
+`tools/cup_probe.py` (valid champion 20/20 seeds, giant-killing 45%, determinism),
+`tools/ruleset_balance_probe.py` (cloth cap 0.72 / no-sting cap 0.68, 3 distinct
+champions each, no liabilities, slopes +55.3/+56.7pp), and the new
+`tools/event_finance_probe.py` (every event purse 5–21% of a league champion's
+payout — a declared margin, never a league-payout rival). **API-level walk**
+(`tools/v27_api_walk.py`, port 8010, isolated temp save dir): the events payload
+(domestic_cup + MSI + Founders) came through `/api/offseason/beat` un-stripped
+across 5 seeds; the Worlds crowning is a conditional beat requiring a real
+Worlds win and did not land on auto-pilot in 5 seeds — its strip-trap is pinned
+end-to-end by the TestClient guard (the live crowning fires on the owner's
+browser acceptance walk). Walk save purged. **Disclosed deferrals:** the
+invitationals did not fire in season 1 of the walk (no club met the fame
+threshold — honest; their payload shape is the same `EventResult` row the cup
+verifies); the live crowning browser walk is the owner's final acceptance.
+
+**V26 — The Crowd: DONE on the branch `feature/v24-the-board` (2026-06-17;
+NOT yet on main).** Spec: `docs/specs/2026-06-17-v26-the-crowd-spec.md`; plan:
+`docs/specs/2026-06-17-v26-the-crowd-sprint-plan.md`; retro:
+`docs/retrospectives/2026-06-17-v26-the-crowd-retrospective.md`. All 7 phases
+shipped, full `python -m pytest -q` green (real exit code), build + lint clean.
+Mostly **revives dormant-but-built code**: facilities (the web offseason fed
+`facilities=()`) are now permanent treasury-bought buildings (`facilities_office.py`;
+Training Hall = a headroom-capped practice-credit dev effect via the V19b channel;
+Stadium/Merch feed income; the dead `DevelopmentModifiers` scouting/sync fields
+removed; legacy CLI per-season path untouched). First Climb-Era schema migration
+`_migrate_v19` (club_fans / player_fans / append-only fan_ledger receipts).
+`fan_economy.py` grows the user club's fans from real logged events (wins,
+promotion, titles/cups, Worlds finals) with receipts AND ports the dormant CLI
+prestige award to the web offseason (V24 Contender/credibility now rise on web).
+Player followings from persisted award moments (MVP + best-X). Matchday + merch
+income in `apply_season_finances` (3–42% of prize money — a margin, never its
+rival; `tools/fan_income_probe.py`). Bench roles (`bench_roles.py`): Mentor
+(per-youngster dev, scaled by the mentor's identity traits — their first honest
+consumer), Analyst (`targeting_read_bonus` scaling with `tactical_iq`), Ambassador
+(monetizes his following). A conditional `media_event` offseason choice beat whose
+effects land ONLY in fans/prestige/credibility (the isolation fence). Frontend:
+`FacilitiesUpgradePanel`, `MediaEvent.tsx`, Recap income rows, bench-role API.
+Behind `pyramid_world_active`; legacy byte-identical. **Findings:** facility
+effects were sub-rounding (rerouted Training Hall through practice credit);
+prestige growth was CLI-only (ported); `_MAX_OFFSEASON_BEAT_INDEX` bumped 10→11
+(the second beat to hit the V25 clamp lesson); v18→v19 schema-witness churn fixed.
+**Disclosed deferrals:** bench-role visual assignment control, player-district +
+in-game-moment followings, info/tactical facilities (CLI-legacy), in-season media,
+live browser walk — see the retro.
+
+**V25 — The Market: DONE on the branch `feature/v24-the-board` (2026-06-17;
+NOT yet on main).** Spec: `docs/specs/2026-06-17-v25-the-market-spec.md`;
+plan: `docs/specs/2026-06-17-v25-the-market-sprint-plan.md`; retro:
+`docs/retrospectives/2026-06-17-v25-the-market-retrospective.md`. All 7 phases
+shipped, full `python -m pytest -q` green (real exit code, no pipe), `npm run
+build` + `npm run lint` clean. Money enters a *player's* story: every player
+carries `salary_k` + `contract_term` (JSON-blob fields, no migration, `.get()`
+defaults → legacy byte-identical); `contracts.py` is the single formula home;
+STANDARD ability-blind entry deals at signing + a self-healing pricing pass; a
+player wage bill is a new `apply_season_finances` outflow (named in the Recap
+Finances block). Retention is recruiting's mirror
+(`transfer_market.evaluate_retention` reuses V24 `club_fit` on a rostered player
+vs his own club; the dealbreaker veto walks him at any price). Uphill poaching
+(`poach_suitors` + `resolve_poaching`): higher-tier money with wage headroom
+hunts the user's expiring stars, motivations break ties, departures carry
+receipts + dev-comp. Refusable incoming buyouts + outgoing bids. AI symmetry
+(`run_ai_transfer_period`): AI clubs re-sign/release on the same grades under a
+tier wage-budget cap (no AI treasuries) — real churn + a transfer ledger + a
+news line. A new commit-on-advance `transfer_period` offseason beat (frontend
+`TransferPeriod.tsx`) lets the user re-sign / let-walk / accept-or-refuse
+buyouts; the commit protects the roster floor. Whole layer behind
+`pyramid_world_active` (legacy byte-identical). **Probes:** `poach_retention_probe`
+(grades flip 6/6), `roster_fortress_probe` (movement > 0/offseason), `squeeze_probe`
+(wages 18/24/28% of tier income — squeeze, never spiral). **Findings fixed
+mid-build:** self-healing pricing (no $0-wage squeeze-dodge), an offseason
+beat-index clamp bug (`_MAX_OFFSEASON_BEAT_INDEX` made the final beat
+unreachable), a roster-floor guard so auto-pilot never strands < 6, and a
+wage-scale recalibration to MODERATE. **Disclosed deferrals:** player-hometown
+for the retention Hometown grade, full AI-vs-AI transfers, Circuit-tier poaching
+of Premier stars — see the retro.
+
+**V24 — The Board: DONE on the branch `feature/v24-the-board` (2026-06-12;
+NOT yet on main).** Spec: `docs/specs/2026-06-12-v24-the-board-spec.md` (7
+phases). Phases 1–3 implemented + verified on the branch, each its own commit,
+full `python -m pytest -q` green after each:
+- **Phase 1 — whole-world AI recruiting** (`4d37c94`) closes the V23
+  end-state-dominance gap. The division-scoped AI Signing Day market is gone
+  (`recruitment._eligible_ai_offer_clubs` no longer intersects the user's
+  division on pyramid saves); the pyramid prospect class widened 25→56
+  (`config.PYRAMID_PROSPECT_CLASS_SIZE` + `scouting_config_for_world`; legacy
+  stays 25, byte-identical); tier-weighted AI boards
+  (`config.AI_TIER_CEILING_PREFERENCE` + `recruitment._tier_ceiling_bonus`) so
+  the Worlds feeders chase upside. **Measured** (`tools/climb_resistance_probe.py`
+  gained a `--division-scoped` before/after + Premier/Circuit OVR columns, seed
+  20260613, 10 seasons): Premier OVR 77.9→82.6, Circuit **flat ~71 → climbing
+  75.2**, user Worlds wins S5–10 5/6→3/6 (the user now loses division titles
+  late); new `tools/ai_board_coverage_probe.py` (20 seeds): **every division
+  signs new blood every seed** (Circuit coverage 65%→100%).
+- **Phase 2 — district rooting** (`7e2c99f`): pyramid prospects carry one of the
+  seven D3 districts (`world.DISTRICT_REGIONS`) instead of a surname, via a
+  stream-preserving `hometown_pool` param on `generate_prospect_pool` (one
+  `rng.choice` draw regardless of list length → downstream byte-identical;
+  legacy keeps surnames). No schema migration (reuses the `hometown` column).
+- **Phase 3 — motivations** (`f5d7747`): `motivations.py` — seven
+  receipts-backed grades (Court Time, Contender, Development, Legacy, Staff,
+  Scheme Fit, Hometown) + a hidden dealbreaker veto, each prospect's profile
+  derived deterministically from his id on a separate rng stream. Folded
+  mechanically into the user's contested offer (pyramid:
+  `BASE + interest*WEIGHT + fit*MOTIVATION_FIT_WEIGHT`, the dealbreaker veto
+  floors it; legacy offers byte-identical via fit=0) and the recruit board
+  (visible cared grades + receipts; dealbreaker hidden until scouted).
+
+**Playtestable now (board + frontend done on the branch):** the in-season
+recruit board cap is lifted 8→25-by-public-estimate
+(`recruiting_office._RECRUIT_BOARD_SIZE`) so the wide pyramid class is scoutable,
+and the React `ProspectCard` renders each prospect's visible motivation grades +
+hover receipts and the hidden-until-scouted dealbreaker (district hometowns
+already showed). `npm run build` + `npm run lint` clean; verified via the
+payload tests + data-flow (no FE test runner). The new recruiting flow is
+runnable end to end for playtest on a fresh pyramid career.
+
+**Phase 4 (funnel + focus list) DONE on the branch:** Open→Shortlist→Top3→Verbal
+funnel gates the slot verbs — Scout is always allowed, Contact requires
+shortlisting a prospect (the persistent focus list, `FOCUS_LIST_STATE_KEY` +
+`toggle_focus` + POST `/api/recruiting/focus/{id}`), and Visit is reserved for
+your top-3 focus targets; a dealbreaker veto can never reach Verbal. Enforced
+server-side in `apply_recruiting_action` (pyramid) AND mirrored in the board
+payload (`funnel_stage`/`on_focus_list`/`can_contact`/`can_visit`) so the UI
+disables rather than firing doomed requests (PT4 pattern). `ProspectCard` shows
+a ☆/★ Focus toggle, a stage badge, and funnel-gated Contact/Visit buttons.
+Pyramid-only; legacy single-league is ungated and unchanged.
+
+**Phase 4 remainder — visit scheduling DONE (`7a41522`).** A campus visit is now
+hosted at one of the user club's upcoming HOME fixtures
+(`recruiting_office.select_visit_fixture` + the persisted
+`recruiting_visit_fixtures_json` map); the action reports the bound fixture and
+the board mirrors it (`visit_fixture`). A visit is refused when no home fixture
+remains. Pyramid only; legacy keeps the unscheduled visit. Gated by
+`tests/test_v24_visit_scheduling.py`.
+
+**Phase 5 — visible rival suitors + interest race DONE (`3ffbcd3`).** New
+`prospect_market.py` derives named rival suitors per focused prospect
+deterministically (dampened talent read `RIVAL_PURSUIT_TALENT_WEIGHT` + the
+tier's upside appetite + a per-(prospect,club) jitter, willingness-gated by the
+dealbreaker veto), each with a receipt; the dormant `prospect_market_signal`
+table is revived (written on each courtship action) and surfaced on focused
+board rows (`market_signal`). Leading the race compounds: a contact/visit while
+leading lands a momentum bonus scaled by the weeks left
+(`RIVAL_MOMENTUM_PER_WEEK`, capped). Gated by `tests/test_v24_rival_suitors.py`;
+measured by `tools/rival_momentum_probe.py` (early-beats-late 8/8 seeds, +5).
+
+**Phase 6 — money-gated Scouting Network DONE (`05b9437`).** New
+`scouting_network.py` (distinct from the Scout verb and the named-scout engine):
+a per-club L1/L2/L3 level gates a full sheet vs a bare name. Reach band derives
+purely from `hidden_trajectory` (STAR/GEN=NATIONAL, IMPACT=REGIONAL,
+else=DISTRICT); L1 = home + neighbor districts (`world.district_neighbors`), L2
+adds regional + district-anywhere, L3 adds national (a non-district founder runs
+a generic local net). The user's level starts by division tier (Premier inherits
+L3, a D3 founder L1) and upgrades are a treasury sink compressed by the scouting
+head; new `POST /api/recruiting/network/upgrade` + `scouting_network` board
+status. The board redacts beyond-reach prospects to name cards;
+`apply_recruiting_action` refuses actions on them. AI clubs carry a tier-based
+level with a deterministic blind-spot jitter (gems fall through). Gated by
+`tests/test_v24_scouting_network.py`; `ai_board_coverage_probe` still 100%
+coverage.
+
+**Phase 7 — frontend board wiring DONE (`459823f`).** `ProspectCard` /
+`DynastyOffice` render name-only cards, the Scouting Network panel + upgrade
+button, the rival interest race, and the scheduled visit fixture; `types.ts`
+carries the new fields. `npm run build` + `npm run lint` clean.
+
+**Remaining (open) V24 work (disclosed):** the class wire (a league-wide news
+line on a STAR/GENERATIONAL signing — the `/api/news` payload currently builds
+from `match_records`, not `news_headlines`, so this needs a payload-merge and a
+world-wide signing chokepoint); Signing-Day-payload motivation surfacing
+(`RecruitmentChoice.tsx`); and the milestone-close live prod-server browser walk
++ retrospective/learnings. **Disclosed deferrals inside the shipped phases:** AI
+motivation symmetry (AI clubs use tier/archetype board weighting, not the full
+grades), the Development ceiling-delivery ledger (limited-state C grade until
+built), and in-season interest momentum from fit. **End-state-dominance honest
+residual:** the rest of the V24 arc + V25 uphill poaching close full Worlds
+parity, exactly as the vision states.
 
 **V23 — The World: SHIPPED 2026-06-12 (Phases 1–6, same-day).** Spec:
 `docs/specs/2026-06-12-v23-the-world-spec.md`. Every NEW career lives in a

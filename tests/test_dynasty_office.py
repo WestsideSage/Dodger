@@ -518,8 +518,17 @@ def test_dynasty_office_fallback_pool_matches_scouting_center_seed():
     rng = DeterministicRNG(derive_seed(20260426, "prospect_gen", str(class_year)))
     expected_pool = generate_prospect_pool(class_year, rng, DEFAULT_SCOUTING_CONFIG)
 
+    # V24: the board now surfaces the class sorted by public estimate, capped at
+    # the board size (was the first 8 in generation order). Mirror that
+    # transform so the seed-namespace assertion still bites.
+    from dodgeball_sim.recruiting_office import _RECRUIT_BOARD_SIZE
+
+    def _board_order(pool):
+        ordered = sorted(pool, key=lambda p: -sum(p.public_ratings_band.get("ovr", (0, 0))))
+        return [p.name for p in ordered[:_RECRUIT_BOARD_SIZE]]
+
     # Compare names — these are seed-dependent unlike player_ids
-    expected_names = [p.name for p in expected_pool[:8]]
+    expected_names = _board_order(expected_pool)
     office_names = [p["name"] for p in state["recruiting"]["prospects"]]
     assert office_names == expected_names, (
         f"Dynasty Office names {office_names} don't match prospect_gen seed names {expected_names}"
@@ -528,7 +537,7 @@ def test_dynasty_office_fallback_pool_matches_scouting_center_seed():
     # Prove the old seed namespace produces different names (confirming the namespace fix matters)
     bad_rng = DeterministicRNG(derive_seed(20260426, "v8_recruiting_preview", str(class_year)))
     bad_pool = generate_prospect_pool(class_year, bad_rng, DEFAULT_SCOUTING_CONFIG)
-    bad_names = [p.name for p in bad_pool[:8]]
+    bad_names = _board_order(bad_pool)
     # Only assert namespace difference if names actually differ (they should with different seeds)
     if bad_names != expected_names:
         assert office_names != bad_names, "Office is using old seed namespace"

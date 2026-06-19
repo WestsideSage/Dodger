@@ -697,10 +697,14 @@ export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat
         hasCards ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', maxWidth: '1040px', margin: '0 auto' }}>
             {/* Hero metric strip — league + own-class summary visible without switching tabs */}
+            {/* PT5: tile 1 is player-scoped (your slots); tiles 2-3 are LEAGUE-wide
+                (every club's signings / the whole rookie class) — label them so the
+                big numbers can't be misread as your own program beside the body's
+                "You signed N". */}
             <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
               <MetricTile label="Your Signings" value={`${signedCount}/${signingLimit}`} accent="#22d3ee" />
-              <MetricTile label="Rival Signings" value={rivalCount} accent="#f97316" />
-              <MetricTile label="Total Rookies" value={classSize} />
+              <MetricTile label="Rival Signings (League)" value={rivalCount} accent="#f97316" />
+              <MetricTile label="Rookies (League)" value={classSize} />
               {classTopOvr != null && <MetricTile label="Top OVR in Class" value={classTopOvr} accent="#8b5cf6" />}
             </div>
 

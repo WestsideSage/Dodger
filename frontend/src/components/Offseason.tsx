@@ -10,6 +10,10 @@ import { DevelopmentResults } from './ceremonies/DevelopmentResults';
 import { RookieClassPreview } from './ceremonies/RookieClassPreview';
 import { RecordsRatified, HallOfFameInduction } from './ceremonies/StructuredOffseasonBeats';
 import { RecruitmentChoice } from './ceremonies/RecruitmentChoice';
+import { TransferPeriod } from './ceremonies/TransferPeriod';
+import { MediaEvent } from './ceremonies/MediaEvent';
+import { EventsBeat } from './ceremonies/EventsBeat';
+import { WorldsCrowning } from './ceremonies/WorldsCrowning';
 
 export function Offseason({ onBeatChange }: { onBeatChange?: (title: string | null) => void } = {}) {
   const { data: beat, error, loading, setData: setBeat, setError } = useApiResource<OffseasonBeat>('/api/offseason/beat');
@@ -55,6 +59,15 @@ export function Offseason({ onBeatChange }: { onBeatChange?: (title: string | nu
       ...(releasePlayerId ? { release_player_id: releasePlayerId } : {}),
     });
   const beginSeason = () => act('/api/offseason/begin-season');
+  // V25: adjust a Transfer Period decision; the roster commits on advance.
+  const transfer = (action: string, playerId: string, offerK?: number) =>
+    act('/api/offseason/transfer', {
+      action,
+      player_id: playerId,
+      ...(offerK != null ? { offer_k: offerK } : {}),
+    });
+  // V26: record a media-moment choice; the effect commits when you advance.
+  const mediaChoose = (optionKey: string) => act('/api/offseason/media', { option_key: optionKey });
 
   let content = (
     <StatusMessage title="Offseason beat unavailable" tone="danger">
@@ -63,8 +76,12 @@ export function Offseason({ onBeatChange }: { onBeatChange?: (title: string | nu
   );
   if (beat.key === 'champion') content = <ChampionReveal beat={beat} onComplete={advance} acting={acting} />;
   else if (beat.key === 'recap') content = <RecapStandings beat={beat} onComplete={advance} acting={acting} />;
+  else if (beat.key === 'worlds_champion') content = <WorldsCrowning beat={beat} onComplete={advance} acting={acting} />;
   else if (beat.key === 'awards') content = <AwardsNight beat={beat} onComplete={advance} acting={acting} />;
+  else if (beat.key === 'events') content = <EventsBeat beat={beat} onComplete={advance} acting={acting} />;
   else if (beat.key === 'retirements') content = <Graduation beat={beat} onComplete={advance} acting={acting} />;
+  else if (beat.key === 'transfer_period') content = <TransferPeriod beat={beat} onTransfer={transfer} onComplete={advance} acting={acting} />;
+  else if (beat.key === 'media_event') content = <MediaEvent beat={beat} onChoose={mediaChoose} onComplete={advance} acting={acting} />;
   else if (beat.key === 'development') content = <DevelopmentResults beat={beat} onComplete={advance} acting={acting} />;
   else if (beat.key === 'rookie_class_preview') content = <RookieClassPreview beat={beat} onComplete={advance} acting={acting} />;
   else if (beat.key === 'records_ratified') content = <RecordsRatified beat={beat} onComplete={advance} acting={acting} />;

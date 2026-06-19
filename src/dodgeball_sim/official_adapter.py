@@ -22,6 +22,7 @@ from .official_stats import derive_box_score
 from .official_translator import collect_official_metadata, translate_events
 from .replay_contracts import OfficialReplayState
 from .rulesets import RulesetSelection
+from .season_emphasis import SeasonEmphasis
 
 
 @dataclass(frozen=True)
@@ -67,6 +68,7 @@ class OfficialEngineAdapter:
         match_id: str | None,
         prep_a: dict | None = None,
         prep_b: dict | None = None,
+        season_emphasis: SeasonEmphasis | None = None,
     ) -> OfficialMatchResult:
         # Persistence (game_loop.persist_match_record) and aftermath builders
         # assume team_a is the home club; the team_a_id is round-tripped through
@@ -95,6 +97,7 @@ class OfficialEngineAdapter:
             policy_a=team_a.coach_policy, policy_b=team_b.coach_policy,
             seed=seed,
             prep_a=prep_a, prep_b=prep_b,
+            season_emphasis=season_emphasis or SeasonEmphasis(),
         )
         box = derive_box_score(
             match_result.events,
@@ -125,8 +128,15 @@ class OfficialEngineAdapter:
             moment_events=match_result.moment_events,
         )
 
-    def run(self, setup: MatchSetup, *, seed: int, match_id: str | None = None) -> OfficialMatchResult:
-        return self._run_raw(setup, seed=seed, match_id=match_id)
+    def run(
+        self,
+        setup: MatchSetup,
+        *,
+        seed: int,
+        match_id: str | None = None,
+        season_emphasis: SeasonEmphasis | None = None,
+    ) -> OfficialMatchResult:
+        return self._run_raw(setup, seed=seed, match_id=match_id, season_emphasis=season_emphasis)
 
     def run_generic(
         self,
@@ -136,15 +146,21 @@ class OfficialEngineAdapter:
         match_id: str | None = None,
         prep_a: dict | None = None,
         prep_b: dict | None = None,
+        season_emphasis: SeasonEmphasis | None = None,
     ) -> MatchResult:
         """Run the official engine and return a generic-shaped MatchResult.
 
         ``prep_a``/``prep_b`` are the V19b staff-focus match preps (tactics
         read sharpening / conditioning stamina relief), derived from each
-        club's weekly plan by the caller.
+        club's weekly plan by the caller. ``season_emphasis`` is the V28
+        officiating point of emphasis for the season being played (default
+        ``SeasonEmphasis()`` ⇒ byte-identical).
         """
 
-        raw = self._run_raw(setup, seed=seed, match_id=match_id, prep_a=prep_a, prep_b=prep_b)
+        raw = self._run_raw(
+            setup, seed=seed, match_id=match_id, prep_a=prep_a, prep_b=prep_b,
+            season_emphasis=season_emphasis,
+        )
         starters_a = tuple(p.id for p in setup.team_a.players[: self.profile.roster_rule.starters])
         starters_b = tuple(p.id for p in setup.team_b.players[: self.profile.roster_rule.starters])
         match_events = translate_events(

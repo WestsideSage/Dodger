@@ -35,12 +35,12 @@ def _conn() -> sqlite3.Connection:
 
 
 def test_schema_version_is_current():
-    assert CURRENT_SCHEMA_VERSION == 18
+    assert CURRENT_SCHEMA_VERSION == 19
 
 
 def test_create_schema_creates_v2b_recruitment_tables():
     conn = _conn()
-    assert get_schema_version(conn) == 18
+    assert get_schema_version(conn) == CURRENT_SCHEMA_VERSION
 
     expected_tables = {
         "club_recruitment_profile",

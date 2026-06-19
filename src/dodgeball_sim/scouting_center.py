@@ -676,8 +676,25 @@ def initialize_scouting_for_career(
 
     seed_default_scouts(conn)
     if not load_prospect_pool(conn, class_year=class_year):
+        from .world import pyramid_world_active
+
+        # V24: the pyramid world's class feeds all 28 clubs, so it is wider than
+        # the legacy single-league 25. Only the size changes — every other
+        # ScoutingBalanceConfig field the caller passed is preserved.
+        hometown_pool = None
+        if pyramid_world_active(conn):
+            from dataclasses import replace
+
+            from .config import PYRAMID_PROSPECT_CLASS_SIZE
+            from .world import DISTRICT_REGIONS
+
+            config = replace(config, prospect_class_size=PYRAMID_PROSPECT_CLASS_SIZE)
+            hometown_pool = DISTRICT_REGIONS
         rng = DeterministicRNG(derive_seed(root_seed, "prospect_gen", str(class_year)))
-        save_prospect_pool(conn, generate_prospect_pool(class_year, rng, config))
+        save_prospect_pool(
+            conn,
+            generate_prospect_pool(class_year, rng, config, hometown_pool=hometown_pool),
+        )
 
 
 def run_scouting_week_tick(

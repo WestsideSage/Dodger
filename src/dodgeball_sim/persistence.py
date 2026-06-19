@@ -22,8 +22,13 @@ if TYPE_CHECKING:
     from .career_state import CareerStateCursor
 
 # Increment when new migrations are added.
-CURRENT_SCHEMA_VERSION = 18
-_MAX_OFFSEASON_BEAT_INDEX = 9
+CURRENT_SCHEMA_VERSION = 19
+# MUST equal len(offseason_ceremony.OFFSEASON_CEREMONY_BEATS) - 1. Kept as a
+# literal here to avoid a circular import; update both together when a beat is
+# added (V25 added 'transfer_period'; V26 added 'media_event'; V27 added
+# 'events' after the recap area and 'worlds_champion' after 'recap', so the
+# final 'schedule_reveal' is now index 13).
+_MAX_OFFSEASON_BEAT_INDEX = 13
 
 
 class CorruptSaveError(RuntimeError):
@@ -96,6 +101,8 @@ def _player_to_dict(player: Player) -> Dict[str, Any]:
         "age": player.age,
         "club_id": player.club_id,
         "newcomer": player.newcomer,
+        "salary_k": player.salary_k,
+        "contract_term": player.contract_term,
         "archetype": player.archetype.value if isinstance(player.archetype, PlayerArchetype) else str(player.archetype),
         "ratings": {
             "accuracy": ratings.accuracy,
@@ -157,6 +164,8 @@ def _player_from_dict(d: Dict[str, Any]) -> Player:
         age=d.get("age", 18),
         club_id=d.get("club_id"),
         newcomer=d.get("newcomer", True),
+        salary_k=d.get("salary_k", 0),
+        contract_term=d.get("contract_term", 1),
         archetype=archetype,
         ratings=PlayerRatings(
             accuracy=int(round(float(r["accuracy"]))),
@@ -1100,6 +1109,42 @@ def _migrate_v18(conn: sqlite3.Connection) -> None:
     )
 
 
+def _migrate_v19(conn: sqlite3.Connection) -> None:
+    """V26 — The Crowd: two fan ledgers + an append-only receipt log.
+
+    club_fans / player_fans are running totals; fan_ledger is the append-only
+    history of how each was earned (never bump a total without a receipt row).
+    Legacy / non-pyramid saves simply have empty tables (no fans, no fan income).
+    """
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS club_fans (
+            club_id TEXT PRIMARY KEY,
+            fans_count INTEGER NOT NULL DEFAULT 0
+        );
+
+        CREATE TABLE IF NOT EXISTS player_fans (
+            player_id TEXT PRIMARY KEY,
+            followers_count INTEGER NOT NULL DEFAULT 0
+        );
+
+        CREATE TABLE IF NOT EXISTS fan_ledger (
+            ledger_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            entity_id TEXT NOT NULL,
+            entity_type TEXT NOT NULL,
+            season_id TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            delta INTEGER NOT NULL,
+            running_total INTEGER NOT NULL,
+            receipt TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_fan_ledger_entity
+            ON fan_ledger(entity_type, entity_id);
+        """
+    )
+
+
 _MIGRATIONS: Dict[int, Any] = {
     1: _migrate_v1,
     2: _migrate_v2,
@@ -1119,6 +1164,7 @@ _MIGRATIONS: Dict[int, Any] = {
     16: _migrate_v16,
     17: _migrate_v17,
     18: _migrate_v18,
+    19: _migrate_v19,
 }
 
 

@@ -472,6 +472,9 @@ export interface StandingsResponse {
     // V23: the player's division + the full pyramid (null on legacy saves).
     division?: DivisionInfo | null;
     divisions?: DivisionStandingsBlock[] | null;
+    // V28: the league news wire (class/event/meta/league_bulletin headlines)
+    // for the League Wire ticker. Empty/absent when there are none.
+    wire_headlines?: NewsItem[] | null;
 }
 
 export interface RecentMatchSummary {
@@ -850,6 +853,10 @@ export interface CommandDashboard {
     stage?: string;
     opponent_name: string;
     result: string;
+    /** PT6: player-perspective scoreline (e.g. "7-5") + unit ("game points") so
+     * the Command Center wire shows the real score, not a bare Win/Loss/Draw. */
+    score?: string | null;
+    score_unit?: string | null;
     lanes: CommandDashboardLane[];
 }
 
@@ -901,6 +908,9 @@ export interface SeasonPreview {
         stakes: string;
         world_note?: string;
     } | null;
+    /** V28: the season's preseason officiating points-of-emphasis bulletin
+     * (null/absent when none — season 1, legacy, or a called-straight season). */
+    officiating_emphasis?: string | null;
 }
 
 // A post-match body paragraph carries its own audience, assigned by the
@@ -1136,6 +1146,11 @@ export interface RecapBeatPayload {
         league_payout_k: number;
         playoff_bonus_k: number;
         staff_payroll_k: number;
+        /** V25: the user club's player wage bill (0 on legacy / non-pyramid saves). */
+        player_wage_bill_k?: number;
+        /** V26: fan income — matchday + merch (0 on legacy / non-pyramid saves). */
+        matchday_income_k?: number;
+        merch_income_k?: number;
         net_k: number;
         opening_treasury_k: number;
         closing_treasury_k: number;
@@ -1157,6 +1172,13 @@ export interface RecapBeatPayload {
             runner_up_club_id: string | null;
             runner_up_name: string | null;
             final_match_id: string;
+        } | null;
+        /** PT6: the user's own Worlds run (null if they didn't qualify). The
+         * global `worlds` line names only the final's champion + runner-up, so a
+         * club that reached Worlds but lost the semifinal needs this receipt. */
+        worlds_user?: {
+            qualified_as: 'premier_champion' | 'premier_runner_up' | 'circuit_champion' | 'circuit_runner_up';
+            result: 'champion' | 'runner_up' | 'semifinalist';
         } | null;
         user: {
             movement: 'promoted' | 'relegated' | 'stays';
@@ -1228,6 +1250,22 @@ export interface RecruitmentProspectChoice {
     promised?: boolean;
     /** Courtship interest (%): strengthens the contested Signing Day offer. */
     interest?: number;
+    /** V24 Phase 7: the same motivation grades + dealbreaker the in-season board
+        showed, so the picker never knows less. Empty/null on legacy saves. */
+    motivations?: Array<{
+        motivation: string;
+        label: string;
+        letter: string;
+        receipt: string;
+    }>;
+    dealbreaker?: {
+        motivation: string;
+        label: string;
+        letter: string;
+        receipt: string;
+        veto: boolean;
+    } | null;
+    fit?: number | null;
 }
 
 /** Resolution of a Signing Day pick through the contested round (V16). */
@@ -1367,15 +1405,116 @@ interface OffseasonBeatBase {
     released_broken_promise?: { player_name?: string; promise_type?: string } | null;
 }
 
+/** V25 The Market — the offseason Transfer Period beat. */
+export interface TransferExpiringRow {
+    player_id: string;
+    name: string;
+    ovr: number;
+    current_salary_k: number;
+    ask_k: number;
+    user_offer_k: number;
+    fit: number;
+    veto: boolean;
+    dealbreaker: string;
+    dealbreaker_letter: string;
+    top_suitor: { club_name: string; tier: number; offer_k: number } | null;
+    decision: 'resign' | 'release';
+}
+export interface TransferBuyoutRow {
+    player_id: string;
+    name: string;
+    fee_k: number;
+    buyer_club_name: string;
+    buyer_tier: number;
+    buyer_club_id: string;
+    decision: 'accept' | 'refuse';
+}
+export interface TransferPeriodBeatPayload {
+    expiring: TransferExpiringRow[];
+    buyouts: TransferBuyoutRow[];
+    results: {
+        resigned: Array<{ name: string; salary_k: number }>;
+        departed: Array<{ name: string; receipt: string; dev_compensation_k: number }>;
+        sold: Array<{ name: string; fee_k: number; buyer: string }>;
+    } | null;
+    committed: boolean;
+    treasury_k: number;
+    wage_bill_k: number;
+}
+
+/** V26 The Crowd — an offseason media mini-event choice beat. */
+export interface MediaEventOption {
+    key: string;
+    label: string;
+    fans: number;
+    prestige: number;
+    credibility: number;
+    receipt: string;
+}
+export interface MediaEventBeatPayload {
+    event: { event_id: string; prompt: string; options: MediaEventOption[] } | null;
+    committed: boolean;
+    result: { event_id: string; chosen: string; receipt: string } | null;
+}
+
+/** V27 The Calendar — a resolved event's bracket row (the simpler EventBracketRow
+ *  shape the backend records, distinct from PlayoffBracketMatch: no scoreline,
+ *  no decided_by, no narrative_note — just who played and who won). */
+export interface EventBracketRow {
+    round: string;
+    home_club_id: string;
+    away_club_id: string;
+    winner_club_id: string;
+    home_club_name: string;
+    away_club_name: string;
+}
+
+/** A resolved event (Domestic Cup / Cloth Classic / No-Sting Open / MSI /
+ *  Founders' Exhibition). Mirrors the dict event_calendar._event_to_dict emits. */
+export interface EventResultRow {
+    event_key: string;
+    event_name: string;
+    season_id: string;
+    champion_club_id: string;
+    champion_club_name: string;
+    ruleset: string;
+    purse_k: number;
+    bracket: EventBracketRow[];
+    meta: Record<string, unknown>;
+}
+
+/** V27 The Calendar — the `events` offseason beat: the season's resolved
+ *  competitions, each a deterministic auto-simmed real-engine knockout. */
+export interface EventsBeatPayload {
+    beat_key: 'events';
+    events: EventResultRow[];
+}
+
+/** V27 The Calendar — the `worlds_champion` crowning ceremony beat. `is_first`
+ *  flags the save's first Worlds title (the elevated credits-roll treatment);
+ *  later crowns render as a defending-champion beat. Presentation only — never
+ *  carries a ratchet/NG+ field (the vision law: post-summit is legacy play). */
+export interface WorldsChampionBeatPayload {
+    beat_key: 'worlds_champion';
+    champion_club_id: string;
+    champion_name: string;
+    season_id: string;
+    is_first: boolean;
+}
+
 // Discriminated union — `key` is the discriminant
 export type OffseasonBeat =
     | (OffseasonBeatBase & { key: 'champion'; payload: ChampionBeatPayload })
     | (OffseasonBeatBase & { key: 'recap'; payload: RecapBeatPayload })
     | (OffseasonBeatBase & { key: 'awards'; payload: AwardsBeatPayload })
+    | (OffseasonBeatBase & { key: 'worlds_champion'; payload: WorldsChampionBeatPayload })
+    | (OffseasonBeatBase & { key: 'events'; payload: EventsBeatPayload })
     | (OffseasonBeatBase & { key: 'records_ratified'; payload: RecordsRatifiedBeatPayload })
     | (OffseasonBeatBase & { key: 'hof_induction'; payload: HofInductionBeatPayload })
     | (OffseasonBeatBase & { key: 'development'; payload: DevelopmentBeatPayload })
     | (OffseasonBeatBase & { key: 'retirements'; payload: RetirementsBeatPayload })
+    | (OffseasonBeatBase & { key: 'transfer_period'; payload: TransferPeriodBeatPayload })
+    | (OffseasonBeatBase & { key: 'media_event'; payload: MediaEventBeatPayload })
     | (OffseasonBeatBase & { key: 'rookie_class_preview'; payload: RookieClassPreviewBeatPayload })
     | (OffseasonBeatBase & { key: 'recruitment'; payload: RecruitmentBeatPayload })
     | (OffseasonBeatBase & { key: 'schedule_reveal'; payload: ScheduleRevealBeatPayload });
@@ -1454,7 +1593,67 @@ export interface DynastyOfficeResponse {
             contacted?: boolean;
             visited?: boolean;
             recruiting_status?: RecruitingStatus;
+            /** V24 motivations (pyramid worlds): the prospect's visible
+                cared-about grades, his dealbreaker (null until scouted), and the
+                0-1 fit blend. Empty/null on legacy single-league saves. */
+            motivations?: Array<{
+                motivation: string;
+                label: string;
+                letter: string;
+                receipt: string;
+            }>;
+            dealbreaker?: {
+                motivation: string;
+                label: string;
+                letter: string;
+                receipt: string;
+                veto: boolean;
+            } | null;
+            fit?: number | null;
+            /** V24 funnel: the stage gates the verbs and the focus list is your
+                persistent shortlist. Null / permissive on legacy (no funnel). */
+            funnel_stage?: 'OPEN' | 'SHORTLIST' | 'TOP3' | 'VERBAL' | null;
+            on_focus_list?: boolean;
+            can_contact?: boolean;
+            can_visit?: boolean;
+            /** V24 Phase 4 (remainder): the home fixture hosting his campus
+                visit, once you schedule one. */
+            visit_fixture?: {
+                match_id: string;
+                week: number;
+                home_club_id: string;
+                opponent_club_id: string;
+            } | null;
+            /** V24 Phase 5: the in-season interest race — named rival suitors and
+                whether your tracked interest leads or trails the strongest. */
+            market_signal?: {
+                rivals: Array<{
+                    club_id: string;
+                    club_name: string;
+                    tier: number | null;
+                    interest: number;
+                    receipt: string;
+                }>;
+                leader: string;
+                user_interest: number;
+                top_rival_interest: number;
+                user_lead: number;
+            } | null;
+            /** V24 Phase 6: whether your Scouting Network opens his full sheet.
+                False = a name without a sheet (the redacted fields are null). */
+            fully_visible?: boolean;
+            reach_band?: 'DISTRICT' | 'REGIONAL' | 'NATIONAL' | null;
+            visibility_hint?: string;
         }>;
+        /** V24 Phase 6: the money-gated Scouting Network panel (pyramid only). */
+        scouting_network?: {
+            level: number;
+            next_level: number | null;
+            upgrade_cost_k: number | null;
+            treasury_k: number;
+            can_afford: boolean;
+            maxed: boolean;
+        } | null;
         rules: {
             max_active_promises: number;
             promise_options: string[];
@@ -1514,6 +1713,21 @@ export interface DynastyOfficeResponse {
             economy?: string;
         };
     };
+    /** V26 The Crowd: buildable facilities (treasury sink). Null on legacy/non-pyramid saves. */
+    facilities?: {
+        catalog: Array<{
+            facility_type: string;
+            display_name: string;
+            category: string;
+            treasury_cost_k: number;
+            owned: boolean;
+            can_afford: boolean;
+        }>;
+        owned: string[];
+        treasury_k: number;
+    } | null;
+    /** V26: bench roles assigned this season ({player_id: role}). */
+    bench_roles?: Record<string, 'mentor' | 'analyst' | 'ambassador'>;
 }
 
 export interface SaveInfo {

@@ -462,6 +462,142 @@ function RecruitingContext({
   );
 }
 
+// V24 Phase 6: the money-gated Scouting Network. Spending treasury raises your
+// reach so more of the class renders a full sheet instead of a bare name.
+function ScoutingNetworkPanel({
+  network,
+  reload,
+}: {
+  network: NonNullable<DynastyOfficeResponse['recruiting']['scouting_network']>;
+  reload: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const reachByLevel: Record<number, string> = {
+    1: 'Home + neighbor districts (local kids only)',
+    2: 'Regional reach — every district + regional prospects',
+    3: 'National reach — the entire class',
+  };
+  const upgrade = () => {
+    setBusy(true);
+    setError(null);
+    dynastyApi
+      .upgradeNetwork()
+      .then(() => reload())
+      .catch((e) => setError(e instanceof Error ? e.message : 'Upgrade failed.'))
+      .finally(() => setBusy(false));
+  };
+  return (
+    <div className="do-panel" aria-label="Scouting Network">
+      <div className="do-panel-head">
+        <span className="dm-kicker">Scouting Network</span>
+        <h4>
+          Level {network.level}{' '}
+          <span style={{ color: '#94a3b8', fontWeight: 400 }}>· {reachByLevel[network.level]}</span>
+        </h4>
+      </div>
+      {network.maxed ? (
+        <p style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
+          L3 — full national reach. Every prospect's sheet is open to you.
+        </p>
+      ) : (
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.6rem' }}>
+          <span style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
+            Raise to L{network.next_level} to open more sheets across the class.
+          </span>
+          <button
+            type="button"
+            className="dm-action"
+            disabled={busy || !network.can_afford}
+            onClick={upgrade}
+            title={
+              network.can_afford
+                ? `Spend ${formatK(network.upgrade_cost_k ?? 0)} from your treasury`
+                : `Treasury ${formatK(network.treasury_k)} — not enough for this upgrade`
+            }
+          >
+            {busy ? 'Upgrading…' : `Upgrade to L${network.next_level} — ${formatK(network.upgrade_cost_k ?? 0)}`}
+          </button>
+          {!network.can_afford && (
+            <span style={{ color: '#f87171', fontSize: '0.68rem' }}>
+              Treasury {formatK(network.treasury_k)} — save up first.
+            </span>
+          )}
+        </div>
+      )}
+      {error && (
+        <p style={{ color: '#f87171', fontSize: '0.68rem', marginTop: '0.4rem' }}>{error}</p>
+      )}
+    </div>
+  );
+}
+
+function FacilitiesUpgradePanel({
+  facilities,
+  reload,
+}: {
+  facilities: NonNullable<DynastyOfficeResponse['facilities']>;
+  reload: () => void;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const build = (facilityType: string) => {
+    setBusy(facilityType);
+    setError(null);
+    dynastyApi
+      .upgradeFacility(facilityType)
+      .then(() => reload())
+      .catch((e) => setError(e instanceof Error ? e.message : 'Build failed.'))
+      .finally(() => setBusy(null));
+  };
+  return (
+    <div className="do-panel" aria-label="Facilities">
+      <div className="do-panel-head">
+        <span className="dm-kicker">Facilities</span>
+        <h4>Build your program — Training Hall develops, Stadium &amp; Merch draw fan income.</h4>
+      </div>
+      <div style={{ display: 'grid', gap: '0.4rem' }}>
+        {facilities.catalog.map((f) => (
+          <div
+            key={f.facility_type}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap',
+              padding: '0.45rem 0.6rem', borderRadius: '6px',
+              border: `1px solid ${f.owned ? '#065f46' : '#1e293b'}`,
+              background: f.owned ? 'rgba(16,185,129,0.06)' : 'rgba(15,23,42,0.4)',
+            }}
+          >
+            <span style={{ fontWeight: 600, color: '#e2e8f0' }}>{f.display_name}</span>
+            <span style={{ color: '#64748b', fontSize: '0.7rem' }}>{f.category}</span>
+            <span style={{ marginLeft: 'auto' }}>
+              {f.owned ? (
+                <span style={{ color: '#10b981', fontSize: '0.74rem', fontWeight: 600 }}>Built ✓</span>
+              ) : (
+                <button
+                  type="button"
+                  className="dm-action"
+                  disabled={busy !== null || !f.can_afford}
+                  onClick={() => build(f.facility_type)}
+                  title={
+                    f.can_afford
+                      ? `Spend ${formatK(f.treasury_cost_k)} from your treasury`
+                      : `Treasury ${formatK(facilities.treasury_k)} — not enough`
+                  }
+                >
+                  {busy === f.facility_type ? 'Building…' : `Build — ${formatK(f.treasury_cost_k)}`}
+                </button>
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+      {error && (
+        <p style={{ color: '#f87171', fontSize: '0.68rem', marginTop: '0.4rem' }}>{error}</p>
+      )}
+    </div>
+  );
+}
+
 function RecruitBoard({
   budget,
   prospects,
@@ -477,12 +613,19 @@ function RecruitBoard({
 
   const filtered = useMemo(() => {
     const base = prospects.filter((prospect) => {
-      if (filter === 'strong') return prospect.fit_score >= 80;
-      if (filter === 'fair') return prospect.fit_score >= 65 && prospect.fit_score < 80;
-      if (filter === 'risk') return prospect.fit_score < 65;
+      // V24 Phase 6: name-only cards have no fit score; they only show under "all".
+      if (prospect.fully_visible === false) return filter === 'all';
+      const fit = prospect.fit_score ?? 0;
+      if (filter === 'strong') return fit >= 80;
+      if (filter === 'fair') return fit >= 65 && fit < 80;
+      if (filter === 'risk') return fit < 65;
       return true;
     });
     return [...base].sort((a, b) => {
+      // Name-only cards always sink to the bottom regardless of sort key.
+      const av0 = a.fully_visible === false ? 1 : 0;
+      const bv0 = b.fully_visible === false ? 1 : 0;
+      if (av0 !== bv0) return av0 - bv0;
       let av: number;
       let bv: number;
       if (sort === 'interest') {
@@ -492,8 +635,8 @@ function RecruitBoard({
         av = a.pipeline_tier ?? 1;
         bv = b.pipeline_tier ?? 1;
       } else {
-        av = a.fit_score;
-        bv = b.fit_score;
+        av = a.fit_score ?? 0;
+        bv = b.fit_score ?? 0;
       }
       return sortDir === 'desc' ? bv - av : av - bv;
     });
@@ -517,7 +660,7 @@ function RecruitBoard({
             Fair Fit <span className="n">{prospects.filter((prospect) => prospect.fit_score >= 65 && prospect.fit_score < 80).length}</span>
           </button>
           <button className={`do-board-filter ${filter === 'risk' ? 'is-active' : ''}`} onClick={() => setFilter('risk')} type="button">
-            At Risk <span className="n">{prospects.filter((prospect) => prospect.fit_score < 65).length}</span>
+            At Risk <span className="n">{prospects.filter((prospect) => prospect.fully_visible !== false && (prospect.fit_score ?? 0) < 65).length}</span>
           </button>
           <span className="do-board-sep" />
           <div
@@ -617,9 +760,11 @@ function RecruitBoard({
 function StaffTab({
   data,
   onStaffUpdate,
+  reload,
 }: {
   data: DynastyOfficeResponse;
   onStaffUpdate: (next: DynastyOfficeResponse) => void;
+  reload: () => void;
 }) {
   const staff = data.staff_market.current_staff;
   const candidates = data.staff_market.candidates;
@@ -658,6 +803,8 @@ function StaffTab({
           <span className="trend">{data.staff_market.recent_actions.length} recent staff moves</span>
         </div>
       </div>
+
+      {data.facilities && <FacilitiesUpgradePanel facilities={data.facilities} reload={reload} />}
 
       <div className="do-staff-grid">
         {staff.map((member) => (
@@ -846,7 +993,14 @@ export function DynastyOffice() {
   }, [activeSubTab, selectedHistoryClubId]);
 
   const sortedProspects = useMemo(
-    () => [...(data?.recruiting.prospects ?? [])].sort((left, right) => right.fit_score - left.fit_score || left.name.localeCompare(right.name)),
+    () => [...(data?.recruiting.prospects ?? [])].sort((left, right) => {
+      // V24 Phase 6: name-only cards (beyond your Scouting Network) sink to the
+      // bottom; their sheet fields are null so guard the fit comparison.
+      const lv = left.fully_visible === false ? 1 : 0;
+      const rv = right.fully_visible === false ? 1 : 0;
+      if (lv !== rv) return lv - rv;
+      return (right.fit_score ?? 0) - (left.fit_score ?? 0) || left.name.localeCompare(right.name);
+    }),
     [data?.recruiting.prospects],
   );
 
@@ -898,11 +1052,14 @@ export function DynastyOffice() {
               <SlotMeter slots={data.recruiting.budget} />
               <StaffBrief staff={data.staff_market.current_staff} />
             </div>
+            {data.recruiting.scouting_network && (
+              <ScoutingNetworkPanel network={data.recruiting.scouting_network} reload={reload} />
+            )}
             <RecruitBoard budget={data.recruiting.budget} prospects={sortedProspects} reload={reload} />
           </div>
         )}
 
-        {activeSubTab === 'staff' && <StaffTab data={data} onStaffUpdate={setData} />}
+        {activeSubTab === 'staff' && <StaffTab data={data} onStaffUpdate={setData} reload={reload} />}
       </div>
 
       {showSettings && planContext && (

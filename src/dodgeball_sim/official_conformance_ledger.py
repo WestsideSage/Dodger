@@ -458,6 +458,21 @@ NON_SECTION_ENFORCEMENT_NOTES: Tuple[Tuple[str, EnforcementState, str], ...] = (
         "rushed catch readiness). First offense is a seeded coin flip. "
         "test_wt20_live_rules.py::test_rush_knobs_change_official_outcomes_same_seed.",
     ),
+    (
+        "officiating points of emphasis",
+        _ENFORCED,
+        "ENFORCED as DISCLOSED SIM-DESIGN (V28 The Weather) — a seasonal "
+        "catch/block leniency shift (SeasonEmphasis) within the rulebook's "
+        "discretion space, NOT a sourced USAD rule; the player-facing bulletin "
+        "must present it as a point of emphasis, never official-rules fidelity. "
+        "It shades the EXISTING catch/block sigmoid bias before the EXISTING roll "
+        "with no new RNG draw, applied SYMMETRICALLY to both sides (every throw "
+        "shares the same shaded bias), and every call the bounded delta flips is "
+        "logged as a DISCRETION event (selection_basis='emphasis_<season>'). The "
+        "default SeasonEmphasis() (deltas 0.0) is byte-identical to a no-bulletin "
+        "season. test_v28_emphasis.py::TestEmphasisLogging::"
+        "test_flips_emit_emphasis_discretion_events.",
+    ),
 )
 
 

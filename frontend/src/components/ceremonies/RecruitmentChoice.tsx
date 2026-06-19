@@ -60,12 +60,14 @@ export function RecruitmentChoice({
         // letting the player plan around three signings with two seats.
         // Playtest 3 F-8: a FULL roster no longer ends recruiting — every
         // pick is a release-to-sign swap, so say that instead of "room for 0".
+        // PT5: every club fields six, so a six-player squad is already a COMPLETE
+        // lineup — additions are optional bench depth, not a shortfall to fill
+        // toward the 12 max. The old "room for N / 6 of 12" copy read as
+        // understaffed when the roster was at the league norm.
         description={
           rosterFull
             ? `Roster is full (${rosterSize}/${rosterLimit}) — signing a prospect releases a player you choose. ${remainingSignings} class slot${remainingSignings === 1 ? '' : 's'} remain.`
-            : rosterLimit - rosterSize < remainingSignings
-            ? `Add up to ${signingLimit} players before next season. ${remainingSignings} class slot${remainingSignings === 1 ? '' : 's'} remain, but your roster is ${rosterSize}/${rosterLimit} — room for ${Math.max(0, rosterLimit - rosterSize)}.`
-            : `Add up to ${signingLimit} players before next season. ${remainingSignings} signing${remainingSignings === 1 ? '' : 's'} remain.`
+            : `A six fields a full lineup — your ${rosterSize}-player squad is ready for the season. Signings are optional bench depth: add up to ${Math.min(signingLimit, rosterLimit - rosterSize)} this window (${remainingSignings} class slot${remainingSignings === 1 ? '' : 's'} remain).`
         }
       />
 
@@ -308,6 +310,32 @@ export function RecruitmentChoice({
                     <p style={{ margin: '0.15rem 0 0', fontSize: '0.74rem', color: '#94a3b8' }}>
                       {prospect.archetype} · {prospect.hometown} · Age {prospect.age}
                     </p>
+                    {/* V24 Phase 7: the same motivation grades + dealbreaker the
+                        in-season board showed — the picker never knows less. */}
+                    {prospect.motivations && prospect.motivations.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', margin: '0.3rem 0 0' }}>
+                        {prospect.motivations.map(m => (
+                          <span
+                            key={m.motivation}
+                            className="dm-badge dm-badge-slate"
+                            title={m.receipt}
+                            style={{ fontSize: '0.55rem' }}
+                          >
+                            {m.label} <strong>{m.letter}</strong>
+                          </span>
+                        ))}
+                        {prospect.dealbreaker && (
+                          <span
+                            className={`dm-badge ${prospect.dealbreaker.veto ? 'dm-badge-orange' : 'dm-badge-violet'}`}
+                            title={prospect.dealbreaker.receipt}
+                            style={{ fontSize: '0.55rem' }}
+                          >
+                            ★ {prospect.dealbreaker.label} {prospect.dealbreaker.letter}
+                            {prospect.dealbreaker.veto ? " — WON'T VERBAL" : ''}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     {prospect.kind === 'prospect' && prospect.public_ovr_band ? (

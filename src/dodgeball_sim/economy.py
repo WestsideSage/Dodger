@@ -93,6 +93,28 @@ def staff_payroll_k(
     )
 
 
+def player_wage_bill_k(conn: sqlite3.Connection, club_id: str) -> int:
+    """V25: the user club's active-roster wage bill (sum of player salaries).
+
+    Pyramid-gated — legacy / non-pyramid saves return 0 so their finances stay
+    byte-identical (the whole contract layer is a V25-on-pyramid feature).
+    """
+    from .world import pyramid_world_active
+
+    if not pyramid_world_active(conn):
+        return 0
+    from .contracts import wage_bill_k
+    from .persistence import load_club_roster
+
+    try:
+        roster = load_club_roster(conn, club_id)
+    except KeyError:
+        # No roster row (partially-built or corrupt save) → no wage bill, never
+        # abort the settlement.
+        return 0
+    return wage_bill_k(roster)
+
+
 def season_income_k(
     *,
     rank: int,
@@ -204,13 +226,27 @@ def apply_season_finances(
     league_payout_k = round(income["league_payout_k"] * tier_multiplier)
     playoff_bonus_k = round(income["playoff_bonus_k"] * tier_multiplier)
     payroll = staff_payroll_k(conn, config)
+    wage_bill = player_wage_bill_k(conn, club_id)
+    # V26: fan income — matchday (capped by stadium) + merch. A meaningful margin,
+    # never prize money's rival; 0 on legacy / non-pyramid saves.
+    from .fan_economy import user_fan_income_k
+
+    fan_income = user_fan_income_k(conn, season_id)
+    matchday_income_k = int(fan_income["matchday_income_k"])
+    merch_income_k = int(fan_income["merch_income_k"])
     opening = treasury_k(conn, config)
-    net = league_payout_k + playoff_bonus_k - payroll
+    net = (
+        league_payout_k + playoff_bonus_k + matchday_income_k + merch_income_k
+        - payroll - wage_bill
+    )
     closing = opening + net
 
+    # V25: name the player wage bill as an outflow when it bites. Legacy /
+    # non-pyramid saves have wage_bill == 0 and keep the byte-identical text.
+    outflow = "staff payroll and player wages out" if wage_bill > 0 else "staff payroll out"
     rules_line = (
-        "Club finances cover the user program only — league payouts in, staff "
-        "payroll out. AI club budgets stay abstracted."
+        f"Club finances cover the user program only — league payouts in, {outflow}. "
+        "AI club budgets stay abstracted."
     )
     if division_name is not None:
         if tier_multiplier == 1.0:
@@ -232,6 +268,11 @@ def apply_season_finances(
         "league_payout_k": league_payout_k,
         "playoff_bonus_k": playoff_bonus_k,
         "staff_payroll_k": payroll,
+        # V25: the user club's wage bill (0 on legacy / non-pyramid saves).
+        "player_wage_bill_k": wage_bill,
+        # V26: fan income (0 on legacy / non-pyramid saves or with no fans).
+        "matchday_income_k": matchday_income_k,
+        "merch_income_k": merch_income_k,
         "net_k": net,
         "opening_treasury_k": opening,
         "closing_treasury_k": closing,
@@ -272,6 +313,7 @@ __all__ = [
     "format_k",
     "hiring_frozen",
     "load_season_finances",
+    "player_wage_bill_k",
     "playoff_result_for_club",
     "season_income_k",
     "set_treasury_k",

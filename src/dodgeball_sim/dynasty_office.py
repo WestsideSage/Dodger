@@ -93,6 +93,8 @@ def build_dynasty_office_state(conn: sqlite3.Connection) -> dict[str, Any]:
     root_seed = _root_seed(conn)
     week = current_week(conn, season) or 0
     from .economy import hiring_frozen, treasury_k
+    from .world import pyramid_world_active
+    from . import bench_roles, facilities_office
 
     return {
         "season_id": season_id,
@@ -117,6 +119,13 @@ def build_dynasty_office_state(conn: sqlite3.Connection) -> dict[str, Any]:
             player_club_id=player_club_id,
             root_seed=root_seed,
         ),
+        # V26: facilities the user can build (treasury sink). None on legacy /
+        # non-pyramid saves (the front end guards the optional field).
+        "facilities": (
+            facilities_office.facilities_state(conn) if pyramid_world_active(conn) else None
+        ),
+        # V26: bench roles assigned this season ({player_id: role}).
+        "bench_roles": bench_roles.assigned_roles(conn) if pyramid_world_active(conn) else {},
     }
 
 

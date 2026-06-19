@@ -1,0 +1,817 @@
+"""V25 The Market — offseason Transfer Period orchestration.
+
+Retention is recruiting's mirror: the V24 motivation grades
+(``motivations.club_fit``) are applied to a rostered player vs his OWN club to
+decide whether he re-signs. Because a player keeps the id he carried as a
+prospect, his motivation profile is identical from recruitment through his whole
+career. Poaching (Phase 3) and buyouts (Phase 4) build on the same machinery.
+
+Pure decision functions live here so they are unit-testable without a DB; the
+``evaluate_*`` wrappers wire them to real save data.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import List, Optional
+
+from .config import DEFAULT_CONTRACTS, ContractConfig
+from .models import Player
+
+
+# --- motivation adapter ---------------------------------------------------------
+
+@dataclass(frozen=True)
+class _PlayerMotivationView:
+    """Exposes a rostered ``Player`` through the prospect interface the V24
+    motivation graders read (``player_id`` / ``public_archetype_guess`` /
+    ``hometown``)."""
+
+    player_id: str
+    public_archetype_guess: str
+    hometown: Optional[str]
+
+
+def motivation_view(player: Player, hometown: Optional[str] = None) -> _PlayerMotivationView:
+    return _PlayerMotivationView(
+        player_id=player.id,
+        # Same ``str(archetype)`` expression build_club_context uses to key the
+        # roster archetype counts, so the Court Time grade reads real depth.
+        public_archetype_guess=str(getattr(player, "archetype", "") or ""),
+        hometown=hometown,
+    )
+
+
+# --- expiring cohort ------------------------------------------------------------
+
+def expiring_players(conn, club_id: str) -> List[Player]:
+    """Players whose contract has run out (term <= 0) — the re-sign cohort."""
+    from .persistence import load_club_roster
+
+    try:
+        roster = load_club_roster(conn, club_id)
+    except KeyError:
+        return []
+    return [p for p in roster if p.contract_term <= 0]
+
+
+# --- retention (re-sign) decision ----------------------------------------------
+
+@dataclass(frozen=True)
+class ResignOutcome:
+    player_id: str
+    re_signed: bool
+    fit: float
+    veto: bool
+    offer_salary_k: int
+    expected_salary_k: int
+    required_salary_k: int
+    receipt: str
+
+
+def resign_required_salary_k(
+    expected_salary_k: int, fit: float, config: ContractConfig = DEFAULT_CONTRACTS
+) -> int:
+    """The salary the player will accept, bent by motivation fit.
+
+    fit 1.0 -> ``expected * (1 - resign_fit_discount)`` (loyal, signs cheap);
+    fit 0.0 -> ``expected * (1 + resign_low_fit_premium)`` (wants a premium).
+    """
+    fit = max(0.0, min(1.0, fit))
+    span = config.resign_fit_discount + config.resign_low_fit_premium
+    factor = 1.0 + config.resign_low_fit_premium - span * fit
+    return round(expected_salary_k * factor)
+
+
+def retention_decision(
+    *,
+    offer_salary_k: int,
+    expected_salary_k: int,
+    fit: float,
+    veto: bool,
+    dealbreaker: str = "",
+    config: ContractConfig = DEFAULT_CONTRACTS,
+) -> tuple[bool, int, str]:
+    """Pure re-sign decision. Returns (re_signed, required_salary_k, receipt).
+
+    A dealbreaker veto can never re-sign regardless of money; otherwise the
+    player re-signs when the offer meets the fit-adjusted salary he requires.
+    """
+    if veto:
+        label = dealbreaker.replace("_", " ").title() if dealbreaker else "a core need"
+        return False, expected_salary_k, f"Walked: {label} grade too low to re-sign at any price."
+    required = resign_required_salary_k(expected_salary_k, fit, config)
+    if offer_salary_k >= required:
+        return True, required, f"Re-signed: ${offer_salary_k}k met his ${required}k ask (fit {fit:.0%})."
+    return (
+        False,
+        required,
+        f"Walked: ${offer_salary_k}k fell short of his ${required}k ask (fit {fit:.0%}).",
+    )
+
+
+def evaluate_retention(
+    conn,
+    club_id: str,
+    player: Player,
+    offer_salary_k: int,
+    season_id: Optional[str] = None,
+    config: ContractConfig = DEFAULT_CONTRACTS,
+) -> ResignOutcome:
+    """Grade a rostered player against his own club and decide the re-sign."""
+    from . import contracts
+    from .motivations import build_club_context, club_fit
+    from .persistence import load_division_map
+
+    ctx = build_club_context(conn, club_id, season_id)
+    fit = club_fit(ctx, motivation_view(player))
+    tier = 3
+    if season_id:
+        seat = load_division_map(conn, season_id).get(club_id)
+        tier = seat.tier if seat is not None else 3
+    expected = contracts.second_contract_salary_k(player.overall_skill(), tier)
+    re_signed, required, receipt = retention_decision(
+        offer_salary_k=offer_salary_k,
+        expected_salary_k=expected,
+        fit=fit.fit,
+        veto=fit.veto,
+        dealbreaker=fit.dealbreaker,
+        config=config,
+    )
+    return ResignOutcome(
+        player_id=player.id,
+        re_signed=re_signed,
+        fit=fit.fit,
+        veto=fit.veto,
+        offer_salary_k=offer_salary_k,
+        expected_salary_k=expected,
+        required_salary_k=required,
+        receipt=receipt,
+    )
+
+
+# --- Phase 3: uphill poaching ---------------------------------------------------
+
+@dataclass(frozen=True)
+class PoachSuitor:
+    club_id: str
+    club_name: str
+    tier: int
+    offer_salary_k: int
+    interest: int
+    receipt: str
+
+
+def poach_suitors(
+    conn,
+    season_id: str,
+    player: Player,
+    user_club_id: str,
+    root_seed: int,
+    config: ContractConfig = DEFAULT_CONTRACTS,
+) -> List[PoachSuitor]:
+    """Higher-tier AI clubs with wage headroom that court a user expiring star.
+
+    Poaching flows UPHILL: only clubs in a higher tier (lower tier number) than
+    the player's club bid, and only when their tier wage budget has room for his
+    estimated wage. Interest reuses the V24 ``derive_club_pursuit`` proxy on a
+    fresh ``v25_poach`` stream (the player's OVR is the talent a club reads);
+    the offer scales the estimated wage up by that interest. Deterministic.
+    """
+    from . import contracts
+    from .prospect_market import derive_club_pursuit
+    from .persistence import load_all_rosters, load_clubs, load_division_map
+    from .rng import DeterministicRNG, derive_seed
+
+    division_map = load_division_map(conn, season_id)
+    user_seat = division_map.get(user_club_id)
+    if user_seat is None:
+        return []
+    user_tier = user_seat.tier
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+    ovr = player.overall_skill()
+
+    suitors: List[PoachSuitor] = []
+    for club_id, seat in division_map.items():
+        if club_id == user_club_id or seat.tier >= user_tier:
+            continue  # uphill only (lower tier number = higher rung)
+        est_wage = contracts.second_contract_salary_k(ovr, seat.tier, config)
+        bill = contracts.wage_bill_k(rosters.get(club_id, []), config)
+        budget = contracts.wage_budget_for_tier(seat.tier, config)
+        if budget - bill < est_wage:
+            continue  # no wage headroom — the cap binds
+        jitter = DeterministicRNG(
+            derive_seed(root_seed, "v25_poach", player.id, club_id)
+        ).unit()
+        interest = derive_club_pursuit(public_high_band=ovr, tier=seat.tier, jitter=jitter)
+        if interest <= 0:
+            continue
+        offer = round(est_wage * (1.0 + config.poach_offer_interest_scale * interest / 100.0))
+        name = getattr(clubs.get(club_id), "name", club_id)
+        suitors.append(
+            PoachSuitor(
+                club_id=club_id,
+                club_name=name,
+                tier=seat.tier,
+                offer_salary_k=offer,
+                interest=interest,
+                receipt=f"{name} (Tier {seat.tier}) — interest {interest}, offers ${offer}k.",
+            )
+        )
+    return sorted(suitors, key=lambda s: (-s.offer_salary_k, -s.interest, s.club_id))
+
+
+@dataclass(frozen=True)
+class PoachResolution:
+    player_id: str
+    stayed: bool
+    winner_club_id: Optional[str]
+    user_offer_k: int
+    best_rival_offer_k: int
+    fit: float
+    veto: bool
+    dev_compensation_k: int
+    receipt: str
+
+
+def resolve_poaching(
+    *,
+    player_id: str,
+    user_offer_k: int,
+    expected_salary_k: int,
+    fit: float,
+    veto: bool,
+    dealbreaker_letter: str,
+    suitors: List[PoachSuitor],
+    salary_k: int,
+    term_remaining: int,
+    config: ContractConfig = DEFAULT_CONTRACTS,
+) -> PoachResolution:
+    """Decide whether a courted expiring player stays or is poached.
+
+    Money is the dominant pull; motivations break ties — a loyal (high-fit)
+    player stays even when outbid, up to a fit-scaled loyalty buffer; a
+    dealbreaker veto always leaves. A departure earns the user a modest
+    development-compensation credit and carries a data-derived receipt.
+    """
+    best = suitors[0] if suitors else None
+    rival = best.offer_salary_k if best else 0
+    required = resign_required_salary_k(expected_salary_k, fit, config)
+    loyalty_buffer = round(max(0.0, min(1.0, fit)) * config.poach_loyalty_money_k)
+
+    stays = (
+        not veto
+        and user_offer_k >= required
+        and user_offer_k + loyalty_buffer >= rival
+    )
+    if stays or best is None:
+        # No suitor able to take him, or he chose to stay: he is retained (the
+        # caller still checks retention_decision for the no-suitor walk case).
+        return PoachResolution(
+            player_id=player_id,
+            stayed=stays,
+            winner_club_id=None,
+            user_offer_k=user_offer_k,
+            best_rival_offer_k=rival,
+            fit=fit,
+            veto=veto,
+            dev_compensation_k=0,
+            receipt=(
+                f"Re-signed: held off {best.club_name} (${rival}k) on a ${user_offer_k}k offer."
+                if (stays and best is not None)
+                else f"Re-signed: ${user_offer_k}k, no rival pursuit."
+            ),
+        )
+
+    from . import contracts
+
+    dev_comp = contracts.dev_compensation_k(salary_k, term_remaining, config)
+    ratio = rival / max(1, user_offer_k)
+    if veto:
+        reason = f"his {dealbreaker_letter} dealbreaker grade left him gone at any price"
+    else:
+        reason = f"outbid ×{ratio:.1f} (${rival}k vs your ${user_offer_k}k)"
+    return PoachResolution(
+        player_id=player_id,
+        stayed=False,
+        winner_club_id=best.club_id,
+        user_offer_k=user_offer_k,
+        best_rival_offer_k=rival,
+        fit=fit,
+        veto=veto,
+        dev_compensation_k=dev_comp,
+        receipt=f"Poached by {best.club_name}: {reason}. (+${dev_comp}k development compensation.)",
+    )
+
+
+# --- Phase 4: buyouts (incoming refusable, outgoing bids) -----------------------
+
+@dataclass(frozen=True)
+class BuyoutOffer:
+    buyer_club_id: str
+    buyer_club_name: str
+    buyer_tier: int
+    player_id: str
+    player_name: str
+    fee_k: int
+    receipt: str
+
+
+def incoming_buyout_offers(
+    conn,
+    season_id: str,
+    user_club_id: str,
+    root_seed: int,
+    config: ContractConfig = DEFAULT_CONTRACTS,
+) -> List[BuyoutOffer]:
+    """Higher-tier clubs table refusable buyout bids for the user's CONTRACTED
+    (non-expiring) stars whose pursuit interest clears the threshold.
+
+    Accepting is treasury income; refusing keeps the player and his wage — the
+    'couldn't let him fall into another team's hands' beat. Deterministic on the
+    ``v25_transfer`` stream; only solvent (wage-headroom) higher-tier clubs bid.
+    """
+    from . import contracts
+    from .prospect_market import derive_club_pursuit
+    from .persistence import load_all_rosters, load_clubs, load_division_map
+    from .rng import DeterministicRNG, derive_seed
+
+    division_map = load_division_map(conn, season_id)
+    user_seat = division_map.get(user_club_id)
+    if user_seat is None:
+        return []
+    user_tier = user_seat.tier
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+    contracted = sorted(
+        (p for p in rosters.get(user_club_id, []) if p.contract_term > 0),
+        key=lambda p: -p.overall_skill(),
+    )
+
+    offers: List[BuyoutOffer] = []
+    for player in contracted:
+        ovr = player.overall_skill()
+        best = None  # (club_id, interest, tier)
+        for club_id, seat in division_map.items():
+            if club_id == user_club_id or seat.tier >= user_tier:
+                continue
+            est_wage = contracts.second_contract_salary_k(ovr, seat.tier, config)
+            bill = contracts.wage_bill_k(rosters.get(club_id, []), config)
+            if contracts.wage_budget_for_tier(seat.tier, config) - bill < est_wage:
+                continue
+            jitter = DeterministicRNG(
+                derive_seed(root_seed, "v25_transfer", player.id, club_id)
+            ).unit()
+            interest = derive_club_pursuit(public_high_band=ovr, tier=seat.tier, jitter=jitter)
+            if best is None or interest > best[1]:
+                best = (club_id, interest, seat.tier)
+        if best is None or best[1] < config.buyout_interest_threshold:
+            continue
+        club_id, interest, tier = best
+        fee = contracts.buyout_fee_k(player.salary_k, player.contract_term, config)
+        name = getattr(clubs.get(club_id), "name", club_id)
+        offers.append(
+            BuyoutOffer(
+                buyer_club_id=club_id,
+                buyer_club_name=name,
+                buyer_tier=tier,
+                player_id=player.id,
+                player_name=player.name,
+                fee_k=fee,
+                receipt=f"{name} (Tier {tier}) bids ${fee}k for {player.name} (interest {interest}).",
+            )
+        )
+    return offers
+
+
+def accept_buyout(conn, user_club_id: str, offer: BuyoutOffer) -> int:
+    """Sell the player: move him to the buyer, credit the fee. Returns the fee."""
+    from dataclasses import replace as _replace
+
+    from .economy import set_treasury_k, treasury_k
+    from .persistence import load_all_rosters, load_clubs, save_club
+
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+    user_roster = rosters.get(user_club_id, [])
+    moved = next((p for p in user_roster if p.id == offer.player_id), None)
+    if moved is None:
+        return 0
+    save_club(conn, clubs[user_club_id], [p for p in user_roster if p.id != offer.player_id])
+    buyer_roster = list(rosters.get(offer.buyer_club_id, [])) + [
+        _replace(moved, club_id=offer.buyer_club_id)
+    ]
+    save_club(conn, clubs[offer.buyer_club_id], buyer_roster)
+    set_treasury_k(conn, treasury_k(conn) + offer.fee_k)
+    conn.commit()
+    return offer.fee_k
+
+
+@dataclass(frozen=True)
+class OutgoingBidResult:
+    success: bool
+    asking_k: int
+    bid_k: int
+    player_id: str
+    receipt: str
+
+
+def outgoing_bid(
+    conn,
+    user_club_id: str,
+    target_club_id: str,
+    target_player_id: str,
+    bid_k: int,
+    config: ContractConfig = DEFAULT_CONTRACTS,
+) -> OutgoingBidResult:
+    """Bid against an AI asking price to buy a contracted player — rich-club
+    privilege: the bid must meet the asking AND the treasury must cover it AND
+    the selling club may not be left below the roster floor."""
+    from dataclasses import replace as _replace
+
+    from .economy import set_treasury_k, treasury_k
+    from .persistence import load_all_rosters, load_clubs, save_club
+
+    rosters = load_all_rosters(conn)
+    target = next((p for p in rosters.get(target_club_id, []) if p.id == target_player_id), None)
+    if target is None:
+        return OutgoingBidResult(False, 0, bid_k, target_player_id, "Target not found.")
+    from . import contracts
+
+    asking = contracts.buyout_fee_k(target.salary_k, max(1, target.contract_term), config)
+    treasury = treasury_k(conn)
+    if bid_k < asking:
+        return OutgoingBidResult(False, asking, bid_k, target_player_id,
+                                 f"Bid ${bid_k}k under the ${asking}k asking price.")
+    if treasury < bid_k:
+        return OutgoingBidResult(False, asking, bid_k, target_player_id,
+                                 f"Treasury ${treasury}k cannot cover ${bid_k}k — rich-club privilege.")
+    if len(rosters.get(target_club_id, [])) - 1 < config.min_roster_after_transfer:
+        return OutgoingBidResult(False, asking, bid_k, target_player_id,
+                                 f"{target_club_id} won't sell below its roster floor.")
+    clubs = load_clubs(conn)
+    save_club(conn, clubs[target_club_id],
+              [p for p in rosters.get(target_club_id, []) if p.id != target_player_id])
+    save_club(conn, clubs[user_club_id],
+              list(rosters.get(user_club_id, [])) + [_replace(target, club_id=user_club_id)])
+    set_treasury_k(conn, treasury - bid_k)
+    conn.commit()
+    return OutgoingBidResult(True, asking, bid_k, target_player_id,
+                             f"Signed {target.name} for ${bid_k}k (asking ${asking}k).")
+
+
+# --- Phase 5: AI symmetry, transfer ledger, news --------------------------------
+
+_TRANSFERS_STATE_KEY = "v25_transfers_json"
+
+
+def record_transfers(conn, entries: List[dict]) -> None:
+    """Append movement records to the persistent league transfer ledger."""
+    import json
+
+    from .persistence import get_state, set_state
+
+    if not entries:
+        return
+    existing = json.loads(get_state(conn, _TRANSFERS_STATE_KEY) or "[]")
+    existing.extend(entries)
+    set_state(conn, _TRANSFERS_STATE_KEY, json.dumps(existing))
+
+
+def load_transfers(conn, season_id: Optional[str] = None) -> List[dict]:
+    import json
+
+    from .persistence import get_state
+
+    everything = json.loads(get_state(conn, _TRANSFERS_STATE_KEY) or "[]")
+    if season_id is None:
+        return everything
+    return [e for e in everything if e.get("season_id") == season_id]
+
+
+def run_ai_transfer_period(
+    conn, season_id: str, root_seed: int, config: ContractConfig = DEFAULT_CONTRACTS
+) -> dict:
+    """Resolve every AI club's expiring players: re-sign affordable keepers,
+    release the rest to free agency. The tier wage budget binds, so a strapped
+    club really loses players (the 'AI mistake' / real churn the cap enforces).
+    A dealbreaker veto walks a player regardless of money. Notable departures
+    are logged to the league transfer ledger and surfaced as news. The user
+    club is skipped — the user resolves his own expiring squad in the Transfer
+    Period beat. Deterministic; idempotency is the caller's responsibility.
+    """
+    from dataclasses import replace
+
+    from . import contracts
+    from .motivations import build_club_context, club_fit
+    from .persistence import (
+        add_free_agent,
+        get_state,
+        load_all_rosters,
+        load_clubs,
+        load_division_map,
+        save_club,
+        save_news_headlines,
+    )
+
+    division_map = load_division_map(conn, season_id)
+    if not division_map:
+        return {"resigned": 0, "released": 0, "moved": 0}
+    user_club = get_state(conn, "player_club_id")
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+
+    entries: List[dict] = []
+    headlines: List[dict] = []
+    resigned = released = 0
+    for club_id, seat in sorted(division_map.items()):
+        if club_id == user_club:
+            continue
+        roster = rosters.get(club_id, [])
+        expiring = [p for p in roster if p.contract_term <= 0]
+        if not expiring:
+            continue
+        ctx = build_club_context(conn, club_id, season_id)
+        keepers = [p for p in roster if p.contract_term > 0]
+        bill = contracts.wage_bill_k(keepers, config)
+        budget = contracts.wage_budget_for_tier(seat.tier, config)
+        new_roster = list(keepers)
+        for player in sorted(expiring, key=lambda p: -p.overall_skill()):
+            ovr = player.overall_skill()
+            wage = contracts.second_contract_salary_k(ovr, seat.tier, config)
+            fit = club_fit(ctx, motivation_view(player))
+            must_keep = len(new_roster) < config.min_roster_after_transfer
+            if (not fit.veto and bill + wage <= budget) or must_keep:
+                new_roster.append(
+                    replace(player, salary_k=wage, contract_term=config.resign_term_default)
+                )
+                bill += wage
+                resigned += 1
+                entries.append({
+                    "season_id": season_id, "type": "resign", "club_id": club_id,
+                    "player_id": player.id, "player_name": player.name, "ovr": ovr,
+                })
+            else:
+                released += 1
+                add_free_agent(conn, replace(player, club_id=None), season_id)
+                reason = "dealbreaker" if fit.veto else "cap"
+                entries.append({
+                    "season_id": season_id, "type": "release", "club_id": club_id,
+                    "player_id": player.id, "player_name": player.name, "ovr": ovr,
+                    "reason": reason,
+                })
+                if ovr >= config.transfer_news_ovr_threshold:
+                    club_name = getattr(clubs.get(club_id), "name", club_id)
+                    why = "couldn't meet his terms" if reason == "dealbreaker" else "the wage budget bit"
+                    headlines.append({
+                        "headline_id": f"v25_release_{season_id}_{player.id}",
+                        "category": "transfer",
+                        "headline_text": f"{club_name} let {player.name} ({ovr} OVR) walk — {why}.",
+                        "entity_ids": [player.id, club_id],
+                    })
+        save_club(conn, clubs[club_id], new_roster)
+
+    record_transfers(conn, entries)
+    if headlines:
+        save_news_headlines(conn, season_id, 0, headlines)
+    conn.commit()
+    return {"resigned": resigned, "released": released, "moved": len(entries)}
+
+
+# --- Phase 6: the user's interactive Transfer Period beat -----------------------
+
+_USER_STATE_KEY = "v25_user_transfer_json"
+_USER_RESULTS_KEY = "v25_user_transfer_results_json"
+_USER_COMMITTED_KEY = "v25_user_transfer_committed_for"
+
+
+def _expiring_context(conn, season_id, user_club_id, player, root_seed, config):
+    """(ask_k, Fit, suitors) for one expiring user player — shared by the display
+    state and the commit so they never disagree."""
+    from . import contracts
+    from .motivations import build_club_context, club_fit
+    from .persistence import load_division_map
+
+    seat = load_division_map(conn, season_id).get(user_club_id)
+    tier = seat.tier if seat is not None else 3
+    ctx = build_club_context(conn, user_club_id, season_id)
+    fit = club_fit(ctx, motivation_view(player))
+    ask = contracts.second_contract_salary_k(player.overall_skill(), tier, config)
+    suitors = poach_suitors(conn, season_id, player, user_club_id, root_seed, config)
+    return ask, fit, suitors
+
+
+def build_user_transfer_state(
+    conn, season_id, user_club_id, root_seed, config: ContractConfig = DEFAULT_CONTRACTS
+) -> dict:
+    """Assemble the user's Transfer Period beat state with default decisions
+    (re-sign every expiring player at his ask; refuse every incoming buyout).
+    Pure read — no roster mutation; cached at offseason init and adjusted by the
+    user's actions before the commit-on-advance applies it."""
+    from .motivations import grade_letter
+
+    expiring = []
+    for player in expiring_players(conn, user_club_id):
+        ask, fit, suitors = _expiring_context(conn, season_id, user_club_id, player, root_seed, config)
+        top = suitors[0] if suitors else None
+        # PT5 fix: the displayed ask + default offer must be the FIT-ADJUSTED
+        # salary the player will actually accept (resolve_poaching tests the
+        # offer against this), not the raw second-contract wage. A low-fit
+        # player asks a premium; defaulting to the raw ask silently undershot it,
+        # so clicking 'Re-sign' walked him to free agency even with no suitor.
+        required = resign_required_salary_k(ask, fit.fit, config)
+        expiring.append({
+            "player_id": player.id,
+            "name": player.name,
+            "ovr": player.overall_skill(),
+            "current_salary_k": player.salary_k,
+            "ask_k": required,
+            "user_offer_k": required,       # default: meet what he actually asks
+            "fit": round(fit.fit, 3),
+            "veto": fit.veto,
+            "dealbreaker": fit.dealbreaker,
+            "dealbreaker_letter": grade_letter(fit.grades[fit.dealbreaker].score),
+            "top_suitor": (
+                {"club_name": top.club_name, "tier": top.tier, "offer_k": top.offer_salary_k}
+                if top else None
+            ),
+            "decision": "resign",
+        })
+    buyouts = [
+        {
+            "player_id": o.player_id, "name": o.player_name, "fee_k": o.fee_k,
+            "buyer_club_name": o.buyer_club_name, "buyer_tier": o.buyer_tier,
+            "buyer_club_id": o.buyer_club_id, "decision": "refuse",
+        }
+        for o in incoming_buyout_offers(conn, season_id, user_club_id, root_seed, config)
+    ]
+    return {"season_id": season_id, "expiring": expiring, "buyouts": buyouts}
+
+
+def load_user_transfer_state(conn) -> Optional[dict]:
+    import json
+    from .persistence import get_state
+
+    raw = get_state(conn, _USER_STATE_KEY)
+    return json.loads(raw) if raw else None
+
+
+def save_user_transfer_state(conn, state: dict) -> None:
+    import json
+    from .persistence import set_state
+
+    set_state(conn, _USER_STATE_KEY, json.dumps(state))
+
+
+def set_expiring_decision(conn, player_id, decision, user_offer_k=None) -> Optional[dict]:
+    """User action: keep ('resign') or let walk ('release') an expiring player,
+    optionally raising the re-sign offer to fight off a poacher."""
+    state = load_user_transfer_state(conn)
+    if not state:
+        return None
+    for row in state["expiring"]:
+        if row["player_id"] == player_id:
+            row["decision"] = "release" if decision == "release" else "resign"
+            if user_offer_k is not None:
+                row["user_offer_k"] = max(0, int(user_offer_k))
+            if row["decision"] == "release":
+                row["user_offer_k"] = 0
+            break
+    save_user_transfer_state(conn, state)
+    return state
+
+
+def set_buyout_decision(conn, player_id, decision) -> Optional[dict]:
+    """User action: accept (sell) or refuse (keep) an incoming buyout."""
+    state = load_user_transfer_state(conn)
+    if not state:
+        return None
+    for row in state["buyouts"]:
+        if row["player_id"] == player_id:
+            row["decision"] = "accept" if decision == "accept" else "refuse"
+            break
+    save_user_transfer_state(conn, state)
+    return state
+
+
+def apply_user_transfer_decisions(
+    conn, season_id, user_club_id, root_seed, config: ContractConfig = DEFAULT_CONTRACTS
+) -> dict:
+    """Commit the user's Transfer Period decisions once (idempotent per season).
+
+    Each expiring player is resolved through the SAME contested poach logic the
+    AI faces: a re-sign offer competes with rival suitors (a star can still be
+    outbid), a 'release' is a zero offer (he walks/poached). Accepted buyouts
+    sell the player for treasury income. Departures carry receipts + dev comp.
+    """
+    import json
+    from dataclasses import replace
+
+    from .economy import set_treasury_k, treasury_k
+    from .motivations import grade_letter
+    from .persistence import (
+        add_free_agent, get_state, load_all_rosters, load_clubs, save_club, set_state,
+    )
+
+    if get_state(conn, _USER_COMMITTED_KEY) == season_id:
+        raw = get_state(conn, _USER_RESULTS_KEY)
+        return json.loads(raw) if raw else {"resigned": [], "departed": [], "sold": []}
+
+    state = load_user_transfer_state(conn) or {"expiring": [], "buyouts": []}
+    clubs = load_clubs(conn)
+    rosters = load_all_rosters(conn)
+    roster = {p.id: p for p in rosters.get(user_club_id, [])}
+    decisions = {r["player_id"]: r for r in state.get("expiring", [])}
+
+    resigned, departed, sold = [], [], []
+
+    # 1) Sold players (accepted incoming buyouts) — money in, player out.
+    for b in state.get("buyouts", []):
+        if b.get("decision") != "accept":
+            continue
+        offer = BuyoutOffer(
+            buyer_club_id=b["buyer_club_id"], buyer_club_name=b["buyer_club_name"],
+            buyer_tier=b["buyer_tier"], player_id=b["player_id"],
+            player_name=b["name"], fee_k=b["fee_k"], receipt="",
+        )
+        fee = accept_buyout(conn, user_club_id, offer)
+        if fee:
+            roster.pop(b["player_id"], None)
+            sold.append({"name": b["name"], "fee_k": fee, "buyer": b["buyer_club_name"]})
+
+    # Re-read after any sales mutated rosters.
+    rosters = load_all_rosters(conn)
+    roster = {p.id: p for p in rosters.get(user_club_id, [])}
+
+    # 2) Expiring players — contested resolution per decision. A departure is
+    # capped at the roster floor: you cannot release/lose your way below a legal
+    # fielded six (mirrors the AI's must_keep), so auto-pilot never stalls.
+    for player_id, dec in decisions.items():
+        player = roster.get(player_id)
+        if player is None:
+            continue  # already sold above
+        ask, fit, suitors = _expiring_context(conn, season_id, user_club_id, player, root_seed, config)
+        is_release = dec.get("decision") == "release"
+        user_offer = 0 if is_release else int(dec.get("user_offer_k", ask))
+        res = resolve_poaching(
+            player_id=player_id, user_offer_k=user_offer, expected_salary_k=ask,
+            fit=fit.fit, veto=fit.veto, dealbreaker_letter=grade_letter(fit.grades[fit.dealbreaker].score),
+            suitors=suitors, salary_k=player.salary_k, term_remaining=max(1, player.contract_term),
+            config=config,
+        )
+        must_keep = len(roster) <= config.min_roster_after_transfer
+        if res.stayed or must_keep:
+            # Forced keep (floor) re-signs at his ask so he is on a real deal.
+            keep_salary = user_offer if (res.stayed and not is_release) else ask
+            roster[player_id] = replace(player, salary_k=keep_salary, contract_term=config.resign_term_default)
+            resigned.append({"name": player.name, "salary_k": keep_salary})
+        else:
+            roster.pop(player_id, None)
+            if res.winner_club_id and res.winner_club_id in clubs:
+                buyer_roster = list(rosters.get(res.winner_club_id, [])) + [replace(player, club_id=res.winner_club_id)]
+                save_club(conn, clubs[res.winner_club_id], buyer_roster)
+                set_treasury_k(conn, treasury_k(conn) + res.dev_compensation_k)
+            else:
+                add_free_agent(conn, replace(player, club_id=None), season_id)
+            departed.append({"name": player.name, "receipt": res.receipt, "dev_compensation_k": res.dev_compensation_k})
+
+    save_club(conn, clubs[user_club_id], list(roster.values()))
+    results = {"resigned": resigned, "departed": departed, "sold": sold}
+    set_state(conn, _USER_RESULTS_KEY, json.dumps(results))
+    set_state(conn, _USER_COMMITTED_KEY, season_id)
+    if departed or sold:
+        record_transfers(conn, [
+            {"season_id": season_id, "type": "user_out", "club_id": user_club_id,
+             "player_name": d["name"], "receipt": d["receipt"]}
+            for d in departed
+        ])
+    conn.commit()
+    return results
+
+
+__all__ = [
+    "motivation_view",
+    "expiring_players",
+    "ResignOutcome",
+    "resign_required_salary_k",
+    "retention_decision",
+    "evaluate_retention",
+    "PoachSuitor",
+    "poach_suitors",
+    "PoachResolution",
+    "resolve_poaching",
+    "BuyoutOffer",
+    "incoming_buyout_offers",
+    "accept_buyout",
+    "OutgoingBidResult",
+    "outgoing_bid",
+    "record_transfers",
+    "load_transfers",
+    "run_ai_transfer_period",
+    "build_user_transfer_state",
+    "load_user_transfer_state",
+    "save_user_transfer_state",
+    "set_expiring_decision",
+    "set_buyout_decision",
+    "apply_user_transfer_decisions",
+]

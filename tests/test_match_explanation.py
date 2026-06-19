@@ -96,6 +96,33 @@ def test_massive_catch_diff_outranks_minor_stamina():
     assert exp.primary_factor.code == CATCH_DISPARITY
 
 
+def test_decisive_official_win_chips_use_game_points_not_survivors():
+    # PT6: an official 7-5 game-point WIN whose final set ended 0-0 on survivors.
+    # The Primary Factor fallback chips must show the game-point scoreline, not
+    # the V20/WT-2 "Survivors 0-0 / Margin 0" lie.
+    exp = _base(
+        result="Win",
+        player_survivors=0,
+        opponent_survivors=0,
+        player_catches=0,
+        opponent_catches=0,
+        point_margin=2,
+        player_game_points=7,
+        opponent_game_points=5,
+    )
+    chips = exp.primary_factor.evidence_chips
+    assert not any("Survivors 0-0" in c for c in chips), chips
+    assert not any(c == "Margin 0" for c in chips), chips
+    assert any("7-5" in c for c in chips), chips
+
+
+def test_legacy_survivor_match_chips_unchanged():
+    # No game points (legacy/generic) => survivor chips stay byte-identical.
+    exp = _base(result="Loss", player_survivors=2, opponent_survivors=4)
+    chips = exp.primary_factor.evidence_chips
+    assert any("Survivors 2-4" in c for c in chips), chips
+
+
 def test_late_event_wins_finality_tie():
     # Two factors at equal weight: the later (more final) one wins.
     # Catch diff of 2 (weight 2.0, finality 0) vs one late gassed collapse

@@ -133,7 +133,9 @@ from dodgeball_sim.offseason_service import (
     advance_offseason_beat_payload,
     begin_next_season_payload,
     get_offseason_beat_payload,
+    media_choice_payload,
     recruit_offseason_payload,
+    transfer_action_payload,
 )
 from dodgeball_sim.offseason_presentation import build_beat_payload
 from dodgeball_sim.save_service import (
@@ -329,6 +331,30 @@ class OffseasonRecruitRequest(BaseModel):
     release_player_id: str | None = None
 
 
+class OffseasonTransferRequest(BaseModel):
+    # V25 Transfer Period: action is one of resign | release | accept_buyout |
+    # refuse_buyout; offer_k optionally raises a re-sign offer to fight a poacher.
+    action: str
+    player_id: str
+    offer_k: int | None = None
+
+
+class FacilityUpgradeRequest(BaseModel):
+    # V26: the facility_type to build (treasury sink).
+    facility_type: str
+
+
+class BenchRoleRequest(BaseModel):
+    # V26: assign (or clear, role=None/"none") a bench role to a non-starter.
+    player_id: str
+    role: str | None = None
+
+
+class MediaChoiceRequest(BaseModel):
+    # V26: the chosen Media Moment option key.
+    option_key: str
+
+
 class CareerStateResponse(BaseModel):
     state: str
     season_number: int
@@ -411,6 +437,9 @@ class StandingsResponse(BaseModel):
     # single-league saves. Declared or FastAPI strips them (WT-2/WT-3 family).
     division: dict[str, Any] | None = None
     divisions: list[dict[str, Any]] | None = None
+    # V28: the league news wire (class_wire / event_news / meta_report /
+    # league_bulletin) for the League Wire ticker. Declared or FastAPI strips it.
+    wire_headlines: list[dict[str, Any]] | None = None
 
 
 class ScheduleItem(BaseModel):
@@ -971,6 +1000,56 @@ def recruiting_visit(prospect_id: str, conn = Depends(get_db)):
     return _run_recruiting_action(conn, prospect_id, "visit")
 
 
+@app.post("/api/recruiting/focus/{prospect_id}")
+def recruiting_focus(prospect_id: str, conn = Depends(get_db)):
+    """V24: toggle a prospect on/off the persistent focus list (shortlist). Once
+    focused you can Contact him; your top focus targets unlock Visit."""
+    from dodgeball_sim.recruiting_office import toggle_focus
+
+    focused = toggle_focus(conn, prospect_id)
+    conn.commit()
+    return {"status": "success", "focused": focused}
+
+
+@app.post("/api/recruiting/network/upgrade")
+def recruiting_network_upgrade(conn = Depends(get_db)):
+    """V24 Phase 6: spend treasury to raise the Scouting Network one level,
+    widening which prospects render a full sheet (the money-gated reach)."""
+    from dodgeball_sim.recruiting_office import upgrade_scouting_network
+
+    try:
+        result = upgrade_scouting_network(conn)
+        conn.commit()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"status": "success", "network": result}
+
+
+@app.post("/api/dynasty-office/facilities/upgrade")
+def dynasty_office_facilities_upgrade(request: FacilityUpgradeRequest, conn = Depends(get_db)):
+    """V26 The Crowd: spend treasury to build a facility permanently."""
+    from dodgeball_sim.facilities_office import buy_facility
+
+    try:
+        result = buy_facility(conn, request.facility_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"status": "success", "facilities": result}
+
+
+@app.post("/api/dynasty-office/bench-role")
+def dynasty_office_bench_role(request: BenchRoleRequest, conn = Depends(get_db)):
+    """V26 The Crowd: assign a bench role (mentor / analyst / ambassador) to a
+    non-starter, or clear it."""
+    from dodgeball_sim.bench_roles import assign_role
+
+    try:
+        roles = assign_role(conn, request.player_id, request.role)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"status": "success", "bench_roles": roles}
+
+
 @app.post("/api/recruiting/pitch-angle")
 def recruiting_pitch_angle(request: PitchAngleRequest, conn = Depends(get_db)):
     season_id = get_state(conn, "active_season_id")
@@ -1176,6 +1255,24 @@ def offseason_recruit(request: OffseasonRecruitRequest | None = None, conn = Dep
             request.prospect_id if request else None,
             release_player_id=request.release_player_id if request else None,
         )
+    except OffseasonError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+@app.post("/api/offseason/transfer")
+def offseason_transfer(request: OffseasonTransferRequest, conn = Depends(get_db)):
+    try:
+        return transfer_action_payload(
+            conn, request.action, request.player_id, request.offer_k
+        )
+    except OffseasonError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+@app.post("/api/offseason/media")
+def offseason_media(request: MediaChoiceRequest, conn = Depends(get_db)):
+    try:
+        return media_choice_payload(conn, request.option_key)
     except OffseasonError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 

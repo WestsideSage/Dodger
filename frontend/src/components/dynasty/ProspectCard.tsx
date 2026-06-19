@@ -145,6 +145,54 @@ export function ProspectCard({
     Math.min(5, Math.max(1, Math.round(prospect.pipeline_tier ?? 1)))
   ) as PipelineTier;
 
+  // V24 Phase 6: a prospect beyond your Scouting Network is a NAME WITHOUT A
+  // SHEET — show who he is and where he's from, but nothing scoutable. The hint
+  // says exactly which level opens him; the Scouting Network panel above is how.
+  if (prospect.fully_visible === false) {
+    return (
+      <div
+        className="do-recruit"
+        style={{ position: 'relative', opacity: 0.7 }}
+        data-testid="prospect-card-locked"
+      >
+        <div className="do-recruit-head">
+          <div className="do-recruit-id">
+            <span className="do-recruit-name" title={prospect.name}>
+              🔒 {prospect.name}
+            </span>
+            <div className="do-recruit-sub" style={{ flexWrap: 'wrap' }}>
+              <span aria-label={`Hometown: ${prospect.hometown}`}>
+                <span
+                  style={{
+                    fontSize: '0.55rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    color: '#64748b',
+                    marginRight: '0.2rem',
+                  }}
+                >
+                  From
+                </span>
+                <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{prospect.hometown}</span>
+              </span>
+              {prospect.reach_band && (
+                <>
+                  <span className="dot">·</span>
+                  <span className="dm-badge dm-badge-slate" style={{ fontSize: '0.55rem' }}>
+                    {prospect.reach_band} REACH
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+        <p style={{ color: '#94a3b8', fontSize: '0.7rem', margin: '0.6rem 0 0' }}>
+          {prospect.visibility_hint ?? 'Beyond your Scouting Network — raise your reach to open his sheet.'}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className={`do-recruit fit-${fitTier}`} style={{ position: 'relative' }} data-testid="prospect-card">
       {feedbackMessage && (
@@ -201,6 +249,18 @@ export function ProspectCard({
             {archetypeBadge(prospect.public_archetype || 'Balanced')}
             <span className="dot">·</span>
             <RecruitingBadge status={displayStatus} pending={pending} />
+            {prospect.funnel_stage != null && (
+              <>
+                <span className="dot">·</span>
+                <span
+                  className="dm-badge dm-badge-cyan"
+                  title="Your recruiting funnel stage — Open → Shortlist → Top 3 → Verbal"
+                  style={{ fontSize: '0.55rem' }}
+                >
+                  {prospect.funnel_stage}
+                </span>
+              </>
+            )}
             <span className="dot">·</span>
             <span
               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
@@ -283,6 +343,80 @@ export function ProspectCard({
           <span className="copy">{evidence.join(' · ')}</span>
         </div>
       )}
+      {/* V24: what this prospect wants, graded from your real program with a
+          receipt on hover. The dealbreaker (★) is hidden until you scout him —
+          fail it and he never verbals. */}
+      {prospect.motivations && prospect.motivations.length > 0 && (
+        <div
+          data-testid="prospect-motivations"
+          style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', margin: '0.4rem 0 0' }}
+        >
+          {prospect.motivations.map((m) => (
+            <span
+              key={m.motivation}
+              className="dm-badge dm-badge-slate"
+              title={m.receipt}
+              style={{ fontSize: '0.6rem' }}
+            >
+              {m.label} <strong>{m.letter}</strong>
+            </span>
+          ))}
+          {prospect.dealbreaker ? (
+            <span
+              className={`dm-badge ${prospect.dealbreaker.veto ? 'dm-badge-orange' : 'dm-badge-violet'}`}
+              title={prospect.dealbreaker.receipt}
+              style={{ fontSize: '0.6rem' }}
+            >
+              ★ {prospect.dealbreaker.label} {prospect.dealbreaker.letter}
+              {prospect.dealbreaker.veto ? " — WON'T VERBAL" : ''}
+            </span>
+          ) : (
+            <span
+              className="dm-badge dm-badge-slate"
+              title="Scout this prospect to reveal what he cares about most"
+              style={{ fontSize: '0.6rem', opacity: 0.6 }}
+            >
+              ★ Dealbreaker hidden — scout to reveal
+            </span>
+          )}
+        </div>
+      )}
+      {/* V24 Phase 5: the in-season interest race — named rival suitors and
+          whether you lead. Leading the race compounds your courtship. */}
+      {prospect.market_signal && prospect.market_signal.rivals.length > 0 && (
+        <div
+          data-testid="prospect-rivals"
+          style={{ margin: '0.4rem 0 0', fontSize: '0.66rem' }}
+        >
+          <span
+            className={`dm-badge ${prospect.market_signal.leader === 'user' ? 'dm-badge-cyan' : 'dm-badge-orange'}`}
+            style={{ fontSize: '0.58rem', marginRight: '0.4rem' }}
+            title="Your tracked interest vs the strongest rival's pursuit. Leading the race compounds your courtship."
+          >
+            {prospect.market_signal.leader === 'user'
+              ? `YOU LEAD +${prospect.market_signal.user_lead}`
+              : `TRAILING ${prospect.market_signal.user_lead}`}
+          </span>
+          <span style={{ color: '#94a3b8' }}>
+            Rivals:{' '}
+            {prospect.market_signal.rivals.map((r, i) => (
+              <span key={r.club_id} title={r.receipt}>
+                {i > 0 ? ', ' : ''}
+                {r.club_name} ({r.interest})
+              </span>
+            ))}
+          </span>
+        </div>
+      )}
+      {/* V24 Phase 4: the home fixture hosting his campus visit, once scheduled. */}
+      {prospect.visit_fixture && (
+        <div style={{ margin: '0.35rem 0 0', fontSize: '0.66rem', color: '#94a3b8' }}>
+          <span className="dm-badge dm-badge-violet" style={{ fontSize: '0.58rem', marginRight: '0.4rem' }}>
+            VISIT SET
+          </span>
+          Hosting him at your Week {prospect.visit_fixture.week} home game.
+        </div>
+      )}
       {prospect.active_promise && (
         <div
           data-testid="prospect-promise-chip"
@@ -307,6 +441,36 @@ export function ProspectCard({
         </div>
       )}
       <div className="do-recruit-actions">
+        {prospect.funnel_stage != null && (
+          <button
+            className={`do-recruit-btn${prospect.on_focus_list ? ' primary' : ''}`}
+            disabled={loading}
+            onClick={() => {
+              setLoading(true);
+              const wasFocused = prospect.on_focus_list;
+              dynastyApi
+                .focusProspect(prospect.player_id)
+                .then(() => {
+                  setFeedbackTone('success');
+                  setFeedbackMessage(wasFocused ? 'Removed from focus list.' : 'Added to focus list.');
+                  if (feedbackTimer.current !== null) clearTimeout(feedbackTimer.current);
+                  feedbackTimer.current = setTimeout(() => setFeedbackMessage(null), 2600);
+                  onAction();
+                })
+                .catch((error) => {
+                  setFeedbackTone('error');
+                  setFeedbackMessage(error instanceof Error ? error.message : 'Focus failed.');
+                  if (feedbackTimer.current !== null) clearTimeout(feedbackTimer.current);
+                  feedbackTimer.current = setTimeout(() => setFeedbackMessage(null), 3200);
+                })
+                .finally(() => setLoading(false));
+            }}
+            title="Add to / remove from your focus list. Focusing unlocks Contact; your top targets unlock Visit."
+            type="button"
+          >
+            {prospect.on_focus_list ? '★ Focused' : '☆ Focus'}
+          </button>
+        )}
         <button
           className="do-recruit-btn"
           disabled={loading || !canScout}
@@ -318,21 +482,29 @@ export function ProspectCard({
         </button>
         <button
           className="do-recruit-btn"
-          disabled={loading || !canContact}
+          disabled={loading || !canContact || prospect.can_contact === false}
           onClick={() => runAction('contactProspect', 'Contact logged.', 'CONTACTED')}
-          title={canContact ? 'Build recruit interest' : 'No Contact slots remain this week'}
+          title={
+            prospect.can_contact === false
+              ? 'Add him to your focus list first'
+              : canContact
+                ? 'Build recruit interest'
+                : 'No Contact slots remain this week'
+          }
           type="button"
         >
           Contact
         </button>
         <button
           className="do-recruit-btn primary"
-          disabled={loading || !canVisit}
+          disabled={loading || !canVisit || prospect.can_visit === false}
           onClick={() => runAction('visitProspect', 'Visit booked.', 'VISITED')}
           title={
-            canVisit
-              ? 'Spend a visit slot — your highest-commitment weekly signal to this prospect'
-              : 'No Visit slots remain this week'
+            prospect.can_visit === false
+              ? 'Visits are reserved for your top focus targets (Top 3)'
+              : canVisit
+                ? 'Spend a visit slot — your highest-commitment weekly signal to this prospect'
+                : 'No Visit slots remain this week'
           }
           type="button"
         >

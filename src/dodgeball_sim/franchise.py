@@ -24,6 +24,7 @@ from .meta import MetaPatch
 from .models import MatchSetup, Player, Team
 from .rng import derive_seed
 from .scheduler import ScheduledMatch, generate_round_robin
+from .season_emphasis import SeasonEmphasis
 from .season import Season, SeasonResult, StandingsRow, compute_standings
 from .stats import PlayerMatchStats, extract_all_stats
 
@@ -121,6 +122,7 @@ def simulate_match(
     ruleset_selection: str | None = None,
     home_prep: Optional[dict] = None,
     away_prep: Optional[dict] = None,
+    season_emphasis: Optional[SeasonEmphasis] = None,
 ) -> Tuple[MatchRecord, SeasonResult]:
     """Run one match and produce a MatchRecord + SeasonResult. Pure computation.
 
@@ -150,6 +152,7 @@ def simulate_match(
                 match_id=str(scheduled.match_id),
                 prep_a=home_prep,
                 prep_b=away_prep,
+                season_emphasis=season_emphasis,
             )
         else:
             from .rec_adapter import RecEngineAdapter
