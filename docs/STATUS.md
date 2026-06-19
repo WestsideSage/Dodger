@@ -15,13 +15,22 @@ fans/facilities/bench roles, the event calendar, and the emergent-meta layer —
 in that order (V23 World first). That doc is the planning authority for what
 comes next; this file remains build-state truth.
 
-**Arc status (2026-06-18):** V23–V28 are **all built** on `feature/v24-the-board`
-(not yet on main — the Climb-Era arc merges as a unit). **The Climb-Era arc
-(V23–V28) is now CODE-COMPLETE on the branch.** V27 decision: events run as
-deterministic auto-simmed real-engine knockouts at dedicated windows (not an
-in-season schedule rebuild). V28 #1 constraint held: the officiating-emphasis
-shift adds NO new RNG draw in `resolve_throw` and the default `SeasonEmphasis()`
-is byte-identical (the pre-V28 official-engine golden suite stays green).
+**Arc status (2026-06-19): THE CLIMB-ERA ARC (V23–V28) SHIPPED TO `main`.**
+V23–V28 built on `feature/v24-the-board` and merged to `main` as a unit on
+2026-06-19, hardened by four fresh-eyes trust playtests (PT3–PT6). PT5 fixed 9
+trust-breaks (headline: the V20 falsifying-score family on the debrief hero +
+League Wire); PT6 confirmed all 9 on screen and fixed 4 more (a Transfer
+selected-state regression PT5 introduced, the Command Center wire — a second
+League Wire surface — the Worlds recap not receipting the user's own semifinal
+exit, and the last survivors-leak on the Primary Factor chip). Capstone:
+`docs/retrospectives/2026-06-19-climb-era-arc-complete.md`. V27 decision: events
+run as deterministic auto-simmed real-engine knockouts at dedicated windows. V28
+#1 constraint held: the officiating-emphasis shift adds NO new RNG draw in
+`resolve_throw` and the default `SeasonEmphasis()` is byte-identical (the pre-V28
+official-engine golden suite stays green). Disclosed legibility deferrals (not
+blockers): AI tactic drift isn't surfaced on standings plan rows; the meta-report
+ticker fires only past `trend_notable_delta`; the emphasis DISCRETION log isn't
+in the replay UI.
 
 **V28 — The Weather: DONE on the branch `feature/v24-the-board` (2026-06-18;
 NOT yet on main) — CLOSES THE CLIMB-ERA ARC (V23–V28).** Spec:
