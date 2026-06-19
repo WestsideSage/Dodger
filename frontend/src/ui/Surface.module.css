@@ -1,0 +1,5 @@
+.surface { border: 1px solid var(--line); border-top-color: var(--lit); border-radius: var(--radius-lg); }
+.e0 { background: var(--court); }
+.e1 { background: var(--raise); box-shadow: var(--shadow-1); }
+.e2 { background: var(--raise2); box-shadow: var(--shadow-2); }
+.card { padding: var(--space-5); }
