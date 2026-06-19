@@ -896,6 +896,31 @@ def _pyramid_movement_block(
     champions = ledger.get("champions") or {}
     promoted = ledger.get("promoted") or {}
     relegated = ledger.get("relegated") or {}
+    # PT6: receipt the USER's own Worlds run. The global "worlds" line names only
+    # the final's champion + runner-up, so a club that REACHED Worlds (Premier/
+    # Circuit champion or runner-up) but lost the SEMIFINAL was never mentioned.
+    # Derived purely from the already-persisted ledger (no new data): the user
+    # qualified iff their club is a premier/circuit champion or runner-up.
+    runners_up = ledger.get("runners_up") or {}
+    worlds = ledger.get("worlds") or {}
+    _qualified_as = None
+    if player_club_id == champions.get("premier"):
+        _qualified_as = "premier_champion"
+    elif player_club_id == runners_up.get("premier"):
+        _qualified_as = "premier_runner_up"
+    elif player_club_id == champions.get("circuit"):
+        _qualified_as = "circuit_champion"
+    elif player_club_id == runners_up.get("circuit"):
+        _qualified_as = "circuit_runner_up"
+    worlds_user = None
+    if _qualified_as:
+        if player_club_id == worlds.get("champion_club_id"):
+            _worlds_result = "champion"
+        elif player_club_id == worlds.get("runner_up_club_id"):
+            _worlds_result = "runner_up"
+        else:
+            _worlds_result = "semifinalist"
+        worlds_user = {"qualified_as": _qualified_as, "result": _worlds_result}
     return {
         "champions": [
             {
@@ -925,6 +950,7 @@ def _pyramid_movement_block(
             if division_id in _RELEGATION_TARGET
         ],
         "worlds": ledger.get("worlds"),
+        "worlds_user": worlds_user,
         "user": {
             "movement": movement,
             "division_id": user_next_division_id or (seat.division_id if seat else None),

@@ -1173,6 +1173,13 @@ export interface RecapBeatPayload {
             runner_up_name: string | null;
             final_match_id: string;
         } | null;
+        /** PT6: the user's own Worlds run (null if they didn't qualify). The
+         * global `worlds` line names only the final's champion + runner-up, so a
+         * club that reached Worlds but lost the semifinal needs this receipt. */
+        worlds_user?: {
+            qualified_as: 'premier_champion' | 'premier_runner_up' | 'circuit_champion' | 'circuit_runner_up';
+            result: 'champion' | 'runner_up' | 'semifinalist';
+        } | null;
         user: {
             movement: 'promoted' | 'relegated' | 'stays';
             division_id: string | null;

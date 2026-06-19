@@ -205,6 +205,71 @@ class TestSigningReceiptOffers:
         assert hi != lo and float(hi) >= float(lo)
 
 
+class TestWorldsRecapUserRun:
+    """PT6: a club that REACHED Worlds (Premier/Circuit champion or runner-up)
+    but lost the SEMIFINAL was never receipted — the recap printed only the
+    Worlds final (two other clubs). worlds_user surfaces the user's own run."""
+
+    def test_premier_champion_who_lost_the_semi_is_receipted(self):
+        import json
+
+        from dodgeball_sim.offseason_presentation import _pyramid_movement_block
+        from dodgeball_sim.persistence import get_state, load_clubs, set_state
+        from dodgeball_sim.pyramid_postseason import postseason_ledger_key
+
+        conn = _pyramid_conn()  # takeover: aurora is a Premier club
+        sid = get_state(conn, "active_season_id")
+        # Aurora wins the Premier title (a Worlds seed) but the Worlds FINAL is
+        # contested by two Circuit clubs — i.e. Aurora lost its Worlds semifinal.
+        ledger = {
+            "season_id": sid, "complete": True,
+            "champions": {"premier": "aurora", "circuit": "osaka"},
+            "runners_up": {"premier": "ridgeline", "circuit": "bahia"},
+            "promoted": {}, "relegated": {},
+            "worlds": {
+                "champion_club_id": "osaka", "champion_name": "Osaka",
+                "runner_up_club_id": "bahia", "runner_up_name": "Bahia",
+                "final_match_id": f"{sid}_p_worlds_final",
+            },
+        }
+        set_state(conn, postseason_ledger_key(sid), json.dumps(ledger))
+        conn.commit()
+        clubs = load_clubs(conn)
+        block = _pyramid_movement_block(
+            conn, sid, "aurora", lambda cid: clubs[cid].name if cid in clubs else cid
+        )
+        assert block is not None
+        assert block["worlds_user"] == {
+            "qualified_as": "premier_champion", "result": "semifinalist",
+        }
+
+    def test_non_qualifier_has_no_worlds_user(self):
+        import json
+
+        from dodgeball_sim.offseason_presentation import _pyramid_movement_block
+        from dodgeball_sim.persistence import get_state, load_clubs, set_state
+        from dodgeball_sim.pyramid_postseason import postseason_ledger_key
+
+        conn = _pyramid_conn()
+        sid = get_state(conn, "active_season_id")
+        ledger = {
+            "season_id": sid, "complete": True,
+            "champions": {"premier": "ridgeline", "circuit": "osaka"},
+            "runners_up": {"premier": "solstice", "circuit": "bahia"},
+            "promoted": {}, "relegated": {},
+            "worlds": {"champion_club_id": "osaka", "champion_name": "Osaka",
+                       "runner_up_club_id": "ridgeline", "runner_up_name": "Ridgeline",
+                       "final_match_id": f"{sid}_p_worlds_final"},
+        }
+        set_state(conn, postseason_ledger_key(sid), json.dumps(ledger))
+        conn.commit()
+        clubs = load_clubs(conn)
+        block = _pyramid_movement_block(
+            conn, sid, "aurora", lambda cid: clubs[cid].name if cid in clubs else cid
+        )
+        assert block is not None and block["worlds_user"] is None
+
+
 class TestPremierStakesCopy:
     """PT5: the Premier stakes related the Top-4 playoff cut and the Top-2 Worlds
     berth as two unrelated facts ('Top two reach WORLDS' beside a 'Top 4' cut).

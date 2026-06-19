@@ -247,6 +247,19 @@ export function RecapStandings({
                                 {pyramid.worlds.runner_up_name ? ` — ${pyramid.worlds.runner_up_name} fall in the final.` : '.'}
                             </span>
                         )}
+                        {/* PT6: the global line above names only the final's two clubs.
+                            Receipt the user's OWN Worlds run when they reached it but
+                            exited in the semifinal (champion/runner-up are already named). */}
+                        {pyramid.worlds_user && pyramid.worlds_user.result === 'semifinalist' && (
+                            <span style={{ color: '#fcd34d' }}>
+                                ★ You reached Worlds as the {{
+                                    premier_champion: 'Premier champion',
+                                    premier_runner_up: 'Premier runner-up',
+                                    circuit_champion: 'International Circuit champion',
+                                    circuit_runner_up: 'International Circuit runner-up',
+                                }[pyramid.worlds_user.qualified_as]} — out in the semifinal.
+                            </span>
+                        )}
                     </div>
                 </div>
             )}
