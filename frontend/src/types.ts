@@ -853,6 +853,10 @@ export interface CommandDashboard {
     stage?: string;
     opponent_name: string;
     result: string;
+    /** PT6: player-perspective scoreline (e.g. "7-5") + unit ("game points") so
+     * the Command Center wire shows the real score, not a bare Win/Loss/Draw. */
+    score?: string | null;
+    score_unit?: string | null;
     lanes: CommandDashboardLane[];
 }
 

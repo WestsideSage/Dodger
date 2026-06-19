@@ -725,6 +725,13 @@ def build_post_week_dashboard(conn: sqlite3.Connection, plan: Mapping[str, Any],
     score, score_unit = _result_scoreline(
         record.result, record.home_club_id, record.away_club_id
     )
+    # PT6: a player-perspective scoreline for the Command Center wire (player's
+    # points first), so "Win 7-5" never reads backwards on an away win. The lane
+    # prose keeps the club-neutral home-away `score`.
+    score_player = score
+    if "-" in score and record.home_club_id != player_club_id:
+        _home_pts, _away_pts = score.split("-", 1)
+        score_player = f"{_away_pts}-{_home_pts}"
     stats = _match_stats(conn, record.match_id)
     target_note = _target_note(stats, player_club_id, player_names)
     result = "Draw" if draw else ("Win" if won else "Loss")
@@ -738,6 +745,10 @@ def build_post_week_dashboard(conn: sqlite3.Connection, plan: Mapping[str, Any],
         "stage": playoff_stage_label(record.season_id, record.match_id),
         "opponent_name": clubs[opponent_id].name if opponent_id in clubs else opponent_id,
         "result": result,
+        # PT6: structured scoreline so the Command Center wire shows the real
+        # game-point score (not a bare Win/Loss/Draw with no number).
+        "score": score_player,
+        "score_unit": score_unit,
         "lanes": [
             {
                 "title": "Result",

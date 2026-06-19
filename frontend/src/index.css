@@ -8533,6 +8533,10 @@ textarea:focus-visible {
 }
 @media (prefers-reduced-motion: reduce) {
   .cc-wire .scroll { animation: none; }
+  /* PT6: the second .half is a duplicate purely for the seamless marquee loop;
+     with the animation off it would sit visible beside the first as duplicate
+     rows. Hide it so each result shows once. */
+  .cc-wire .half[aria-hidden="true"] { display: none; }
 }
 
 /* P5: fog of war — unscouted reads as a locked intelligence layer,
