@@ -1,0 +1,8 @@
+.header { display: flex; flex-direction: column; gap: var(--space-3); }
+.eyebrow { margin: 0; }
+.row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
+.titleGroup { min-width: 0; }
+.title { margin: 0; }
+.description { margin: var(--space-1) 0 0; }
+.actions { display: flex; gap: var(--space-3); align-items: center; flex-shrink: 0; }
+.stats { display: flex; gap: var(--space-5); flex-wrap: wrap; margin-top: var(--space-2); }
