@@ -1,0 +1,6 @@
+.bar {
+  position: sticky; bottom: 0; display: flex; flex-wrap: wrap; gap: var(--space-3);
+  justify-content: flex-end; align-items: center;
+  padding: var(--space-4); padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
+  background: linear-gradient(0deg, var(--court), transparent); border-top: 1px solid var(--line);
+}
