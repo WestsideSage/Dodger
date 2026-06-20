@@ -1,0 +1,2 @@
+/* min-height:0 lets a flex child actually scroll instead of overflowing its parent (kills P4). */
+.scroll { overflow: auto; min-height: 0; }
