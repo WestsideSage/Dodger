@@ -5,7 +5,10 @@ const SCAN_DIRS = ['src/ui', 'src/styles'];
 const HEX = /#[0-9a-fA-F]{3,8}\b/;
 // raw px other than 0/1px hairlines
 const PX = /(?<![\w.])(?!0px|1px)\d{1,4}px\b/;
-const ALLOW = /(viewBox|tokens\.css|\.test\.|\.svg)/;
+// Whole-file exemptions: the token source itself + test fixtures.
+const ALLOW_FILE = /(tokens\.css|\.test\.)/;
+// Per-line exemption: ONLY SVG viewBox attributes (legitimately carry coordinate numbers).
+const ALLOW_LINE = /viewBox/;
 
 function walk(dir) {
   let out = [];
@@ -20,10 +23,10 @@ function walk(dir) {
 const violations = [];
 for (const dir of SCAN_DIRS) {
   for (const file of walk(dir)) {
-    if (ALLOW.test(file)) continue;
+    if (ALLOW_FILE.test(file)) continue;
     const text = readFileSync(file, 'utf8');
     text.split('\n').forEach((line, i) => {
-      if (ALLOW.test(line)) return;
+      if (ALLOW_LINE.test(line)) return;
       if (HEX.test(line) || PX.test(line)) violations.push(`${file}:${i + 1}  ${line.trim()}`);
     });
   }
