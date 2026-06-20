@@ -1,30 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ActionButton } from '../ui';
 import { TermTip, CeilingGrade } from '../../legibility';
-import type { TermId, CeilingGradeToken } from '../../legibility';
+import type { TermId } from '../../legibility';
 import { formatOverall, formatPlayerName, formatRole } from '../roster/playerDisplay';
-
-interface ProspectOption {
-  player_id: string;
-  name: string;
-  hometown: string;
-  public_archetype: string;
-  public_ovr_band: [number, number];
-  /** V22 Phase 5: the full sheet — the founding draft is the player's own
-      class, nothing is fogged (same values the roster shows post-commit). */
-  age?: number;
-  ratings?: {
-    accuracy: number;
-    power: number;
-    dodge: number;
-    catch: number;
-    stamina: number;
-    tactical_iq: number;
-  };
-  potential_ceiling?: number;
-  potential_tier?: string;
-  ceiling_label?: CeilingGradeToken | null;
-}
+import { saveApi } from '../../api/client';
+import type { ProspectOption } from '../../types';
 
 // Display-string -> archetype term, mirroring Roster.tsx ROLE_TERM_ID (the
 // owner's exact complaint: "you can't even see what exactly their archetype
@@ -85,13 +65,9 @@ export function StartingRecruitmentStep({
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`/api/saves/starting-prospects?seed=${encodeURIComponent(seed)}`)
-      .then(r => {
-        if (!r.ok) throw new Error('Failed to load prospects');
-        return r.json();
-      })
+    saveApi.startingProspects(seed)
       .then(d => setProspects(d.prospects ?? []))
-      .catch(err => setLoadError(err.message));
+      .catch(err => setLoadError(err instanceof Error ? err.message : 'Failed to load prospects'));
   }, [seed]);
 
   const toggleProspect = (id: string) => {

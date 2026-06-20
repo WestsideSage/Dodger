@@ -10,6 +10,8 @@ import type {
   MatchReplayResponse,
   RecruitingActionResponse,
   SaveListResponse,
+  StartingStaffResponse,
+  StartingProspectsResponse,
   StatusResponse,
 } from '../types';
 
@@ -184,6 +186,12 @@ export const saveApi = {
     root_seed?: number;
     ruleset_selection?: string | null;
   }) => apiPost<{ status: string; path: string }>('/api/saves/build-from-scratch', body),
+  // V22 wizard data — folded in from raw fetch() so the client's single fetch
+  // path + ApiError/error semantics cover them uniformly (spec §5; audit §2.J #91).
+  startingStaff: (seed: number) =>
+    apiGet<StartingStaffResponse>(`/api/saves/starting-staff?seed=${seed}`),
+  startingProspects: (seed: number) =>
+    apiGet<StartingProspectsResponse>(`/api/saves/starting-prospects?seed=${seed}`),
 };
 
 export const commandApi = {

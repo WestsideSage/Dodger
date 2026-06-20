@@ -1,3 +1,5 @@
+import type { CeilingGradeToken } from './legibility';
+
 export type RecruitingStatus =
     | 'UNSCOUTED'
     | 'SCOUTED'
@@ -1761,4 +1763,59 @@ export interface ClubOption {
     name: string;
     tagline: string;
     colors: string;
+}
+
+// ─── V22 wizard data types (moved from wizard steps so api/client can type
+//     startingStaff / startingProspects — spec §5 single-fetch-path rule) ───
+
+/** One candidate in the founding staff market (GET /api/saves/starting-staff). */
+export interface StaffCandidate {
+    candidate_id: string;
+    department: string;
+    tier: 'journeyman' | 'solid' | 'premium';
+    name: string;
+    rating_primary: number;
+    rating_secondary: number;
+    salary_k: number;
+    voice: string;
+    effect_summary: string;
+    /** V22 Phase 4: the candidate's concrete wired number. */
+    effect_detail?: string;
+    training_modifier_pct?: number;
+}
+
+/** Response shape for GET /api/saves/starting-staff?seed=N */
+export interface StartingStaffResponse {
+    candidates: StaffCandidate[];
+    departments: string[];
+    budget_k: number;
+    mid_table_payout_k: number;
+    rules: string;
+}
+
+/** One prospect in the founding draft pool (GET /api/saves/starting-prospects). */
+export interface ProspectOption {
+    player_id: string;
+    name: string;
+    hometown: string;
+    public_archetype: string;
+    public_ovr_band: [number, number];
+    /** V22 Phase 5: the full sheet — nothing is fogged in the founding draft. */
+    age?: number;
+    ratings?: {
+        accuracy: number;
+        power: number;
+        dodge: number;
+        catch: number;
+        stamina: number;
+        tactical_iq: number;
+    };
+    potential_ceiling?: number;
+    potential_tier?: string;
+    ceiling_label?: CeilingGradeToken | null;
+}
+
+/** Response shape for GET /api/saves/starting-prospects?seed=N */
+export interface StartingProspectsResponse {
+    prospects: ProspectOption[];
 }

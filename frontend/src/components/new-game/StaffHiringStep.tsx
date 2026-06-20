@@ -1,35 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ActionButton } from '../ui';
 import { formatK } from '../../money';
+import { saveApi } from '../../api/client';
+import type { StaffCandidate, StartingStaffResponse } from '../../types';
 
 // V22 Phase 3 (owner: "up the stakes and add a budget component"): the
 // create-a-club wizard hires its founding six department heads from a
 // generated market under the starting budget. Every department offers a
 // cheap journeyman, so filling all six can never soft-lock the step — the
 // stakes are in the PAYROLL you commit, which the treasury pays every season.
-
-interface StaffCandidate {
-  candidate_id: string;
-  department: string;
-  tier: 'journeyman' | 'solid' | 'premium';
-  name: string;
-  rating_primary: number;
-  rating_secondary: number;
-  salary_k: number;
-  voice: string;
-  effect_summary: string;
-  /** V22 Phase 4: the candidate's concrete wired number. */
-  effect_detail?: string;
-  training_modifier_pct?: number;
-}
-
-interface StartingStaffResponse {
-  candidates: StaffCandidate[];
-  departments: string[];
-  budget_k: number;
-  mid_table_payout_k: number;
-  rules: string;
-}
 
 const TIER_LABEL: Record<StaffCandidate['tier'], { label: string; color: string }> = {
   journeyman: { label: 'Journeyman', color: '#94a3b8' },
@@ -59,13 +38,9 @@ export function StaffHiringStep({
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`/api/saves/starting-staff?seed=${encodeURIComponent(seed)}`)
-      .then(r => {
-        if (!r.ok) throw new Error('Failed to load the staff market');
-        return r.json();
-      })
-      .then((d: StartingStaffResponse) => setMarket(d))
-      .catch(err => setLoadError(err.message));
+    saveApi.startingStaff(seed)
+      .then((d) => setMarket(d))
+      .catch(err => setLoadError(err instanceof Error ? err.message : 'Failed to load the staff market'));
   }, [seed]);
 
   // Default every department to its cheapest candidate once the market loads
