@@ -1,0 +1,9 @@
+.overlay {
+  position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center;
+  padding: var(--space-7); background: rgba(8,7,5,.78); backdrop-filter: blur(4px);
+}
+.panel {
+  background: var(--raise); border: 1px solid var(--line); border-top-color: var(--lit);
+  border-radius: var(--radius-xl); width: min(92vw, 34rem); max-height: calc(100vh - 4rem);
+  overflow: auto; box-shadow: var(--shadow-2);
+}
