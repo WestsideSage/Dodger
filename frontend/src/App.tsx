@@ -129,7 +129,7 @@ function App() {
   const displayedWeek = postSimResult?.dashboard?.week ?? currentWeek ?? 1;
 
   return (
-    <div className="app-shell flex" style={{ minHeight: '100vh' }}>
+    <div className="app-shell" style={{ display: 'flex', minHeight: '100vh' }}>
       {/* Left Navigation Rail */}
       <aside
         className="left-nav"

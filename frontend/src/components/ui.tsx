@@ -185,7 +185,7 @@ export function KeyValueRow({ label, value }: { label: string; value: ReactNode 
       padding: '0.5rem 0',
       fontSize: '0.875rem',
     }}
-      className="last:border-0"
+      className="kv-row"
     >
       <span style={{ fontFamily: 'var(--font-display)', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.075em', color: '#64748b' }}>{label}</span>
       <span style={{ minWidth: 0, textAlign: 'right', fontWeight: 700, color: '#e2e8f0' }}>{value}</span>
