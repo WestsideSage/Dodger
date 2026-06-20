@@ -8,6 +8,7 @@
   --volt: #FF4A2B; --volt2: #FF6A48; --volt-soft: rgba(255,74,43,.10);
   --ok: #54B98E; --ok-soft: rgba(84,185,142,.13);
   --gold: #F2B23C; --gold2: #FFD27A; --gold-soft: rgba(242,178,60,.14);
+  --gold-ink: #1a1407;
   /* legacy (archive screens only) */
   --legacy-paper: #F3EBD8; --legacy-ink: #211C16; --legacy-brick: #B4452F;
   /* type */
@@ -17,6 +18,7 @@
   --font-mono: 'Geist Mono','JetBrains Mono',ui-monospace,monospace;
   --font-serif: 'Fraunces',Georgia,serif;
   /* spacing scale */
+  --grid-min-default: 240px;
   --space-1:2px; --space-2:4px; --space-3:8px; --space-4:12px; --space-5:16px;
   --space-6:20px; --space-7:24px; --space-8:32px; --space-9:40px;
   /* radius & elevation */

@@ -1,5 +1,5 @@
 .pop {
-  position: fixed; z-index: 1200; max-width: min(22rem, calc(100vw - 16px));
+  position: fixed; z-index: 1200; max-width: min(22rem, calc(100vw - var(--space-5)));
   background: var(--raise2); color: var(--text2); border: 1px solid var(--line2);
   border-radius: var(--radius-md); padding: var(--space-4); box-shadow: var(--shadow-2);
   font: 400 .8rem var(--font-ui);
