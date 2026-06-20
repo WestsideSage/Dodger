@@ -483,50 +483,28 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
             )}
 
             {view === 'new' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div className={styles.newGameFrame}>
                 {/* How it plays — single standard ruleset (no picker; owner
                     decision 2026-06-10: foam-official is the one way to play) */}
-                <div style={{ background: '#0b1329', border: '1px solid #1e293b', borderRadius: '8px', padding: '1.25rem' }} data-testid="ruleset-standard-card">
-                  <span style={{
-                    display: 'block',
-                    fontSize: '0.75rem',
-                    fontFamily: 'var(--font-display)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
-                    color: '#64748b',
-                    marginBottom: '0.5rem',
-                    fontWeight: 700,
-                  }}>
+                <div className={styles.rulesetCard} data-testid="ruleset-standard-card">
+                  <span className={styles.rulesetLabel}>
                     How It Plays
                   </span>
-                  <div style={{
-                    background: 'rgba(34, 211, 238, 0.04)',
-                    borderLeft: '3px solid #22d3ee',
-                    padding: '0.75rem 1rem',
-                    borderRadius: '0 4px 4px 0',
-                  }}>
-                    <h4 style={{ margin: '0 0 0.2rem 0', fontSize: '0.875rem', fontWeight: 700, color: '#f8fafc' }}>
+                  <div className={styles.rulesetInner}>
+                    <h4 className={styles.rulesetTitle}>
                       {standardRuleset.title}
                     </h4>
-                    <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.75rem', color: '#22d3ee', fontWeight: 600 }}>
+                    <p className={styles.rulesetTagline}>
                       {standardRuleset.tagline}
                     </p>
                     {/* Key rules at a glance — short label + one-liner per row. */}
-                    <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.45rem' }} data-testid="ruleset-key-rules">
+                    <ul className={styles.rulesetKeyRules} data-testid="ruleset-key-rules">
                       {standardRuleset.keyRules.map((rule) => (
-                        <li key={rule.label} style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline' }}>
-                          <span style={{
-                            flex: '0 0 9.5rem',
-                            fontSize: '0.62rem',
-                            fontFamily: 'var(--font-display)',
-                            fontWeight: 800,
-                            letterSpacing: '0.06em',
-                            color: '#22d3ee',
-                            whiteSpace: 'nowrap',
-                          }}>
+                        <li key={rule.label} className={styles.rulesetKeyRule}>
+                          <span className={styles.rulesetRuleLabel}>
                             {rule.label}
                           </span>
-                          <span style={{ fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                          <span className={styles.rulesetRuleText}>
                             {rule.text}
                           </span>
                         </li>
@@ -534,25 +512,17 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                     </ul>
                     {/* The deep dive, for the players who DO want to read
                         everything — native details/summary, keyboard friendly. */}
-                    <details style={{ marginTop: '0.85rem' }} data-testid="ruleset-full-breakdown">
-                      <summary style={{
-                        cursor: 'pointer',
-                        fontSize: '0.7rem',
-                        fontFamily: 'var(--font-display)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.08em',
-                        color: '#64748b',
-                        fontWeight: 700,
-                      }}>
+                    <details className={styles.rulesetDetails} data-testid="ruleset-full-breakdown">
+                      <summary className={styles.rulesetSummary}>
                         Full rulebook breakdown
                       </summary>
-                      <div style={{ marginTop: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                      <div className={styles.rulesetBreakdown}>
                         {standardRuleset.fullBreakdown.map((section) => (
                           <div key={section.heading}>
-                            <h5 style={{ margin: '0 0 0.15rem 0', fontSize: '0.74rem', fontWeight: 700, color: '#e2e8f0' }}>
+                            <h5 className={styles.rulesetSectionHeading}>
                               {section.heading}
                             </h5>
-                            <p style={{ margin: 0, fontSize: '0.74rem', color: '#94a3b8', lineHeight: 1.5 }}>
+                            <p className={styles.rulesetSectionBody}>
                               {section.body}
                             </p>
                           </div>
@@ -562,44 +532,17 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                <div className={styles.choiceRow}>
                   {/* Take Over a Program Button */}
                   <button
                     onClick={() => setView('takeover')}
-                    style={{
-                      flex: 1,
-                      padding: '2rem 1.25rem',
-                      background: '#0f172a',
-                      border: '2px solid #f97316',
-                      borderRadius: '8px',
-                      color: '#e2e8f0',
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      position: 'relative',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'transform 0.15s, background 0.15s',
-                    }}
+                    className={`${styles.choiceCard} ${styles.choiceCardTakeover}`}
                   >
-                    <span style={{
-                      position: 'absolute',
-                      top: '-10px',
-                      background: '#f97316',
-                      color: '#fff',
-                      fontSize: '0.625rem',
-                      fontWeight: 800,
-                      textTransform: 'uppercase',
-                      padding: '0.2rem 0.6rem',
-                      borderRadius: '20px',
-                      letterSpacing: '0.05em',
-                      boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-                    }}>
+                    <span className={styles.fasterBadge}>
                       Faster Start
                     </span>
-                    <h3 style={{ margin: '0.5rem 0 0.5rem', color: '#f97316', fontSize: '1.25rem', fontWeight: 800 }}>Take Over a Program</h3>
-                    <p style={{ margin: 0, fontSize: '0.8125rem', color: '#cbd5e1', lineHeight: 1.4 }}>
+                    <h3 className={styles.choiceCardTakeoverTitle}>Take Over a Program</h3>
+                    <p className={styles.choiceCardDesc}>
                       Inherit an established Premier League club — the top of a
                       28-club pyramid where the bottom two go down every season.
                     </p>
@@ -614,24 +557,10 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                       setBuildStaff({});
                       setView('build_identity');
                     }}
-                    style={{
-                      flex: 1,
-                      padding: '2rem 1.25rem',
-                      background: '#0f172a',
-                      border: '1px solid #334155',
-                      borderRadius: '8px',
-                      color: '#e2e8f0',
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'transform 0.15s, background 0.15s',
-                    }}
+                    className={`${styles.choiceCard} ${styles.choiceCardBuild}`}
                   >
-                    <h3 style={{ margin: '0.5rem 0 0.5rem', color: '#22d3ee', fontSize: '1.25rem', fontWeight: 800 }}>Build from Scratch</h3>
-                    <p style={{ margin: 0, fontSize: '0.8125rem', color: '#cbd5e1', lineHeight: 1.4 }}>
+                    <h3 className={styles.choiceCardBuildTitle}>Build from Scratch</h3>
+                    <p className={styles.choiceCardDesc}>
                       Found a club at the bottom of the District League (D3)
                       and climb the pyramid toward WORLDS.
                     </p>
@@ -644,20 +573,13 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
               <form
                 onSubmit={handleCreate}
                 data-testid="new-game-form"
-                style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
+                className={styles.takeoverForm}
               >
                 <div>
                   <label
                     htmlFor="new-save-name"
-                    style={{
-                    display: 'block',
-                    fontSize: '0.6875rem',
-                    fontFamily: 'var(--font-display)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
-                    color: '#64748b',
-                    marginBottom: '0.25rem',
-                  }}>
+                    className={styles.formLabel}
+                  >
                     Save Name
                   </label>
                   <input
@@ -667,39 +589,22 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                     onChange={(e) => setNewName(e.target.value)}
                     placeholder="My Career"
                     data-testid="save-name-input"
-                    style={{
-                      width: '100%',
-                      borderRadius: '4px',
-                      border: '1px solid #334155',
-                      background: '#0f172a',
-                      padding: '0.5rem 0.75rem',
-                      fontSize: '0.875rem',
-                      color: '#e2e8f0',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
+                    className={styles.formInput}
                   />
                 </div>
 
                 <div>
                   <span
                     id="new-save-club-label"
-                    style={{
-                    display: 'block',
-                    fontSize: '0.6875rem',
-                    fontFamily: 'var(--font-display)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
-                    color: '#64748b',
-                    marginBottom: '0.25rem',
-                  }}>
+                    className={styles.formLabel}
+                  >
                     Club
                   </span>
                   {/* Honest pre-creation guidance (PT4-08): rosters are generated
                       fresh from the same templates, so the pick is identity, not a
                       head start — but every Premier club lives under the same real
                       stakes, and that includes you. */}
-                  <p style={{ fontSize: '0.6875rem', color: '#64748b', margin: '0 0 0.375rem' }}>
+                  <p className={styles.formHint}>
                     Every Premier club starts with a comparable six — the choice is the identity
                     and rival history you inherit. The stakes are the same for all of them: finish
                     in the bottom two and your club really is relegated; win the league and WORLDS
@@ -715,42 +620,26 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                         label: club.tagline ? `${club.name} — ${club.tagline}` : club.name,
                         'data-testid': `club-option-${club.club_id}`,
                       }))}
-                      style={{
-                        listStyle: 'none',
-                        padding: 0,
-                        margin: 0,
-                        border: '1px solid #1e293b',
-                        borderRadius: '4px',
-                        overflow: 'hidden',
-                      }}
+                      className={styles.clubOptionList}
                       renderOption={({ option, selected, radioProps }) => {
                         const club = clubs.find((c) => c.club_id === option.value)!;
                         return (
                           <div
                             {...radioProps}
                             aria-label={option.label}
+                            className={styles.clubOptionRow}
                             style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.75rem',
-                              padding: '0.75rem',
-                              cursor: 'pointer',
-                              outline: 'none',
-                              borderBottom: '1px solid #1e293b',
-                              borderLeft: selected ? '2px solid #f97316' : '2px solid transparent',
-                              background: selected ? 'rgba(249,115,22,0.08)' : 'transparent',
                               boxShadow: radioProps.tabIndex === 0 ? 'inset 0 0 0 1px rgba(34,211,238,0.25)' : 'none',
-                              transition: 'background 0.1s',
                             }}
                           >
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#fff' }}>{club.name}</div>
+                              <div className={styles.clubOptionName}>{club.name}</div>
                               {club.tagline && (
-                                <div style={{ fontSize: '0.75rem', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{club.tagline}</div>
+                                <div className={styles.clubOptionTagline}>{club.tagline}</div>
                               )}
                             </div>
                             {selected && (
-                              <span aria-hidden="true" style={{ color: '#f97316', fontSize: '0.75rem' }}>✓</span>
+                              <span aria-hidden="true" className={styles.clubOptionCheck}>✓</span>
                             )}
                           </div>
                         );
@@ -761,15 +650,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                       aria-labelledby="new-save-club-label"
                       value={newClubId}
                       onChange={(e) => setNewClubId(e.target.value)}
-                      style={{
-                        width: '100%',
-                        borderRadius: '4px',
-                        border: '1px solid #334155',
-                        background: '#0f172a',
-                        padding: '0.5rem 0.75rem',
-                        fontSize: '0.875rem',
-                        color: '#e2e8f0',
-                      }}
+                      className={styles.formInput}
                     >
                       {/* Fallback only (clubs fetch failed) — names must match
                           sample_data.curated_clubs + world.RIDGELINE. */}
@@ -785,23 +666,15 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                 </div>
 
                 <div>
-                  <span style={{
-                    display: 'block',
-                    fontSize: '0.6875rem',
-                    fontFamily: 'var(--font-display)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
-                    color: '#64748b',
-                    marginBottom: '0.25rem',
-                  }}>
+                  <span className={styles.formLabel}>
                     Ruleset
                   </span>
                   {/* Single standard ruleset — no picker (owner decision
                       2026-06-10: every career is foam-official). */}
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#e2e8f0', fontWeight: 600 }}>
+                  <p className={styles.formRulesetTitle}>
                     {standardRuleset.title}
                   </p>
-                  <p style={{ fontSize: '0.6875rem', color: '#64748b', margin: '0.375rem 0 0' }}>
+                  <p className={styles.formRulesetTagline}>
                     {standardRuleset.tagline}
                   </p>
                 </div>
@@ -810,40 +683,19 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                   <div
                     role="alert"
                     data-testid="new-save-error-banner"
-                    style={{
-                      padding: '0.75rem 1rem',
-                      background: 'rgba(251,113,133,0.12)',
-                      border: '1px solid #fb7185',
-                      borderRadius: '4px',
-                      color: '#fecdd3',
-                      fontSize: '0.875rem',
-                    }}
+                    className={styles.createError}
                   >
                     {createError}
                   </div>
                 )}
 
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  <button type="button" onClick={() => setView('new')} style={{ padding: '0.625rem 1.25rem', background: '#334155', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Back</button>
+                <div className={styles.formActions}>
+                  <button type="button" onClick={() => setView('new')} className={styles.formBackBtn}>Back</button>
                   <button
                     type="submit"
                     disabled={creating}
                     data-testid="create-save-btn"
-                    style={{
-                      flex: 1,
-                      borderRadius: '4px',
-                      background: '#f97316',
-                      border: '1px solid #ea6c0a',
-                      padding: '0.625rem 1.25rem',
-                      fontSize: '0.8125rem',
-                      fontFamily: 'var(--font-display)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.075em',
-                      color: '#fff',
-                      cursor: creating ? 'not-allowed' : 'pointer',
-                      opacity: creating ? 0.5 : 1,
-                      fontWeight: 600,
-                    }}
+                    className={styles.formSubmitBtn}
                   >
                     {creating ? 'Creating…' : 'Start Career'}
                   </button>
@@ -859,15 +711,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
               <div
                 role="alert"
                 data-testid="build-commit-error-banner"
-                style={{
-                  marginTop: '1rem',
-                  padding: '0.75rem 1rem',
-                  background: 'rgba(251,113,133,0.12)',
-                  border: '1px solid #fb7185',
-                  borderRadius: '4px',
-                  color: '#fecdd3',
-                  fontSize: '0.875rem',
-                }}
+                className={styles.buildError}
               >
                 {createError}
               </div>

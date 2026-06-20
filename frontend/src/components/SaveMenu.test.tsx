@@ -1,5 +1,5 @@
 // frontend/src/components/SaveMenu.test.tsx
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -78,5 +78,54 @@ describe('SaveMenu save list (audit #9,#85,#86,#91)', () => {
     const hero = await screen.findByTestId('continue-career-hero');
     await userEvent.click(within(hero).getByRole('button', { name: 'Continue' }));
     expect(await screen.findByText(/Action blocked/)).toBeInTheDocument();
+  });
+});
+
+describe('SaveMenu new-game frame (audit #10,#87) + wizard intact', () => {
+  it('#10: takeover create pins ruleset_selection to official_foam', async () => {
+    vi.mocked(saveApi.list).mockResolvedValue({ active_path: null, saves: [] } as never);
+    vi.mocked(saveApi.create).mockResolvedValue({ status: 'ok', path: 'new.db' } as never);
+    render(<SaveMenu onSaveLoaded={vi.fn()} />);
+    await screen.findByTestId('save-list');
+    await userEvent.click(screen.getByTestId('new-game-tab'));
+    await userEvent.click(screen.getByRole('button', { name: /Take Over a Program/i }));
+    await userEvent.type(screen.getByTestId('save-name-input'), 'Fresh');
+    await userEvent.click(screen.getByTestId('create-save-btn'));
+    await waitFor(() => expect(saveApi.create).toHaveBeenCalledWith(
+      expect.objectContaining({ ruleset_selection: 'official_foam' }),
+    ));
+  });
+
+  it('#87: debug saves stay hidden without ?debug=true even after Show is unavailable', async () => {
+    vi.mocked(saveApi.list).mockResolvedValue({
+      active_path: null,
+      saves: [SAVE({ path: 'real.db', name: 'Real' }), SAVE({ path: 'd.db', name: 'debug-run-1' })],
+    } as never);
+    render(<SaveMenu onSaveLoaded={vi.fn()} />); // no ?debug=true
+    await screen.findByTestId('save-list'); // wait for list to render
+    expect(screen.queryByText('debug-run-1')).not.toBeInTheDocument();
+    expect(screen.queryByText(/debug save/)).not.toBeInTheDocument(); // no "Show" affordance offered
+  });
+
+  it('#87: with ?debug=true the count + Show appears and reveals debug saves (two-gate)', async () => {
+    window.history.replaceState(null, '', '/?debug=true');
+    vi.mocked(saveApi.list).mockResolvedValue({
+      active_path: null,
+      saves: [SAVE({ path: 'real.db', name: 'Real' }), SAVE({ path: 'd.db', name: 'debug-run-1' })],
+    } as never);
+    render(<SaveMenu onSaveLoaded={vi.fn()} />);
+    await screen.findByTestId('save-list'); // wait for list to render
+    expect(screen.queryByText('debug-run-1')).not.toBeInTheDocument(); // gate 2 not opted-in yet
+    await userEvent.click(screen.getByRole('button', { name: 'Show' }));
+    expect(await screen.findByText('debug-run-1')).toBeInTheDocument();
+  });
+
+  it('wizard mounts are reachable: Build from Scratch opens the Identity step', async () => {
+    vi.mocked(saveApi.list).mockResolvedValue({ active_path: null, saves: [] } as never);
+    render(<SaveMenu onSaveLoaded={vi.fn()} />);
+    await screen.findByTestId('save-list');
+    await userEvent.click(screen.getByTestId('new-game-tab'));
+    await userEvent.click(screen.getByRole('button', { name: /Build from Scratch/i }));
+    expect(await screen.findByTestId('stub-identity')).toBeInTheDocument();
   });
 });
