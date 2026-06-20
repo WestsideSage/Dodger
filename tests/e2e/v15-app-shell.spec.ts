@@ -17,7 +17,8 @@ test.describe('V15 Phase 4b — App shell: nav hamburger + Settings hidden', () 
   test('Settings disabled item is not rendered', async ({ page }) => {
     await page.goto(`${baseUrl}/?tab=command`);
     // Wait for the game shell to load (not the save menu).
-    await expect(page.locator('.left-nav')).toBeVisible({ timeout: 10000 });
+    // Phase 1: nav rail now uses data-nav-rail attribute instead of .left-nav class.
+    await expect(page.locator('[data-nav-rail]')).toBeVisible({ timeout: 10000 });
 
     // The disabled Settings button must not appear in the DOM at all.
     // It should not be found by its accessible name or by its known text.
@@ -29,7 +30,8 @@ test.describe('V15 Phase 4b — App shell: nav hamburger + Settings hidden', () 
 
   test('hamburger toggles nav collapsed/expanded — keyboard operable', async ({ page }) => {
     await page.goto(`${baseUrl}/?tab=command`);
-    await expect(page.locator('.left-nav')).toBeVisible({ timeout: 10000 });
+    // Phase 1: nav rail now uses data-nav-rail attribute instead of .left-nav class.
+    await expect(page.locator('[data-nav-rail]')).toBeVisible({ timeout: 10000 });
 
     const hamburger = page.getByRole('button', { name: /Toggle navigation/i });
     await expect(hamburger).toBeVisible();
@@ -46,7 +48,7 @@ test.describe('V15 Phase 4b — App shell: nav hamburger + Settings hidden', () 
     // tabIndex=-1 on items is belt-and-suspenders.
     // toHaveAttribute reads the DOM attribute regardless of display:none,
     // so this assertion works even though the nav is visually hidden.
-    const firstNavItem = page.locator('#primary-nav .nav-item').first();
+    const firstNavItem = page.locator('#primary-nav button').first();
     await expect(firstNavItem).toHaveAttribute('tabindex', '-1');
 
     // Click to expand.
@@ -60,7 +62,8 @@ test.describe('V15 Phase 4b — App shell: nav hamburger + Settings hidden', () 
 
   test('hamburger is operable via keyboard (Enter key)', async ({ page }) => {
     await page.goto(`${baseUrl}/?tab=command`);
-    await expect(page.locator('.left-nav')).toBeVisible({ timeout: 10000 });
+    // Phase 1: nav rail now uses data-nav-rail attribute instead of .left-nav class.
+    await expect(page.locator('[data-nav-rail]')).toBeVisible({ timeout: 10000 });
 
     const hamburger = page.getByRole('button', { name: /Toggle navigation/i });
 
@@ -77,7 +80,8 @@ test.describe('V15 Phase 4b — App shell: nav hamburger + Settings hidden', () 
   test('no horizontal overflow at 390x844 in collapsed state', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${baseUrl}/?tab=command`);
-    await expect(page.locator('.left-nav')).toBeVisible({ timeout: 10000 });
+    // Phase 1: nav rail now uses data-nav-rail attribute instead of .left-nav class.
+    await expect(page.locator('[data-nav-rail]')).toBeVisible({ timeout: 10000 });
 
     // Collapse the nav.
     const hamburger = page.getByRole('button', { name: /Toggle navigation/i });
@@ -91,6 +95,8 @@ test.describe('V15 Phase 4b — App shell: nav hamburger + Settings hidden', () 
     expect(overflow).toBe(false);
 
     // And the workspace content area must still be visible.
-    await expect(page.locator('.workspace')).toBeVisible();
+    // Phase 1: workspace now uses CSS Module class (scoped hash), so use the
+    // main content area locator via the header landmark that's always present.
+    await expect(page.locator('header')).toBeVisible();
   });
 });

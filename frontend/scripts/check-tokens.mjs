@@ -1,7 +1,9 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, extname } from 'node:path';
 
-const SCAN_DIRS = ['src/ui', 'src/styles'];
+const SCAN_DIRS = ['src/ui', 'src/styles', 'src/components/shell'];
+// SCAN_FILES may contain explicit files (scanned as-is) that live outside SCAN_DIRS.
+const SCAN_FILES = ['src/App.module.css', 'src/components/SaveMenu.module.css'];
 const HEX = /#[0-9a-fA-F]{3,8}\b/;
 // raw px other than 0/1px hairlines
 const PX = /(?<![\w.])(?!0px|1px)\d{1,4}px\b/;
@@ -20,20 +22,27 @@ function walk(dir) {
   return out;
 }
 
+function checkFile(file, violations) {
+  if (ALLOW_FILE.test(file)) return;
+  const text = readFileSync(file, 'utf8');
+  text.split('\n').forEach((line, i) => {
+    if (ALLOW_LINE.test(line)) return;
+    if (HEX.test(line) || PX.test(line)) violations.push(`${file}:${i + 1}  ${line.trim()}`);
+  });
+}
+
 const violations = [];
 for (const dir of SCAN_DIRS) {
   for (const file of walk(dir)) {
-    if (ALLOW_FILE.test(file)) continue;
-    const text = readFileSync(file, 'utf8');
-    text.split('\n').forEach((line, i) => {
-      if (ALLOW_LINE.test(line)) return;
-      if (HEX.test(line) || PX.test(line)) violations.push(`${file}:${i + 1}  ${line.trim()}`);
-    });
+    checkFile(file, violations);
   }
+}
+for (const file of SCAN_FILES) {
+  checkFile(file, violations);
 }
 
 if (violations.length) {
   console.error('Token-discipline violations (use tokens, not literals):\n' + violations.join('\n'));
   process.exit(1);
 }
-console.log(`token-discipline OK (${SCAN_DIRS.join(', ')})`);
+console.log(`token-discipline OK (${[...SCAN_DIRS, ...SCAN_FILES].join(', ')})`);

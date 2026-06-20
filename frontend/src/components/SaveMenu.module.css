@@ -16,11 +16,11 @@
     radial-gradient(ellipse 140% 100% at 50% -10%, transparent 50%, rgba(0,0,0,.5) 100%),
     radial-gradient(circle at 16% 0%, rgba(34,211,238,.16), transparent 38%),
     radial-gradient(circle at 86% 4%, rgba(249,115,22,.14), transparent 34%),
-    radial-gradient(circle 340px at 50% 52%, transparent 337px, rgba(148,163,184,.09) 338px, rgba(148,163,184,.09) 341px, transparent 342px),
-    radial-gradient(circle 90px at 50% 52%, rgba(148,163,184,.05) 88px, transparent 90px),
+    radial-gradient(circle var(--court-bg-r1) at 50% 52%, transparent var(--court-bg-r1-in), rgba(148,163,184,.09) var(--court-bg-r1-mid-a), rgba(148,163,184,.09) var(--court-bg-r1-mid-b), transparent var(--court-bg-r1-out)),
+    radial-gradient(circle var(--court-bg-r2) at 50% 52%, rgba(148,163,184,.05) var(--court-bg-r2-in), transparent var(--court-bg-r2)),
     linear-gradient(90deg, transparent calc(50% - 1px), rgba(148,163,184,.08) calc(50% - 1px), rgba(148,163,184,.08) calc(50% + 1px), transparent calc(50% + 1px)),
-    linear-gradient(90deg, transparent calc(50% - 261px), rgba(249,115,22,.06) calc(50% - 261px), rgba(249,115,22,.06) calc(50% - 259px), transparent calc(50% - 259px)),
-    linear-gradient(90deg, transparent calc(50% + 259px), rgba(34,211,238,.06) calc(50% + 259px), rgba(34,211,238,.06) calc(50% + 261px), transparent calc(50% + 261px)),
+    linear-gradient(90deg, transparent calc(50% - var(--court-bg-lane)), rgba(249,115,22,.06) calc(50% - var(--court-bg-lane)), rgba(249,115,22,.06) calc(50% - var(--court-bg-lane-in)), transparent calc(50% - var(--court-bg-lane-in))),
+    linear-gradient(90deg, transparent calc(50% + var(--court-bg-lane-in)), rgba(34,211,238,.06) calc(50% + var(--court-bg-lane-in)), rgba(34,211,238,.06) calc(50% + var(--court-bg-lane)), transparent calc(50% + var(--court-bg-lane))),
     repeating-linear-gradient(90deg, rgba(148,163,184,.02) 0 1px, transparent 1px 6rem);
 }
 
@@ -79,7 +79,7 @@
   cursor: pointer;
   background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-bottom: var(--space-1) solid transparent;
   color: var(--muted);
   transition: color .15s;
   margin-bottom: -1px;
@@ -230,7 +230,7 @@
   letter-spacing: .1em;
   border: 1px solid var(--volt-soft);
   padding: .05rem .25rem;
-  border-radius: 2px;
+  border-radius: var(--space-1);
   background: var(--volt-soft);
 }
 .rowMeta {
@@ -290,10 +290,10 @@
   margin-bottom: .5rem;
   font-weight: 700;
 }
-/* cyan accent: #22d3ee — no token; use rgba() to stay out of #hex linter */
+/* cyan accent — use rgba() to stay out of hex linter; token --border-accent for width */
 .rulesetInner {
   background: rgba(34,211,238,.04);
-  border-left: 3px solid rgba(34,211,238,1);
+  border-left: var(--border-accent) solid rgba(34,211,238,1);
   padding: .75rem 1rem;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
@@ -389,9 +389,9 @@
   position: relative;
 }
 
-/* Take Over card — orange accent (rgba to avoid #hex linter) */
+/* Take Over card — orange accent (rgba to avoid hex linter) */
 .choiceCardTakeover {
-  border: 2px solid rgba(249,115,22,1);
+  border: var(--space-1) solid rgba(249,115,22,1);
 }
 .choiceCardTakeoverTitle {
   margin: .5rem 0 .5rem;
@@ -426,14 +426,14 @@
    audit §3 P1 "clips" note. */
 .fasterBadge {
   position: absolute;
-  top: -10px;
+  top: var(--badge-nudge);
   background: rgba(249,115,22,1);
   color: var(--text);
   font-size: .625rem;
   font-weight: 800;
   text-transform: uppercase;
   padding: .2rem .6rem;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   letter-spacing: .05em;
   box-shadow: var(--shadow-1);
 }
@@ -543,11 +543,11 @@
   transition: background .1s;
 }
 .clubOptionRow[aria-checked="true"] {
-  border-left: 2px solid rgba(249,115,22,1);
+  border-left: var(--space-1) solid rgba(249,115,22,1);
   background: rgba(249,115,22,.08);
 }
 .clubOptionRow[aria-checked="false"] {
-  border-left: 2px solid transparent;
+  border-left: var(--space-1) solid transparent;
 }
 .clubOptionName {
   font-size: .875rem;

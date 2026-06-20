@@ -22,9 +22,18 @@
   --space-1:2px; --space-2:4px; --space-3:8px; --space-4:12px; --space-5:16px;
   --space-6:20px; --space-7:24px; --space-8:32px; --space-9:40px;
   /* radius & elevation */
-  --radius-sm:6px; --radius-md:9px; --radius-lg:12px; --radius-xl:16px;
+  --radius-sm:6px; --radius-md:9px; --radius-lg:12px; --radius-xl:16px; --radius-pill:20px;
   --shadow-1: 0 10px 28px -16px rgba(0,0,0,.7);
   --shadow-2: 0 24px 50px -28px rgba(0,0,0,.85);
+  /* shell-specific tokens (Phase 1) */
+  --nav-dot: 6px;         /* nav-rail active-dot diameter */
+  --border-accent: 3px;   /* heavy accent left-border (ruleset card) */
+  --badge-nudge: -10px;   /* "Faster Start" badge vertical overlap */
+  /* court background geometry (SaveMenu landing gradient coords) */
+  --court-bg-r1: 340px; --court-bg-r1-in: 337px; --court-bg-r1-out: 342px;
+  --court-bg-r1-mid-a: 338px; --court-bg-r1-mid-b: 341px;
+  --court-bg-r2: 90px; --court-bg-r2-in: 88px;
+  --court-bg-lane: 261px; --court-bg-lane-in: 259px;
 }
 
 /* base reset (replaces Tailwind preflight; removed-Tailwind-safe) */
