@@ -1,5 +1,5 @@
 // frontend/src/App.test.tsx
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -24,6 +24,7 @@ beforeEach(() => {
 });
 afterEach(() => vi.restoreAllMocks());
 
+// #82 (live-state-trust on advance): covered by classifyScreen unit test in Task 5 + e2e/maximized-playthrough-qa.spec.ts
 describe('App routing / classification (audit #82-#89)', () => {
   it('#89: a save-state fetch failure falls back to the menu, not a broken shell', async () => {
     vi.mocked(careerApi.saveState).mockRejectedValue(new Error('boom'));
