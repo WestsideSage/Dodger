@@ -32,7 +32,6 @@ by its listed test strategy. Test strategy ∈ {python-guard, vitest, e2e, manua
 | Component | File | Referenced by | Notes |
 |---|---|---|---|
 | `ReplaySpeedControl` | `src/components/match-week/aftermath/ReplaySpeedControl.tsx` | `src/components/MatchReplay.tsx:8` (import + JSX render) | Active consumer; delete only once MatchReplay.tsx is rebuilt or removed |
-| `PotentialBadge` | `src/components/roster/PotentialBadge.tsx` | `src/components/roster/PlayerTheaterRow.tsx:4` (import) | `PlayerTheaterRow` was deleted in Task 18 (it had no external consumers), making `PotentialBadge` a transitive orphan. Kept per spec (no transitive-deadness chasing in pass 1). Safe to delete in next dead-code pass once confirmed no new consumers. |
 
 ## Phases 3–8 — assigned by area (each phase's own plan finalizes per-item test strategy)
 - Phase 3 Roster/lineup/player: #36, #51–#58, #92
