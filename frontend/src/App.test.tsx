@@ -2,6 +2,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { classifyScreen } from './App';
 
 vi.mock('./components/MatchWeek', () => ({ MatchWeek: () => <div data-testid="stub-matchweek" /> }));
 vi.mock('./components/DynastyOffice', () => ({ DynastyOffice: () => <div data-testid="stub-dynasty" /> }));
@@ -68,4 +69,25 @@ describe('App routing / classification (audit #82-#89)', () => {
     expect(await screen.findByTestId('stub-roster')).toBeInTheDocument();
     expect(new URLSearchParams(window.location.search).get('tab')).toBe('roster');
   });
+});
+
+describe('classifyScreen (audit #82 — single source of screen truth)', () => {
+  it('maps offseason states to "offseason" and everything else to "game"', () => {
+    expect(classifyScreen('season_complete_offseason_beat')).toBe('offseason');
+    expect(classifyScreen('season_complete_recruitment_pending')).toBe('offseason');
+    expect(classifyScreen('next_season_ready')).toBe('offseason');
+    expect(classifyScreen('in_season')).toBe('game');
+    expect(classifyScreen('')).toBe('game');
+  });
+});
+
+it('marks the primary nav rail with data-nav-rail (P2 reveal-skip contract)', async () => {
+  vi.mocked(careerApi.saveState).mockResolvedValue({ loaded: true, active_path: 'p.db' });
+  vi.mocked(careerApi.status).mockResolvedValue({
+    state: { state: 'in_season', season_number: 1, week: 1 },
+    context: { season_year: 2029 },
+  } as never);
+  render(<App />);
+  await screen.findByTestId('stub-matchweek');
+  expect(document.querySelector('[data-nav-rail]')).not.toBeNull();
 });

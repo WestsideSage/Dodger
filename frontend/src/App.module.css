@@ -1,0 +1,239 @@
+/* App.module.css — boot splash + left-nav rail (Task 5)
+   Broadcast header + workspace (Task 6)
+   Token-driven: no raw hex/px beyond 0/1px hairlines. */
+
+/* ── Shell ───────────────────────────────────────────────────────────── */
+.shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── Boot splash ─────────────────────────────────────────────────────── */
+.bootShell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.boot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-9);
+}
+
+.bootKicker {
+  font: 600 0.62rem var(--font-ui);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+
+.bootBrand {
+  font: 700 2rem var(--font-disp);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  margin: 0;
+}
+
+.bootBrand em {
+  font-style: italic;
+  color: var(--volt);
+}
+
+.courtPulse {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--volt);
+  opacity: 0.7;
+  animation: appBootPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes appBootPulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.22); opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .courtPulse { animation: none; }
+}
+
+/* ── Left-nav rail ───────────────────────────────────────────────────── */
+.nav {
+  display: flex;
+  flex-direction: column;
+  width: 11rem;
+  min-height: 100vh;
+  background: var(--raise);
+  border-right: 1px solid var(--line);
+  flex-shrink: 0;
+  transition: width 0.18s ease;
+  overflow: hidden;
+}
+
+.navCollapsed {
+  width: 3rem;
+}
+
+/* Hamburger toggle */
+.hamburger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  cursor: pointer;
+  margin: var(--space-3) auto 0;
+  flex-shrink: 0;
+}
+
+.hamburger:hover {
+  border-color: var(--line2);
+  color: var(--text2);
+}
+
+.hamburgerIcon {
+  display: block;
+  width: 1rem;
+  height: 2px;
+  background: currentColor;
+  box-shadow: 0 4px 0 currentColor, 0 -4px 0 currentColor;
+  border-radius: 1px;
+}
+
+/* Logo area */
+.navLogo {
+  padding: var(--space-4) var(--space-4) var(--space-3);
+}
+
+.navLogoLabel {
+  font: 600 0.62rem var(--font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+
+.navLogoYear {
+  font: 700 1.125rem var(--font-disp);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text);
+  margin: 2px 0 0;
+}
+
+/* Nav items list */
+.navItems {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow-y: auto;
+  padding: var(--space-3) 0;
+}
+
+/* Nav footer */
+.navFooter {
+  padding: var(--space-3) 0 var(--space-4);
+  border-top: 1px solid var(--line);
+}
+
+/* Nav item button */
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-5);
+  background: none;
+  border: none;
+  color: var(--text2);
+  font: 500 0.8rem var(--font-ui);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s, color 0.12s;
+}
+
+.navItem:hover {
+  background: var(--raise2);
+  color: var(--text);
+}
+
+.navItemActive {
+  color: var(--text);
+  background: var(--raise2);
+}
+
+.dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex-shrink: 0;
+}
+
+.navItemActive .dot {
+  background: var(--volt);
+}
+
+/* ── Workspace (Task 6) ──────────────────────────────────────────────── */
+.workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Broadcast header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-7);
+  background: var(--raise);
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.headerKicker {
+  font: 600 0.62rem var(--font-ui);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 var(--space-1);
+  display: block;
+}
+
+.headerTitle {
+  font: 700 1.25rem var(--font-disp);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  margin: 0;
+}
+
+.headerMeta {
+  font: 500 0.75rem var(--font-ui);
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+/* Content area */
+.content {
+  flex: 1;
+  overflow-y: auto;
+}

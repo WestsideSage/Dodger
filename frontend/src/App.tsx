@@ -7,6 +7,8 @@ import { SaveMenu } from './components/SaveMenu';
 import MatchReplay from './components/MatchReplay';
 import type { CommandCenterSimResponse, MatchReplayResponse } from './types';
 import { careerApi, commandApi } from './api/client';
+import { NAV_RAIL_ATTR } from './components/shell/appContracts';
+import styles from './App.module.css';
 
 type Screen = 'loading' | 'menu' | 'game' | 'offseason';
 type Tab = 'command' | 'dynasty' | 'roster' | 'standings';
@@ -16,6 +18,12 @@ const OFFSEASON_STATES = new Set([
   'season_complete_recruitment_pending',
   'next_season_ready',
 ]);
+
+/** Single source of truth for screen classification (#82 live-state-trust). */
+// eslint-disable-next-line react-refresh/only-export-components
+export function classifyScreen(state: string): 'game' | 'offseason' {
+  return OFFSEASON_STATES.has(state) ? 'offseason' : 'game';
+}
 
 const tabs: Array<{ id: Tab; label: string; short: string; icon?: string }> = [
   { id: 'command', label: 'Command Center', short: 'Week', icon: '*' },
@@ -61,7 +69,7 @@ function App() {
         setSeasonYear(status?.context?.season_year ?? null);
         setSeasonNumber(status?.state?.season_number ?? null);
         setCurrentWeek(status?.state?.week ?? null);
-        setScreen(OFFSEASON_STATES.has(state) ? 'offseason' : 'game');
+        setScreen(classifyScreen(state));
       });
     };
 
@@ -89,11 +97,11 @@ function App() {
 
   if (screen === 'loading') {
     return (
-      <div className="app-shell" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="app-boot" role="status" aria-label="Loading Dodgeball Manager">
-          <p className="kicker">Dynasty Simulator</p>
-          <p className="brand">Dodgeball <em>Manager</em></p>
-          <div className="court-pulse" aria-hidden="true" />
+      <div className={styles.bootShell}>
+        <div className={styles.boot} role="status" aria-label="Loading Dodgeball Manager">
+          <p className={styles.bootKicker}>Dynasty Simulator</p>
+          <p className={styles.bootBrand}>Dodgeball <em>Manager</em></p>
+          <div className={styles.courtPulse} aria-hidden="true" />
         </div>
       </div>
     );
@@ -105,7 +113,7 @@ function App() {
 
   const menuButton = (
     <button
-      className="nav-item"
+      className={styles.navItem}
       aria-label="Back to save menu"
       tabIndex={navCollapsed ? -1 : 0}
       onClick={() => {
@@ -114,7 +122,7 @@ function App() {
       }}
       title="Back to Save Menu"
     >
-      <span className="dot" />
+      <span className={styles.dot} />
       Menu
     </button>
   );
@@ -129,11 +137,11 @@ function App() {
   const displayedWeek = postSimResult?.dashboard?.week ?? currentWeek ?? 1;
 
   return (
-    <div className="app-shell" style={{ display: 'flex', minHeight: '100vh' }}>
+    <div className={styles.shell}>
       {/* Left Navigation Rail */}
       <aside
-        className="left-nav"
-        style={{ width: navCollapsed ? '3rem' : undefined, overflow: navCollapsed ? 'hidden' : undefined, transition: 'width 0.18s ease' }}
+        className={`${styles.nav}${navCollapsed ? ` ${styles.navCollapsed}` : ''}`}
+        {...{ [NAV_RAIL_ATTR]: '' }}
       >
         {/* Hamburger toggle — always visible and keyboard-focusable */}
         <button
@@ -147,45 +155,25 @@ function App() {
             // Return focus to the hamburger after toggle so keyboard users stay oriented.
             requestAnimationFrame(() => hamburgerRef.current?.focus());
           }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '2.25rem',
-            height: '2.25rem',
-            background: 'none',
-            border: '1px solid #1e293b',
-            borderRadius: '4px',
-            color: '#94a3b8',
-            cursor: 'pointer',
-            margin: '0.5rem auto 0',
-            flexShrink: 0,
-          }}
+          className={styles.hamburger}
           title={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
         >
           {/* Three-line hamburger icon drawn with box-shadow — no SVG dep */}
           <span
             aria-hidden="true"
-            style={{
-              display: 'block',
-              width: '1rem',
-              height: '2px',
-              background: '#94a3b8',
-              boxShadow: '0 4px 0 #94a3b8, 0 -4px 0 #94a3b8',
-              borderRadius: '1px',
-            }}
+            className={styles.hamburgerIcon}
           />
         </button>
         <div
-          className="left-nav-logo"
+          className={styles.navLogo}
           style={{ display: navCollapsed ? 'none' : undefined }}
         >
-          <p className="dm-kicker" style={{ fontSize: '0.62rem' }}>Dodgeball Manager</p>
-          <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', margin: '2px 0 0' }}>{seasonYear ?? ''}</p>
+          <p className={`dm-kicker ${styles.navLogoLabel}`}>Dodgeball Manager</p>
+          <p className={styles.navLogoYear}>{seasonYear ?? ''}</p>
         </div>
         <nav
           id="primary-nav"
-          className="left-nav-items"
+          className={styles.navItems}
           aria-label="Primary"
           style={{ display: navCollapsed ? 'none' : undefined }}
         >
@@ -199,7 +187,7 @@ function App() {
             return (
               <button
                 key={tab.id}
-                className={`nav-item ${isActive ? 'active' : ''}`}
+                className={`${styles.navItem}${isActive ? ` ${styles.navItemActive}` : ''}`}
                 aria-label={tab.label}
                 aria-disabled={!isAvailable}
                 tabIndex={navCollapsed ? -1 : 0}
@@ -212,22 +200,22 @@ function App() {
                 }}
                 style={{ opacity: isAvailable ? 1 : 0.35, cursor: isAvailable ? 'pointer' : 'not-allowed', pointerEvents: 'auto' }}
               >
-                <span className="dot" />
+                <span className={styles.dot} />
                 {tab.label}
               </button>
             );
           })}
         </nav>
-        <div className="left-nav-footer">
+        <div className={styles.navFooter}>
           {!navCollapsed && SHOW_SETTINGS_NAV && (
             <button
-              className="nav-item"
+              className={styles.navItem}
               disabled
               title="Settings are coming soon"
               style={{ opacity: 0.35, cursor: 'not-allowed' }}
               onClick={() => {}}
             >
-              <span className="dot" />
+              <span className={styles.dot} />
               Settings
             </button>
           )}
@@ -236,14 +224,14 @@ function App() {
       </aside>
 
       {/* Main workspace */}
-      <div className="workspace">
+      <div className={styles.workspace}>
         {/* Broadcast header */}
-        <header className="broadcast-header">
+        <header className={styles.header}>
           <div>
-            <span className="dm-kicker">{kicker}</span>
-            <h1>{headerTitle}</h1>
+            <span className={`dm-kicker ${styles.headerKicker}`}>{kicker}</span>
+            <h1 className={styles.headerTitle}>{headerTitle}</h1>
           </div>
-          <span className="meta">
+          <span className={styles.headerMeta}>
             {screen === 'offseason'
               ? `Season ${seasonNumber ?? seasonYear ?? '1'} -- Offseason${offseasonBeatName ? ` (${offseasonBeatName})` : ''}`
               : `Season ${seasonNumber ?? seasonYear ?? '1'} -- Week ${String(displayedWeek).padStart(2, '0')}`}
@@ -251,7 +239,7 @@ function App() {
         </header>
 
         {/* Screen content */}
-        <div className="content-area">
+        <div className={styles.content}>
           {commandReplay && (
             <MatchReplay
               key={commandReplay.match_id}
@@ -292,7 +280,7 @@ function App() {
                   setSeasonYear(status?.context?.season_year ?? null);
                   setSeasonNumber(status?.state?.season_number ?? null);
                   setCurrentWeek(status?.state?.week ?? null);
-                  if (OFFSEASON_STATES.has(nextState) || OFFSEASON_STATES.has(liveState)) {
+                  if (classifyScreen(nextState) === 'offseason' || classifyScreen(liveState) === 'offseason') {
                     setScreen('offseason');
                   }
                 }).catch(() => {});
