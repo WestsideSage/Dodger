@@ -7,6 +7,7 @@ import { StaffHiringStep } from './new-game/StaffHiringStep';
 import { StartingRecruitmentStep } from './new-game/StartingRecruitmentStep';
 import { saveApi } from '../api/client';
 import { RadioGroup } from './ui';
+import styles from './SaveMenu.module.css';
 
 const DEBUG_PREFIXES = ['qa-playthrough-', 'debug-', 'playtest-', 'ux-teardown-', 'test_', 'e2e-', 'e2e_', 'codex', 'command-aftermath'];
 
@@ -269,79 +270,40 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
   return (
     <div
       data-testid="save-menu"
-      className="landing-shell"
+      className={styles.shell}
     >
-      <div className="landing-card">
+      <div className={styles.card}>
         {/* Title block */}
-        <div className="landing-brand">
-          <p className="kicker">Dynasty simulator</p>
-          <h1>
+        <div className={styles.brand}>
+          <p className={styles.brandKicker}>Dynasty simulator</p>
+          <h1 className={styles.brandTitle}>
             Dodgeball <em>Manager</em>
           </h1>
-          <p className="tagline">Run the program. Read the league. Own the result.</p>
+          <p className={styles.brandTagline}>Run the program. Read the league. Own the result.</p>
         </div>
 
         {/* Main panel */}
-        <div
-          className="dm-panel"
-          style={{ borderRadius: '6px', overflow: 'hidden' }}
-        >
+        <div className={`dm-panel ${styles.panel}`}>
           {/* Tab bar */}
-          <div style={{ display: 'flex', borderBottom: '1px solid #1e293b' }}>
+          <div className={styles.tabs}>
             <button
               onClick={() => setView('list')}
-              style={{
-                flex: 1,
-                padding: '0.75rem',
-                fontSize: '0.8125rem',
-                fontFamily: 'var(--font-display)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-                cursor: 'pointer',
-                background: 'transparent',
-                border: 'none',
-                borderBottom: view === 'list' ? '2px solid #f97316' : '2px solid transparent',
-                color: view === 'list' ? '#f97316' : '#64748b',
-                transition: 'color 0.15s',
-                marginBottom: '-1px',
-              }}
+              className={`${styles.tab}${view === 'list' ? ` ${styles.tabActive}` : ''}`}
             >
               Load Game
             </button>
             <button
               onClick={() => setView('new')}
               data-testid="new-game-tab"
-              style={{
-                flex: 1,
-                padding: '0.75rem',
-                fontSize: '0.8125rem',
-                fontFamily: 'var(--font-display)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-                cursor: 'pointer',
-                background: 'transparent',
-                border: 'none',
-                borderBottom: view === 'new' ? '2px solid #f97316' : '2px solid transparent',
-                color: view === 'new' ? '#f97316' : '#64748b',
-                transition: 'color 0.15s',
-                marginBottom: '-1px',
-              }}
+              className={`${styles.tab}${view === 'new' ? ` ${styles.tabActive}` : ''}`}
             >
               New Game
             </button>
           </div>
 
-          <div style={{ padding: '1.25rem' }}>
+          <div className={styles.panelBody}>
             {error && (
-              <div style={{
-                marginBottom: '1rem',
-                borderRadius: '4px',
-                border: '1px solid rgba(244,63,94,0.4)',
-                background: 'rgba(244,63,94,0.10)',
-                padding: '0.75rem',
-                fontSize: '0.875rem',
-                color: '#fb7185',
-              }}>
+              <div className={styles.errorBanner}>
                 {error}
               </div>
             )}
@@ -349,12 +311,12 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
             {view === 'list' && (
               <div data-testid="save-list">
                 {!loading && hiddenDebugCount > 0 && !showDebugSaves && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
-                    <span style={{ fontSize: '0.75rem', color: '#475569' }}>
+                  <div className={styles.debugBar}>
+                    <span className={styles.debugLabel}>
                       {hiddenDebugCount} debug save{hiddenDebugCount !== 1 ? 's' : ''} hidden ·{' '}
                       <button
                         onClick={() => setShowDebugSaves(true)}
-                        style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0, fontSize: '0.75rem', textDecoration: 'underline' }}
+                        className={styles.debugToggle}
                       >
                         Show
                       </button>
@@ -362,36 +324,25 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                   </div>
                 )}
                 {!loading && showDebugSaves && hiddenDebugCount > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
+                  <div className={styles.debugBar}>
                     <button
                       onClick={() => setShowDebugSaves(false)}
-                      style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', padding: 0, fontSize: '0.75rem', textDecoration: 'underline' }}
+                      className={styles.debugToggle}
                     >
                       Hide debug saves
                     </button>
                   </div>
                 )}
                 {loading ? (
-                  <p style={{ padding: '1.5rem 0', textAlign: 'center', fontSize: '0.875rem', color: '#64748b' }}>
+                  <p className={styles.loadingText}>
                     Loading saves…
                   </p>
                 ) : visibleSaves.length === 0 ? (
-                  <div style={{ padding: '2rem 0', textAlign: 'center' }}>
-                    <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1rem' }}>No saves found.</p>
+                  <div className={styles.emptyState}>
+                    <p className={styles.emptyText}>No saves found.</p>
                     <button
                       onClick={() => setView('new')}
-                      style={{
-                        borderRadius: '4px',
-                        background: '#f97316',
-                        border: '1px solid #ea6c0a',
-                        padding: '0.5rem 1.25rem',
-                        fontSize: '0.8125rem',
-                        fontFamily: 'var(--font-display)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.075em',
-                        color: '#020617',
-                        cursor: 'pointer',
-                      }}
+                      className={styles.startNewBtn}
                     >
                       Start New Game
                     </button>
@@ -401,45 +352,20 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                     {continueSave && (
                       <div
                         data-testid="continue-career-hero"
-                        style={{
-                          marginBottom: '1.5rem',
-                          borderRadius: '6px',
-                          border: '1px solid rgba(249, 115, 22, 0.3)',
-                          background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, rgba(15, 23, 42, 0.6) 100%)',
-                          padding: '1.25rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '1rem',
-                          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
-                        }}
+                        className={styles.hero}
                       >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{
-                            fontFamily: 'var(--font-mono-data)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.15em',
-                            fontSize: '0.625rem',
-                            color: '#f97316',
-                            margin: '0 0 0.35rem',
-                          }}>
+                        <div className={styles.heroInfo}>
+                          <p className={styles.heroEyebrow}>
                             Continue Active Career
                           </p>
-                          <h3 style={{
-                            fontFamily: 'var(--font-display)',
-                            fontSize: '1.25rem',
-                            fontWeight: 700,
-                            color: '#ffffff',
-                            margin: '0 0 0.25rem',
-                            letterSpacing: '0.03em',
-                          }}>
+                          <h3 className={styles.heroName}>
                             {continueSave.name}
                           </h3>
-                          <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: 0 }}>
+                          <p className={styles.heroMeta}>
                             {continueSave.club_name ?? 'Unknown Club'} · Season {continueSave.season_number ?? 1} · Week {continueSave.week ?? 1}
                           </p>
                           {continueSave.wins !== undefined && (
-                            <p style={{ fontSize: '0.6875rem', color: '#64748b', margin: '0.25rem 0 0' }}>
+                            <p className={styles.heroRecord}>
                               Record: {continueSave.wins}-{continueSave.losses}-{continueSave.draws} · saved {formatTimeAgo(continueSave.last_modified)}
                             </p>
                           )}
@@ -447,87 +373,68 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                         <button
                           onClick={() => handleLoad(continueSave.path)}
                           className="dm-action dm-action-primary"
-                          style={{ padding: '0.625rem 1.5rem', fontSize: '0.75rem', fontWeight: 700 }}
                         >
                           Continue
                         </button>
                       </div>
                     )}
-                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                    <ul className={styles.rowList}>
                     {visibleSaves.map((save) => {
                       const monogram = clubMonogram(save.club_name ?? save.club_id);
                       return (
                       <li
                         key={save.path}
                         data-testid="save-item"
-                        className="landing-save-row"
+                        className={styles.row}
                         style={{ opacity: activePath === save.path ? 1 : 0.92 }}
                       >
                         <span
-                          className={`landing-monogram${save.incompatible ? ' is-incompatible' : ''}`}
+                          className={`${styles.monogram}${save.incompatible ? ` ${styles.monogramIncompatible}` : ''}`}
                           style={{ '--mono-hue': monogram.hue } as React.CSSProperties}
                           aria-hidden="true"
                         >
                           {monogram.initials}
                         </span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div className={styles.rowBody}>
+                          <div className={styles.rowName}>
                             {save.name}
                             {activePath === save.path && (
-                              <span style={{
-                                marginLeft: '0.5rem',
-                                fontSize: '0.6875rem',
-                                color: '#22d3ee',
-                                fontFamily: 'var(--font-display)',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.1em',
-                              }}>
+                              <span className={styles.rowActiveBadge}>
                                 active
                               </span>
                             )}
                             {save.incompatible && (
-                              <span style={{
-                                marginLeft: '0.5rem',
-                                fontSize: '0.6875rem',
-                                color: '#f43f5e',
-                                fontFamily: 'var(--font-display)',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.1em',
-                                border: '1px solid rgba(244,63,94,0.4)',
-                                padding: '0.05rem 0.25rem',
-                                borderRadius: '2px',
-                                background: 'rgba(244,63,94,0.1)',
-                              }}>
+                              <span className={styles.rowIncompatibleBadge}>
                                 Incompatible
                               </span>
                             )}
                           </div>
-                          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.125rem' }}>
+                          <div className={styles.rowMeta}>
                             {save.incompatible ? (
-                              <span style={{ color: '#fda4af' }}>
+                              <span className={styles.rowIncompatibleNote}>
                                 Save file incompatible — start a new career.
                               </span>
                             ) : (
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.5rem', alignItems: 'center' }}>
-                                <span style={{ color: '#94a3b8', fontWeight: 500 }}>
+                              <div className={styles.rowMetaFlex}>
+                                <span className={styles.rowMetaClub}>
                                   {save.club_name ?? save.club_id ?? 'Unknown club'}
                                 </span>
-                                <span style={{ color: '#475569' }}>·</span>
+                                <span className={styles.rowMetaDot}>·</span>
                                 <span>Season {save.season_number ?? 1}</span>
-                                <span style={{ color: '#475569' }}>·</span>
+                                <span className={styles.rowMetaDot}>·</span>
                                 <span>Week {save.week ?? 1}</span>
                                 {save.wins !== undefined && (
                                   <>
-                                    <span style={{ color: '#475569' }}>·</span>
-                                    <span style={{ fontFamily: 'var(--font-mono-data)', color: '#64748b' }}>
+                                    <span className={styles.rowMetaDot}>·</span>
+                                    <span className={styles.rowRecord}>
                                       {save.wins}-{save.losses}-{save.draws}
                                     </span>
                                   </>
                                 )}
                                 {save.last_modified !== undefined && (
                                   <>
-                                    <span style={{ color: '#475569' }}>·</span>
-                                    <span style={{ color: '#475569' }}>
+                                    <span className={styles.rowMetaDot}>·</span>
+                                    <span className={styles.rowModified}>
                                       saved {formatTimeAgo(save.last_modified)}
                                     </span>
                                   </>
@@ -541,7 +448,6 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                           disabled={activePath === save.path || save.incompatible}
                           data-testid="load-save-btn"
                           className="dm-action dm-action-secondary"
-                          style={{ minHeight: '2rem', padding: '0.25rem 0.75rem', fontFamily: 'var(--font-display)' }}
                         >
                           {activePath === save.path ? 'Loaded' : 'Load'}
                         </button>
@@ -551,7 +457,6 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                             disabled={deleting === save.path}
                             data-testid="delete-save-btn"
                             className="dm-action dm-action-danger"
-                            style={{ minHeight: '2rem', padding: '0.25rem 0.75rem', fontFamily: 'var(--font-display)' }}
                           >
                             {deleting === save.path ? '…' : 'Delete'}
                           </button>
@@ -565,18 +470,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                       type="button"
                       onClick={() => setShowIncompatibleSaves(v => !v)}
                       data-testid="toggle-incompatible"
-                      style={{
-                        marginTop: '0.75rem',
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#64748b',
-                        fontSize: '0.6875rem',
-                        fontFamily: 'var(--font-display)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.1em',
-                        cursor: 'pointer',
-                        padding: '0.25rem 0',
-                      }}
+                      className={styles.archiveToggle}
                     >
                       {showIncompatibleSaves
                         ? `Hide archive (${hiddenIncompatibleCount} incompatible)`
