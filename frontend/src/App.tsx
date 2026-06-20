@@ -234,7 +234,7 @@ function App() {
           <span className={styles.headerMeta}>
             {screen === 'offseason'
               ? `Season ${seasonNumber ?? seasonYear ?? '1'} -- Offseason${offseasonBeatName ? ` (${offseasonBeatName})` : ''}`
-              : `Season ${seasonNumber ?? seasonYear ?? '1'} -- Week ${String(displayedWeek).padStart(2, '0')}`}
+              : `Season ${seasonNumber ?? seasonYear ?? '1'} -- Week ${displayedWeek}`}
           </span>
         </header>
 

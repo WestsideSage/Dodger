@@ -33,7 +33,7 @@ describe('App routing / classification (audit #82-#89)', () => {
     expect(await screen.findByTestId('stub-savemenu')).toBeInTheDocument();
   });
 
-  it('#83 + #84: in-season status renders the game shell with a Season N -- Week NN header', async () => {
+  it('#83 + #84: in-season status renders the game shell with a Season N -- Week N header', async () => {
     vi.mocked(careerApi.saveState).mockResolvedValue({ loaded: true, active_path: 'p.db' });
     vi.mocked(careerApi.status).mockResolvedValue({
       state: { state: 'in_season', season_number: 3, week: 7 },
@@ -41,7 +41,19 @@ describe('App routing / classification (audit #82-#89)', () => {
     } as never);
     render(<App />);
     expect(await screen.findByTestId('stub-matchweek')).toBeInTheDocument();
-    expect(screen.getByText(/Season 3 -- Week 07/)).toBeInTheDocument();
+    expect(screen.getByText(/Season 3 -- Week 7/)).toBeInTheDocument();
+  });
+
+  it('#84: header shows a plain (un-padded) week number', async () => {
+    vi.mocked(careerApi.saveState).mockResolvedValue({ loaded: true, active_path: 'p.db' });
+    vi.mocked(careerApi.status).mockResolvedValue({
+      state: { state: 'in_season', season_number: 2, week: 5 },
+      context: { season_year: 2030 },
+    } as never);
+    render(<App />);
+    await screen.findByTestId('stub-matchweek');
+    expect(screen.getByText(/Season 2 -- Week 5\b/)).toBeInTheDocument();
+    expect(screen.queryByText(/Week 05/)).not.toBeInTheDocument();
   });
 
   it('#83: an offseason state renders the offseason header (no Week NN)', async () => {
