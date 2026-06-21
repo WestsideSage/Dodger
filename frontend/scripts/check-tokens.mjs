@@ -10,6 +10,14 @@ const PX = /(?<![\w.])(?!0px|1px)\d{1,4}px\b/;
 // raw color FUNCTION literals: legit color usage goes through var(--token)
 // (no `rgba(`/`hsl(` substring), so a raw rgba()/hsl() in a component is a literal.
 const COLORFN = /\b(?:rgba?|hsla?)\(/i;
+// Legacy token namespaces. Floodlight components must reference ONLY Floodlight
+// tokens (--court/--raise/--text/--volt/--ok/--gold/--out/--line/--space/--radius/
+// --font/--overlay/--tint-neutral/--out-line/--volt-glow). The retired global
+// systems used `var(--dm-*)` (dark) and `var(--color-*)` (warm) — flag both so a
+// component cannot pull color through a legacy var. NOTE: `--legacy-*` is the
+// SANCTIONED archive-screen namespace (tokens.css §legacy) and is intentionally
+// NOT matched here.
+const LEGACYVAR = /var\(\s*--(?:dm|color)-/;
 // Whole-file exemptions: the token source itself + test fixtures.
 const ALLOW_FILE = /(tokens\.css|\.test\.)/;
 // Per-line exemption: ONLY SVG viewBox attributes (legitimately carry coordinate numbers).
@@ -30,7 +38,8 @@ function checkFile(file, violations) {
   const text = readFileSync(file, 'utf8');
   text.split('\n').forEach((line, i) => {
     if (ALLOW_LINE.test(line)) return;
-    if (HEX.test(line) || PX.test(line) || COLORFN.test(line)) violations.push(`${file}:${i + 1}  ${line.trim()}`);
+    if (HEX.test(line) || PX.test(line) || COLORFN.test(line) || LEGACYVAR.test(line))
+      violations.push(`${file}:${i + 1}  ${line.trim()}`);
   });
 }
 

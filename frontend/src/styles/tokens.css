@@ -13,6 +13,11 @@
   --ok: #54B98E; --ok-soft: rgba(84,185,142,.13);
   --gold: #F2B23C; --gold2: #FFD27A; --gold-soft: rgba(242,178,60,.14);
   --gold-ink: #1a1407;
+  /* Restrained destructive affordance. NOT a 6th loud role: a desaturated,
+     darkened clay that reads "destructive" without competing with Volt coral
+     (live/primary) or shouting bright red. Used only by genuinely destructive
+     actions (e.g. Delete save) and the StatusMessage danger tone. */
+  --danger: #B86A57; --danger2: #C97E6C; --danger-soft: rgba(184,106,87,.12);
   /* legacy (archive screens only) */
   --legacy-paper: #F3EBD8; --legacy-ink: #211C16; --legacy-brick: #B4452F;
   /* type */
