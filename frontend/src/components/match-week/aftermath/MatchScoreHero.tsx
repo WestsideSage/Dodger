@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { formatScoreline, survivorDetail } from '../matchResult';
+import { Truncate } from '../../../ui';
+import styles from './MatchScoreHero.module.css';
 
 function useCountUp(value: number, durationMs = 1500) {
   const [displayValue, setDisplayValue] = useState(0);
@@ -38,47 +40,15 @@ function TeamScore({
   side: 'home' | 'away';
   isOfficial?: boolean;
 }) {
-  const accent = side === 'home' ? '#f97316' : '#22d3ee';
-
   return (
-    <div
-      className={`command-score-team command-score-team-${side} ${isWinner ? 'command-score-team-winner' : 'command-score-team-loser'}`}
-      style={{
-        borderColor: isWinner ? `${accent}88` : '#1e293b',
-        boxShadow: isWinner ? `0 0 36px ${side === 'home' ? 'rgba(249,115,22,0.28)' : 'rgba(34,211,238,0.24)'}` : undefined,
-      }}
-    >
-      <span className="dm-kicker">{side === 'home' ? 'Home' : 'Away'}</span>
-      <strong style={{ color: accent, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', display: 'block' }} title={name}>{name}</strong>
-      <span
-        className="command-score-number"
-        style={{
-          textShadow: isWinner
-            ? side === 'home'
-              ? '0 0 16px rgba(249,115,22,0.55)'
-              : '0 0 16px rgba(34,211,238,0.45)'
-            : 'none',
-        }}
-      >
-        {displayedSurvivors}
-      </span>
-      <span className="command-score-detail">
-        {survivorDetail(survivors, Boolean(isOfficial))}
-      </span>
-      {isWinner && (
-        <span
-          className="dm-badge dm-badge-amber command-score-winner-badge"
-          style={{
-            fontSize: '0.6rem',
-            padding: '2px 8px',
-            letterSpacing: '1.5px',
-            borderWidth: '1px',
-            opacity: 0.82,
-          }}
-        >
-          ★ Winner
-        </span>
-      )}
+    <div className={`${styles.team}${isWinner ? ` ${styles.teamWinner}` : ''}`}>
+      <span className={styles.kicker}>{side === 'home' ? 'Home' : 'Away'}</span>
+      <Truncate className={`${styles.name}${isWinner ? ` ${styles.nameWinner}` : ''}`} title={name}>
+        {name}
+      </Truncate>
+      <span className={`${styles.number}${isWinner ? ` ${styles.numberWinner}` : ''}`}>{displayedSurvivors}</span>
+      <span className={styles.detail}>{survivorDetail(survivors, Boolean(isOfficial))}</span>
+      {isWinner && <span className={styles.winnerBadge}>★ Winner</span>}
     </div>
   );
 }
@@ -97,16 +67,16 @@ interface MatchCardGame {
 function SetStoryStrip({ games, homeClubId }: { games: MatchCardGame[]; homeClubId: string }) {
   if (games.length === 0) return null;
   return (
-    <div className="command-score-sets" data-testid="aftermath-set-story" aria-label="Game-by-game set results">
+    <div className={styles.sets} data-testid="aftermath-set-story" aria-label="Game-by-game set results">
       {games.map((game) => {
         const noPoint = game.result_type === 'no_point' || game.result_type === 'tie';
         const homeWon = !noPoint && game.winner_club_id === homeClubId;
-        const tone = noPoint ? 'none' : homeWon ? 'home' : 'away';
+        const toneClass = noPoint ? '' : homeWon ? styles.setChipHome : styles.setChipAway;
         const title = noPoint
           ? `Game ${game.game_number}: no point`
           : `Game ${game.game_number}: ${game.home_points}–${game.away_points}`;
         return (
-          <span key={game.game_number} className={`command-score-set-chip tone-${tone}`} title={title}>
+          <span key={game.game_number} className={`${styles.setChip}${toneClass ? ` ${toneClass}` : ''}`} title={title}>
             <span className="g">G{game.game_number}</span>
             <span className="r">{noPoint ? '—' : homeWon ? '◂' : '▸'}</span>
           </span>
@@ -161,7 +131,11 @@ export function MatchScoreHero({
   const isDraw = !winnerClubId;
 
   return (
-    <section className="dm-panel command-score-hero" data-testid="match-score-hero" aria-label={isOfficial ? "Final game score" : "Final survivor score"}>
+    <section
+      className={styles.hero}
+      data-testid="match-score-hero"
+      aria-label={isOfficial ? 'Final game score' : 'Final survivor score'}
+    >
       <TeamScore
         name={homeTeam}
         survivors={homeSurvivors}
@@ -170,23 +144,11 @@ export function MatchScoreHero({
         side="home"
         isOfficial={isOfficial}
       />
-      <div className="command-score-center">
-        <span className="dm-kicker">{scoreline.centerLabel}</span>
-        <span className="command-score-vs">VS</span>
+      <div className={styles.center}>
+        <span className={styles.kicker}>{scoreline.centerLabel}</span>
+        <span className={styles.vs}>VS</span>
         {isDraw && (
-          <span
-            className="dm-badge command-score-draw-badge"
-            data-testid="score-hero-draw"
-            style={{
-              fontSize: '0.6rem',
-              padding: '2px 10px',
-              letterSpacing: '1.5px',
-              borderWidth: '1px',
-              borderColor: 'rgba(148,163,184,0.5)',
-              color: '#cbd5e1',
-              background: 'rgba(148,163,184,0.1)',
-            }}
-          >
+          <span className={styles.drawBadge} data-testid="score-hero-draw">
             ◆ Draw
           </span>
         )}
@@ -199,36 +161,16 @@ export function MatchScoreHero({
         side="away"
         isOfficial={isOfficial}
       />
-      {/* The set story reads as a horizontal timeline under the scoreline.
-          Inside the 4.5rem center column a playoff-length match (12-15 games)
-          stacked its chips into a tall single-file column that ballooned the
-          whole hero. */}
-      {isOfficial && games && games.length > 0 && (
-        <SetStoryStrip games={games} homeClubId={homeClubId} />
-      )}
-      {/* Full-width footer — the 4.5rem center column can't hold a sentence
-          without ballooning the hero's height. */}
+      {/* The set story reads as a horizontal timeline under the scoreline. */}
+      {isOfficial && games && games.length > 0 && <SetStoryStrip games={games} homeClubId={homeClubId} />}
+      {/* Full-width footer — the center column can't hold a sentence. */}
       {isDraw && (
-        <p
-          style={{
-            gridColumn: '1 / -1',
-            margin: 0,
-            padding: '0.45rem 0.9rem',
-            background: '#0a1220',
-            borderTop: '1px solid rgba(148,163,184,0.18)',
-            fontSize: '0.7rem',
-            color: '#94a3b8',
-            textAlign: 'center',
-            lineHeight: 1.45,
-          }}
-        >
-          {/* Owner §6.5: keep the mechanics, lose the flatness — a draw is a
-              story beat (neither side blinked), not a ledger entry. In the
-              playoffs a tie cannot stand: the resolution banner above names
-              who advances and why, so this footer must not promise standings
-              points that do not exist there (loss-coverage walk finding). */}
+        <p className={styles.drawFooter}>
+          {/* In the playoffs a tie cannot stand: the resolution banner above
+              names who advances and why, so this footer must not promise
+              standings points that do not exist there. */}
           {isPlayoff
-            ? 'Neither side blinked — level on game points when the clock ran out. A playoff tie can\'t stand: the resolution call above says who advances.'
+            ? "Neither side blinked — level on game points when the clock ran out. A playoff tie can't stand: the resolution call above says who advances."
             : isOfficial
               ? 'Neither side blinked — level on game points when the clock ran out. Both clubs walk away with a standings point.'
               : 'Neither side blinked — dead level at full time. Both clubs walk away with a standings point.'}

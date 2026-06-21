@@ -1,0 +1,148 @@
+/* MatchScoreHero — Floodlight reskin. The headline score-bearing surface.
+   Color discipline: Volt marks the winner (live/primary/active); warm
+   neutrals carry the rest. Gold is reserved for talent/ceiling and is NOT
+   used here. Side identity is positional, not color-coded. */
+
+.hero {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background: var(--raise);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--court);
+  text-align: center;
+  min-width: 0;
+}
+
+.teamWinner {
+  border-color: var(--volt);
+  box-shadow: 0 0 36px -8px var(--volt-glow);
+}
+
+.kicker {
+  font: 600 0.62rem var(--font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.name {
+  font: 700 1rem var(--font-head);
+  color: var(--text);
+  max-width: 100%;
+}
+
+.nameWinner {
+  color: var(--volt);
+}
+
+.number {
+  font: 800 3rem var(--font-disp);
+  line-height: 1;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.numberWinner {
+  color: var(--volt);
+}
+
+.detail {
+  font: 500 0.72rem var(--font-mono);
+  color: var(--muted);
+}
+
+.winnerBadge {
+  font: 700 0.6rem var(--font-mono);
+  letter-spacing: 0.14em;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--volt);
+  border-radius: var(--radius-pill);
+  color: var(--volt);
+  background: var(--volt-soft);
+}
+
+.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-width: 4.5rem;
+}
+
+.vs {
+  font: 700 0.8rem var(--font-disp);
+  letter-spacing: 0.12em;
+  color: var(--out);
+}
+
+.drawBadge {
+  font: 700 0.6rem var(--font-mono);
+  letter-spacing: 0.14em;
+  padding: var(--space-1) var(--space-4);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-pill);
+  color: var(--text2);
+  background: var(--tint-neutral);
+}
+
+.sets {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+}
+
+.setChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--court);
+  font: 600 0.66rem var(--font-mono);
+  color: var(--text2);
+}
+
+.setChipHome {
+  border-color: var(--volt);
+  color: var(--volt);
+}
+
+.setChipAway {
+  border-color: var(--line2);
+  color: var(--text);
+}
+
+.setChip .g {
+  color: var(--muted);
+}
+
+.drawFooter {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: var(--space-3) var(--space-5);
+  background: var(--court);
+  border-top: 1px solid var(--line);
+  font: 500 0.72rem var(--font-ui);
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.45;
+}
