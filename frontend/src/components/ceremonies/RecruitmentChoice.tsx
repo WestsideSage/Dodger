@@ -2,7 +2,8 @@ import { useState } from 'react';
 import type { OffseasonBeat } from '../../types';
 import { KnownValue } from '../../legibility/KnownValue';
 import { CeilingGrade } from '../../legibility/CeilingGrade';
-import { ActionButton, PageHeader } from '../ui';
+import { ActionButton, PageHeader, ScrollRegion } from '../../ui';
+import styles from './RecruitmentChoice.module.css';
 
 
 type RecruitmentBeat = Extract<OffseasonBeat, { key: 'recruitment' }>;
@@ -77,10 +78,7 @@ export function RecruitmentChoice({
             the hidden true overall. Free agents are league veterans with
             public records, so their OVR is verified. */}
         {prospects.length > 0 && (
-          <p
-            data-testid="signing-day-ovr-disclosure"
-            style={{ margin: '0.35rem 0 0', fontSize: '0.74rem', color: '#94a3b8', lineHeight: 1.45 }}
-          >
+          <p data-testid="signing-day-ovr-disclosure" className={styles.disclosure}>
             Prospect ratings are scouted ranges — the verified OVR is revealed only when they
             sign. Rival clubs bid on prospects too: interest built through scouting, contact
             and visits strengthens your offer. Free agents are league veterans with public
@@ -90,49 +88,29 @@ export function RecruitmentChoice({
           </p>
         )}
         {signingOutcome && signingOutcome.kind === 'sniped' && (
-          <div
-            data-testid="signing-snipe-banner"
-            style={{
-              margin: '0.6rem 0 0',
-              border: '1px solid rgba(249,115,22,0.4)',
-              borderLeft: '3px solid #f97316',
-              background: 'rgba(249,115,22,0.08)',
-              borderRadius: '4px',
-              padding: '0.7rem 0.8rem',
-            }}
-          >
-            <p style={{ margin: 0, fontSize: '0.68rem', color: '#fb923c', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          <div data-testid="signing-snipe-banner" className={`${styles.banner} ${styles.bannerSnipe}`}>
+            <p className={`${styles.bannerLabel} ${styles.bannerLabelVolt}`}>
               Sniped
             </p>
-            <p style={{ margin: '0.2rem 0 0', color: '#f8fafc', fontWeight: 700 }}>
+            <p className={styles.bannerTitle}>
               {signingOutcome.winning_club_name} landed {signingOutcome.prospect_name}
             </p>
-            <p style={{ margin: '0.15rem 0 0', fontSize: '0.78rem', color: '#cbd5e1' }}>
+            <p className={styles.bannerBody}>
               {signingOutcome.explanation} Your signing slot was not used — pick from the
               remaining class.
             </p>
           </div>
         )}
         {rivalSignings.length > 0 && (
-          <div
-            data-testid="signing-rival-board"
-            style={{
-              margin: '0.6rem 0 0',
-              border: '1px solid rgba(148,163,184,0.25)',
-              borderLeft: '3px solid #64748b',
-              background: 'rgba(148,163,184,0.05)',
-              borderRadius: '4px',
-              padding: '0.6rem 0.8rem',
-            }}
-          >
-            <p style={{ margin: 0, fontSize: '0.68rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          <div data-testid="signing-rival-board" className={`${styles.banner} ${styles.bannerRival}`}>
+            <p className={`${styles.bannerLabel} ${styles.bannerLabelMuted}`}>
               Off the board — rival signings so far
             </p>
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.78rem', color: '#cbd5e1', lineHeight: 1.5 }}>
+            <p className={styles.bannerBody}>
               {rivalSignings.map((s, i) => (
                 <span key={`${s.name}-${i}`}>
-                  {i > 0 && <span style={{ color: '#475569' }}> · </span>}
-                  <strong style={{ color: '#e2e8f0' }}>{s.name}</strong>
+                  {i > 0 && <span className={styles.rivalSep}> · </span>}
+                  <strong className={styles.rivalName}>{s.name}</strong>
                   {s.club_name ? ` → ${s.club_name}` : ''}
                 </span>
               ))}
@@ -140,90 +118,50 @@ export function RecruitmentChoice({
           </div>
         )}
         {releasedPlayer && (
-          <div
-            data-testid="signing-release-banner"
-            style={{
-              margin: '0.6rem 0 0',
-              border: '1px solid rgba(148,163,184,0.35)',
-              borderLeft: '3px solid #94a3b8',
-              background: 'rgba(148,163,184,0.07)',
-              borderRadius: '4px',
-              padding: '0.7rem 0.8rem',
-            }}
-          >
-            <p style={{ margin: 0, fontSize: '0.68rem', color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          <div data-testid="signing-release-banner" className={`${styles.banner} ${styles.bannerRelease}`}>
+            <p className={`${styles.bannerLabel} ${styles.bannerLabelMuted}`}>
               Released
             </p>
-            <p style={{ margin: '0.2rem 0 0', color: '#f8fafc', fontWeight: 700 }}>
+            <p className={styles.bannerTitle}>
               {releasedPlayer.name} ({releasedPlayer.overall} OVR, age {releasedPlayer.age}) is now a free agent.
             </p>
             {beat.released_broken_promise && (
-              <p style={{ margin: '0.15rem 0 0', fontSize: '0.78rem', color: '#fb923c' }}>
+              <p className={styles.bannerWarn}>
                 Your open promise to them is BROKEN — that costs credibility.
               </p>
             )}
           </div>
         )}
         {signingOutcome && signingOutcome.kind === 'signed' && (
-          <div
-            data-testid="signing-win-banner"
-            style={{
-              margin: '0.6rem 0 0',
-              border: '1px solid rgba(34,197,94,0.35)',
-              borderLeft: '3px solid #22c55e',
-              background: 'rgba(34,197,94,0.07)',
-              borderRadius: '4px',
-              padding: '0.7rem 0.8rem',
-            }}
-          >
-            <p style={{ margin: 0, fontSize: '0.68rem', color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          <div data-testid="signing-win-banner" className={`${styles.banner} ${styles.bannerWin}`}>
+            <p className={`${styles.bannerLabel} ${styles.bannerLabelOk}`}>
               Contested Round Won
             </p>
-            <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: '#cbd5e1' }}>
+            <p className={styles.bannerBody}>
               {signingOutcome.explanation}
             </p>
             {signingOutcome.reveal && (
-              <p
-                data-testid="signing-reveal-line"
-                style={{ margin: '0.15rem 0 0', fontSize: '0.78rem', color: '#a7f3d0' }}
-              >
+              <p data-testid="signing-reveal-line" className={styles.bannerReveal}>
                 {signingOutcome.reveal}
               </p>
             )}
           </div>
         )}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(10rem, 1fr))',
-            gap: '0.55rem',
-            marginTop: '0.55rem',
-            marginBottom: '0.7rem',
-          }}
-        >
-          <div style={{ border: '1px solid #1e293b', borderRadius: '4px', padding: '0.65rem 0.8rem', background: '#08101f' }}>
-            <p style={{ margin: 0, fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Signing Progress</p>
-            <p style={{ margin: '0.2rem 0 0', color: '#f8fafc', fontSize: '0.95rem', fontWeight: 700 }}>{signedCount} / {signingLimit} added</p>
+        <div className={styles.statGrid}>
+          <div className={styles.statTile}>
+            <p className={styles.statLabel}>Signing Progress</p>
+            <p className={styles.statValue}>{signedCount} / {signingLimit} added</p>
           </div>
-          <div style={{ border: '1px solid #1e293b', borderRadius: '4px', padding: '0.65rem 0.8rem', background: '#08101f' }}>
-            <p style={{ margin: 0, fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Roster Size</p>
-            <p style={{ margin: '0.2rem 0 0', color: '#f8fafc', fontSize: '0.95rem', fontWeight: 700 }}>{rosterSize} / {rosterLimit}</p>
+          <div className={styles.statTile}>
+            <p className={styles.statLabel}>Roster Size</p>
+            <p className={styles.statValue}>{rosterSize} / {rosterLimit}</p>
           </div>
         </div>
         {lastSigning && (
-          <div
-            style={{
-              marginBottom: '0.75rem',
-              border: '1px solid rgba(34,211,238,0.28)',
-              borderLeft: '3px solid #22d3ee',
-              background: 'rgba(34,211,238,0.08)',
-              borderRadius: '4px',
-              padding: '0.7rem 0.8rem',
-            }}
-          >
-            <p style={{ margin: 0, fontSize: '0.68rem', color: '#67e8f9', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Latest Signing</p>
-            <p style={{ margin: '0.2rem 0 0', color: '#f8fafc', fontWeight: 700 }}>{lastSigning.name}</p>
-            <p style={{ margin: '0.15rem 0 0', fontSize: '0.78rem', color: '#cbd5e1' }}>
+          <div className={styles.latest}>
+            <p className={styles.latestLabel}>Latest Signing</p>
+            <p className={styles.latestName}>{lastSigning.name}</p>
+            <p className={styles.latestMeta}>
               OVR {lastSigning.ovr}{lastSigning.age ? ` | Age ${lastSigning.age}` : ''}{lastSigning.role ? ` | ${lastSigning.role}` : ''}
             </p>
           </div>
@@ -233,15 +171,7 @@ export function RecruitmentChoice({
             No prospects remain in the pool. Continue when you are ready to lock the class.
           </p>
         ) : (
-          <div
-            style={{
-              display: 'grid',
-              gap: '0.4rem',
-              marginTop: '0.5rem',
-              maxHeight: '420px',
-              overflowY: 'auto',
-            }}
-          >
+          <ScrollRegion maxHeight="26rem" className={styles.prospectList}>
             {prospects.map(prospect => {
               const isSelected = prospect.prospect_id === selectedId;
               return (
@@ -250,85 +180,41 @@ export function RecruitmentChoice({
                   type="button"
                   data-testid="recruitment-prospect-row"
                   onClick={() => setSelectedId(prospect.prospect_id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '0.75rem',
-                    width: '100%',
-                    textAlign: 'left',
-                    padding: '0.6rem 0.85rem',
-                    background: isSelected ? 'rgba(34,211,238,0.1)' : '#0a1220',
-                    border: '1px solid #1e293b',
-                    borderLeft: `3px solid ${isSelected ? '#22d3ee' : '#1e293b'}`,
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                  }}
+                  className={`${styles.prospectRow} ${isSelected ? styles.prospectRowSelected : ''}`}
                 >
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ margin: 0, color: '#f1f5f9', fontWeight: 700 }}>
+                  <div className={styles.prospectMain}>
+                    <p className={styles.prospectName}>
                       {prospect.name}
                       {/* Codex issue 13: a target carrying an open promise is
                           flagged so the manager signs them before rivals can. */}
                       {prospect.promised && (
-                        <span
-                          data-testid="signing-promise-badge"
-                          style={{
-                            marginLeft: '0.45rem',
-                            fontSize: '0.6rem',
-                            fontWeight: 700,
-                            background: 'rgba(251,191,36,0.18)',
-                            color: '#fbbf24',
-                            borderRadius: '3px',
-                            padding: '1px 5px',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
-                          }}
-                        >
+                        <span data-testid="signing-promise-badge" className={`${styles.tagBadge} ${styles.tagPromise}`}>
                           Promise at stake
                         </span>
                       )}
                       {prospect.kind === 'free_agent' && ' '}
                       {prospect.kind === 'free_agent' && (
-                        <span
-                          style={{
-                            marginLeft: '0.45rem',
-                            fontSize: '0.6rem',
-                            fontWeight: 700,
-                            background: '#334155',
-                            color: '#cbd5e1',
-                            borderRadius: '3px',
-                            padding: '1px 5px',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
-                          }}
-                        >
+                        <span className={`${styles.tagBadge} ${styles.tagFreeAgent}`}>
                           Free Agent
                         </span>
                       )}
                     </p>
-                    <p style={{ margin: '0.15rem 0 0', fontSize: '0.74rem', color: '#94a3b8' }}>
+                    <p className={styles.prospectMeta}>
                       {prospect.archetype} · {prospect.hometown} · Age {prospect.age}
                     </p>
                     {/* V24 Phase 7: the same motivation grades + dealbreaker the
                         in-season board showed — the picker never knows less. */}
                     {prospect.motivations && prospect.motivations.length > 0 && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', margin: '0.3rem 0 0' }}>
+                      <div className={styles.badgeRow}>
                         {prospect.motivations.map(m => (
-                          <span
-                            key={m.motivation}
-                            className="dm-badge dm-badge-slate"
-                            title={m.receipt}
-                            style={{ fontSize: '0.55rem' }}
-                          >
+                          <span key={m.motivation} className={styles.motivBadge} title={m.receipt}>
                             {m.label} <strong>{m.letter}</strong>
                           </span>
                         ))}
                         {prospect.dealbreaker && (
                           <span
-                            className={`dm-badge ${prospect.dealbreaker.veto ? 'dm-badge-orange' : 'dm-badge-violet'}`}
+                            className={`${styles.motivBadge} ${prospect.dealbreaker.veto ? styles.motivBadgeVeto : styles.motivBadgeDealbreaker}`}
                             title={prospect.dealbreaker.receipt}
-                            style={{ fontSize: '0.55rem' }}
                           >
                             ★ {prospect.dealbreaker.label} {prospect.dealbreaker.letter}
                             {prospect.dealbreaker.veto ? " — WON'T VERBAL" : ''}
@@ -337,7 +223,7 @@ export function RecruitmentChoice({
                       </div>
                     )}
                   </div>
-                  <div style={{ textAlign: 'right' }}>
+                  <div className={styles.prospectRight}>
                     {prospect.kind === 'prospect' && prospect.public_ovr_band ? (
                       <>
                         <KnownValue
@@ -347,27 +233,24 @@ export function RecruitmentChoice({
                           hint="Scout to narrow"
                         />
                         {typeof prospect.interest === 'number' && (
-                          <div style={{ marginTop: '0.2rem', fontSize: '0.62rem', color: '#94a3b8' }}>
+                          <div className={styles.interest}>
                             Interest {prospect.interest}%
                           </div>
                         )}
                         {/* Playtest 3 elite reveal: the same scout-gated
                             growth-arc grade the in-season board shows. */}
                         {prospect.ceiling_label && (
-                          <div style={{ marginTop: '0.2rem' }}>
+                          <div className={styles.ceilingWrap}>
                             <CeilingGrade grade={prospect.ceiling_label} />
                           </div>
                         )}
                       </>
                     ) : (
                       <>
-                        <div
-                          className="dm-data"
-                          style={{ fontSize: '1.15rem', fontWeight: 900, color: '#22d3ee' }}
-                        >
+                        <div className={`dm-data ${styles.verifiedOvr}`}>
                           {prospect.overall}
                         </div>
-                        <div style={{ fontSize: '0.58rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        <div className={styles.verifiedLabel}>
                           verified ovr
                         </div>
                       </>
@@ -376,7 +259,7 @@ export function RecruitmentChoice({
                 </button>
               );
             })}
-          </div>
+          </ScrollRegion>
         )}
       </article>
 
@@ -385,40 +268,19 @@ export function RecruitmentChoice({
           only with a named release, and the release only commits if the
           contested pick lands (a snipe costs nobody). */}
       {releasePickerOpen && selected && rosterFull && (
-        <div
-          data-testid="signing-release-picker"
-          style={{
-            margin: '0 0 0.5rem',
-            border: '1px solid rgba(34,211,238,0.35)',
-            borderLeft: '3px solid #22d3ee',
-            background: 'rgba(34,211,238,0.06)',
-            borderRadius: '4px',
-            padding: '0.7rem 0.9rem',
-          }}
-        >
-          <p style={{ margin: 0, fontWeight: 700, color: '#67e8f9' }}>
+        <div data-testid="signing-release-picker" className={styles.releasePicker}>
+          <p className={styles.releaseTitle}>
             Roster is full — release someone to sign {selected.name}.
           </p>
-          <p style={{ margin: '0.2rem 0 0.5rem', fontSize: '0.78rem', color: '#cbd5e1' }}>
+          <p className={styles.releaseSub}>
             The release happens only if you win the signing; a snipe costs you nobody.
             The released player joins the free-agent pool.
           </p>
-          <div style={{ display: 'grid', gap: '0.3rem', maxHeight: '220px', overflowY: 'auto' }}>
+          <ScrollRegion maxHeight="14rem" className={styles.releaseRows}>
             {userRoster.map(p => (
               <label
                 key={p.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0.35rem 0.5rem',
-                  background: releaseId === p.id ? 'rgba(34,211,238,0.12)' : '#0a1220',
-                  border: '1px solid #1e293b',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '0.8rem',
-                  color: '#e2e8f0',
-                }}
+                className={`${styles.releaseRow} ${releaseId === p.id ? styles.releaseRowSelected : ''}`}
               >
                 <input
                   type="radio"
@@ -426,29 +288,17 @@ export function RecruitmentChoice({
                   checked={releaseId === p.id}
                   onChange={() => setReleaseId(p.id)}
                 />
-                <span style={{ fontWeight: 700 }}>{p.name}</span>
-                <span style={{ color: '#94a3b8' }}>{p.overall} OVR · age {p.age}</span>
+                <span className={styles.releaseName}>{p.name}</span>
+                <span className={styles.releaseMeta}>{p.overall} OVR · age {p.age}</span>
                 {p.promised && (
-                  <span
-                    style={{
-                      marginLeft: 'auto',
-                      fontSize: '0.6rem',
-                      fontWeight: 700,
-                      background: 'rgba(249,115,22,0.18)',
-                      color: '#fb923c',
-                      borderRadius: '3px',
-                      padding: '1px 5px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                    }}
-                  >
+                  <span className={styles.releasePromise}>
                     Open promise — releasing breaks it
                   </span>
                 )}
               </label>
             ))}
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.55rem' }}>
+          </ScrollRegion>
+          <div className={styles.pickerActions}>
             <button
               type="button"
               disabled={acting || !releaseId}
@@ -458,11 +308,7 @@ export function RecruitmentChoice({
                   onSign(selectedId, releaseId);
                 }
               }}
-              style={{
-                background: releaseId ? '#0e7490' : '#1e293b', border: 'none', borderRadius: '4px',
-                color: '#fff', fontWeight: 700, padding: '0.4rem 0.9rem',
-                cursor: acting || !releaseId ? 'not-allowed' : 'pointer', fontSize: '0.8rem',
-              }}
+              className={`${styles.confirmBtn} ${!releaseId ? styles.confirmBtnDisabled : ''}`}
             >
               {releaseChoice
                 ? `Release ${releaseChoice.name} & sign ${selected.name}`
@@ -471,11 +317,7 @@ export function RecruitmentChoice({
             <button
               type="button"
               onClick={() => { setReleasePickerOpen(false); setReleaseId(null); }}
-              style={{
-                background: 'none', border: '1px solid #334155', borderRadius: '4px',
-                color: '#94a3b8', padding: '0.4rem 0.9rem',
-                cursor: 'pointer', fontSize: '0.8rem',
-              }}
+              className={styles.cancelBtn}
             >
               Cancel
             </button>
@@ -484,43 +326,26 @@ export function RecruitmentChoice({
       )}
 
       {confirmFinish && remainingSignings > 0 && (
-        <div
-          style={{
-            margin: '0 0 0.5rem',
-            border: '1px solid rgba(234,179,8,0.4)',
-            borderLeft: '3px solid #eab308',
-            background: 'rgba(234,179,8,0.08)',
-            borderRadius: '4px',
-            padding: '0.7rem 0.9rem',
-          }}
-        >
-          <p style={{ margin: 0, fontWeight: 700, color: '#fbbf24' }}>
+        <div className={styles.confirmFinish}>
+          <p className={styles.confirmFinishTitle}>
             Lock the class with {remainingSignings} slot{remainingSignings === 1 ? '' : 's'} unused?
           </p>
-          <p style={{ margin: '0.2rem 0 0.5rem', fontSize: '0.8rem', color: '#cbd5e1' }}>
+          <p className={styles.confirmFinishBody}>
             Unused signing slots are lost. This cannot be undone.
           </p>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className={styles.confirmFinishActions}>
             <button
               type="button"
               onClick={() => onSign('skip')}
               disabled={acting}
-              style={{
-                background: '#b45309', border: 'none', borderRadius: '4px',
-                color: '#fff', fontWeight: 700, padding: '0.4rem 0.9rem',
-                cursor: acting ? 'not-allowed' : 'pointer', fontSize: '0.8rem',
-              }}
+              className={`${styles.lockBtn} ${acting ? styles.lockBtnDisabled : ''}`}
             >
               Yes, lock the class
             </button>
             <button
               type="button"
               onClick={() => setConfirmFinish(false)}
-              style={{
-                background: 'none', border: '1px solid #334155', borderRadius: '4px',
-                color: '#94a3b8', padding: '0.4rem 0.9rem',
-                cursor: 'pointer', fontSize: '0.8rem',
-              }}
+              className={styles.cancelBtn}
             >
               Keep signing
             </button>
@@ -537,7 +362,7 @@ export function RecruitmentChoice({
               : 'All signing slots used. Continue when ready.'}
           </p>
           {!canSkip && skipBlockedReason && (
-            <p style={{ margin: '0.2rem 0 0', fontSize: '0.74rem', color: '#fbbf24' }}>
+            <p className={styles.skipReason}>
               {skipBlockedReason}
             </p>
           )}
@@ -571,17 +396,7 @@ export function RecruitmentChoice({
               onClick={() => setConfirmFinish(true)}
               disabled={acting || !canSkip}
               title={!canSkip && skipBlockedReason ? skipBlockedReason : undefined}
-              style={{
-                background: 'none',
-                border: '1px solid #334155',
-                borderRadius: '4px',
-                color: '#64748b',
-                padding: '0.4rem 0.9rem',
-                cursor: acting || !canSkip ? 'not-allowed' : 'pointer',
-                fontSize: '0.8rem',
-                whiteSpace: 'nowrap',
-                opacity: !canSkip ? 0.5 : 1,
-              }}
+              className={`${styles.skipBtn} ${(acting || !canSkip) ? styles.skipBtnDisabled : ''}`}
             >
               {signedCount > 0 ? 'Lock class early' : 'Skip recruiting'}
             </button>
