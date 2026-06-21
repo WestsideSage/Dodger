@@ -436,7 +436,7 @@
   font: 500 0.65rem var(--font-mono);
   color: var(--muted);
   line-height: 1.45;
-  border-left: 2px solid var(--line2);
+  border-left: var(--border-accent) solid var(--line2);
   padding-left: var(--space-3);
 }
 .tacticalFooter {
