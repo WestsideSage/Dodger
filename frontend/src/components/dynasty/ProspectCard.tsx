@@ -4,6 +4,7 @@ import type { DynastyOfficeResponse, RecruitingStatus } from '../../types';
 import { RecruitingBadge } from './RecruitingBadge';
 import { TermTip, PipelineEmblem, KnownValue, CeilingGrade } from '../../legibility';
 import type { PipelineTier, TermId } from '../../legibility';
+import styles from './ProspectCard.module.css';
 
 type RecruitingProspect = DynastyOfficeResponse['recruiting']['prospects'][number];
 type RecruitingBudget = DynastyOfficeResponse['recruiting']['budget'];
@@ -26,31 +27,30 @@ function promoteStatus(current: RecruitingStatus, next: RecruitingStatus): Recru
 }
 
 // Maps the eight recruitment display names (recruitment.py _RECRUITMENT_DISPLAY_NAMES)
-// to their badge tone and TermId. Tone groups: orange = aggressive throwers / hybrids;
-// violet = catch/possession specialists; cyan = evasion/hawk; slate = anchor.
+// to their TermId for the hover glossary. The Floodlight card renders every
+// archetype with one neutral chip tone (the 5-color contract reserves color for
+// fit/talent/status), so only the TermId survives the old per-archetype palette.
 const ARCHETYPE_MAP: Array<{
   match: string[];
-  tone: string;
   termId: TermId;
 }> = [
-  { match: ['sharpshooter'],         tone: 'dm-badge-orange',  termId: 'archetype.sharpshooter' },
-  { match: ['skirmisher'],           tone: 'dm-badge-orange',  termId: 'archetype.skirmisher' },
-  { match: ['two-way threat'],       tone: 'dm-badge-orange',  termId: 'archetype.two_way_threat' },
-  { match: ['net specialist'],       tone: 'dm-badge-violet',  termId: 'archetype.net_specialist' },
-  { match: ['possession specialist'],tone: 'dm-badge-violet',  termId: 'archetype.possession_specialist' },
-  { match: ['ball hawk'],            tone: 'dm-badge-cyan',    termId: 'archetype.ball_hawk' },
-  { match: ['hit-and-run'],          tone: 'dm-badge-cyan',    termId: 'archetype.hit_and_run' },
-  { match: ['iron anchor'],          tone: 'dm-badge-slate',   termId: 'archetype.iron_anchor' },
+  { match: ['sharpshooter'],         termId: 'archetype.sharpshooter' },
+  { match: ['skirmisher'],           termId: 'archetype.skirmisher' },
+  { match: ['two-way threat'],       termId: 'archetype.two_way_threat' },
+  { match: ['net specialist'],       termId: 'archetype.net_specialist' },
+  { match: ['possession specialist'],termId: 'archetype.possession_specialist' },
+  { match: ['ball hawk'],            termId: 'archetype.ball_hawk' },
+  { match: ['hit-and-run'],          termId: 'archetype.hit_and_run' },
+  { match: ['iron anchor'],          termId: 'archetype.iron_anchor' },
 ];
 
 const archetypeBadge = (label: string) => {
   const n = label.toLowerCase();
   const entry = ARCHETYPE_MAP.find((m) => m.match.some((s) => n.includes(s)));
-  const tone = entry?.tone ?? 'dm-badge-cyan';
   const termId: TermId = entry?.termId ?? 'archetype.sharpshooter';
   return (
     <TermTip term={termId}>
-      <span className={`dm-badge ${tone}`}>{label.toUpperCase()}</span>
+      <span className={styles.chip}>{label.toUpperCase()}</span>
     </TermTip>
   );
 };
@@ -135,6 +135,8 @@ export function ProspectCard({
   const high = prospect.public_ovr_band?.[1] ?? '?';
   const fitTier = prospect.fit_score >= 80 ? 'strong' : prospect.fit_score >= 65 ? 'neutral' : 'risk';
   const fitLabel = prospect.fit_score >= 80 ? 'Strong Fit' : prospect.fit_score >= 65 ? 'Fair Fit' : 'At Risk';
+  const fitAccentClass =
+    fitTier === 'strong' ? styles.fitStrong : fitTier === 'neutral' ? styles.fitNeutral : styles.fitRisk;
   // Filter the "Public range …" line — it repeats the OVR band already shown
   // in the meter. Display at most 2 of the remaining evidence strings.
   const evidence = prospect.interest_evidence
@@ -150,43 +152,27 @@ export function ProspectCard({
   // says exactly which level opens him; the Scouting Network panel above is how.
   if (prospect.fully_visible === false) {
     return (
-      <div
-        className="do-recruit"
-        style={{ position: 'relative', opacity: 0.7 }}
-        data-testid="prospect-card-locked"
-      >
-        <div className="do-recruit-head">
-          <div className="do-recruit-id">
-            <span className="do-recruit-name" title={prospect.name}>
+      <div className={`${styles.card} ${styles.locked}`} data-testid="prospect-card-locked">
+        <div className={styles.head}>
+          <div className={styles.id}>
+            <span className={styles.name} title={prospect.name}>
               🔒 {prospect.name}
             </span>
-            <div className="do-recruit-sub" style={{ flexWrap: 'wrap' }}>
+            <div className={styles.sub}>
               <span aria-label={`Hometown: ${prospect.hometown}`}>
-                <span
-                  style={{
-                    fontSize: '0.55rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                    color: '#64748b',
-                    marginRight: '0.2rem',
-                  }}
-                >
-                  From
-                </span>
-                <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{prospect.hometown}</span>
+                <span className={styles.fromLabel}>From</span>
+                <span className={styles.fromValue}>{prospect.hometown}</span>
               </span>
               {prospect.reach_band && (
                 <>
-                  <span className="dot">·</span>
-                  <span className="dm-badge dm-badge-slate" style={{ fontSize: '0.55rem' }}>
-                    {prospect.reach_band} REACH
-                  </span>
+                  <span className={styles.dot}>·</span>
+                  <span className={styles.chip}>{prospect.reach_band} REACH</span>
                 </>
               )}
             </div>
           </div>
         </div>
-        <p style={{ color: '#94a3b8', fontSize: '0.7rem', margin: '0.6rem 0 0' }}>
+        <p className={styles.hint}>
           {prospect.visibility_hint ?? 'Beyond your Scouting Network — raise your reach to open his sheet.'}
         </p>
       </div>
@@ -194,131 +180,79 @@ export function ProspectCard({
   }
 
   return (
-    <div className={`do-recruit fit-${fitTier}`} style={{ position: 'relative' }} data-testid="prospect-card">
+    <div className={`${styles.card} ${fitAccentClass}`} data-testid="prospect-card">
       {feedbackMessage && (
         <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: feedbackTone === 'success' ? 'rgba(16, 185, 129, 0.92)' : 'rgba(244, 63, 94, 0.92)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            fontWeight: 800,
-            fontSize: '1rem',
-            zIndex: 10,
-            borderRadius: '6px',
-            textAlign: 'center',
-            padding: '1rem',
-          }}
+          className={`${styles.feedback} ${feedbackTone === 'success' ? styles.feedbackSuccess : styles.feedbackError}`}
         >
           {feedbackTone === 'success' ? '✓ ' : ''}{feedbackMessage}
         </div>
       )}
-      <div className="do-recruit-head">
-        <div className="do-recruit-id">
-          <span className="do-recruit-name" title={prospect.name}>
+      <div className={styles.head}>
+        <div className={styles.id}>
+          <span className={styles.name} title={prospect.name}>
             {prospect.name}
           </span>
-          <div className="do-recruit-sub" style={{ flexWrap: 'wrap' }}>
+          <div className={styles.sub}>
             <span
+              className={styles.rank}
               aria-label={`Board rank ${priority}`}
               title="Your board rank for this prospect — sorted by fit by default"
-              style={{ fontSize: '0.6rem', color: '#64748b', letterSpacing: '0.04em' }}
             >
               #{String(priority).padStart(2, '0')}
             </span>
-            <span className="dot">·</span>
+            <span className={styles.dot}>·</span>
             <span aria-label={`Hometown: ${prospect.hometown}`}>
-              <span
-                style={{
-                  fontSize: '0.55rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                  color: '#64748b',
-                  marginRight: '0.2rem',
-                }}
-              >
-                From
-              </span>
-              <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{prospect.hometown}</span>
+              <span className={styles.fromLabel}>From</span>
+              <span className={styles.fromValue}>{prospect.hometown}</span>
             </span>
-            <span className="dot">·</span>
+            <span className={styles.dot}>·</span>
             {archetypeBadge(prospect.public_archetype || 'Balanced')}
-            <span className="dot">·</span>
+            <span className={styles.dot}>·</span>
             <RecruitingBadge status={displayStatus} pending={pending} />
             {prospect.funnel_stage != null && (
               <>
-                <span className="dot">·</span>
+                <span className={styles.dot}>·</span>
                 <span
-                  className="dm-badge dm-badge-cyan"
+                  className={styles.chip}
                   title="Your recruiting funnel stage — Open → Shortlist → Top 3 → Verbal"
-                  style={{ fontSize: '0.55rem' }}
                 >
                   {prospect.funnel_stage}
                 </span>
               </>
             )}
-            <span className="dot">·</span>
-            <span
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
-            >
+            <span className={styles.dot}>·</span>
+            <span className={styles.pipeline}>
               <TermTip term="recruit.pipeline">
-                <span
-                  style={{
-                    fontSize: '0.55rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    color: '#64748b',
-                  }}
-                >
-                  Pipeline
-                </span>
+                <span className={styles.miniLabel}>Pipeline</span>
               </TermTip>
               <PipelineEmblem tier={safePipelineTier} size="sm" />
             </span>
           </div>
         </div>
-        <div className="do-recruit-fit" aria-label={`Fit score: ${prospect.fit_score} out of 100`}>
+        <div className={styles.fit} aria-label={`Fit score: ${prospect.fit_score} out of 100`}>
           <TermTip term="recruit.fit">
             <span className="lbl">FIT</span>
           </TermTip>
-          <span
-            className="val mono"
-            style={{
-              fontSize: '1.1rem',
-              color:
-                prospect.fit_score >= 80
-                  ? '#34d399'
-                  : prospect.fit_score >= 65
-                    ? '#f59e0b'
-                    : '#f87171',
-            }}
-          >
+          <span className={`${styles.fitValue} ${styles[fitTier]}`}>
             {prospect.fit_score}
-            <span
-              style={{ fontSize: '0.55rem', color: '#64748b', fontWeight: 400, marginLeft: '0.15rem' }}
-            >
-              /100
-            </span>
+            <span className={styles.fitUnit}>/100</span>
           </span>
         </div>
       </div>
 
-      <div className="do-recruit-meter">
-        <div className="do-recruit-meter-bg">
-          <div className="do-recruit-meter-fill" style={{ width: `${prospect.fit_score}%` }} />
+      <div className={styles.meter}>
+        <div className={styles.meterBg}>
+          <div className={styles.meterFill} style={{ width: `${prospect.fit_score}%` }} />
         </div>
-        <div className="do-recruit-meter-labels">
+        <div className={styles.meterLabels}>
           <span>
             <TermTip term="recruit.fit">
               <span>{fitLabel.toUpperCase()}</span>
             </TermTip>
           </span>
           {typeof prospect.interest === 'number' && (
-            <span className="mono">
+            <span className={styles.mono}>
               <TermTip term="recruit.interest">
                 <span>Interest</span>
               </TermTip>
@@ -338,8 +272,8 @@ export function ProspectCard({
       </div>
 
       {evidence.length > 0 && (
-        <div className="do-recruit-evidence">
-          <span className="bar" />
+        <div className={styles.evidence}>
+          <span className={styles.evidenceBar} />
           <span className="copy">{evidence.join(' · ')}</span>
         </div>
       )}
@@ -347,34 +281,24 @@ export function ProspectCard({
           receipt on hover. The dealbreaker (★) is hidden until you scout him —
           fail it and he never verbals. */}
       {prospect.motivations && prospect.motivations.length > 0 && (
-        <div
-          data-testid="prospect-motivations"
-          style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', margin: '0.4rem 0 0' }}
-        >
+        <div data-testid="prospect-motivations" className={styles.motivations}>
           {prospect.motivations.map((m) => (
-            <span
-              key={m.motivation}
-              className="dm-badge dm-badge-slate"
-              title={m.receipt}
-              style={{ fontSize: '0.6rem' }}
-            >
+            <span key={m.motivation} className={styles.chip} title={m.receipt}>
               {m.label} <strong>{m.letter}</strong>
             </span>
           ))}
           {prospect.dealbreaker ? (
             <span
-              className={`dm-badge ${prospect.dealbreaker.veto ? 'dm-badge-orange' : 'dm-badge-violet'}`}
+              className={`${styles.chip} ${prospect.dealbreaker.veto ? styles.chipBroken : styles.chipTalent}`}
               title={prospect.dealbreaker.receipt}
-              style={{ fontSize: '0.6rem' }}
             >
               ★ {prospect.dealbreaker.label} {prospect.dealbreaker.letter}
               {prospect.dealbreaker.veto ? " — WON'T VERBAL" : ''}
             </span>
           ) : (
             <span
-              className="dm-badge dm-badge-slate"
+              className={`${styles.chip} ${styles.chipMuted}`}
               title="Scout this prospect to reveal what he cares about most"
-              style={{ fontSize: '0.6rem', opacity: 0.6 }}
             >
               ★ Dealbreaker hidden — scout to reveal
             </span>
@@ -384,20 +308,17 @@ export function ProspectCard({
       {/* V24 Phase 5: the in-season interest race — named rival suitors and
           whether you lead. Leading the race compounds your courtship. */}
       {prospect.market_signal && prospect.market_signal.rivals.length > 0 && (
-        <div
-          data-testid="prospect-rivals"
-          style={{ margin: '0.4rem 0 0', fontSize: '0.66rem' }}
-        >
+        <div data-testid="prospect-rivals" className={styles.rivals}>
           <span
-            className={`dm-badge ${prospect.market_signal.leader === 'user' ? 'dm-badge-cyan' : 'dm-badge-orange'}`}
-            style={{ fontSize: '0.58rem', marginRight: '0.4rem' }}
+            className={`${styles.chip} ${prospect.market_signal.leader === 'user' ? styles.chipLead : styles.chipTrail}`}
             title="Your tracked interest vs the strongest rival's pursuit. Leading the race compounds your courtship."
           >
             {prospect.market_signal.leader === 'user'
               ? `YOU LEAD +${prospect.market_signal.user_lead}`
               : `TRAILING ${prospect.market_signal.user_lead}`}
           </span>
-          <span style={{ color: '#94a3b8' }}>
+          {' '}
+          <span>
             Rivals:{' '}
             {prospect.market_signal.rivals.map((r, i) => (
               <span key={r.club_id} title={r.receipt}>
@@ -410,40 +331,29 @@ export function ProspectCard({
       )}
       {/* V24 Phase 4: the home fixture hosting his campus visit, once scheduled. */}
       {prospect.visit_fixture && (
-        <div style={{ margin: '0.35rem 0 0', fontSize: '0.66rem', color: '#94a3b8' }}>
-          <span className="dm-badge dm-badge-violet" style={{ fontSize: '0.58rem', marginRight: '0.4rem' }}>
-            VISIT SET
-          </span>
-          Hosting him at your Week {prospect.visit_fixture.week} home game.
+        <div className={styles.visit}>
+          <span className={`${styles.chip} ${styles.chipMuted}`}>VISIT SET</span>
+          {' '}Hosting him at your Week {prospect.visit_fixture.week} home game.
         </div>
       )}
       {prospect.active_promise && (
-        <div
-          data-testid="prospect-promise-chip"
-          style={{
-            display: 'flex',
-            gap: '0.4rem',
-            alignItems: 'baseline',
-            margin: '0.35rem 0 0',
-            fontSize: '0.68rem',
-          }}
-        >
-          <span className={`dm-badge ${prospect.active_promise.status === 'broken' ? 'dm-badge-orange' : 'dm-badge-cyan'}`}>
+        <div data-testid="prospect-promise-chip" className={styles.promise}>
+          <span className={`${styles.chip} ${prospect.active_promise.status === 'broken' ? styles.chipBroken : styles.chipLead}`}>
             {prospect.active_promise.status === 'open'
               ? 'PROMISED'
               : prospect.active_promise.status === 'fulfilled'
                 ? 'PROMISE KEPT'
                 : 'PROMISE BROKEN'}
           </span>
-          <span style={{ color: '#94a3b8' }}>
+          <span>
             {PROMISE_TYPE_LABELS[prospect.active_promise.promise_type] ?? prospect.active_promise.promise_type}
           </span>
         </div>
       )}
-      <div className="do-recruit-actions">
+      <div className={styles.actions}>
         {prospect.funnel_stage != null && (
           <button
-            className={`do-recruit-btn${prospect.on_focus_list ? ' primary' : ''}`}
+            className={`${styles.btn}${prospect.on_focus_list ? ` ${styles.btnPrimary}` : ''}`}
             disabled={loading}
             onClick={() => {
               setLoading(true);
@@ -472,7 +382,7 @@ export function ProspectCard({
           </button>
         )}
         <button
-          className="do-recruit-btn"
+          className={styles.btn}
           disabled={loading || !canScout}
           onClick={() => runAction('scoutProspect', 'Scouted.', 'SCOUTED')}
           title={canScout ? 'Reveal more prospect detail' : 'No Scout slots remain this week'}
@@ -481,7 +391,7 @@ export function ProspectCard({
           Scout
         </button>
         <button
-          className="do-recruit-btn"
+          className={styles.btn}
           disabled={loading || !canContact || prospect.can_contact === false}
           onClick={() => runAction('contactProspect', 'Contact logged.', 'CONTACTED')}
           title={
@@ -496,7 +406,7 @@ export function ProspectCard({
           Contact
         </button>
         <button
-          className="do-recruit-btn primary"
+          className={`${styles.btn} ${styles.btnPrimary}`}
           disabled={loading || !canVisit || prospect.can_visit === false}
           onClick={() => runAction('visitProspect', 'Visit booked.', 'VISITED')}
           title={
@@ -513,7 +423,7 @@ export function ProspectCard({
         {/* V19b: promises are mechanical — results feed credibility, which
             feeds interest and your contested Signing Day offer. */}
         <select
-          className="do-recruit-btn"
+          className={styles.btn}
           aria-label={`Make a promise to ${prospect.name}`}
           disabled={loading || Boolean(prospect.active_promise && prospect.active_promise.status === 'open')}
           value=""
@@ -545,7 +455,6 @@ export function ProspectCard({
               ? 'A promise to this prospect is already open'
               : 'Commit to something real — checked at season\'s end; kept promises build credibility, broken ones cost more'
           }
-          style={{ cursor: 'pointer' }}
         >
           <option value="" disabled>
             Promise…

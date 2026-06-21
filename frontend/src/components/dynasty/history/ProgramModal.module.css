@@ -1,0 +1,38 @@
+/* ProgramModal — Record Room (cream/ink) modal body presentation.
+   The overlay keeps the SHARED command-policy-overlay global (survives P5). */
+.body {
+  background: var(--legacy-paper);
+  color: var(--legacy-ink);
+  border-radius: var(--radius-lg);
+}
+.close {
+  appearance: none;
+  cursor: pointer;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  font: 700 0.74rem var(--font-ui);
+  color: var(--legacy-ink);
+  background: transparent;
+  border: 1px solid var(--legacy-ink);
+}
+.header {
+  margin: var(--space-4) 0;
+}
+.kicker {
+  display: block;
+  font: 600 0.72rem var(--font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--legacy-brick);
+}
+.title {
+  margin: var(--space-2) 0 0;
+  font: 600 1.3rem var(--font-serif);
+  color: var(--legacy-ink);
+}
+.note {
+  margin: var(--space-2) 0 0;
+  font: 400 0.8rem var(--font-ui);
+  color: var(--legacy-ink);
+  opacity: 0.8;
+}

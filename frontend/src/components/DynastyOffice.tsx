@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CommandCenterPlan, CommandCenterResponse, DynastyOfficeResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
-import { StatusMessage, Dialog } from './ui';
+import { Dialog } from './ui';
+import { StatusMessage } from '../ui';
 import { CredibilityStrip } from './dynasty/CredibilityStrip';
 import { ProspectCard } from './dynasty/ProspectCard';
 import { HistorySubTab } from './dynasty/HistorySubTab';
 import { commandApi, dynastyApi } from '../api/client';
 import { formatK } from '../money';
 import { EmptyState, TermTip, ProofChip } from '../legibility';
+import { isAtRisk, lockedSinkKey } from './dynasty/atRisk';
+import styles from './dynasty/DynastyOffice.module.css';
 
 const dynastySubtabFromUrl = (): 'recruit' | 'history' | 'staff' => {
   const subtab = new URLSearchParams(window.location.search).get('subtab');
@@ -100,15 +103,14 @@ function SettingsModal({
       labelledBy="program-settings-title"
       label="Staff Focus"
       onClose={onClose}
-      overlayStyle={{ background: 'rgba(0,0,0,0.8)', backgroundColor: undefined, backdropFilter: undefined, zIndex: 101, padding: '1rem' }}
-      panelClassName="dm-panel"
+      panelClassName={styles.settingsPanel}
       panelStyle={{ width: 'min(92vw, 34rem)', maxHeight: '88vh', overflowY: 'auto' }}
     >
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.25rem' }}>
+        <div className={styles.settingsHead}>
           <div>
-            <p className="dm-kicker">Program Settings</p>
-            <h2 id="program-settings-title" style={{ margin: '0.25rem 0 0', color: '#fff' }}>Staff Focus</h2>
-            <p style={{ margin: '0.4rem 0 0', color: '#94a3b8', fontSize: '0.875rem' }}>
+            <p className={styles.kicker}>Program Settings</p>
+            <h2 id="program-settings-title" className={styles.heading}>Staff Focus</h2>
+            <p className={styles.note}>
               Your staff concentrates on one room this week. Every option is a real,
               disclosed effect — pick where the week goes.
             </p>
@@ -116,13 +118,13 @@ function SettingsModal({
           <button
             aria-label="Close program settings"
             onClick={onClose}
-            style={{ background: 'none', border: '1px solid #334155', borderRadius: '4px', color: '#94a3b8', cursor: 'pointer', fontSize: '0.8rem', width: '2rem', height: '2rem' }}
+            className={styles.settingsClose}
             type="button"
           >
             X
           </button>
         </div>
-        <div role="radiogroup" aria-label="Weekly staff focus" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+        <div role="radiogroup" aria-label="Weekly staff focus" className={styles.focusGroup}>
           {FOCUS_OPTIONS.map((option) => {
             const selected = currentFocus === option.key;
             return (
@@ -132,29 +134,19 @@ function SettingsModal({
                 role="radio"
                 aria-checked={selected}
                 onClick={() => onUpdate('focus_department', option.key)}
-                style={{
-                  textAlign: 'left',
-                  padding: '0.7rem 0.85rem',
-                  borderRadius: 6,
-                  background: selected ? 'rgba(34,211,238,0.08)' : '#0f172a',
-                  border: selected ? '1px solid #22d3ee' : '1px solid #1e293b',
-                  borderLeft: selected ? '3px solid #22d3ee' : '3px solid #1e293b',
-                  color: '#e2e8f0',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
+                className={`${styles.focusOption}${selected ? ` ${styles.focusOptionSelected}` : ''}`}
               >
-                <span className="dm-kicker" style={{ color: selected ? '#22d3ee' : '#94a3b8' }}>
+                <span className={`${styles.focusOptionLabel}${selected ? ` ${styles.focusOptionLabelSelected}` : ''}`}>
                   <TermTip term={option.termId}>{option.label}</TermTip>
                 </span>
-                <p style={{ margin: '0.3rem 0 0', color: selected ? '#cbd5e1' : '#64748b', fontSize: '0.74rem', lineHeight: 1.45 }}>
+                <p className={styles.focusOptionEffect}>
                   {option.effect}
                 </p>
               </button>
             );
           })}
         </div>
-        <p style={{ margin: '0.9rem 0 0', color: '#64748b', fontSize: '0.7rem', lineHeight: 1.45 }}>
+        <p className={`${styles.note} ${styles.noteDim}`}>
           Dev Focus (player development direction) lives on the Command Center, and match
           tactics live in the Policy Editor — both stay set independently of this week’s
           staff focus. AI clubs run the same staff system with their own weekly picks.
@@ -181,14 +173,14 @@ function DoTabs({
   ];
 
   return (
-    <div className="do-tabs">
+    <div className={styles.tabs}>
       {tabs.map((tab) => (
-        <button key={tab.id} className={`do-tab ${active === tab.id ? 'is-active' : ''}`} onClick={() => onSelect(tab.id)} type="button">
+        <button key={tab.id} className={`${styles.tab} ${active === tab.id ? styles.tabActive : ''}`} onClick={() => onSelect(tab.id)} type="button">
           {tab.label}
-          {tab.count != null && <span className="do-tab-count">{tab.count}</span>}
+          {tab.count != null && <span className={styles.tabCount}>{tab.count}</span>}
         </button>
       ))}
-      <span className="do-tabs-spacer" />
+      <span className={styles.tabsSpacer} />
       {/* V22 Phase 2: the club's one money number, always in view from the
           front office. Red + "hiring frozen" while negative. */}
       {typeof data.treasury_k === 'number' && (
@@ -199,30 +191,17 @@ function DoTabs({
               ? 'Treasury is negative — staff hiring is frozen until the books recover.'
               : 'Club treasury — league payouts in, staff payroll out, settled each offseason.'
           }
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.35rem',
-            padding: '0.2rem 0.55rem',
-            borderRadius: '999px',
-            fontSize: '0.7rem',
-            fontWeight: 800,
-            fontVariantNumeric: 'tabular-nums',
-            color: data.treasury_k < 0 ? '#f87171' : '#34d399',
-            background: data.treasury_k < 0 ? 'rgba(248,113,113,0.10)' : 'rgba(52,211,153,0.10)',
-            border: `1px solid ${data.treasury_k < 0 ? 'rgba(248,113,113,0.35)' : 'rgba(52,211,153,0.3)'}`,
-            whiteSpace: 'nowrap',
-          }}
+          className={`${styles.treasuryChip} ${data.treasury_k < 0 ? styles.treasuryChipNegative : ''}`}
         >
           Treasury {formatK(data.treasury_k)}
-          {data.hiring_frozen && <span style={{ fontWeight: 700 }}>· hiring frozen</span>}
+          {data.hiring_frozen && <span>· hiring frozen</span>}
         </span>
       )}
-      <button className="dm-btn" onClick={onOpenSettings} type="button">Program Settings</button>
+      <button className={styles.btn} onClick={onOpenSettings} type="button">Program Settings</button>
       {/* Codex issue 5: the office works the UPCOMING week (its recruiting
           slots belong to it), which can read one ahead of the match banner —
           say "prepping" so the two labels stop looking contradictory. */}
-      <span className="do-tabs-note">Front Office · prepping Week {String(data.week).padStart(2, '0')}</span>
+      <span className={styles.tabsNote}>Front Office · prepping Week {String(data.week).padStart(2, '0')}</span>
     </div>
   );
 }
@@ -262,47 +241,47 @@ function PromisesPanel({
   const resolved = promises.filter((p) => p.status !== 'open').slice(0, 4);
 
   return (
-    <div className="dm-panel" style={{ padding: '0.85rem 1rem' }} data-testid="promises-panel">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
-        <span className="dm-kicker">
+    <div className={styles.promisesPanel} data-testid="promises-panel">
+      <div className={styles.promisesHead}>
+        <span className={styles.kicker}>
           <TermTip term="recruit.promise">Promises</TermTip>
-          <span style={{ color: '#64748b', marginLeft: '0.4rem', textTransform: 'none', letterSpacing: 0 }}>
+          <span className={styles.promisesCount}>
             {open.length}/{maxActive} open
           </span>
         </span>
-        <span style={{ color: '#64748b', fontSize: '0.68rem' }}>
+        <span className={styles.promisesHelp}>
           Checked at season&apos;s end — kept promises build credibility, broken ones cost more.
         </span>
       </div>
       {open.length === 0 && resolved.length === 0 ? (
-        <p style={{ margin: '0.5rem 0 0', color: '#64748b', fontSize: '0.74rem' }}>
+        <p className={styles.note}>
           No promises yet. Use a prospect card&apos;s Promise action to commit to something
           real — playing time, development, or contention.
         </p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.55rem' }}>
+        <div className={styles.promisesList}>
           {open.map((p) => (
-            <div key={`open-${p.player_id}`} style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', fontSize: '0.76rem' }}>
-              <span className="dm-badge dm-badge-cyan">OPEN</span>
-              <span style={{ color: '#e2e8f0' }}>
+            <div key={`open-${p.player_id}`} className={styles.promiseRow}>
+              <span className={`${styles.chip} ${styles.chipOk}`}>OPEN</span>
+              <span className={styles.promiseName}>
                 {p.player_name ?? nameById.get(p.player_id) ?? p.player_id}: {PROMISE_LABELS[p.promise_type]?.label ?? p.promise_type}
               </span>
-              <span style={{ color: '#64748b' }}>
+              <span className={styles.promiseMeaning}>
                 — {PROMISE_LABELS[p.promise_type]?.meaning ?? ''}
               </span>
             </div>
           ))}
           {resolved.map((p) => (
-            <div key={`done-${p.player_id}-${p.result_season_id}`} style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', fontSize: '0.76rem' }}>
+            <div key={`done-${p.player_id}-${p.result_season_id}`} className={styles.promiseRow}>
               {/* 'void' = the target signed elsewhere / never joined — not the
                   manager's failure, no credibility effect (Codex issue 13). */}
-              <span className={`dm-badge ${p.status === 'fulfilled' ? 'dm-badge-cyan' : p.status === 'void' ? 'dm-badge-slate' : 'dm-badge-orange'}`}>
+              <span className={`${styles.chip} ${p.status === 'fulfilled' ? styles.chipOk : p.status === 'void' ? styles.chipNeutral : styles.chipBroken}`}>
                 {p.status === 'fulfilled' ? 'KEPT' : p.status === 'void' ? 'VOIDED' : 'BROKEN'}
               </span>
-              <span style={{ color: '#94a3b8' }}>
+              <span className={styles.promiseName}>
                 {p.player_name ?? nameById.get(p.player_id) ?? p.player_id}: {PROMISE_LABELS[p.promise_type]?.label ?? p.promise_type}
               </span>
-              <span style={{ color: '#64748b' }}>— {p.evidence}</span>
+              <span className={styles.promiseMeaning}>— {p.evidence}</span>
             </div>
           ))}
         </div>
@@ -313,35 +292,35 @@ function PromisesPanel({
 
 function SlotMeter({ slots }: { slots: DynastyOfficeResponse['recruiting']['budget'] }) {
   const items = [
-    { key: 'scout', label: 'Scout', tone: 'cyan', help: 'Verify prospect tiers.' },
-    { key: 'contact', label: 'Contact', tone: 'amber', help: 'Letters and calls. Low-cost touches.' },
-    { key: 'visit', label: 'Visit', tone: 'orange', help: 'Highest-commitment signal this week.' },
+    { key: 'scout', label: 'Scout', help: 'Verify prospect tiers.' },
+    { key: 'contact', label: 'Contact', help: 'Letters and calls. Low-cost touches.' },
+    { key: 'visit', label: 'Visit', help: 'Highest-commitment signal this week.' },
   ] as const;
 
   return (
-    <div className="do-slots">
-      <div className="do-panel-head">
-        <span className="dm-kicker">Weekly Recruiting</span>
-        <h3>Action Slots</h3>
-        <p style={{ margin: '0.2rem 0 0', color: '#94a3b8', fontSize: '0.72rem', lineHeight: 1.4 }}>
+    <div className={styles.slots}>
+      <div className={styles.panelHead}>
+        <span className={styles.kicker}>Weekly Recruiting</span>
+        <h3 className={styles.subheading}>Action Slots</h3>
+        <p className={styles.note}>
           Each slot is one action you can take this week. Remaining slots reset next week.
         </p>
       </div>
-      <div className="do-slot-body">
+      <div className={styles.slotBody}>
         {items.map((item) => {
           const [used, total] = slots[item.key];
           return (
-            <div key={item.key} className={`do-slot tone-${item.tone}`}>
-              <div className="do-slot-head">
-                <span className="do-slot-lbl">{item.label}</span>
-                <span className="do-slot-count"><b>{Math.max(0, total - used)}</b> / {total}</span>
+            <div key={item.key} className={styles.slot}>
+              <div className={styles.slotHead}>
+                <span className={styles.slotLbl}>{item.label}</span>
+                <span className={styles.slotCount}><b>{Math.max(0, total - used)}</b> / {total}</span>
               </div>
-              <div className="do-slot-pips">
+              <div className={styles.slotPips}>
                 {Array.from({ length: total }).map((_, index) => (
-                  <span key={`${item.key}-${index}`} className={`do-slot-pip ${index < used ? 'used' : 'open'}`} />
+                  <span key={`${item.key}-${index}`} className={`${styles.slotPip} ${index < used ? styles.slotPipUsed : ''}`} />
                 ))}
               </div>
-              <span className="do-slot-help">
+              <span className={styles.slotHelp}>
                 {used >= total ? 'All used this week.' : `${total - used} remaining. ${item.help}`}
               </span>
             </div>
@@ -355,10 +334,10 @@ function SlotMeter({ slots }: { slots: DynastyOfficeResponse['recruiting']['budg
 function StaffBrief({ staff }: { staff: DynastyOfficeResponse['staff_market']['current_staff'] }) {
   if (staff.length === 0) {
     return (
-      <div className="do-staff">
-        <div className="do-panel-head">
-          <span className="dm-kicker">Staff Room</span>
-          <h3>Department Heads</h3>
+      <div className={styles.staff}>
+        <div className={styles.panelHead}>
+          <span className={styles.kicker}>Staff Room</span>
+          <h3 className={styles.subheading}>Department Heads</h3>
         </div>
         <EmptyState
           title="No department heads hired"
@@ -368,12 +347,12 @@ function StaffBrief({ staff }: { staff: DynastyOfficeResponse['staff_market']['c
     );
   }
   return (
-    <div className="do-staff">
-      <div className="do-panel-head">
-        <span className="dm-kicker">Staff Room</span>
-        <h3>Department Heads</h3>
+    <div className={styles.staff}>
+      <div className={styles.panelHead}>
+        <span className={styles.kicker}>Staff Room</span>
+        <h3 className={styles.subheading}>Department Heads</h3>
       </div>
-      <div className="do-staff-list">
+      <div className={styles.staffList}>
         {staff.map((member) => {
           const termId = `staff.${member.department}` as const;
           // Safe cast: the six departments match the pre-seeded staff.* term ids.
@@ -384,21 +363,21 @@ function StaffBrief({ staff }: { staff: DynastyOfficeResponse['staff_market']['c
           ].includes(termId);
           const deptLabel = titleizeDepartment(member.department);
           return (
-            <div key={`${member.department}-${member.name}`} className="do-staff-row">
-              <div className="do-staff-id">
+            <div key={`${member.department}-${member.name}`} className={styles.staffRow}>
+              <div className={styles.staffId}>
                 {hasTerm ? (
                   <TermTip term={termId as import('../legibility').TermId}>
-                    <span className="dept">{deptLabel}</span>
+                    <span className={styles.dept}>{deptLabel}</span>
                   </TermTip>
                 ) : (
-                  <span className="dept">{deptLabel}</span>
+                  <span className={styles.dept}>{deptLabel}</span>
                 )}
-                <span className="name">{member.name}</span>
-                <span className="voice">"{member.voice || member.effect_summary}"</span>
+                <span className={styles.staffName}>{member.name}</span>
+                <span className={styles.voice}>"{member.voice || member.effect_summary}"</span>
               </div>
-              <div className="do-staff-rating" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
-                <span className="num">{member.rating_primary}</span>
-                <span className="lbl">OVR</span>
+              <div className={styles.staffRating}>
+                <span className={styles.ratingNum}>{member.rating_primary}</span>
+                <span className={styles.ratingLbl}>OVR</span>
                 {member.department === 'training' && member.training_modifier_pct !== undefined && (
                   <ProofChip
                     label={`+${member.training_modifier_pct}% dev`}
@@ -427,34 +406,24 @@ function RecruitingContext({
 
   return (
     <div
-      className="do-recruit-context"
+      className={styles.context}
       role="group"
       aria-label="This week's recruiting summary"
-      style={{
-        display: 'flex',
-        gap: '0.75rem',
-        flexWrap: 'wrap',
-        padding: '0.6rem 0.9rem',
-        background: 'rgba(15,23,42,0.55)',
-        border: '1px solid #1e293b',
-        borderRadius: '6px',
-        marginBottom: '0.75rem',
-      }}
     >
-      <div className="do-cred-rank" style={{ flex: '1 1 8rem', minWidth: '8rem' }}>
-        <span className="lbl">Board</span>
-        <div className="val"><b>{prospectCount}</b> <span>prospects</span></div>
-        <span className="trend dim">Sorted by program fit</span>
+      <div className={styles.contextCell}>
+        <span className={styles.cellLbl}>Board</span>
+        <div className={styles.cellVal}><b>{prospectCount}</b> <span>prospects</span></div>
+        <span className={`${styles.cellTrend} ${styles.cellTrendDim}`}>Sorted by program fit</span>
       </div>
-      <div className="do-cred-rank" style={{ flex: '1 1 9rem', minWidth: '9rem' }}>
-        <span className="lbl">Reach Remaining</span>
-        <div className="val"><b>{scoutRemaining + contactRemaining}</b> <span>scout + contact</span></div>
-        <span className="trend dim">{scoutRemaining} scout · {contactRemaining} contact</span>
+      <div className={styles.contextCellWide}>
+        <span className={styles.cellLbl}>Reach Remaining</span>
+        <div className={styles.cellVal}><b>{scoutRemaining + contactRemaining}</b> <span>scout + contact</span></div>
+        <span className={`${styles.cellTrend} ${styles.cellTrendDim}`}>{scoutRemaining} scout · {contactRemaining} contact</span>
       </div>
-      <div className={`do-cred-rank ${visitRemaining === 0 ? 'danger' : ''}`} style={{ flex: '1 1 8rem', minWidth: '8rem' }}>
-        <span className="lbl">Visit Slots</span>
-        <div className="val"><b>{visitRemaining}</b> <span>remaining</span></div>
-        <span className={`trend ${visitRemaining > 0 ? 'dim' : 'warn'}`}>
+      <div className={styles.contextCell}>
+        <span className={styles.cellLbl}>Visit Slots</span>
+        <div className={styles.cellVal}><b>{visitRemaining}</b> <span>remaining</span></div>
+        <span className={`${styles.cellTrend} ${visitRemaining > 0 ? styles.cellTrendDim : styles.cellTrendWarn}`}>
           {visitRemaining > 0 ? 'Use on best-fit closes' : 'Budget exhausted this week'}
         </span>
       </div>
@@ -488,26 +457,26 @@ function ScoutingNetworkPanel({
       .finally(() => setBusy(false));
   };
   return (
-    <div className="do-panel" aria-label="Scouting Network">
-      <div className="do-panel-head">
-        <span className="dm-kicker">Scouting Network</span>
-        <h4>
+    <div className={styles.panel} aria-label="Scouting Network">
+      <div className={styles.panelHead}>
+        <span className={styles.kicker}>Scouting Network</span>
+        <h4 className={styles.subheading}>
           Level {network.level}{' '}
-          <span style={{ color: '#94a3b8', fontWeight: 400 }}>· {reachByLevel[network.level]}</span>
+          <span className={styles.noteDim}>· {reachByLevel[network.level]}</span>
         </h4>
       </div>
       {network.maxed ? (
-        <p style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
+        <p className={styles.note}>
           L3 — full national reach. Every prospect's sheet is open to you.
         </p>
       ) : (
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.6rem' }}>
-          <span style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
+        <div className={styles.networkActions}>
+          <span className={styles.note}>
             Raise to L{network.next_level} to open more sheets across the class.
           </span>
           <button
             type="button"
-            className="dm-action"
+            className={styles.btnPrimary + ' ' + styles.btn}
             disabled={busy || !network.can_afford}
             onClick={upgrade}
             title={
@@ -519,14 +488,14 @@ function ScoutingNetworkPanel({
             {busy ? 'Upgrading…' : `Upgrade to L${network.next_level} — ${formatK(network.upgrade_cost_k ?? 0)}`}
           </button>
           {!network.can_afford && (
-            <span style={{ color: '#f87171', fontSize: '0.68rem' }}>
+            <span className={`${styles.note} ${styles.danger}`}>
               Treasury {formatK(network.treasury_k)} — save up first.
             </span>
           )}
         </div>
       )}
       {error && (
-        <p style={{ color: '#f87171', fontSize: '0.68rem', marginTop: '0.4rem' }}>{error}</p>
+        <p className={`${styles.note} ${styles.danger}`}>{error}</p>
       )}
     </div>
   );
@@ -551,31 +520,26 @@ function FacilitiesUpgradePanel({
       .finally(() => setBusy(null));
   };
   return (
-    <div className="do-panel" aria-label="Facilities">
-      <div className="do-panel-head">
-        <span className="dm-kicker">Facilities</span>
-        <h4>Build your program — Training Hall develops, Stadium &amp; Merch draw fan income.</h4>
+    <div className={styles.panel} aria-label="Facilities">
+      <div className={styles.panelHead}>
+        <span className={styles.kicker}>Facilities</span>
+        <h4 className={styles.subheading}>Build your program — Training Hall develops, Stadium &amp; Merch draw fan income.</h4>
       </div>
-      <div style={{ display: 'grid', gap: '0.4rem' }}>
+      <div className={styles.facilityList}>
         {facilities.catalog.map((f) => (
           <div
             key={f.facility_type}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap',
-              padding: '0.45rem 0.6rem', borderRadius: '6px',
-              border: `1px solid ${f.owned ? '#065f46' : '#1e293b'}`,
-              background: f.owned ? 'rgba(16,185,129,0.06)' : 'rgba(15,23,42,0.4)',
-            }}
+            className={`${styles.facilityRow} ${f.owned ? styles.facilityRowOwned : ''}`}
           >
-            <span style={{ fontWeight: 600, color: '#e2e8f0' }}>{f.display_name}</span>
-            <span style={{ color: '#64748b', fontSize: '0.7rem' }}>{f.category}</span>
+            <span className={styles.facilityName}>{f.display_name}</span>
+            <span className={styles.facilityCat}>{f.category}</span>
             <span style={{ marginLeft: 'auto' }}>
               {f.owned ? (
-                <span style={{ color: '#10b981', fontSize: '0.74rem', fontWeight: 600 }}>Built ✓</span>
+                <span className={styles.facilityBuilt}>Built ✓</span>
               ) : (
                 <button
                   type="button"
-                  className="dm-action"
+                  className={styles.btn}
                   disabled={busy !== null || !f.can_afford}
                   onClick={() => build(f.facility_type)}
                   title={
@@ -592,7 +556,7 @@ function FacilitiesUpgradePanel({
         ))}
       </div>
       {error && (
-        <p style={{ color: '#f87171', fontSize: '0.68rem', marginTop: '0.4rem' }}>{error}</p>
+        <p className={`${styles.note} ${styles.danger}`}>{error}</p>
       )}
     </div>
   );
@@ -623,8 +587,8 @@ function RecruitBoard({
     });
     return [...base].sort((a, b) => {
       // Name-only cards always sink to the bottom regardless of sort key.
-      const av0 = a.fully_visible === false ? 1 : 0;
-      const bv0 = b.fully_visible === false ? 1 : 0;
+      const av0 = lockedSinkKey(a);
+      const bv0 = lockedSinkKey(b);
       if (av0 !== bv0) return av0 - bv0;
       let av: number;
       let bv: number;
@@ -643,50 +607,38 @@ function RecruitBoard({
   }, [prospects, filter, sort, sortDir]);
 
   return (
-    <div className="do-board">
-      <div className="do-board-head">
+    <div className={styles.panel}>
+      <div className={styles.boardHead}>
         <div>
-          <span className="dm-kicker">Recruit Board</span>
-          <h3>This Week's Prospects</h3>
+          <span className={styles.kicker}>Recruit Board</span>
+          <h3 className={styles.subheading}>This Week's Prospects</h3>
         </div>
-        <div className="do-board-filters">
-          <button className={`do-board-filter ${filter === 'all' ? 'is-active' : ''}`} onClick={() => setFilter('all')} type="button">
-            All <span className="n">{prospects.length}</span>
+        <div className={styles.boardFilters}>
+          <button className={`${styles.filter} ${filter === 'all' ? styles.filterActive : ''}`} onClick={() => setFilter('all')} type="button">
+            All <span className={styles.filterCount}>{prospects.length}</span>
           </button>
-          <button className={`do-board-filter ${filter === 'strong' ? 'is-active' : ''}`} onClick={() => setFilter('strong')} type="button">
-            Strong Fit <span className="n">{prospects.filter((prospect) => prospect.fit_score >= 80).length}</span>
+          <button className={`${styles.filter} ${filter === 'strong' ? styles.filterActive : ''}`} onClick={() => setFilter('strong')} type="button">
+            Strong Fit <span className={styles.filterCount}>{prospects.filter((prospect) => prospect.fit_score >= 80).length}</span>
           </button>
-          <button className={`do-board-filter ${filter === 'fair' ? 'is-active' : ''}`} onClick={() => setFilter('fair')} type="button">
-            Fair Fit <span className="n">{prospects.filter((prospect) => prospect.fit_score >= 65 && prospect.fit_score < 80).length}</span>
+          <button className={`${styles.filter} ${filter === 'fair' ? styles.filterActive : ''}`} onClick={() => setFilter('fair')} type="button">
+            Fair Fit <span className={styles.filterCount}>{prospects.filter((prospect) => prospect.fit_score >= 65 && prospect.fit_score < 80).length}</span>
           </button>
-          <button className={`do-board-filter ${filter === 'risk' ? 'is-active' : ''}`} onClick={() => setFilter('risk')} type="button">
-            At Risk <span className="n">{prospects.filter((prospect) => prospect.fully_visible !== false && (prospect.fit_score ?? 0) < 65).length}</span>
+          <button className={`${styles.filter} ${filter === 'risk' ? styles.filterActive : ''}`} onClick={() => setFilter('risk')} type="button">
+            At Risk <span className={styles.filterCount}>{prospects.filter(isAtRisk).length}</span>
           </button>
-          <span className="do-board-sep" />
+          <span className={styles.boardSep} />
           <div
             role="group"
             aria-label="Sort prospects"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.3rem',
-              flexWrap: 'wrap',
-            }}
+            className={styles.sortGroup}
           >
-            <span
-              style={{
-                fontSize: '0.6rem',
-                color: '#64748b',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-              }}
-            >
+            <span className={styles.sortLbl}>
               Sort
             </span>
             {(['fit', 'interest', 'pipeline'] as const).map((key) => (
               <button
                 key={key}
-                className={`do-board-filter ${sort === key ? 'is-active' : ''}`}
+                className={`${styles.filter} ${sort === key ? styles.filterActive : ''}`}
                 onClick={() => {
                   if (sort === key) {
                     setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
@@ -708,8 +660,8 @@ function RecruitBoard({
               >
                 {key === 'fit' ? 'Fit' : key === 'interest' ? 'Interest' : 'Pipeline'}
                 {sort === key && (
-                  <span aria-hidden="true" style={{ marginLeft: '0.2rem' }}>
-                    {sortDir === 'desc' ? '↓' : '↑'}
+                  <span aria-hidden="true">
+                    {sortDir === 'desc' ? ' ↓' : ' ↑'}
                   </span>
                 )}
               </button>
@@ -720,25 +672,16 @@ function RecruitBoard({
       {/* Board-level legend — shown once instead of repeating on every card. */}
       {prospects.length > 0 && (
         <div
-          aria-label="Card color key: green = Strong Fit, amber = Fair Fit, red = At Risk"
-          style={{
-            display: 'flex',
-            gap: '0.9rem',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            margin: '0.4rem 0 0.65rem',
-            fontSize: '0.62rem',
-            color: '#64748b',
-            letterSpacing: '0.04em',
-          }}
+          aria-label="Card color key: green = Strong Fit, amber = Fair Fit, dim = At Risk"
+          className={styles.legend}
         >
-          <span style={{ color: '#34d399' }}>● Strong Fit ≥80</span>
-          <span style={{ color: '#f59e0b' }}>● Fair Fit 65–79</span>
-          <span style={{ color: '#f87171' }}>● At Risk &lt;65</span>
+          <span className={styles.legendStrong}>● Strong Fit ≥80</span>
+          <span className={styles.legendFair}>● Fair Fit 65–79</span>
+          <span className={styles.legendRisk}>● At Risk &lt;65</span>
           <span>Scout narrows the OVR range · Contact and visits build interest</span>
         </div>
       )}
-      <div className="do-board-grid">
+      <div className={styles.boardGrid}>
         {filtered.map((prospect, index) => (
           <ProspectCard key={prospect.player_id} prospect={prospect} budget={budget} onAction={reload} priority={index + 1} />
         ))}
@@ -780,60 +723,60 @@ function StaffTab({
   };
 
   return (
-    <div className="do-tab-content">
-      <div className="do-staff-glance">
-        <div className="cell">
-          <span className="lbl">Department Heads</span>
-          <span className="val">{staff.length} <span>/ 6</span></span>
-          <span className="trend">{vacancies.length} vacancies open</span>
+    <div className={styles.tabContent}>
+      <div className={styles.glance}>
+        <div className={styles.glanceCell}>
+          <span className={styles.cellLbl}>Department Heads</span>
+          <span className={styles.cellVal}>{staff.length} <span>/ 6</span></span>
+          <span className={styles.cellTrend}>{vacancies.length} vacancies open</span>
         </div>
-        <div className="cell">
-          <span className="lbl">Avg Rating</span>
-          <span className="val">{avgRating}</span>
-          <span className="trend ok">Live staff average</span>
+        <div className={styles.glanceCell}>
+          <span className={styles.cellLbl}>Avg Rating</span>
+          <span className={styles.cellVal}>{avgRating}</span>
+          <span className={`${styles.cellTrend} ${styles.cellTrendOk}`}>Live staff average</span>
         </div>
-        <div className="cell">
-          <span className="lbl">Facilities</span>
-          <span className="val">{data.staff_market.active_facilities.length}</span>
-          <span className="trend">{data.staff_market.active_facilities.length > 0 ? data.staff_market.active_facilities.join(' · ') : 'No facility upgrades tracked'}</span>
+        <div className={styles.glanceCell}>
+          <span className={styles.cellLbl}>Facilities</span>
+          <span className={styles.cellVal}>{data.staff_market.active_facilities.length}</span>
+          <span className={styles.cellTrend}>{data.staff_market.active_facilities.length > 0 ? data.staff_market.active_facilities.join(' · ') : 'No facility upgrades tracked'}</span>
         </div>
-        <div className="cell">
-          <span className="lbl">Pipeline</span>
-          <span className="val">{candidates.length}</span>
-          <span className="trend">{data.staff_market.recent_actions.length} recent staff moves</span>
+        <div className={styles.glanceCell}>
+          <span className={styles.cellLbl}>Pipeline</span>
+          <span className={styles.cellVal}>{candidates.length}</span>
+          <span className={styles.cellTrend}>{data.staff_market.recent_actions.length} recent staff moves</span>
         </div>
       </div>
 
       {data.facilities && <FacilitiesUpgradePanel facilities={data.facilities} reload={reload} />}
 
-      <div className="do-staff-grid">
+      <div className={styles.staffGrid}>
         {staff.map((member) => (
-          <div key={`${member.department}-${member.name}`} className="do-staff-card">
-            <div className="do-staff-card-head">
+          <div key={`${member.department}-${member.name}`} className={styles.staffCard}>
+            <div className={styles.staffCardHead}>
               <div>
                 {(['staff.training', 'staff.tactics', 'staff.conditioning',
                    'staff.medical', 'staff.scouting', 'staff.culture'] as const).includes(
                     `staff.${member.department}` as 'staff.training'
                   ) ? (
                   <TermTip term={`staff.${member.department}` as import('../legibility').TermId}>
-                    <span className="dm-kicker">{titleizeDepartment(member.department)}</span>
+                    <span className={styles.kicker}>{titleizeDepartment(member.department)}</span>
                   </TermTip>
                 ) : (
-                  <span className="dm-kicker">{titleizeDepartment(member.department)}</span>
+                  <span className={styles.kicker}>{titleizeDepartment(member.department)}</span>
                 )}
-                <p className="name">{member.name}</p>
+                <p className={styles.staffName}>{member.name}</p>
               </div>
-              <div className="rating">
-                <span className="num">{member.rating_primary}</span>
-                <span className="lbl">OVR</span>
+              <div className={styles.rating}>
+                <span className={styles.ratingNum}>{member.rating_primary}</span>
+                <span className={styles.ratingLbl}>OVR</span>
               </div>
             </div>
-            <p className="voice">"{member.voice || member.effect_summary}"</p>
-            <div className="specs">
-              <span className="dm-badge dm-badge-cyan">{titleizeDepartment(member.department)}</span>
-              <span className="dm-badge dm-badge-violet">SECONDARY {member.rating_secondary}</span>
+            <p className={styles.voice}>"{member.voice || member.effect_summary}"</p>
+            <div className={styles.specs}>
+              <span className={styles.chip}>{titleizeDepartment(member.department)}</span>
+              <span className={styles.chip}>SECONDARY {member.rating_secondary}</span>
             </div>
-            <dl className="meta">
+            <dl className={styles.meta}>
               <div><dt>Primary</dt><dd>{member.rating_primary}</dd></div>
               <div><dt>Secondary</dt><dd>{member.rating_secondary}</dd></div>
               {/* V22 Phase 3: every head's annual cost on the card. */}
@@ -842,17 +785,17 @@ function StaffTab({
               )}
               <div><dt>Facility Sync</dt><dd>{data.staff_market.active_facilities.length > 0 ? data.staff_market.active_facilities[0] : 'None tracked'}</dd></div>
             </dl>
-            <div className="impact" style={{ marginTop: '0.5rem' }}>
-              <span className="lbl" style={{ fontSize: '0.6rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div className={styles.impact}>
+              <span className={styles.impactLbl}>
                 Wired Effect
               </span>
-              <span className="val" style={{ fontSize: '0.72rem', color: '#cbd5e1', lineHeight: 1.4 }}>
+              <span className={styles.impactVal}>
                 {/* V22 Phase 4: every head shows the CONCRETE number their
                     rating drives, from the same formulas the engine runs. */}
                 {member.effect_detail ?? member.effect_summary}
               </span>
               {member.department === 'training' && member.training_modifier_pct !== undefined && (
-                <div style={{ marginTop: '0.35rem' }}>
+                <div>
                   <ProofChip
                     label={`+${member.training_modifier_pct}% offseason growth`}
                     source={`Training OVR ${member.rating_primary} feeds the offseason development formula: modifier = (OVR − 50) / 50 × 15%, clamped at 0. Applied to every player on your roster each offseason.`}
@@ -864,22 +807,22 @@ function StaffTab({
         ))}
       </div>
 
-      <div className="do-grid-row">
-        <div className="do-vacancy-card">
-          <div className="do-panel-head">
-            <span className="dm-kicker">Vacancies</span>
-            <h3>Open Roles</h3>
+      <div className={styles.gridRow}>
+        <div className={styles.panel}>
+          <div className={styles.panelHead}>
+            <span className={styles.kicker}>Vacancies</span>
+            <h3 className={styles.subheading}>Open Roles</h3>
           </div>
-          <div className="do-vac-list">
+          <div>
             {vacancies.length > 0 ? vacancies.map((vacancy) => (
-              <div key={vacancy.department} className={`do-vac-row priority-${vacancy.priority}`}>
-                <div className="do-vac-id">
-                  <span className="dept">{titleizeDepartment(vacancy.department)}</span>
-                  <span className="note">{vacancy.note}</span>
+              <div key={vacancy.department} className={styles.vacRow}>
+                <div className={styles.vacId}>
+                  <span className={styles.dept}>{titleizeDepartment(vacancy.department)}</span>
+                  <span className={styles.note}>{vacancy.note}</span>
                 </div>
-                <div className="do-vac-action">
-                  <span className={`pr pr-${vacancy.priority}`}>{vacancy.priority}</span>
-                  <button className="dm-btn" type="button" disabled>Pipeline Only</button>
+                <div className={styles.vacAction}>
+                  <span className={`${styles.priorityTag} ${vacancy.priority === 'high' ? styles.priorityHigh : ''}`}>{vacancy.priority}</span>
+                  <button className={styles.btn} type="button" disabled>Pipeline Only</button>
                 </div>
               </div>
             )) : (
@@ -891,50 +834,50 @@ function StaffTab({
           </div>
         </div>
 
-        <div className="do-pipeline-card">
-          <div className="do-panel-head">
-            <span className="dm-kicker">Pipeline</span>
-            <h3>Candidates</h3>
+        <div className={styles.panel}>
+          <div className={styles.panelHead}>
+            <span className={styles.kicker}>Pipeline</span>
+            <h3 className={styles.subheading}>Candidates</h3>
           </div>
-          <p style={{ fontSize: '0.68rem', color: '#94a3b8', margin: '0 0 0.5rem 0', padding: '0 1.2rem' }}>
+          <p className={styles.note}>
             Candidates are generated each offseason. Hiring immediately replaces the current department head.
           </p>
-          <div className="do-pipe-list">
+          <div>
             {candidates.length > 0 ? candidates.map((candidate) => {
               const isHiring = hiringCandidateId === candidate.candidate_id;
               const normalizedStage = isHiring ? 'hiring' : 'available';
               return (
-                <div key={candidate.candidate_id} className="do-pipe-row">
-                  <div className="do-pipe-id">
-                    <span className="name">{candidate.name}</span>
+                <div key={candidate.candidate_id} className={styles.pipeRow}>
+                  <div className={styles.pipeId}>
+                    <span className={styles.staffName}>{candidate.name}</span>
                     {(['staff.training', 'staff.tactics', 'staff.conditioning',
                        'staff.medical', 'staff.scouting', 'staff.culture'] as const).includes(
                         `staff.${candidate.department}` as 'staff.training'
                       ) ? (
                       <TermTip term={`staff.${candidate.department}` as import('../legibility').TermId}>
-                        <span className="dept">{titleizeDepartment(candidate.department)}</span>
+                        <span className={styles.dept}>{titleizeDepartment(candidate.department)}</span>
                       </TermTip>
                     ) : (
-                      <span className="dept">{titleizeDepartment(candidate.department)}</span>
+                      <span className={styles.dept}>{titleizeDepartment(candidate.department)}</span>
                     )}
-                    <span className="note">{candidate.effect_lanes[0] || candidate.voice}</span>
+                    <span className={styles.note}>{candidate.effect_lanes[0] || candidate.voice}</span>
                   </div>
-                  <div className="do-pipe-meta">
-                    <span className="rating">{candidate.rating_primary}<small> OVR</small></span>
+                  <div className={styles.pipeMeta}>
+                    <span className={styles.ratingNum}>{candidate.rating_primary}<small> OVR</small></span>
                     {/* V22 Phase 3: the hire's payroll consequence up front. */}
                     {typeof candidate.salary_k === 'number' && (
-                      <span style={{ fontSize: '0.68rem', color: '#94a3b8', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                      <span className={styles.salary}>
                         {formatK(candidate.salary_k)}/yr
                         {typeof candidate.salary_delta_k === 'number' && candidate.salary_delta_k !== 0 && (
-                          <span style={{ color: candidate.salary_delta_k > 0 ? '#fb923c' : '#34d399' }}>
+                          <span className={candidate.salary_delta_k > 0 ? styles.salaryUp : styles.salaryDown}>
                             {' '}({candidate.salary_delta_k > 0 ? '+' : ''}{candidate.salary_delta_k}k)
                           </span>
                         )}
                       </span>
                     )}
-                    <span className={`stage stage-${normalizedStage}`}>{normalizedStage.replace('-', ' ')}</span>
+                    <span className={styles.stage}>{normalizedStage.replace('-', ' ')}</span>
                     <button
-                      className="dm-btn"
+                      className={styles.btn}
                       type="button"
                       disabled={hiringCandidateId !== null || data.hiring_frozen === true}
                       title={
@@ -950,7 +893,7 @@ function StaffTab({
                 </div>
               );
             }) : (
-              <div style={{ padding: '1rem 1.2rem', color: '#94a3b8', fontSize: '0.84rem' }}>
+              <div className={styles.note}>
                 No live staff candidates are on the board this week. Completed hires appear in recent staff moves.
               </div>
             )}
@@ -996,8 +939,8 @@ export function DynastyOffice() {
     () => [...(data?.recruiting.prospects ?? [])].sort((left, right) => {
       // V24 Phase 6: name-only cards (beyond your Scouting Network) sink to the
       // bottom; their sheet fields are null so guard the fit comparison.
-      const lv = left.fully_visible === false ? 1 : 0;
-      const rv = right.fully_visible === false ? 1 : 0;
+      const lv = lockedSinkKey(left);
+      const rv = lockedSinkKey(right);
       if (lv !== rv) return lv - rv;
       return (right.fit_score ?? 0) - (left.fit_score ?? 0) || left.name.localeCompare(right.name);
     }),
@@ -1024,7 +967,7 @@ export function DynastyOffice() {
 
   return (
     <>
-      <div className="max-content do-shell" data-screen-label="03 Dynasty">
+      <div className={`max-content ${styles.shell}`} data-screen-label="03 Dynasty">
         <DoTabs active={activeSubTab} data={data} onSelect={setActiveSubTab} onOpenSettings={() => setShowSettings(true)} />
 
         {activeSubTab === 'history' && (
@@ -1035,7 +978,7 @@ export function DynastyOffice() {
         )}
 
         {activeSubTab === 'recruit' && (
-          <div className="do-tab-content">
+          <div className={styles.tabContent}>
             <CredibilityStrip
               credibility={data.recruiting.credibility}
             />
@@ -1048,7 +991,7 @@ export function DynastyOffice() {
               maxActive={data.recruiting.rules.max_active_promises}
               prospects={data.recruiting.prospects}
             />
-            <div className="do-grid-row">
+            <div className={styles.gridRow}>
               <SlotMeter slots={data.recruiting.budget} />
               <StaffBrief staff={data.staff_market.current_staff} />
             </div>

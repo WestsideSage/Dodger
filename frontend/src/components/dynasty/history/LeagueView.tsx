@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useApiResource } from '../../../hooks/useApiResource';
-import { StatusMessage } from '../../ui';
+import { StatusMessage } from '../../../ui';
 import { ProgramModal } from './ProgramModal';
 import { formatRecordLabel, formatSeasonLabel, humanizeHistoryToken } from './formatters';
 import { EmptyState } from '../../../legibility/EmptyState';
+import styles from './LeagueView.module.css';
 
 interface LeagueData {
   directory: Array<{ club_id: string; name: string }>;
@@ -68,57 +69,57 @@ export function LeagueView() {
   const topRivalry = data.rivalries[0] ?? null;
 
   return (
-    <div className="do-tab-content">
-      <div className="do-hist-glance">
-        <div className="cell">
-          <span className="lbl">Programs Tracked</span>
-          <span className="val">{data.directory.length}</span>
-          <span className="trend">Open any club archive from the directory below</span>
+    <div className={styles.content}>
+      <div className={styles.glance}>
+        <div className={styles.cell}>
+          <span className={styles.cellLbl}>Programs Tracked</span>
+          <span className={styles.cellVal}>{data.directory.length}</span>
+          <span className={styles.cellTrend}>Open any club archive from the directory below</span>
         </div>
-        <div className="cell">
-          <span className="lbl">Dynasty Leader</span>
-          <span className="val">{topDynasty ? topDynasty.club_name : 'None Yet'}</span>
-          <span className={`trend ${topDynasty && topDynasty.championships > 0 ? 'ok' : ''}`}>
+        <div className={styles.cell}>
+          <span className={styles.cellLbl}>Dynasty Leader</span>
+          <span className={styles.cellVal}>{topDynasty ? topDynasty.club_name : 'None Yet'}</span>
+          <span className={`${styles.cellTrend} ${topDynasty && topDynasty.championships > 0 ? styles.cellTrendOk : ''}`}>
             {topDynasty
               ? `${topDynasty.championships} title${topDynasty.championships === 1 ? '' : 's'} · longest streak ${topDynasty.longest_win_streak}`
               : 'First champion has not been crowned yet'}
           </span>
         </div>
-        <div className="cell">
-          <span className="lbl">Records Logged</span>
-          <span className="val">{data.records.length}</span>
-          <span className="trend">
+        <div className={styles.cell}>
+          <span className={styles.cellLbl}>Records Logged</span>
+          <span className={styles.cellVal}>{data.records.length}</span>
+          <span className={styles.cellTrend}>
             {data.records.length > 0
               ? 'League marks are being tracked'
               : 'Records will appear after the first stat milestones'}
           </span>
         </div>
-        <div className="cell">
-          <span className="lbl">Hall of Fame</span>
-          <span className="val">{data.hof.length}</span>
-          <span className="trend">
+        <div className={styles.cell}>
+          <span className={styles.cellLbl}>Hall of Fame</span>
+          <span className={styles.cellVal}>{data.hof.length}</span>
+          <span className={styles.cellTrend}>
             {data.hof.length > 0 ? 'Legacy lane is active' : 'First inductee class is still being earned'}
           </span>
         </div>
-        <div className="cell">
-          <span className="lbl">Top Rivalry</span>
-          <span className="val">{topRivalry ? `${topRivalry.meetings}` : '0'}</span>
-          <span className="trend">
+        <div className={styles.cell}>
+          <span className={styles.cellLbl}>Top Rivalry</span>
+          <span className={styles.cellVal}>{topRivalry ? `${topRivalry.meetings}` : '0'}</span>
+          <span className={styles.cellTrend}>
             {topRivalry ? `${topRivalry.club_a} vs ${topRivalry.club_b}` : 'No rivalry board yet'}
           </span>
         </div>
       </div>
 
-      <section className="dm-panel do-hist-card">
-        <div className="do-hist-card-head">
-          <span className="dm-kicker">Program Directory</span>
-          <h3>Open any club archive</h3>
+      <section className={styles.card}>
+        <div className={styles.cardHead}>
+          <span className={styles.cardKicker}>Program Directory</span>
+          <h3 className={styles.cardTitle}>Open any club archive</h3>
         </div>
-        <div className="do-hist-directory">
+        <div className={styles.directory}>
           {data.directory.map((club) => (
             <button
               key={club.club_id}
-              className="do-hist-directory-btn"
+              className={styles.directoryBtn}
               onClick={() => setModal({ clubId: club.club_id, clubName: club.name })}
               type="button"
             >
@@ -128,26 +129,26 @@ export function LeagueView() {
         </div>
       </section>
 
-      <div className="do-hist-grid">
+      <div className={styles.grid}>
         {data.worlds && data.worlds.length > 0 && (
-          <section className="dm-panel do-hist-card">
-            <div className="do-hist-card-head">
-              <span className="dm-kicker">World Championship</span>
-              <h3>The summit, season by season</h3>
+          <section className={styles.card}>
+            <div className={styles.cardHead}>
+              <span className={styles.cardKicker}>World Championship</span>
+              <h3 className={styles.cardTitle}>The summit, season by season</h3>
             </div>
-            <div className="do-hist-list">
+            <div className={styles.list}>
               {data.worlds.map((entry) => (
-                <div key={entry.season_id} className="do-hist-list-row">
-                  <div className="main">
-                    <strong>★ {entry.champion_name}</strong>
-                    <span className="meta">
+                <div key={entry.season_id} className={styles.row}>
+                  <div className={styles.main}>
+                    <strong className={styles.rowName}>★ {entry.champion_name}</strong>
+                    <span className={styles.meta}>
                       {formatSeasonLabel(entry.season_id)}
                       {entry.runner_up_name ? ` — beat ${entry.runner_up_name} in the final` : ''}
                     </span>
                   </div>
-                  <div className="side">
-                    <span className="dm-badge dm-badge-amber">WORLDS</span>
-                    <span className="note">Premier top two vs the International Circuit's best.</span>
+                  <div className={styles.side}>
+                    <span className={`${styles.badge} ${styles.badgeBrick}`}>WORLDS</span>
+                    <span className={styles.note}>Premier top two vs the International Circuit's best.</span>
                   </div>
                 </div>
               ))}
@@ -155,22 +156,22 @@ export function LeagueView() {
           </section>
         )}
 
-        <section className="dm-panel do-hist-card">
-          <div className="do-hist-card-head">
-            <span className="dm-kicker">Dynasty Rankings</span>
-            <h3>Program standard-setters</h3>
+        <section className={styles.card}>
+          <div className={styles.cardHead}>
+            <span className={styles.cardKicker}>Dynasty Rankings</span>
+            <h3 className={styles.cardTitle}>Program standard-setters</h3>
           </div>
           {data.dynasty_rankings.length > 0 ? (
-            <div className="do-hist-list">
+            <div className={styles.list}>
               {data.dynasty_rankings.map((entry, index) => (
-                <div key={entry.club_id} className="do-hist-list-row">
-                  <div className="main">
-                    <strong>#{index + 1} {entry.club_name}</strong>
-                    <span className="meta">{entry.championships} title{entry.championships === 1 ? '' : 's'}</span>
+                <div key={entry.club_id} className={styles.row}>
+                  <div className={styles.main}>
+                    <strong className={styles.rowName}>#{index + 1} {entry.club_name}</strong>
+                    <span className={styles.meta}>{entry.championships} title{entry.championships === 1 ? '' : 's'}</span>
                   </div>
-                  <div className="side">
-                    <span className="dm-badge dm-badge-amber">Win streak {entry.longest_win_streak}</span>
-                    <span className="note">Championship count is the first dynasty tiebreak.</span>
+                  <div className={styles.side}>
+                    <span className={`${styles.badge} ${styles.badgeBrick}`}>Win streak {entry.longest_win_streak}</span>
+                    <span className={styles.note}>Championship count is the first dynasty tiebreak.</span>
                   </div>
                 </div>
               ))}
@@ -183,24 +184,24 @@ export function LeagueView() {
           )}
         </section>
 
-        <section className="dm-panel do-hist-card">
-          <div className="do-hist-card-head">
-            <span className="dm-kicker">All-Time Records</span>
-            <h3>League records board</h3>
+        <section className={styles.card}>
+          <div className={styles.cardHead}>
+            <span className={styles.cardKicker}>All-Time Records</span>
+            <h3 className={styles.cardTitle}>League records board</h3>
           </div>
           {data.records.length > 0 ? (
-            <div className="do-hist-list">
+            <div className={styles.list}>
               {data.records.map((record, index) => (
-                <div key={`${record.record_type}-${record.holder_id}-${index}`} className="do-hist-list-row">
-                  <div className="main">
-                    <strong>{formatRecordLabel(record.record_type)}</strong>
-                    <span className="meta">
+                <div key={`${record.record_type}-${record.holder_id}-${index}`} className={styles.row}>
+                  <div className={styles.main}>
+                    <strong className={styles.rowName}>{formatRecordLabel(record.record_type)}</strong>
+                    <span className={styles.meta}>
                       {record.record?.holder_name || humanizeHistoryToken(record.holder_id)} - {formatSeasonLabel(record.set_in_season)}
                     </span>
                   </div>
-                  <div className="side">
-                    <span className="dm-badge dm-badge-cyan">{record.record_value}</span>
-                    <span className="note">Current league record holder.</span>
+                  <div className={styles.side}>
+                    <span className={styles.badge}>{record.record_value}</span>
+                    <span className={styles.note}>Current league record holder.</span>
                   </div>
                 </div>
               ))}
@@ -213,24 +214,24 @@ export function LeagueView() {
           )}
         </section>
 
-        <section className="dm-panel do-hist-card">
-          <div className="do-hist-card-head">
-            <span className="dm-kicker">Hall of Fame</span>
-            <h3>Career immortals</h3>
+        <section className={styles.card}>
+          <div className={styles.cardHead}>
+            <span className={styles.cardKicker}>Hall of Fame</span>
+            <h3 className={styles.cardTitle}>Career immortals</h3>
           </div>
           {data.hof.length > 0 ? (
-            <div className="do-hist-list">
+            <div className={styles.list}>
               {data.hof.map((entry) => (
-                <div key={entry.player_id} className="do-hist-list-row">
-                  <div className="main">
-                    <strong>{entry.player_name}</strong>
-                    <span className="meta">
+                <div key={entry.player_id} className={styles.row}>
+                  <div className={styles.main}>
+                    <strong className={styles.rowName}>{entry.player_name}</strong>
+                    <span className={styles.meta}>
                       Inducted {formatSeasonLabel(entry.induction_season)} - {entry.seasons_played} season{entry.seasons_played === 1 ? '' : 's'}
                     </span>
                   </div>
-                  <div className="side">
-                    <span className="dm-badge dm-badge-amber">{entry.championships} titles</span>
-                    <span className="note">{entry.career_elims} career eliminations</span>
+                  <div className={styles.side}>
+                    <span className={`${styles.badge} ${styles.badgeBrick}`}>{entry.championships} titles</span>
+                    <span className={styles.note}>{entry.career_elims} career eliminations</span>
                   </div>
                 </div>
               ))}
@@ -244,26 +245,26 @@ export function LeagueView() {
           )}
         </section>
 
-        <section className="dm-panel do-hist-card">
-          <div className="do-hist-card-head">
-            <span className="dm-kicker">Rivalries</span>
-            <h3>Heat map of repeat opponents</h3>
+        <section className={styles.card}>
+          <div className={styles.cardHead}>
+            <span className={styles.cardKicker}>Rivalries</span>
+            <h3 className={styles.cardTitle}>Heat map of repeat opponents</h3>
           </div>
           {data.rivalries.length > 0 ? (
-            <div className="do-hist-list">
+            <div className={styles.list}>
               {data.rivalries.slice(0, 6).map((rivalry, index) => (
-                <div key={`${rivalry.club_a}-${rivalry.club_b}-${index}`} className="do-hist-list-row">
-                  <div className="main">
-                    <strong>{rivalry.club_a} vs {rivalry.club_b}</strong>
-                    <span className="meta">
+                <div key={`${rivalry.club_a}-${rivalry.club_b}-${index}`} className={styles.row}>
+                  <div className={styles.main}>
+                    <strong className={styles.rowName}>{rivalry.club_a} vs {rivalry.club_b}</strong>
+                    <span className={styles.meta}>
                       {rivalry.a_wins}-{rivalry.b_wins}-{rivalry.draws} across {rivalry.meetings} meetings
                     </span>
                   </div>
-                  <div className="side">
-                    <span className={`dm-badge ${index === 0 ? 'dm-badge-rose' : 'dm-badge-slate'}`}>
+                  <div className={styles.side}>
+                    <span className={`${styles.badge} ${index === 0 ? styles.badgeBrick : styles.badgeOutline}`}>
                       {index === 0 ? 'Top heat' : 'Tracked'}
                     </span>
-                    <span className="note">Most played club pairings rise to the top.</span>
+                    <span className={styles.note}>Most played club pairings rise to the top.</span>
                   </div>
                 </div>
               ))}

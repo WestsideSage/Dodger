@@ -1,5 +1,6 @@
 import { MyProgramView } from './MyProgramView';
 import { Dialog } from '../../ui';
+import styles from './ProgramModal.module.css';
 
 interface ProgramModalProps {
   clubId: string;
@@ -17,17 +18,17 @@ export function ProgramModal({ clubId, clubName, onClose }: ProgramModalProps) {
       labelledBy="program-modal-title"
       onClose={onClose}
       className="command-policy-overlay"
-      panelClassName="command-policy-overlay-body do-hist-modal-body"
+      panelClassName={`command-policy-overlay-body ${styles.body}`}
       overlayStyle={{ backgroundColor: undefined, backdropFilter: undefined, padding: undefined }}
       panelStyle={{}}
     >
-        <button className="command-policy-overlay-close" onClick={onClose} type="button">
+        <button className={styles.close} onClick={onClose} type="button">
           Close
         </button>
-        <div className="do-hist-modal-header">
-          <span className="dm-kicker">League Archive</span>
-          <h2 id="program-modal-title" className="do-hist-modal-title">{clubName}</h2>
-          <p className="do-hist-card-note">
+        <div className={styles.header}>
+          <span className={styles.kicker}>League Archive</span>
+          <h2 id="program-modal-title" className={styles.title}>{clubName}</h2>
+          <p className={styles.note}>
             Viewing {clubName}'s program archive — titles, alumni, and milestones logged across their history.
           </p>
         </div>
