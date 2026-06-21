@@ -1,5 +1,7 @@
+import type { CSSProperties } from 'react';
 import type { OffseasonBeat } from '../../types';
-import { ActionButton, PageHeader } from '../ui';
+import { ActionButton, PageHeader, Truncate } from '../../ui';
+import styles from './RookieClassPreview.module.css';
 
 type RookieClassPreviewBeat = Extract<OffseasonBeat, { key: 'rookie_class_preview' }>;
 
@@ -48,33 +50,24 @@ export function RookieClassPreview({
             {/* Primary signal: class upside. ceiling_prospects is the single
                 number that should drive how aggressively the player spends
                 slots (Brief 4.5, criterion #1; playtest 3 metric fix). */}
-            <div
-                className="dm-panel"
-                style={{
-                    padding: '1.1rem 1.15rem',
-                    borderLeft: `3px solid ${hasUpside ? '#10b981' : '#475569'}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '1.1rem',
-                }}
-            >
-                <div style={{ flex: '0 0 auto', textAlign: 'center', minWidth: '4.5rem' }}>
-                    <div style={{ fontSize: '3rem', lineHeight: 1, fontWeight: 900, color: hasUpside ? '#10b981' : '#64748b' }}>
+            <div className={`dm-panel ${styles.upsidePanel} ${hasUpside ? styles.upsidePanelHas : ''}`}>
+                <div className={styles.upsideFigure}>
+                    <div className={`${styles.upsideNumber} ${hasUpside ? styles.upsideNumberHas : ''}`}>
                         {ceilingProspects}
                     </div>
-                    <div style={{ fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#64748b', marginTop: '0.2rem' }}>
+                    <div className={styles.upsideCaption}>
                         70+ Upside
                     </div>
                 </div>
-                <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-                    <p style={{ margin: 0, color: '#e2e8f0', fontWeight: 700, fontSize: '0.9rem' }}>
+                <div className={styles.upsideBody}>
+                    <p className={styles.upsideHeadline}>
                         {hasUpside
                             ? `${ceilingProspects} of ${class_size} rookies scout a ceiling of 70+ OVR`
                             : 'No rookie scouts a 70+ ceiling this year — a thin class up top'}
                     </p>
                     {/* Explainer rendered as visible text on all devices — was a
                         hover-only title attribute (Brief 4.5, criterion #3). */}
-                    <p style={{ margin: '0.3rem 0 0', color: '#94a3b8', fontSize: '0.76rem', lineHeight: 1.5 }}>
+                    <p className={styles.upsideExplain}>
                         A 70+ ceiling means the scouted range tops out that high — worth slots and
                         development time.
                         {top_prospects > 0
@@ -82,11 +75,14 @@ export function RookieClassPreview({
                             : ' None carry a 70+ floor — every gem here still needs developing.'}
                     </p>
                     {class_size > 0 && (
-                        <div style={{ marginTop: '0.55rem' }} aria-hidden="true">
-                            <div style={{ height: '5px', borderRadius: '999px', background: '#1e293b', overflow: 'hidden' }}>
-                                <div style={{ width: `${qualityPct}%`, height: '100%', background: hasUpside ? '#10b981' : '#475569' }} />
+                        <div className={styles.qualityWrap} aria-hidden="true">
+                            <div className={styles.qualityTrack}>
+                                <div
+                                    className={`${styles.qualityFill} ${hasUpside ? styles.qualityFillHas : ''}`}
+                                    style={{ '--bar-pct': `${qualityPct}%` } as CSSProperties}
+                                />
                             </div>
-                            <span style={{ fontSize: '0.66rem', color: '#64748b', fontFamily: 'JetBrains Mono, monospace' }}>
+                            <span className={styles.qualityLabel}>
                                 {qualityPct}% of the class
                             </span>
                         </div>
@@ -96,29 +92,32 @@ export function RookieClassPreview({
 
             {/* Secondary: class composition. class_size headlines; free_agents
                 demoted to an inline footnote (Brief 4.5, criterion #2). */}
-            <div className="dm-panel" style={{ padding: '0.85rem 1rem' }}>
-                <dl style={{ display: 'flex', alignItems: 'baseline', gap: '1.5rem', margin: 0, flexWrap: 'wrap' }}>
+            <div className={`dm-panel ${styles.compPanel}`}>
+                <dl className={styles.compList}>
                     <div>
-                        <dd style={{ margin: 0, fontSize: '1.6rem', fontWeight: 800, color: '#f1f5f9' }}>{class_size}</dd>
-                        <dt style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#64748b' }}>Incoming Rookies</dt>
+                        <dd className={styles.compValue}>{class_size}</dd>
+                        <dt className={styles.compLabel}>Incoming Rookies</dt>
                     </div>
-                    <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                        <dt style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#64748b' }}>Veteran Free Agents</dt>
-                        <dd style={{ margin: '0.1rem 0 0', fontSize: '0.9rem', fontWeight: 700, color: '#94a3b8' }}>{free_agents} also available</dd>
+                    <div className={styles.compFa}>
+                        <dt className={styles.compLabel}>Veteran Free Agents</dt>
+                        <dd className={styles.compFaValue}>{free_agents} also available</dd>
                     </div>
                 </dl>
 
                 {archetypes.length > 0 && (
-                    <div style={{ marginTop: '0.9rem', borderTop: '1px solid #1e293b', paddingTop: '0.75rem' }}>
-                        <p className="dm-kicker" style={{ margin: '0 0 0.5rem' }}>Archetype Breakdown</p>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <div className={styles.archetypes}>
+                        <p className={`dm-kicker ${styles.archetypeKicker}`}>Archetype Breakdown</p>
+                        <div className={styles.archetypeRows}>
                             {archetypes.map((a) => (
-                                <div key={a.name} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                    <span style={{ flex: '0 0 7rem', fontSize: '0.76rem', color: '#cbd5e1' }}>{a.name}</span>
-                                    <div style={{ flex: '1 1 auto', height: '8px', borderRadius: '999px', background: '#0a1220', overflow: 'hidden' }} aria-hidden="true">
-                                        <div style={{ width: `${maxArchetype > 0 ? Math.round((a.count / maxArchetype) * 100) : 0}%`, height: '100%', background: '#38bdf8', opacity: 0.7 }} />
+                                <div key={a.name} className={styles.archetypeRow}>
+                                    <Truncate className={styles.archetypeName}>{a.name}</Truncate>
+                                    <div className={styles.archetypeTrack} aria-hidden="true">
+                                        <div
+                                            className={styles.archetypeFill}
+                                            style={{ '--bar-pct': `${maxArchetype > 0 ? Math.round((a.count / maxArchetype) * 100) : 0}%` } as CSSProperties}
+                                        />
                                     </div>
-                                    <span style={{ flex: '0 0 1.4rem', textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.76rem', fontWeight: 700, color: '#e2e8f0' }}>{a.count}</span>
+                                    <span className={styles.archetypeCount}>{a.count}</span>
                                 </div>
                             ))}
                         </div>
@@ -129,22 +128,11 @@ export function RookieClassPreview({
             {/* Tertiary: narrative flavor — styled as league storyline cards, not
                 a utility bullet list (Brief 4.5, criterion #5). */}
             {storylines.length > 0 && (
-                <div className="dm-panel" style={{ padding: '0.85rem 1rem' }}>
-                    <p className="dm-kicker" style={{ margin: '0 0 0.6rem' }}>Around the League</p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div className={`dm-panel ${styles.storyPanel}`}>
+                    <p className={`dm-kicker ${styles.archetypeKicker}`}>Around the League</p>
+                    <div className={styles.storyList}>
                         {storylines.map((s, i) => (
-                            <p
-                                key={i}
-                                style={{
-                                    margin: 0,
-                                    paddingLeft: '0.75rem',
-                                    borderLeft: '2px solid #6366f1',
-                                    color: '#cbd5e1',
-                                    fontSize: '0.84rem',
-                                    lineHeight: 1.5,
-                                    fontStyle: 'italic',
-                                }}
-                            >
+                            <p key={i} className={styles.story}>
                                 {s}
                             </p>
                         ))}
