@@ -1,0 +1,138 @@
+/* CredibilityStrip — Floodlight warm-graphite surface.
+   Reputation, not ceiling: the big grade stays --text (neutral), with a faint
+   gold halo for presence. Layout-math percentages (left/width) stay inline. */
+.cred {
+  display: flex;
+  gap: var(--space-6);
+  align-items: flex-start;
+  padding: var(--space-6);
+  background: var(--raise);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+}
+
+.letter {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 88px;
+}
+.tier {
+  font: 800 2.6rem var(--font-disp);
+  color: var(--text);
+  line-height: 1;
+  z-index: 1;
+}
+.halo {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-pill);
+  background: var(--gold-soft);
+  border: 1px solid var(--gold);
+}
+
+.main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.kicker {
+  display: block;
+  font: 700 0.72rem var(--font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.title {
+  margin: var(--space-2) 0 0;
+  font: 600 1.15rem var(--font-head);
+  color: var(--text);
+}
+.blurb {
+  margin: var(--space-3) 0 0;
+  font: 400 0.8rem var(--font-ui);
+  line-height: 1.5;
+  color: var(--text2);
+}
+
+.progress {
+  margin: var(--space-5) 0 0;
+}
+.progressHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+.lbl {
+  font: 700 0.72rem var(--font-ui);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+.val {
+  font: 700 0.85rem var(--font-mono);
+  color: var(--text);
+}
+.dim {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.track {
+  position: relative;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--tint-neutral);
+  border: 1px solid var(--line);
+}
+.fill {
+  position: relative;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--gold);
+}
+.marker {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  transform: translate(50%, -50%);
+  border-radius: var(--radius-pill);
+  background: var(--gold2);
+  border: 1px solid var(--court);
+}
+.tick {
+  position: absolute;
+  top: 100%;
+  margin-top: var(--space-2);
+  transform: translateX(-50%);
+}
+.tick .tickLbl {
+  font: 700 0.7rem var(--font-mono);
+  color: var(--muted);
+}
+
+.evidence {
+  margin: var(--space-7) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.item {
+  display: flex;
+  gap: var(--space-2);
+  font: 400 0.8rem var(--font-ui);
+  line-height: 1.45;
+  color: var(--text2);
+}
+.ix {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  flex: 0 0 auto;
+}
