@@ -55,4 +55,12 @@ describe('StaffHiringStep (audit #77 seed continuity, #78 no soft-lock)', () => 
     expect(pricey).toHaveAttribute('role', 'radio');
     await waitFor(() => expect(screen.getByRole('button', { name: /Over budget/i })).toBeDisabled());
   });
+
+  it('renders the dept market in a bounded scroll region without an inline 380px height', async () => {
+    vi.mocked(saveApi.startingStaff).mockResolvedValue(MARKET);
+    render(<Harness />);
+    const region = await screen.findByTestId('staff-dept-scroll');
+    // the height comes from a class, not an inline style literal
+    expect(region.style.maxHeight).toBe('');
+  });
 });
