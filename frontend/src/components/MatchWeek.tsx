@@ -18,7 +18,20 @@ import { formatScoreline } from './match-week/matchResult';
 import { useState, useEffect } from 'react';
 import type { Aftermath, CommandCenterResponse, CommandCenterSimResponse, FastForwardStopPoint, MatchReplayResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
-import { StatusMessage } from './ui';
+import { StatusMessage } from '../ui';
+import { NAV_RAIL_ATTR } from './shell/appContracts';
+
+/**
+ * Pure helper: returns true if the click target is inside the nav rail —
+ * the reveal-skip handler ignores those clicks so navigating does not
+ * fast-forward the aftermath reveal. This is the P1↔P2 DOM contract
+ * (rewritten from the stale `closest('.dm-left-nav')` no-op to the
+ * Phase-1 published `[data-nav-rail]`).
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function isNavClick(target: Element | null, navRailAttr: string): boolean {
+  return !!target?.closest('[' + navRailAttr + ']');
+}
 import { Offseason } from './Offseason';
 import { commandApi } from '../api/client';
 
@@ -331,7 +344,7 @@ export function MatchWeek({
       if (e.type === 'keydown' && (e as KeyboardEvent).code !== 'Space') return;
       if (e.type === 'click') {
         const target = e.target as Element | null;
-        if (target?.closest('.dm-left-nav')) return;
+        if (isNavClick(target, NAV_RAIL_ATTR)) return;
       }
       setRevealStage(4);
     };
