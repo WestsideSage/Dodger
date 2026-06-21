@@ -5,6 +5,7 @@ import type { TermId } from '../../legibility';
 import { formatOverall, formatPlayerName, formatRole } from '../roster/playerDisplay';
 import { saveApi } from '../../api/client';
 import type { ProspectOption } from '../../types';
+import styles from './StartingRecruitmentStep.module.css';
 
 // Display-string -> archetype term, mirroring Roster.tsx ROLE_TERM_ID (the
 // owner's exact complaint: "you can't even see what exactly their archetype
@@ -109,86 +110,54 @@ export function StartingRecruitmentStep({
     : `Add ${needed} more player${needed === 1 ? '' : 's'} to continue.`;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      <div>
-        <p className="dm-kicker" style={{ marginBottom: '0.25rem' }}>Step 4 of 4</p>
-        <h2 style={{ fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', margin: 0, fontSize: '1.25rem' }}>
-          Recruit Roster
-        </h2>
-        <p style={{ margin: '0.375rem 0 0', fontSize: '0.8125rem', color: '#64748b' }}>
+    <div className={styles.wrap}>
+      <div className={styles.header}>
+        <p className={styles.kicker}>Step 4 of 4</p>
+        <h2 className={styles.title}>Recruit Roster</h2>
+        <p className={styles.intro}>
           Select at least 6 players (max 10). {rosterIds.size > 0 && `${rosterIds.size} selected.`}
         </p>
-        <p style={{ fontSize: '0.75rem', opacity: 0.7, color: '#94a3b8', marginTop: '0.375rem', marginBottom: '0.5rem' }}>
+        <p className={styles.introFine}>
           This is your own founding class, so nothing is hidden: every card shows the
           full ratings, the <strong>ceiling</strong> they can develop to, and their growth
           arc — the same values their roster row will show after you commit.
         </p>
       </div>
 
-      <div
-        id="composition-guide"
-        style={{
-          background: 'rgba(15,23,42,0.6)',
-          border: '1px solid #1e293b',
-          borderRadius: '6px',
-          padding: '0.625rem 0.75rem',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.375rem' }}>
-          <span style={{ fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94a3b8' }}>
+      <div id="composition-guide" className={styles.guide}>
+        <div className={styles.guideHead}>
+          <span className={styles.guideTitle}>
             Suggested Foundation
           </span>
           {rosterIds.size > 0 && (
-            <span style={{ fontSize: '0.625rem', color: '#475569', fontWeight: 500 }}>
+            <span className={styles.guideCount}>
               - {rosterIds.size} selected
             </span>
           )}
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div className={styles.chipRow}>
           {ROLE_ORDER.map(role => {
             const rec = RECOMMENDED[role];
             const count = compositionTally[role];
             const met = count >= rec.min;
             const active = rosterIds.size > 0;
+            const chipTone = active ? (met ? styles.chipMet : styles.chipUnmet) : '';
+            const countTone = active ? (met ? styles.chipCountMet : styles.chipCountUnmet) : '';
             return (
               <div
                 key={role}
                 title={rec.tip}
-                style={{
-                  flex: '1 1 0',
-                  minWidth: '100px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.1875rem',
-                  padding: '0.375rem 0.5rem',
-                  borderRadius: '4px',
-                  background: active
-                    ? met ? 'rgba(34,197,94,0.06)' : 'rgba(251,191,36,0.06)'
-                    : 'rgba(30,41,59,0.4)',
-                  border: active
-                    ? met ? '1px solid rgba(34,197,94,0.2)' : '1px solid rgba(251,191,36,0.2)'
-                    : '1px solid transparent',
-                  transition: 'background 0.15s, border-color 0.15s',
-                }}
+                className={`${styles.foundationChip} ${chipTone}`.trim()}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#e2e8f0' }}>
+                <div className={styles.chipTop}>
+                  <span className={styles.chipLabel}>
                     {rec.label}
                   </span>
-                  <span
-                    style={{
-                      fontSize: '0.75rem',
-                      fontWeight: 800,
-                      fontVariantNumeric: 'tabular-nums',
-                      color: active
-                        ? met ? '#4ade80' : '#fbbf24'
-                        : '#475569',
-                    }}
-                  >
+                  <span className={`${styles.chipCount} ${countTone}`.trim()}>
                     {count}/{rec.min}+
                   </span>
                 </div>
-                <div style={{ fontSize: '0.625rem', color: '#64748b', lineHeight: 1.3 }}>
+                <div className={styles.chipTip}>
                   {rec.tip}
                 </div>
               </div>
@@ -196,33 +165,23 @@ export function StartingRecruitmentStep({
           })}
         </div>
         {hasImbalance && (
-          <p
-            id="composition-warning"
-            style={{
-              margin: '0.375rem 0 0',
-              fontSize: '0.6875rem',
-              color: '#fbbf24',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.25rem',
-            }}
-          >
+          <p id="composition-warning" className={styles.imbalanceWarning}>
             Your roster is light in one or more areas. You can still commit, but a balanced first six is easier to manage.
           </p>
         )}
       </div>
 
       {loadError && (
-        <div style={{ padding: '0.75rem', background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.3)', borderRadius: '4px', color: '#fb7185', fontSize: '0.875rem' }}>
+        <div className={styles.loadError}>
           {loadError}
         </div>
       )}
 
       {prospects.length === 0 && !loadError && (
-        <p style={{ color: '#64748b', fontSize: '0.875rem' }}>Loading prospects...</p>
+        <p className={styles.loadingText}>Loading prospects...</p>
       )}
 
-      <div style={{ maxHeight: '360px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.375rem', paddingRight: '0.25rem' }}>
+      <div data-testid="prospect-scroll" className={styles.prospectScroll}>
         {prospects.map(p => {
           const selected = rosterIds.has(p.player_id);
           const canSelect = selected || rosterIds.size < 10;
@@ -240,49 +199,39 @@ export function StartingRecruitmentStep({
               onClick={() => {
                 if (canSelect) toggleProspect(p.player_id);
               }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0.625rem 0.875rem',
-                background: selected ? 'rgba(34,211,238,0.06)' : '#0f172a',
-                border: selected ? '1px solid rgba(34,211,238,0.4)' : '1px solid #1e293b',
-                borderRadius: '4px',
-                cursor: canSelect ? 'pointer' : 'not-allowed',
-                opacity: canSelect ? 1 : 0.55,
-                transition: 'border-color 0.12s, background 0.12s',
-                flexShrink: 0,
-                textAlign: 'left',
-              }}
+              className={`${styles.prospectRow} ${selected ? styles.prospectRowSelected : ''} ${canSelect ? '' : styles.prospectRowDisabled}`.trim()}
             >
-              <div style={{ minWidth: 0, flex: '1 1 auto' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: selected ? '#67e8f9' : '#e2e8f0', whiteSpace: 'nowrap' }}>
+              <div className={styles.prospectMain}>
+                <div className={styles.prospectNameRow}>
+                  <span
+                    data-testid={`prospect-name-${p.player_id}`}
+                    className={`${styles.prospectName} ${selected ? styles.prospectNameSelected : ''}`.trim()}
+                  >
                     {displayName}
                   </span>
                   {typeof p.age === 'number' && (
-                    <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Age {p.age}</span>
+                    <span className={styles.prospectAge}>Age {p.age}</span>
                   )}
                   {p.ceiling_label && <CeilingGrade grade={p.ceiling_label} />}
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.125rem', display: 'flex', alignItems: 'baseline', gap: '0.35rem', flexWrap: 'wrap' }}>
+                <div className={styles.prospectMeta}>
                   {displayRole && (
                     // V22 Phase 5: the archetype finally explains itself —
                     // the journal's "no tooltip" complaint.
                     ARCHETYPE_TERM_ID[p.public_archetype] ? (
                       <span onClick={(e) => e.stopPropagation()}>
                         <TermTip term={ARCHETYPE_TERM_ID[p.public_archetype]}>
-                          <span style={{ color: '#94a3b8' }}>{displayRole}</span>
+                          <span className={styles.prospectRole}>{displayRole}</span>
                         </TermTip>
                       </span>
                     ) : (
-                      <span style={{ color: '#94a3b8' }}>{displayRole}</span>
+                      <span className={styles.prospectRole}>{displayRole}</span>
                     )
                   )}
-                  {roleInfo && <span style={{ color: '#64748b' }}>({roleInfo.label})</span>}
+                  {roleInfo && <span className={styles.prospectRoleHint}>({roleInfo.label})</span>}
                 </div>
                 {p.ratings && (
-                  <div style={{ display: 'flex', gap: '0.55rem', marginTop: '0.3rem', fontSize: '0.66rem', color: '#64748b', fontVariantNumeric: 'tabular-nums', flexWrap: 'wrap' }}>
+                  <div className={styles.ratingsStrip}>
                     {([
                       ['ACC', p.ratings.accuracy],
                       ['POW', p.ratings.power],
@@ -293,34 +242,34 @@ export function StartingRecruitmentStep({
                     ] as Array<[string, number]>).map(([label, value]) => (
                       <span key={label}>
                         {label}{' '}
-                        <strong style={{ color: value >= 55 ? '#cbd5e1' : '#64748b' }}>{value}</strong>
+                        <strong className={value >= 55 ? styles.ratingHigh : styles.ratingLow}>{value}</strong>
                       </span>
                     ))}
                   </div>
                 )}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, marginLeft: '1rem' }}>
-                <div style={{ textAlign: 'right' }}>
-                  <div className="dm-data" style={{ fontWeight: 800, color: selected ? '#22d3ee' : '#94a3b8', fontSize: '0.875rem' }} title="Current overall rating">
+              <div className={styles.prospectStats}>
+                <div className={styles.statsCol}>
+                  <div className={`${styles.ovr} ${selected ? styles.ovrSelected : ''}`.trim()} title="Current overall rating">
                     <strong>{displayOverall}</strong>
-                    <span style={{ fontSize: '0.5625rem', opacity: 0.6, marginLeft: '0.25rem' }}>
+                    <span className={styles.ovrUnit}>
                       OVR
                     </span>
                   </div>
                   {typeof p.potential_ceiling === 'number' && (
                     <div
-                      style={{ fontSize: '0.66rem', color: '#94a3b8', marginTop: '0.15rem', fontVariantNumeric: 'tabular-nums' }}
+                      className={styles.ceiling}
                       title={`Development ceiling: the highest OVR this player can reach (${p.potential_tier ?? ''} potential).`}
                     >
-                      Ceil <strong style={{ color: '#e2e8f0' }}>{p.potential_ceiling}</strong>
+                      Ceil <strong className={styles.ceilingValue}>{p.potential_ceiling}</strong>
                       {p.potential_tier && (
-                        <span style={{ marginLeft: '0.25rem', color: '#64748b' }}>{p.potential_tier}</span>
+                        <span className={styles.ceilingTier}>{p.potential_tier}</span>
                       )}
                     </div>
                   )}
                 </div>
-                <div style={{ width: '18px', height: '18px', borderRadius: '9999px', border: selected ? '2px solid #22d3ee' : '2px solid #334155', background: selected ? 'rgba(34,211,238,0.15)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {selected && <span style={{ color: '#22d3ee', fontSize: '0.625rem', lineHeight: 1 }}>OK</span>}
+                <div className={`${styles.checkDot} ${selected ? styles.checkDotSelected : ''}`.trim()}>
+                  {selected && <span className={styles.checkMark}>OK</span>}
                 </div>
               </div>
             </button>
@@ -328,8 +277,8 @@ export function StartingRecruitmentStep({
         })}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className={styles.actions}>
+        <div className={styles.actionRow}>
           <ActionButton variant="secondary" onClick={onBack} disabled={creating}>Back</ActionButton>
           <ActionButton
             variant="primary"
@@ -342,8 +291,7 @@ export function StartingRecruitmentStep({
         </div>
         <p
           id="starting-roster-help"
-          className={`dm-helper-copy ${rosterReady ? '' : 'dm-helper-copy-warning'}`.trim()}
-          style={{ margin: 0 }}
+          className={`${styles.helper} ${rosterReady ? '' : styles.helperWarning}`.trim()}
         >
           {rosterHelp}
         </p>

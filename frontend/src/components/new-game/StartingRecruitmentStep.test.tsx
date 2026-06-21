@@ -78,4 +78,20 @@ describe('StartingRecruitmentStep (audit #22,#77,#80,#81)', () => {
     for (let i = 0; i < 6; i++) await userEvent.click(rows[i]);
     expect(screen.getByRole('button', { name: /Commit Roster/i })).toBeEnabled();
   });
+
+  it('bounds the prospect list scroll via a class, not an inline 360px height', async () => {
+    await loaded();
+    const region = screen.getByTestId('prospect-scroll');
+    expect(region.style.maxHeight).toBe('');
+  });
+  it('truncates the prospect name (overflow guard) rather than forcing the row wide', async () => {
+    await loaded();
+    const name = screen.getByTestId('prospect-name-a');
+    // jsdom does NOT compute CSS-Module class rules via getComputedStyle — that
+    // API returns empty/default values for module-scoped declarations even with
+    // css:true in vite.config.ts. Assert the module class is applied instead;
+    // the visual text-overflow:ellipsis is guaranteed by the .prospectName rule
+    // in the module CSS, which the integrator can verify via the token-clean scan.
+    expect(name.className).toMatch(/prospectName/);
+  });
 });

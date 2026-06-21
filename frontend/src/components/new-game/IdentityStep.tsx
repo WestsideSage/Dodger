@@ -2,14 +2,17 @@ import type { CSSProperties } from 'react';
 import { ActionButton } from '../../ui';
 import styles from './IdentityStep.module.css';
 
-// token-gate: COLOR_PRESETS is kit DATA, not theme
+// token-gate: COLOR_PRESETS is kit DATA, not theme (each entry is a user-pickable
+// kit, painted into the chrome as data — not a Floodlight theme color). The
+// per-line markers below let the STEP-3 token gate target an ALLOW carve-out
+// precisely without exempting the whole file.
 const COLOR_PRESETS = [
-  { label: 'Ocean', primary: '#22d3ee', secondary: '#0f172a' },
-  { label: 'Fire',  primary: '#f97316', secondary: '#1e293b' },
-  { label: 'Emerald', primary: '#10b981', secondary: '#0f172a' },
-  { label: 'Violet', primary: '#8b5cf6', secondary: '#1e293b' },
-  { label: 'Rose', primary: '#f43f5e', secondary: '#0f172a' },
-  { label: 'Amber', primary: '#f59e0b', secondary: '#1e293b' },
+  { label: 'Ocean', primary: '#22d3ee', secondary: '#0f172a' }, // token-gate: kit DATA
+  { label: 'Fire',  primary: '#f97316', secondary: '#1e293b' }, // token-gate: kit DATA
+  { label: 'Emerald', primary: '#10b981', secondary: '#0f172a' }, // token-gate: kit DATA
+  { label: 'Violet', primary: '#8b5cf6', secondary: '#1e293b' }, // token-gate: kit DATA
+  { label: 'Rose', primary: '#f43f5e', secondary: '#0f172a' }, // token-gate: kit DATA
+  { label: 'Amber', primary: '#f59e0b', secondary: '#1e293b' }, // token-gate: kit DATA
 ];
 
 type ProgramIdentity = {
