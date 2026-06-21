@@ -1,0 +1,272 @@
+/* ProspectCard — Floodlight warm-graphite recruiting card.
+   Fit accent (5-color contract): strong -> --ok (mint), neutral -> --gold,
+   risk -> --out (dim/resolved, NOT red). Layout-math width:% stays inline. */
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--raise);
+  border: 1px solid var(--line);
+  border-left: var(--border-accent) solid var(--line2);
+  border-radius: var(--radius-md);
+}
+.fitStrong { border-left-color: var(--ok); }
+.fitNeutral { border-left-color: var(--gold); }
+.fitRisk { border-left-color: var(--out); }
+
+.locked {
+  position: relative;
+  opacity: 0.85;
+  background: var(--court);
+  border-style: dashed;
+}
+
+.feedback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-5);
+  z-index: 10;
+  border-radius: var(--radius-md);
+  font: 800 1rem var(--font-head);
+  backdrop-filter: blur(4px);
+}
+.feedbackSuccess {
+  background: var(--ok-soft);
+  color: var(--ok);
+  border: 1px solid var(--ok);
+}
+.feedbackError {
+  background: var(--danger-soft);
+  color: var(--danger2);
+  border: 1px solid var(--danger);
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+.id {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.name {
+  display: block;
+  font: 700 0.95rem var(--font-head);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.rank {
+  font: 700 0.7rem var(--font-mono);
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+.fromLabel {
+  font: 700 0.7rem var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-right: var(--space-1);
+}
+.fromValue {
+  font: 400 0.74rem var(--font-ui);
+  color: var(--text2);
+}
+.dot {
+  color: var(--muted);
+}
+.miniLabel {
+  font: 700 0.7rem var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.pipeline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Small inline tag chips inside the sub row (archetype/funnel/etc.) */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font: 700 0.7rem var(--font-ui);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text2);
+  background: var(--tint-neutral);
+  border: 1px solid var(--line2);
+  white-space: nowrap;
+}
+.chipTalent {
+  color: var(--gold);
+  border-color: var(--gold);
+  background: var(--gold-soft);
+}
+.chipLead {
+  color: var(--ok);
+  border-color: var(--ok);
+  background: var(--ok-soft);
+}
+.chipTrail {
+  color: var(--out);
+  border-color: var(--out-line);
+}
+.chipBroken {
+  color: var(--danger2);
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+.chipMuted {
+  color: var(--muted);
+  opacity: 0.85;
+}
+
+.fit {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+.fit .lbl {
+  font: 700 0.7rem var(--font-ui);
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.fitValue {
+  font: 800 1.1rem var(--font-mono);
+}
+.fitValue.strong { color: var(--ok); }
+.fitValue.neutral { color: var(--gold); }
+.fitValue.risk { color: var(--out); }
+.fitUnit {
+  font: 400 0.7rem var(--font-mono);
+  color: var(--muted);
+  margin-left: var(--space-1);
+}
+
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.meterBg {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--tint-neutral);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.meterFill {
+  height: 100%;
+  background: var(--volt);
+  border-radius: var(--radius-pill);
+}
+.meterLabels {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font: 700 0.7rem var(--font-ui);
+  letter-spacing: 0.03em;
+  color: var(--text2);
+}
+.mono { font-family: var(--font-mono); }
+
+.evidence {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  font: 400 0.74rem var(--font-ui);
+  color: var(--text2);
+  line-height: 1.4;
+}
+.evidenceBar {
+  flex: 0 0 auto;
+  width: 2px;
+  align-self: stretch;
+  background: var(--line2);
+  border-radius: var(--radius-pill);
+}
+
+.motivations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.rivals {
+  font: 400 0.7rem var(--font-ui);
+  color: var(--text2);
+}
+.visit {
+  font: 400 0.7rem var(--font-ui);
+  color: var(--text2);
+}
+.promise {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  font: 400 0.72rem var(--font-ui);
+  color: var(--text2);
+}
+
+.hint {
+  margin: var(--space-3) 0 0;
+  font: 400 0.74rem var(--font-ui);
+  color: var(--text2);
+  line-height: 1.4;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.btn {
+  appearance: none;
+  cursor: pointer;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  font: 700 0.74rem var(--font-ui);
+  color: var(--text2);
+  background: var(--raise2);
+  border: 1px solid var(--line2);
+}
+.btn:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--lit);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btnPrimary {
+  color: var(--volt);
+  border-color: var(--volt);
+  background: var(--volt-soft);
+}
+.btnPrimary:hover:not(:disabled) {
+  color: var(--volt2);
+  border-color: var(--volt2);
+}
