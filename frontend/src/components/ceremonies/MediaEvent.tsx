@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { OffseasonBeat, MediaEventOption } from '../../types';
-import { ActionButton, PageHeader } from '../ui';
+import { ActionButton, PageHeader } from '../../ui';
+import styles from './MediaEvent.module.css';
 
 type MediaBeat = Extract<OffseasonBeat, { key: 'media_event' }>;
 
@@ -41,30 +42,25 @@ export function MediaEvent({
             />
 
             {committed && result ? (
-                <div className="dm-panel" data-testid="media-result" style={{ padding: '0.85rem 1rem' }}>
-                    <p className="dm-kicker" style={{ margin: '0 0 0.4rem' }}>Played</p>
-                    <p style={{ margin: 0, color: '#cbd5e1', fontSize: '0.88rem' }}>{result.receipt}</p>
+                <div className={`dm-panel ${styles.resultPanel}`} data-testid="media-result">
+                    <p className={`dm-kicker ${styles.resultKicker}`}>Played</p>
+                    <p className={styles.resultBody}>{result.receipt}</p>
                 </div>
             ) : event ? (
-                <div className="dm-panel" data-testid="media-event" style={{ padding: '0.85rem 1rem' }}>
-                    <p style={{ margin: '0 0 0.7rem', color: '#e2e8f0', fontWeight: 600 }}>{event.prompt}</p>
-                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                <div className={`dm-panel ${styles.eventPanel}`} data-testid="media-event">
+                    <p className={styles.prompt}>{event.prompt}</p>
+                    <div className={styles.options}>
                         {event.options.map((o) => {
                             const selected = o.key === chosenKey;
                             return (
                             <div
                                 key={o.key}
                                 aria-pressed={selected}
-                                style={{
-                                    display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
-                                    padding: '0.55rem 0.75rem', borderRadius: '6px',
-                                    border: selected ? '1px solid #38bdf8' : '1px solid #1e293b',
-                                    background: selected ? 'rgba(56,189,248,0.12)' : 'rgba(15,23,42,0.4)',
-                                }}
+                                className={`${styles.option} ${selected ? styles.optionSelected : ''}`}
                             >
-                                <span style={{ color: '#e2e8f0' }}>{o.label}</span>
-                                <span style={{ color: '#64748b', fontSize: '0.74rem' }}>{effectChips(o)}</span>
-                                <span style={{ marginLeft: 'auto' }}>
+                                <span className={styles.optionLabel}>{o.label}</span>
+                                <span className={styles.optionChips}>{effectChips(o)}</span>
+                                <span className={styles.optionAction}>
                                     <ActionButton
                                         variant={selected ? 'secondary' : 'primary'}
                                         onClick={() => handleChoose(o.key)}
@@ -79,7 +75,7 @@ export function MediaEvent({
                     </div>
                 </div>
             ) : (
-                <div className="dm-panel" style={{ padding: '0.85rem 1rem', color: '#94a3b8' }}>
+                <div className={`dm-panel ${styles.quiet}`}>
                     Quiet news cycle — nothing to weigh in on this offseason.
                 </div>
             )}

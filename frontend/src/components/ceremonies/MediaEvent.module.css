@@ -1,0 +1,36 @@
+/* MediaEvent.module.css — token-driven media-moment beat.
+   Floodlight 5-color contract: Volt for the selected option, warm-graphite
+   neutrals elsewhere. No raw color literals. */
+
+.resultPanel { padding: var(--space-4) var(--space-5); }
+.resultKicker { margin: 0 0 var(--space-3); }
+.resultBody { margin: 0; color: var(--text2); font-size: 0.88rem; }
+
+.eventPanel { padding: var(--space-4) var(--space-5); }
+.prompt { margin: 0 0 var(--space-4); color: var(--text); font-weight: 600; }
+.options { display: grid; gap: var(--space-3); }
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line2);
+  background: var(--raise);
+}
+
+.optionSelected {
+  border-color: var(--volt2);
+  background: var(--volt-soft);
+}
+
+.optionLabel { color: var(--text); }
+.optionChips { color: var(--muted); font-size: 0.74rem; }
+.optionAction { margin-left: auto; }
+
+.quiet {
+  padding: var(--space-4) var(--space-5);
+  color: var(--text2);
+}
