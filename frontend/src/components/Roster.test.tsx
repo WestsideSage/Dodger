@@ -57,3 +57,28 @@ describe('Roster potential sort (audit #57 — single tier vocabulary, no silent
     expect(rowNames()).toEqual(['Mid Higher', 'Mid Lower']);
   });
 });
+
+describe('Roster response-field tolerance (audit #92) + Sparkline gate (#36)', () => {
+  it('#92: tolerates a payload missing default_lineup / lineup_auto_reorder / open_promise_player_ids', () => {
+    mockRoster(
+      [PLAYER({ id: 'a', name: 'Alpha' })],
+      // deliberately omit default_lineup, lineup_auto_reorder, open_promise_player_ids
+      { default_lineup: undefined, lineup_auto_reorder: undefined, open_promise_player_ids: undefined },
+    );
+    expect(() => render(<Roster />)).not.toThrow();
+    expect(screen.getByText('Alpha')).toBeInTheDocument();
+    // no starter pin fabricated when default_lineup is absent
+    expect(screen.queryByTestId('roster-row-starter-pin')).not.toBeInTheDocument();
+  });
+  it('#36: renders the Sparkline only with >=2 trend points', () => {
+    mockRoster([PLAYER({ id: 't', name: 'Trend', ovr_season_trend: [70, 72, 75] })]);
+    render(<Roster />);
+    expect(screen.getByTestId('stub-spark')).toBeInTheDocument();
+  });
+  it('#36: a null/short trend shows the honest NO-DATA fallback, never a fake sparkline', () => {
+    mockRoster([PLAYER({ id: 'n', name: 'NoTrend', ovr_season_trend: null })]);
+    render(<Roster />);
+    expect(screen.queryByTestId('stub-spark')).not.toBeInTheDocument();
+    expect(screen.getByTestId('roster-ovr-nodata')).toBeInTheDocument();
+  });
+});

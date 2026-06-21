@@ -385,7 +385,7 @@ export function Roster() {
                         </button>
                         <div className="rl-player-meta">
                           <span>Age {player.age}</span>
-                          {starter && <span className="rl-pin">●</span>}
+                          {starter && <span data-testid="roster-row-starter-pin" className="rl-pin">●</span>}
                         </div>
                       </div>
                     </td>
@@ -442,6 +442,7 @@ export function Roster() {
                             <Sparkline data={player.ovr_season_trend} />
                           ) : (
                             <div
+                              data-testid="roster-ovr-nodata"
                               title="Last-offseason OVR change shown here after first offseason completes"
                               className="rl-ovr-spark"
                             >
