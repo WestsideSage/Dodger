@@ -1,5 +1,7 @@
+import styles from './Sparkline.module.css';
+
 export function Sparkline({ data }: { data: number[] }) {
-  if (data.length < 2) return <div style={{ height: '20px', width: '60px', background: '#1e293b', borderRadius: '2px' }} />;
+  if (data.length < 2) return <div className={styles.fallback} />;
   
   const min = Math.min(...data) - 1;
   const max = Math.max(...data) + 1;
@@ -17,7 +19,7 @@ export function Sparkline({ data }: { data: number[] }) {
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
       <polyline
         fill="none"
-        stroke="#22d3ee"
+        stroke="var(--volt2)"
         strokeWidth="2"
         points={points}
       />

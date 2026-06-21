@@ -82,7 +82,7 @@
 .ageStat .dim { font: 500 .62rem var(--font-ui); color: var(--muted); }
 .ageBars { display: flex; gap: var(--space-3); align-items: flex-end; flex: 1; height: var(--space-9); }
 .ageCol { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: var(--space-1); flex: 1; height: 100%; }
-.ageCol .bar { width: 100%; background: var(--volt-soft); border-top: 2px solid var(--volt); border-radius: var(--radius-sm) var(--radius-sm) 0 0; min-height: 1px; }
+.ageCol .bar { width: 100%; background: var(--volt-soft); border-top: var(--border-thick) solid var(--volt); border-radius: var(--radius-sm) var(--radius-sm) 0 0; min-height: 1px; }
 .ageCol .lblMini { font: 600 .52rem var(--font-ui); color: var(--muted); }
 .ageCol .ct { font: 700 .62rem var(--font-mono); color: var(--text2); }
 
@@ -94,7 +94,7 @@
 .rosterTable :global(td), .rosterTable :global(th) { vertical-align: middle; }
 
 .rowElite :global(td) { background: var(--gold-soft); }
-.rowStarter :global(td:first-child) { box-shadow: inset 2px 0 0 var(--volt); }
+.rowStarter :global(td:first-child) { box-shadow: inset var(--border-thick) 0 0 var(--volt); }
 
 .rank { color: var(--muted); }
 
@@ -131,7 +131,7 @@
   height: var(--space-5); width: var(--space-9);
   background: var(--line); border-radius: var(--radius-sm); overflow: hidden;
 }
-.ovrFill { height: 100%; background: var(--volt-soft); border-right: 2px solid var(--volt); }
+.ovrFill { height: 100%; background: var(--volt-soft); border-right: var(--border-thick) solid var(--volt); }
 
 .roleBadge {
   display: inline-flex; align-items: center;
