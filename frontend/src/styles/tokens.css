@@ -2,6 +2,10 @@
   /* canvas & surfaces (warm graphite) */
   --court: #121110; --raise: #1b1915; --raise2: #211e18;
   --line: rgba(241,236,226,.08); --line2: rgba(241,236,226,.15); --lit: rgba(255,251,242,.16);
+  --overlay: rgba(8,7,5,.78);          /* modal scrim (warm-graphite dim) */
+  --tint-neutral: rgba(241,236,226,.05); /* faint warm tint on neutral surfaces */
+  --out-line: rgba(142,134,120,.45);   /* dim/extinguished hairline border (matches --out) */
+  --volt-glow: rgba(255,74,43,.10);     /* faint single Volt accent glow (court light) */
   /* text */
   --text: #F1ECE1; --text2: #C3BBAD; --muted: #9A9285; --out: #8E8678;
   /* role colors (the 5-color contract) */
