@@ -1,0 +1,789 @@
+/* MatchReplay — Floodlight reskin of the full-screen match replay.
+   Color discipline (5-color contract):
+   - Volt (--volt / --volt2) = live/active/primary/selected ONLY (play button,
+     active event, swing cell, turning point, current-event card, catch arc cue).
+   - --ok = positive outcome (catch).
+   - --gold = TALENT only — NOT used on this surface.
+   - --out / --out-line = dim / extinguished.
+   - --danger = destructive — not used (an elimination is informational, not a
+     UI-destructive action, so it reads in warm neutrals/Volt, never red).
+   - warm neutrals (--court/--raise/--raise2/--text/--text2/--muted/--line/--line2)
+     carry all the structural chrome. Side identity is positional, not color-coded;
+     home borrows the lit Volt edge, away a warm-neutral edge (matches the canvas). */
+
+/* shell: scoreboard/official/frames/turning span full width; stage + sidebar split */
+.shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+.shell > .scoreboard,
+.shell > .officialPanel,
+.shell > .proofFrames,
+.shell > .turning {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 980px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+  .sidebarWrap {
+    max-height: none;
+    min-height: 0;
+  }
+}
+
+/* --- Scoreboard --- */
+.scoreboard {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--raise);
+  box-shadow: var(--shadow-2);
+}
+.team {
+  padding: var(--space-5) var(--space-6);
+  display: grid;
+  gap: var(--space-2);
+  align-content: center;
+  min-width: 0;
+}
+.teamAway {
+  text-align: right;
+  justify-items: end;
+}
+.teamHome {
+  border-left: var(--border-thick) solid var(--volt);
+}
+.teamAwayEdge {
+  border-right: var(--border-thick) solid var(--line2);
+}
+.teamRec {
+  font: 600 0.62rem var(--font-mono);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--out);
+}
+.teamName {
+  font: 800 clamp(1.4rem, 2.4vw, 2rem) var(--font-disp);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text);
+  max-width: 100%;
+}
+.teamTag {
+  font: 500 0.62rem var(--font-mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.score {
+  display: grid;
+  grid-template-columns: auto auto auto;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-3) var(--space-6);
+  background: var(--court);
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+}
+.scoreCol {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+}
+.scoreNum {
+  font: 900 clamp(3rem, 6vw, 5rem) var(--font-mono);
+  line-height: 0.85;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.scoreNumHome {
+  color: var(--volt);
+}
+.scoreNumAway {
+  color: var(--text2);
+}
+.scoreUnit {
+  font: 500 0.58rem var(--font-mono);
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.scoreDivider {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+}
+.finalTag {
+  font: 600 0.62rem var(--font-mono);
+  letter-spacing: 0.2em;
+  color: var(--volt2);
+  text-transform: uppercase;
+  border: 1px solid var(--volt);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--volt-soft);
+}
+.vs {
+  font: 800 1.3rem var(--font-disp);
+  color: var(--out);
+  letter-spacing: 0.18em;
+}
+.margin {
+  font: 500 0.6rem var(--font-mono);
+  letter-spacing: 0.18em;
+  color: var(--ok);
+  text-transform: uppercase;
+}
+
+/* --- Official rules panel --- */
+.officialPanel {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-md);
+  background: var(--line2);
+}
+.officialPanel > div {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-4) var(--space-4);
+  background: var(--court);
+}
+.officialPanel span {
+  color: var(--volt2);
+  font: 500 0.58rem var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.officialPanel strong {
+  color: var(--text);
+  font: 700 0.72rem var(--font-mono);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.officialBallList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.officialBallList span {
+  color: var(--text);
+  letter-spacing: 0;
+}
+
+/* --- Proof frames --- */
+.proofFrames {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+}
+.playoffFrame {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--line2);
+  border-left: var(--border-thick) solid var(--volt);
+  border-radius: var(--radius-md);
+  background: var(--volt-soft);
+}
+.playoffFrame span {
+  color: var(--volt2);
+  font: 500 0.62rem var(--font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.playoffFrame strong {
+  color: var(--text);
+  font: 700 1rem var(--font-disp);
+  text-transform: uppercase;
+}
+.playoffFrame p {
+  margin: 0;
+  color: var(--text2);
+  font: 500 0.82rem var(--font-ui);
+}
+
+/* --- Turning point --- */
+.turning {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-5);
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--line2);
+  border-left: var(--border-thick) solid var(--volt);
+  border-radius: var(--radius-md);
+  background: var(--volt-soft);
+}
+.turningKicker {
+  font: 600 0.62rem var(--font-mono);
+  letter-spacing: 0.24em;
+  color: var(--volt2);
+  text-transform: uppercase;
+  display: block;
+}
+.turningText {
+  margin: var(--space-2) 0 0;
+  color: var(--text);
+  font: 500 0.92rem var(--font-ui);
+  line-height: 1.5;
+}
+.turningJump {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  border: 1px solid var(--volt);
+  background: var(--volt-soft);
+  color: var(--volt2);
+  font: 700 0.78rem var(--font-disp);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+.turningJump:hover {
+  background: var(--volt);
+  color: var(--court);
+}
+.turningJump :global(.arrow) {
+  font-family: var(--font-mono);
+  font-weight: 800;
+}
+
+/* --- Stage (court + possession + transport) --- */
+.stage {
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--raise);
+}
+.courtWrap {
+  position: relative;
+  padding: var(--space-5);
+  background: var(--court);
+}
+.activeReadout {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+  background: var(--court);
+}
+.readoutLbl {
+  font: 500 0.6rem var(--font-mono);
+  letter-spacing: 0.22em;
+  color: var(--volt2);
+  text-transform: uppercase;
+}
+.readoutSep {
+  width: 1px;
+  height: 14px;
+  background: var(--line2);
+}
+.readoutVal {
+  font: 500 0.66rem var(--font-mono);
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.readoutTitle {
+  font: 700 0.85rem var(--font-disp);
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex: 1;
+  min-width: 0;
+}
+
+/* moment banner above the court during playback */
+.momentBanner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--gold-soft);
+  border-top: 1px solid var(--gold);
+  border-left: var(--border-accent) solid var(--gold);
+}
+.momentBanner p {
+  margin: 0;
+  font: 500 0.8rem var(--font-ui);
+  color: var(--gold2);
+  line-height: 1.4;
+}
+.momentBanner b {
+  font: 700 0.62rem var(--font-mono);
+  letter-spacing: 0.14em;
+  color: var(--gold);
+  margin-right: var(--space-3);
+}
+
+/* possession ribbon */
+.possession {
+  padding: var(--space-5) var(--space-4);
+  background: var(--court);
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: var(--space-3);
+}
+.possessionHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.possessionKicker {
+  font: 500 0.62rem var(--font-mono);
+  letter-spacing: 0.22em;
+  color: var(--volt2);
+  text-transform: uppercase;
+}
+.possessionTally {
+  display: inline-flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  font: 500 0.7rem var(--font-mono);
+}
+.possessionTally .dim {
+  color: var(--muted);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-size: 0.6rem;
+}
+
+.possessionStrip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.possCell {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-2);
+  border: 1px solid var(--line);
+  background: var(--raise2);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+.possCell .num {
+  font: 800 0.68rem var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+.ownerHome {
+  border-bottom: var(--border-thick) solid var(--volt);
+}
+.ownerAway {
+  border-bottom: var(--border-thick) solid var(--line2);
+}
+.ownerSwing {
+  border-bottom: var(--border-thick) solid var(--volt);
+  background: var(--volt-soft);
+}
+.ownerSwing .num {
+  color: var(--volt2);
+}
+.possActive {
+  background: var(--volt-soft);
+  border-color: var(--volt);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-1);
+}
+.possCell:hover {
+  border-color: var(--line2);
+}
+.swingPip {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--volt);
+}
+.momentPip {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  width: 7px;
+  height: 7px;
+  background: var(--gold);
+  transform: rotate(45deg);
+}
+
+/* new-game divider tile inside the possession grid */
+.possDivider {
+  display: grid;
+  place-items: center;
+  padding: var(--space-3) var(--space-1);
+  border: 1px dashed var(--line2);
+  border-radius: var(--radius-sm);
+  background: var(--court);
+  font: 800 0.6rem var(--font-mono);
+  letter-spacing: 0.14em;
+  color: var(--volt2);
+}
+
+/* --- Set strip --- */
+.setStrip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--court);
+  border-top: 1px solid var(--line);
+}
+.setKicker {
+  font: 800 0.58rem var(--font-mono);
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  margin-right: var(--space-1);
+}
+.setChip {
+  display: inline-grid;
+  justify-items: center;
+  gap: 1px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--raise2);
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.setChip:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+.setChip :global(.g) {
+  font: 500 0.58rem var(--font-mono);
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+.setChip :global(.pts) {
+  font: 800 0.72rem var(--font-mono);
+  color: var(--text);
+}
+.resultHome {
+  border-bottom: var(--border-thick) solid var(--volt);
+}
+.resultAway {
+  border-bottom: var(--border-thick) solid var(--line2);
+}
+.resultNone {
+  border-bottom: var(--border-thick) dashed var(--line2);
+}
+.setChipCurrent {
+  border-color: var(--volt);
+  background: var(--volt-soft);
+}
+.setChip:not(:disabled):hover {
+  border-color: var(--line2);
+}
+.setRunning {
+  margin-left: auto;
+  font: 500 0.62rem var(--font-mono);
+  letter-spacing: 0.1em;
+  color: var(--text2);
+}
+
+/* --- Transport --- */
+.transport {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--court);
+  border-top: 1px solid var(--line);
+}
+.tbtn {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line2);
+  background: var(--raise2);
+  color: var(--text2);
+  border-radius: var(--radius-sm);
+  font: 500 0.85rem var(--font-mono);
+  cursor: pointer;
+  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+}
+.tbtn:hover {
+  border-color: var(--volt);
+  color: var(--volt2);
+}
+.play {
+  width: 48px;
+  border-color: var(--volt);
+  background: var(--volt);
+  color: var(--court);
+  box-shadow: 0 0 14px var(--volt-glow);
+}
+.play:hover {
+  background: var(--volt2);
+  border-color: var(--volt2);
+  color: var(--court);
+}
+.playPlaying {
+  font-size: 0.7rem;
+  letter-spacing: 1px;
+}
+.transportPos {
+  margin-left: auto;
+  font: 500 0.7rem var(--font-mono);
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.transportPos b {
+  color: var(--text);
+  font-weight: 700;
+}
+.transportSpd {
+  font: 500 0.62rem var(--font-mono);
+  letter-spacing: 0.18em;
+  color: var(--out);
+  text-transform: uppercase;
+}
+.closeBtn {
+  width: auto;
+  padding: 0 var(--space-4);
+  font-family: var(--font-disp);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+}
+
+/* --- Sidebar / event log --- */
+.sidebarWrap {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--raise);
+  overflow: hidden;
+  max-height: calc(100vh - 180px);
+  min-height: 600px;
+}
+.sidebarHead {
+  padding: var(--space-5);
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: var(--space-3);
+  background: var(--court);
+}
+.sidebarTitle {
+  margin: var(--space-2) 0 0;
+  font: 800 1.2rem var(--font-disp);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.sidebarMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  font: 500 0.7rem var(--font-mono);
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.sidebarMeta b {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.currentCard {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border-bottom: 1px solid var(--line2);
+  background: var(--volt-soft);
+}
+.currentKicker {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  font: 500 0.62rem var(--font-mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--volt2);
+}
+.currentKicker b {
+  color: var(--text);
+  font-weight: 800;
+}
+.currentCard > strong {
+  font: 700 1rem var(--font-disp);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.currentMeta {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.currentMeta span {
+  font: 500 0.62rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text2);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  background: var(--court);
+}
+.currentCard p,
+.currentCard small {
+  margin: 0;
+  font: 500 0.72rem var(--font-mono);
+  line-height: 1.45;
+  color: var(--muted);
+}
+.currentCard small {
+  color: var(--out);
+}
+
+.log {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line2) transparent;
+}
+.log::-webkit-scrollbar {
+  width: 6px;
+}
+.log::-webkit-scrollbar-thumb {
+  background: var(--line2);
+  border-radius: var(--radius-pill);
+}
+.logEvent {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: var(--space-4);
+  width: 100%;
+  text-align: left;
+  padding: var(--space-3) var(--space-5);
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+.logEvent:first-child {
+  border-top: 0;
+}
+.logEvent:hover {
+  background: var(--tint-neutral);
+}
+.logEventActive {
+  background: var(--volt-soft);
+  box-shadow: inset 4px 0 0 var(--volt);
+}
+.logRail {
+  display: grid;
+  gap: var(--space-2);
+  text-align: center;
+}
+.logTick {
+  font: 800 0.74rem var(--font-mono);
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+.logEventActive .logTick {
+  color: var(--volt2);
+}
+.logEventActive .logTitle {
+  color: var(--text);
+}
+.logTime {
+  font: 500 0.58rem var(--font-mono);
+  letter-spacing: 0.1em;
+  color: var(--out);
+}
+.logBody {
+  min-width: 0;
+}
+.logRow {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.logChip {
+  font: 800 0.58rem var(--font-mono);
+  letter-spacing: 0.14em;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  border: 1px solid var(--line2);
+  background: var(--raise2);
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.chipThrow {
+  border-color: var(--line2);
+  background: var(--raise2);
+  color: var(--text2);
+}
+.chipElim {
+  border-color: var(--volt);
+  background: var(--volt-soft);
+  color: var(--volt2);
+}
+.chipCatch {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.logTitle {
+  font: 500 0.85rem var(--font-ui);
+  color: var(--text);
+  line-height: 1.4;
+}
+.logEvidence {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-1);
+}
+.logEvidence li {
+  font: 500 0.66rem var(--font-mono);
+  color: var(--muted);
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--line);
+  line-height: 1.45;
+}
+
+/* highlight reel shell in the replay sidebar */
+.highlights {
+  margin-top: var(--space-5);
+  display: grid;
+  gap: var(--space-4);
+}

@@ -1,4 +1,4 @@
-import { Fragment, memo, useMemo, useEffect, useRef, useState } from 'react';
+import { Fragment, useMemo, useEffect, useRef, useState } from 'react';
 
 import type { HighlightBeat, MatchReplayResponse, MomentEvent, ReplayGameSegment, ReplayProofEvent } from '../types';
 import { rulesetDisplayName } from '../legibility/rulesetNames';
@@ -6,7 +6,9 @@ import { BroadcastFrameBlock } from './BroadcastFrameBlock';
 import { formatScoreline, survivorDetail } from './match-week/matchResult';
 import { MatchHighlights } from '../features/replay/MatchHighlights';
 import { ReplaySpeedControl, type ReplaySpeed } from './match-week/aftermath/ReplaySpeedControl';
+import { LiveCourtCanvas } from './replay/LiveCourtCanvas';
 import { commandApi } from '../api/client';
+import styles from './MatchReplay.module.css';
 
 interface PlayerInfo {
   id: string;
@@ -15,15 +17,6 @@ interface PlayerInfo {
   clubId: string;
 }
 
-interface Vec2 {
-  x: number;
-  y: number;
-}
-
-const COURT_W = 600;
-const COURT_H = 320;
-const PLAYER_R = 14;
-
 function playerLabel(name: string): string {
   const parts = name.trim().split(' ');
   if (parts.length === 1) return parts[0].toUpperCase().slice(0, 7);
@@ -31,46 +24,6 @@ function playerLabel(name: string): string {
   const last = parts[parts.length - 1].toUpperCase().slice(0, 6);
   return `${first}. ${last}`;
 }
-
-function getFormationPositions(ids: string[], side: 'left' | 'right', courtWidth: number, courtHeight: number): Map<string, Vec2> {
-  const map = new Map<string, Vec2>();
-  if (ids.length === 0) return map;
-
-  const hMid = courtHeight / 2;
-  const vGap = courtHeight / 3.2;
-
-  // 2-column × 3-row formation
-  const colX = {
-    left:  [courtWidth / 2 - 55, courtWidth / 4],
-    right: [courtWidth / 2 + 55, 3 * courtWidth / 4],
-  };
-  const rowY = [hMid - vGap, hMid, hMid + vGap];
-
-  ids.forEach((id, i) => {
-    const col = i < 3 ? 0 : 1;
-    const row = i % 3;
-    map.set(id, { x: colX[side][col], y: rowY[row] });
-  });
-  return map;
-}
-
-const resolutionColor = (r: string | null) =>
-  r === 'eliminated' || r === 'hit' || r === 'failed_catch'
-    ? '#f43f5e'
-    : r === 'caught' || r === 'catch'
-    ? '#22d3ee'
-    : r === 'dodged'
-    ? '#a3e635'
-    : '#f97316';
-
-const resolutionActionLabel = (r: string | null) =>
-  r === 'eliminated' || r === 'hit' || r === 'failed_catch'
-    ? 'OUT'
-    : r === 'caught' || r === 'catch'
-    ? 'CATCH'
-    : r === 'dodged'
-    ? 'DODGE'
-    : '';
 
 // How long autoplay holds each play, before the speed factor: outs and
 // catches get a beat to land, misses move the broadcast along.
@@ -95,146 +48,6 @@ const MOMENT_KIND_LABEL: Record<MomentEvent['kind'], string> = {
   comeback: 'COMEBACK',
 };
 
-// ── UI Kit Integrated Court ───────────────────────────────────────────────────
-
-interface DarkCourtProps {
-  homeName: string;
-  awayName: string;
-  homeIds: string[];
-  awayIds: string[];
-  positions: Map<string, Vec2>;
-  playerRegistry: Map<string, PlayerInfo>;
-  eliminatedIds: Set<string>;
-  throwerId: string | null;
-  targetId: string | null;
-  activeResolution: string | null;
-  flashTargetId: string | null;
-  ballAnimKey: string;
-}
-
-const DarkCourt = memo(function DarkCourt({
-  homeIds,
-  awayIds,
-  positions,
-  playerRegistry,
-  eliminatedIds,
-  throwerId,
-  targetId,
-  activeResolution,
-  flashTargetId,
-}: DarkCourtProps) {
-  const throwerPos = throwerId ? positions.get(throwerId) : null;
-  const targetPos = targetId ? positions.get(targetId) : null;
-  const hasActiveThrow = !!(throwerId && targetId);
-
-  const flashColor = resolutionColor(activeResolution);
-  const outcomeLabel = resolutionActionLabel(activeResolution);
-  
-  const midX = throwerPos && targetPos ? (throwerPos.x + targetPos.x) / 2 : 0;
-  const midY = throwerPos && targetPos ? (throwerPos.y + targetPos.y) / 2 : 0;
-
-  return (
-    <svg viewBox="0 0 600 320" xmlns="http://www.w3.org/2000/svg" className="mr-court-svg" aria-label="Top-down dodgeball court">
-      <defs>
-        <pattern id="mr-grid" width="20" height="20" patternUnits="userSpaceOnUse">
-          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(34,211,238,0.05)" strokeWidth="0.6" />
-        </pattern>
-        <linearGradient id="mr-home-zone" x1="0" x2="1" y1="0" y2="0">
-          <stop offset="0%" stopColor="rgba(244,63,94,0.15)" />
-          <stop offset="100%" stopColor="rgba(244,63,94,0.0)" />
-        </linearGradient>
-        <linearGradient id="mr-away-zone" x1="0" x2="1" y1="0" y2="0">
-          <stop offset="0%" stopColor="rgba(59,130,246,0.0)" />
-          <stop offset="100%" stopColor="rgba(59,130,246,0.15)" />
-        </linearGradient>
-        <radialGradient id="mr-catch-glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="rgba(34,211,238,0.6)" />
-          <stop offset="80%" stopColor="rgba(34,211,238,0)" />
-        </radialGradient>
-        <marker id="mr-arrow-orange" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
-          <path d="M 0 0 L 7 3.5 L 0 7 z" fill="#f97316" opacity="0.75" />
-        </marker>
-        <marker id="mr-arrow-cyan" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
-          <path d="M 0 0 L 7 3.5 L 0 7 z" fill="#22d3ee" opacity="0.75" />
-        </marker>
-      </defs>
-
-      <rect width="600" height="320" fill="#020617" />
-      <rect width="600" height="320" fill="url(#mr-grid)" />
-      <rect x="0" y="0" width="300" height="320" fill="url(#mr-home-zone)" />
-      <rect x="300" y="0" width="300" height="320" fill="url(#mr-away-zone)" />
-
-      <line x1="300" y1="0" x2="300" y2="320" stroke="#334155" strokeWidth="2" strokeDasharray="6 6" />
-      <circle cx="300" cy="160" r="30" fill="none" stroke="#334155" strokeWidth="2" strokeDasharray="4 4" />
-      
-      <g fontFamily="JetBrains Mono, monospace" fontSize="10" letterSpacing="2" fill="#475569" textAnchor="middle">
-        {[1, 2, 3, 4, 5, 6, 7].map(n => (
-          <text key={n} x={45 + n * 63} y="15">V{n}</text>
-        ))}
-      </g>
-
-      {/* Throw trajectory */}
-      {throwerPos && targetPos && (
-        <line
-          x1={throwerPos.x} y1={throwerPos.y}
-          x2={targetPos.x} y2={targetPos.y}
-          stroke={activeResolution === 'caught' || activeResolution === 'catch' ? "#22d3ee" : "#f97316"}
-          strokeWidth="2"
-          strokeDasharray="6 4"
-          markerEnd={activeResolution === 'caught' || activeResolution === 'catch' ? "url(#mr-arrow-cyan)" : "url(#mr-arrow-orange)"}
-        />
-      )}
-
-      {/* Outcome label */}
-      {hasActiveThrow && outcomeLabel && (
-        <g>
-          <rect x={midX - 28} y={midY - 18} width="56" height="20" rx="3" fill="#020617" opacity="0.85" />
-          <text x={midX} y={midY - 4} textAnchor="middle" fill={flashColor} fontSize="11" fontFamily="Oswald, sans-serif" fontWeight="700" letterSpacing="2">
-            {outcomeLabel}
-          </text>
-        </g>
-      )}
-
-      {/* Players */}
-      {[...homeIds, ...awayIds].map((pid, idx) => {
-        const pos = positions.get(pid);
-        if (!pos) return null;
-        const info = playerRegistry.get(pid);
-        const isHome = homeIds.includes(pid);
-        const isElim = eliminatedIds.has(pid);
-        const isThrower = throwerId === pid;
-        const isTarget = targetId === pid;
-        const isFlash = flashTargetId === pid;
-        const isActive = isThrower || isTarget;
-
-        // Keep the non-active court readable during a throw: 0.45 still
-        // foregrounds the thrower/target but names stay legible.
-        const opacity = hasActiveThrow ? (isActive ? 1 : isElim ? 0.3 : 0.45) : (isElim ? 0.35 : 1);
-        const baseColor = isHome ? '#f43f5e' : '#3b82f6';
-        const labelColor = isHome ? '#fda4af' : '#93c5fd';
-        
-        const isCatchTarget = isTarget && (activeResolution === 'caught' || activeResolution === 'catch');
-        const glowing = isCatchTarget && isFlash;
-
-        return (
-          <g key={pid} opacity={opacity}>
-            {glowing && <circle cx={pos.x} cy={pos.y} r="26" fill="url(#mr-catch-glow)" />}
-            <circle cx={pos.x} cy={pos.y} r={PLAYER_R} fill="#0f172a" stroke={baseColor} strokeWidth="2" />
-            {glowing && <circle cx={pos.x} cy={pos.y} r="20" fill="none" stroke="#22d3ee" strokeWidth="2" strokeDasharray="4 4" />}
-            <text x={pos.x} y={pos.y + 4} textAnchor="middle" fontFamily="Oswald, sans-serif" fontSize="12" fill="#fff">
-              {isHome ? idx + 1 : idx - homeIds.length + 1}
-            </text>
-            <text x={pos.x} y={pos.y + 27} textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="9.5" fontWeight="600" fill={labelColor}>
-              {info?.label || ''}
-            </text>
-            {isElim && <line x1={pos.x - 14} y1={pos.y - 14} x2={pos.x + 14} y2={pos.y + 14} stroke={baseColor} strokeWidth="2" />}
-          </g>
-        );
-      })}
-    </svg>
-  );
-});
-
 // ── Components ──────────────────────────────────────────────────────────────
 
 const PossessionBar = ({
@@ -250,15 +63,17 @@ const PossessionBar = ({
   homeClubId: string;
   momentIndices: Set<number>;
 }) => {
+  const ownerClass = (owner: 'swing' | 'home' | 'away') =>
+    owner === 'swing' ? styles.ownerSwing : owner === 'home' ? styles.ownerHome : styles.ownerAway;
   return (
-    <div className="mr-possession">
-      <div className="mr-possession-head">
-        <span className="mr-possession-kicker">POSSESSION TIMELINE</span>
-        <span className="mr-possession-tally">
-          <span className="dim">Play by Play</span>
+    <div className={styles.possession}>
+      <div className={styles.possessionHead}>
+        <span className={styles.possessionKicker}>POSSESSION TIMELINE</span>
+        <span className={styles.possessionTally}>
+          <span className={styles.dim}>Play by Play</span>
         </span>
       </div>
-      <div className="mr-possession-strip">
+      <div className={styles.possessionStrip}>
         {events.map((ev, i) => {
           const isSwing = ev.is_key_play;
           const owner = isSwing ? 'swing' : (ev.offense_club_id === homeClubId ? 'home' : 'away');
@@ -270,14 +85,17 @@ const PossessionBar = ({
           return (
             <Fragment key={i}>
               {startsNewGame && (
-                <span className="mr-poss-divider" aria-hidden="true">
+                <span className={styles.possDivider} aria-hidden="true">
                   G{ev.game_number}
                 </span>
               )}
-              <button className={`mr-poss-cell owner-${owner} ${active ? 'is-active' : ''}`} onClick={() => onJump(i)}>
-                <span className="num">{(i + 1).toString().padStart(2, '0')}</span>
-                {isSwing && <div className="swing-pip" />}
-                {momentIndices.has(i) && <div className="moment-pip" title="Recognition moment" />}
+              <button
+                className={`${styles.possCell} ${ownerClass(owner)} ${active ? styles.possActive : ''}`}
+                onClick={() => onJump(i)}
+              >
+                <span className={styles.num}>{(i + 1).toString().padStart(2, '0')}</span>
+                {isSwing && <div className={styles.swingPip} />}
+                {momentIndices.has(i) && <div className={styles.momentPip} title="Recognition moment" />}
               </button>
             </Fragment>
           );
@@ -313,13 +131,15 @@ const GameSegmentStrip = ({
   const lastRevealed = liveMode
     ? segments.filter((seg) => seg.game_number < (currentGame as number)).slice(-1)[0] ?? null
     : segments[segments.length - 1];
+  const resultClass = (result: 'home' | 'away' | 'none') =>
+    result === 'home' ? styles.resultHome : result === 'away' ? styles.resultAway : styles.resultNone;
   return (
-    <div className="mr-set-strip" data-testid="replay-set-strip" aria-label="Game-by-game set results">
-      <span className="mr-set-kicker">SETS</span>
+    <div className={styles.setStrip} data-testid="replay-set-strip" aria-label="Game-by-game set results">
+      <span className={styles.setKicker}>SETS</span>
       {segments.map((seg) => {
         const isCurrent = currentGame === seg.game_number;
         const revealed = !liveMode || seg.game_number < (currentGame as number);
-        const result = !revealed
+        const result: 'home' | 'away' | 'none' = !revealed
           ? 'none'
           : seg.home_points > seg.away_points ? 'home' : seg.away_points > seg.home_points ? 'away' : 'none';
         const canJump = seg.first_proof_index != null;
@@ -336,7 +156,9 @@ const GameSegmentStrip = ({
           <button
             key={seg.game_number}
             type="button"
-            className={`mr-set-chip result-${result} ${isCurrent ? 'is-current' : ''}`}
+            data-set-chip={seg.game_number}
+            data-set-revealed={revealed ? 'true' : 'false'}
+            className={`${styles.setChip} ${resultClass(result)} ${isCurrent ? styles.setChipCurrent : ''}`}
             title={title}
             disabled={!canJump}
             onClick={() => {
@@ -359,7 +181,7 @@ const GameSegmentStrip = ({
       {/* Codex issue 4: during playback this is the CURRENT-moment tally,
           which sits right under the final-score header — label it "so far"
           so it never reads as contradicting the full-time score. */}
-      <span className="mr-set-running" data-testid="replay-set-running">
+      <span className={styles.setRunning} data-testid="replay-set-running">
         {liveMode
           ? `${lastRevealed ? `${lastRevealed.home_running_points}–${lastRevealed.away_running_points}` : '0–0'} on game points so far`
           : `${lastRevealed ? `${lastRevealed.home_running_points}–${lastRevealed.away_running_points}` : '0–0'} on game points`}
@@ -393,31 +215,31 @@ const ReplayScoreboard = ({ data }: { data: MatchReplayResponse }) => {
   const formatTag = isOfficial ? `${rulesetDisplayName(data.scoring_model, 'short')} · W${String(data.week).padStart(2, '0')}` : `FINAL · W${String(data.week).padStart(2, '0')}`;
 
   return (
-    <div className="mr-scoreboard">
-      <div className="mr-team home">
-        <div className="mr-team-rec">HOME</div>
-        <div className="mr-team-name">{homeName}</div>
-        <div className="mr-team-tag">PROGRAM</div>
+    <div className={styles.scoreboard} data-testid="replay-scoreboard">
+      <div className={`${styles.team} ${styles.teamHome}`}>
+        <div className={styles.teamRec}>HOME</div>
+        <div className={styles.teamName}>{homeName}</div>
+        <div className={styles.teamTag}>PROGRAM</div>
       </div>
-      <div className="mr-score">
-        <div className="mr-score-col">
-          <span className="mr-score-num home">{scoreHome}</span>
-          <span className="mr-score-unit">{survivorDetail(scoreline.home.survivors, isOfficial)}</span>
+      <div className={styles.score}>
+        <div className={styles.scoreCol}>
+          <span className={`${styles.scoreNum} ${styles.scoreNumHome}`} data-score-side="home">{scoreHome}</span>
+          <span className={styles.scoreUnit}>{survivorDetail(scoreline.home.survivors, isOfficial)}</span>
         </div>
-        <div className="mr-score-divider">
-          <span className="mr-final-tag">{formatTag}</span>
-          <span className="mr-vs">VS</span>
-          <span className="mr-margin">{marginLabel}</span>
+        <div className={styles.scoreDivider}>
+          <span className={styles.finalTag}>{formatTag}</span>
+          <span className={styles.vs}>VS</span>
+          <span className={styles.margin}>{marginLabel}</span>
         </div>
-        <div className="mr-score-col">
-          <span className="mr-score-num away">{scoreAway}</span>
-          <span className="mr-score-unit">{survivorDetail(scoreline.away.survivors, isOfficial)}</span>
+        <div className={styles.scoreCol}>
+          <span className={`${styles.scoreNum} ${styles.scoreNumAway}`} data-score-side="away">{scoreAway}</span>
+          <span className={styles.scoreUnit}>{survivorDetail(scoreline.away.survivors, isOfficial)}</span>
         </div>
       </div>
-      <div className="mr-team away">
-        <div className="mr-team-rec">AWAY</div>
-        <div className="mr-team-name">{awayName}</div>
-        <div className="mr-team-tag">PROGRAM</div>
+      <div className={`${styles.team} ${styles.teamAway} ${styles.teamAwayEdge}`}>
+        <div className={styles.teamRec}>AWAY</div>
+        <div className={styles.teamName}>{awayName}</div>
+        <div className={styles.teamTag}>PROGRAM</div>
       </div>
     </div>
   );
@@ -467,7 +289,7 @@ const OfficialRulesPanel = ({ data }: { data: MatchReplayResponse }) => {
     : 'None';
 
   return (
-    <section className="mr-official-panel" data-testid="official-ruleset-banner" aria-label="Official rules replay state">
+    <section className={styles.officialPanel} data-testid="official-ruleset-banner" aria-label="Official rules replay state">
       <div>
         <span title="Officiating snapshot taken at the final whistle — clocks read 00:00 because the match is over.">FULL TIME</span>
         <strong>Official state</strong>
@@ -495,7 +317,7 @@ const OfficialRulesPanel = ({ data }: { data: MatchReplayResponse }) => {
       {data.team_policies && (
         <div>
           <span title="The locked tactics each club actually played this match under — your weekly plan's policy and theirs, disclosed after the fact (the match is tape now).">GAME PLANS</span>
-          <div className="mr-official-ball-list">
+          <div className={styles.officialBallList}>
             {[data.home_club_id, data.away_club_id].map((clubId) => {
               const policy = data.team_policies?.[clubId];
               if (!policy) return null;
@@ -512,7 +334,7 @@ const OfficialRulesPanel = ({ data }: { data: MatchReplayResponse }) => {
       )}
       <div>
         <span title="Where each ball ended at the final whistle — held means in a player's hands, dead means loose on the floor.">BALL STATES</span>
-        <div className="mr-official-ball-list">
+        <div className={styles.officialBallList}>
           {official.balls.length
             ? official.balls.map(ball => (
                 <span key={ball.ball_id}>
@@ -535,13 +357,13 @@ const ReplayProofFrames = ({ data }: { data: MatchReplayResponse }) => {
   const hasPlayoff = Boolean(data.playoff_frame);
   if (!hasBroadcast && !hasPlayoff) return null;
   return (
-    <div className="mr-proof-frames">
+    <div className={styles.proofFrames}>
       {data.broadcast_frame && (
         <BroadcastFrameBlock frame={data.broadcast_frame} title="Broadcast Frame" compact />
       )}
       {data.playoff_frame && (
         <section
-          className="mr-playoff-frame"
+          className={styles.playoffFrame}
           data-testid="playoff-frame"
           data-broadcast-proof-source={data.playoff_frame.proof_source}
         >
@@ -558,12 +380,12 @@ const ReplayProofFrames = ({ data }: { data: MatchReplayResponse }) => {
 // (lead flips weighted highest), selected server-side from the same proof
 // timeline the jump lands on — never just "the first hit of the match".
 const TurningPoint = ({ text, onShowCatch }: { text: string, onShowCatch: () => void }) => (
-  <div className="mr-turning">
+  <div className={styles.turning}>
     <div>
-      <span className="mr-turning-kicker">BIGGEST SWING</span>
-      <p className="mr-turning-text">{text}</p>
+      <span className={styles.turningKicker}>BIGGEST SWING</span>
+      <p className={styles.turningText}>{text}</p>
     </div>
-    <button className="mr-turning-jump" onClick={onShowCatch}>
+    <button className={styles.turningJump} onClick={onShowCatch}>
       Jump to This Play <span className="arrow">▸</span>
     </button>
   </div>
@@ -571,10 +393,10 @@ const TurningPoint = ({ text, onShowCatch }: { text: string, onShowCatch: () => 
 
 const chipClass = (resolution: string) => {
   const r = resolution.toLowerCase();
-  if (r === 'caught' || r === 'catch') return 'chip-catch';
-  if (r === 'eliminated' || r === 'hit' || r === 'failed_catch') return 'chip-elim';
-  if (r === 'dodged') return 'chip-throw';
-  return 'chip-throw';
+  if (r === 'caught' || r === 'catch') return styles.chipCatch;
+  if (r === 'eliminated' || r === 'hit' || r === 'failed_catch') return styles.chipElim;
+  if (r === 'dodged') return styles.chipThrow;
+  return styles.chipThrow;
 };
 
 const scoreDeltaLabel = (current?: ReplayProofEvent, previous?: ReplayProofEvent) => {
@@ -613,13 +435,13 @@ const CurrentEventCard = ({
   if (!event) return null;
   const actors = [event.thrower_name, event.target_name].filter(Boolean).join(' -> ') || 'Match event';
   return (
-    <aside className="mr-current-card" data-testid="current-event-card" aria-label="Current replay event">
-      <div className="mr-current-kicker">
+    <aside className={styles.currentCard} data-testid="current-event-card" aria-label="Current replay event">
+      <div className={styles.currentKicker}>
         <span>Current Event</span>
         <b>{eventIndex + 1}/{totalEvents}</b>
       </div>
       <strong>{actors}</strong>
-      <div className="mr-current-meta">
+      <div className={styles.currentMeta}>
         <span>{event.game_number != null ? `G${event.game_number} · ` : ''}T{event.tick}</span>
         <span>{event.resolution}</span>
         <span>{scoreDeltaLabel(event, previousEvent)}</span>
@@ -638,26 +460,26 @@ const EventLog = ({ events, activeIdx, onSelect }: { events: ReplayProofEvent[],
   }, [activeIdx]);
 
   return (
-    <div className="mr-log">
+    <div className={styles.log}>
       {events.map((ev, idx) => {
         return (
           <button
             key={idx}
             ref={(node) => { rowRefs.current[idx] = node; }}
-            className={`mr-log-event ${idx === activeIdx ? 'is-active' : ''}`}
+            className={`${styles.logEvent} ${idx === activeIdx ? styles.logEventActive : ''}`}
             onClick={() => onSelect(idx)}
           >
-            <div className="mr-log-rail">
-              <span className="mr-log-tick">{(idx + 1).toString().padStart(2, '0')}</span>
-              <span className="mr-log-time">T{ev.tick}</span>
+            <div className={styles.logRail}>
+              <span className={styles.logTick}>{(idx + 1).toString().padStart(2, '0')}</span>
+              <span className={styles.logTime}>T{ev.tick}</span>
             </div>
-            <div className="mr-log-body">
-              <div className="mr-log-row">
-                <span className={`mr-log-chip ${chipClass(ev.resolution)}`}>{ev.resolution.toUpperCase()}</span>
-                <span className="mr-log-title">{ev.summary}</span>
+            <div className={styles.logBody}>
+              <div className={styles.logRow}>
+                <span className={`${styles.logChip} ${chipClass(ev.resolution)}`}>{ev.resolution.toUpperCase()}</span>
+                <span className={styles.logTitle}>{ev.summary}</span>
               </div>
               {ev.detail && (
-                <ul className="mr-log-evidence">
+                <ul className={styles.logEvidence}>
                   <li>{ev.detail}</li>
                 </ul>
               )}
@@ -681,8 +503,6 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
   const [highlightBeats, setHighlightBeats] = useState<HighlightBeat[]>([]);
 
   const [activeResolution, setActiveResolution] = useState<string | null>(null);
-  const [flashTargetId, setFlashTargetId] = useState<string | null>(null);
-  const [ballAnimKey, setBallAnimKey] = useState<string>('init');
 
   // V13 highlight package (deterministic, event-id-keyed) — gives the replay
   // a story summary with jump links. Optional: failures just hide the block.
@@ -711,9 +531,8 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
     playerRegistry,
     homeIds,
     awayIds,
-    positions,
   } = useMemo(() => {
-    if (!data) return { totalEvents: 0, playerRegistry: new Map(), homeIds: [], awayIds: [], positions: new Map() };
+    if (!data) return { totalEvents: 0, playerRegistry: new Map<string, PlayerInfo>(), homeIds: [], awayIds: [] };
     const reg = new Map<string, PlayerInfo>();
     const hIds: string[] = [];
     const aIds: string[] = [];
@@ -736,16 +555,11 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
       }
     });
 
-    const pos = new Map<string, Vec2>();
-    getFormationPositions(hIds, 'left', COURT_W, COURT_H).forEach((v, k) => pos.set(k, v));
-    getFormationPositions(aIds, 'right', COURT_W, COURT_H).forEach((v, k) => pos.set(k, v));
-
     return {
       totalEvents: data.proof_events.length,
       playerRegistry: reg,
       homeIds: hIds,
       awayIds: aIds,
-      positions: pos,
     };
   }, [data]);
 
@@ -817,26 +631,9 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
     if (!currentProof) return;
 
     const t0 = setTimeout(() => {
-      setFlashTargetId(null);
-      if (!currentProof.thrower_id) {
-        setActiveResolution(null);
-        return;
-      }
-      setActiveResolution(currentProof.resolution);
-      setBallAnimKey(`ball-${currentProof.sequence_index}-${eventIndex}`);
+      setActiveResolution(currentProof.thrower_id ? currentProof.resolution : null);
     }, 0);
-
-    if (!currentProof.thrower_id) {
-      return () => clearTimeout(t0);
-    }
-
-    const t1 = setTimeout(() => setFlashTargetId(currentProof.target_id), 360);
-    const t2 = setTimeout(() => setFlashTargetId(null), 860);
-    return () => {
-      clearTimeout(t0);
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
+    return () => clearTimeout(t0);
   }, [data, eventIndex]);
 
   // Auto-play loop: outs/catches hold longer than misses, scaled by the
@@ -868,7 +665,7 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
   }, [data]);
 
   return (
-    <div className="max-content mr-shell" data-screen-label="03 Dynasty">
+    <div className={`max-content ${styles.shell}`} data-screen-label="03 Dynasty">
       <ReplayScoreboard data={data} />
       <OfficialRulesPanel data={data} />
       <ReplayProofFrames data={data} />
@@ -877,18 +674,18 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
         onShowCatch={() => { setEventIndex(swingJumpIdx); setIsPlaying(false); }}
       />
 
-      <div className="mr-stage">
-        <div className="mr-active-readout">
-          <span className="lbl">NOW SHOWING</span>
-          <span className="sep" />
-          <span className="val">
+      <div className={styles.stage}>
+        <div className={styles.activeReadout}>
+          <span className={styles.readoutLbl}>NOW SHOWING</span>
+          <span className={styles.readoutSep} />
+          <span className={styles.readoutVal}>
             {currentGame != null ? `GAME ${currentGame} · ` : ''}TICK {currentEvent?.tick ?? 0}
           </span>
-          <span className="sep" />
-          <span className="title">{currentEvent?.summary || 'Match Start'}</span>
+          <span className={styles.readoutSep} />
+          <span className={styles.readoutTitle}>{currentEvent?.summary || 'Match Start'}</span>
         </div>
         {currentMoments.length > 0 && (
-          <div className="mr-moment-banner" data-testid="replay-moment-banner">
+          <div className={styles.momentBanner} data-testid="replay-moment-banner">
             {currentMoments.map((moment, index) => (
               <p key={`${moment.kind}-${index}`}>
                 <b>{MOMENT_KIND_LABEL[moment.kind]}</b>
@@ -897,20 +694,15 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
             ))}
           </div>
         )}
-        <div className="mr-court-wrap">
-          <DarkCourt
-            homeName={data.home_club_name}
-            awayName={data.away_club_name}
+        <div className={styles.courtWrap}>
+          <LiveCourtCanvas
             homeIds={homeIds}
             awayIds={awayIds}
-            positions={positions}
             playerRegistry={playerRegistry}
             eliminatedIds={eliminatedIds}
             throwerId={throwerId}
             targetId={targetId}
             activeResolution={activeResolution}
-            flashTargetId={flashTargetId}
-            ballAnimKey={ballAnimKey}
           />
         </div>
         {gameSegments.length > 0 && (
@@ -929,14 +721,14 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
           momentIndices={momentIndices}
         />
 
-        <div className="mr-transport">
-          <button className="mr-tbtn" aria-label="First" onClick={() => { setEventIndex(0); setIsPlaying(false); }}>⏮</button>
-          <button className="mr-tbtn" aria-label="Previous" onClick={() => { setEventIndex(Math.max(0, eventIndex - 1)); setIsPlaying(false); }}>◂</button>
-          <button className={`mr-tbtn mr-play ${isPlaying ? 'is-playing' : ''}`} aria-label={isPlaying ? 'Pause' : 'Play'} onClick={() => setIsPlaying(!isPlaying)}>
+        <div className={styles.transport}>
+          <button className={styles.tbtn} aria-label="First" onClick={() => { setEventIndex(0); setIsPlaying(false); }}>⏮</button>
+          <button className={styles.tbtn} aria-label="Previous" onClick={() => { setEventIndex(Math.max(0, eventIndex - 1)); setIsPlaying(false); }}>◂</button>
+          <button className={`${styles.tbtn} ${styles.play} ${isPlaying ? styles.playPlaying : ''}`} aria-label={isPlaying ? 'Pause' : 'Play'} onClick={() => setIsPlaying(!isPlaying)}>
             {isPlaying ? '❚❚' : '▶'}
           </button>
-          <button className="mr-tbtn" aria-label="Next" onClick={() => { setEventIndex(Math.min(totalEvents - 1, eventIndex + 1)); setIsPlaying(false); }}>▸</button>
-          <button className="mr-tbtn" aria-label="Last" onClick={() => { setEventIndex(totalEvents - 1); setIsPlaying(false); }}>⏭</button>
+          <button className={styles.tbtn} aria-label="Next" onClick={() => { setEventIndex(Math.min(totalEvents - 1, eventIndex + 1)); setIsPlaying(false); }}>▸</button>
+          <button className={styles.tbtn} aria-label="Last" onClick={() => { setEventIndex(totalEvents - 1); setIsPlaying(false); }}>⏭</button>
           <ReplaySpeedControl
             speed={speed}
             onChange={(next) => {
@@ -949,33 +741,33 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
               setSpeed(next);
             }}
           />
-          <span className="mr-transport-spd">Space · ◂ ▸</span>
-          <span className="mr-transport-pos">
+          <span className={styles.transportSpd}>Space · ◂ ▸</span>
+          <span className={styles.transportPos}>
             EVENT <b>{(eventIndex + 1).toString().padStart(2, '0')}/{totalEvents.toString().padStart(2, '0')}</b>
           </span>
-          <button className="mr-tbtn" aria-label="Back to results / close replay" onClick={onContinue} style={{ width: 'auto', padding: '0 12px', fontFamily: 'var(--font-display)', fontSize: '0.7rem', letterSpacing: '0.12em' }}>
+          <button className={`${styles.tbtn} ${styles.closeBtn}`} aria-label="Back to results / close replay" onClick={onContinue}>
             CLOSE
           </button>
         </div>
       </div>
 
-      <div className="mr-sidebar-wrap">
+      <div className={styles.sidebarWrap}>
         <CurrentEventCard
           event={currentEvent}
           eventIndex={eventIndex}
           previousEvent={previousEvent}
           totalEvents={totalEvents}
         />
-        <div className="mr-sidebar-head">
-          <span className="mr-sidebar-meta"><b>EVENT LOG</b></span>
-          <div className="mr-sidebar-title">Match Flow</div>
+        <div className={styles.sidebarHead}>
+          <span className={styles.sidebarMeta}><b>EVENT LOG</b></span>
+          <div className={styles.sidebarTitle}>Match Flow</div>
         </div>
         <EventLog events={data.proof_events} activeIdx={eventIndex} onSelect={setEventIndex} />
         {highlightBeats.length > 0 && (
-          <div className="mr-highlights" data-testid="replay-highlights">
-            <div className="mr-sidebar-head">
-              <span className="mr-sidebar-meta"><b>HIGHLIGHT REEL</b></span>
-              <div className="mr-sidebar-title">The Story in {highlightBeats.length} Plays</div>
+          <div className={styles.highlights} data-testid="replay-highlights">
+            <div className={styles.sidebarHead}>
+              <span className={styles.sidebarMeta}><b>HIGHLIGHT REEL</b></span>
+              <div className={styles.sidebarTitle}>The Story in {highlightBeats.length} Plays</div>
             </div>
             <MatchHighlights
               beats={highlightBeats}
