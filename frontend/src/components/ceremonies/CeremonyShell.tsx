@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ActionButton, PageHeader } from '../ui';
+import { ActionButton, PageHeader } from '../../ui';
+import styles from './CeremonyShell.module.css';
 
 // WT-21 wrap-not-rewrite assessment: CeremonyShell is a healthy surface and is
 // neither a dialog nor a radiogroup. Its only candidate for the shared
@@ -64,7 +65,7 @@ export function CeremonyShell({
   }, [stages]);
 
   return (
-    <div className="dm-ceremony" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div className={`dm-ceremony ${styles.ceremony}`}>
       <PageHeader
         eyebrow={showProgress ? `Offseason Beat ${(beatIndex as number) + 1}/${totalBeats} · ${eyebrow}` : eyebrow}
         title={title}
@@ -84,7 +85,7 @@ export function CeremonyShell({
           </div>
         ) : undefined}
       />
-      <div className="dm-ceremony-stage" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div className={`dm-ceremony-stage ${styles.stage}`}>
          {renderStage(stage)}
       </div>
       <div className="dm-panel command-action-bar" style={{ position: 'sticky', bottom: '1rem', marginTop: 'auto' }}>
