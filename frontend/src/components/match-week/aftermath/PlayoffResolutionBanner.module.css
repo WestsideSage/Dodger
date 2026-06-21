@@ -1,0 +1,78 @@
+/* PlayoffResolutionBanner — Floodlight reskin. Outcome-keyed accent:
+   advanced = Mint (verified/positive), eliminated = Volt (the live result),
+   neutral = warm-neutral line. */
+
+.banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  margin: 0 0 var(--space-5) 0;
+  border: 1px solid var(--line2);
+  border-left: var(--border-accent) solid var(--line2);
+  border-radius: var(--radius-md);
+  background: var(--raise);
+}
+
+.advanced {
+  border-color: var(--ok);
+  border-left-color: var(--ok);
+  background: var(--ok-soft);
+}
+
+.eliminated {
+  border-color: var(--volt);
+  border-left-color: var(--volt);
+  background: var(--volt-soft);
+}
+
+.neutral {
+  border-color: var(--line2);
+  border-left-color: var(--line2);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.chip {
+  font: 700 0.62rem var(--font-mono);
+  letter-spacing: 0.1em;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line2);
+  color: var(--text);
+  background: var(--tint-neutral);
+}
+
+.advanced .chip {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.eliminated .chip {
+  border-color: var(--volt);
+  color: var(--volt);
+}
+
+.stage {
+  font: 600 0.66rem var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.title {
+  margin: 0;
+  font: 700 1rem var(--font-head);
+  color: var(--text);
+}
+
+.note {
+  margin: 0;
+  font: 400 0.82rem var(--font-ui);
+  color: var(--text2);
+  line-height: 1.4;
+}
