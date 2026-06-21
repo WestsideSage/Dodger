@@ -1,4 +1,5 @@
 import type { RecruitingStatus } from '../../types';
+import styles from './RecruitingBadge.module.css';
 
 const STATUS_LABELS: Record<RecruitingStatus, string> = {
   UNSCOUTED: 'Unscouted',
@@ -9,14 +10,15 @@ const STATUS_LABELS: Record<RecruitingStatus, string> = {
   LOCKED_OUT: 'Locked Out',
 };
 
-// Reuse the existing dm-badge tone palette from index.css.
+// Floodlight tone classes (5-color contract): positive engagement -> mint,
+// locked-out -> dim/resolved, early states -> warm neutral.
 const STATUS_TONES: Record<RecruitingStatus, string> = {
-  UNSCOUTED: 'dm-badge-slate',
-  SCOUTED: 'dm-badge-cyan',
-  CONTACTED: 'dm-badge-amber',
-  VISITED: 'dm-badge-violet',
-  INTERESTED: 'dm-badge-emerald',
-  LOCKED_OUT: 'dm-badge-rose',
+  UNSCOUTED: styles.toneUnscouted,
+  SCOUTED: styles.toneScouted,
+  CONTACTED: styles.toneContacted,
+  VISITED: styles.toneVisited,
+  INTERESTED: styles.toneInterested,
+  LOCKED_OUT: styles.toneLockedOut,
 };
 
 export function RecruitingBadge({
@@ -30,11 +32,10 @@ export function RecruitingBadge({
   const label = STATUS_LABELS[status];
   return (
     <span
-      className={`dm-badge ${tone}`}
+      className={`${styles.badge} ${tone}${pending ? ` ${styles.pending}` : ''}`}
       data-testid={`recruiting-badge-${status}`}
       aria-label={`Recruiting status: ${label}${pending ? ' (saving)' : ''}`}
       title={`Recruiting status: ${label}`}
-      style={pending ? { opacity: 0.6 } : undefined}
     >
       {label}
       {pending ? '…' : ''}
