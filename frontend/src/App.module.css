@@ -237,3 +237,12 @@
   flex: 1;
   overflow-y: auto;
 }
+
+/* Replay loading line — neutral instrumentation (was legacy dm-kicker cyan). */
+.replayLoading {
+  padding: var(--space-8);
+  font: 600 0.875rem var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}

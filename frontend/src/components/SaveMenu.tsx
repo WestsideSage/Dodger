@@ -6,7 +6,7 @@ import { CoachStep } from './new-game/CoachStep';
 import { StaffHiringStep } from './new-game/StaffHiringStep';
 import { StartingRecruitmentStep } from './new-game/StartingRecruitmentStep';
 import { saveApi } from '../api/client';
-import { RadioGroup } from './ui';
+import { ActionButton, RadioGroup } from './ui';
 import styles from './SaveMenu.module.css';
 
 const DEBUG_PREFIXES = ['qa-playthrough-', 'debug-', 'playtest-', 'ux-teardown-', 'test_', 'e2e-', 'e2e_', 'codex', 'command-aftermath'];
@@ -283,7 +283,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
         </div>
 
         {/* Main panel */}
-        <div className={`dm-panel ${styles.panel}`}>
+        <div className={styles.panel}>
           {/* Tab bar */}
           <div className={styles.tabs}>
             <button
@@ -370,12 +370,12 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                             </p>
                           )}
                         </div>
-                        <button
+                        <ActionButton
+                          variant="primary"
                           onClick={() => handleLoad(continueSave.path)}
-                          className="dm-action dm-action-primary"
                         >
                           Continue
-                        </button>
+                        </ActionButton>
                       </div>
                     )}
                     <ul className={styles.rowList}>
@@ -443,23 +443,23 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                             )}
                           </div>
                         </div>
-                        <button
+                        <ActionButton
+                          variant="secondary"
                           onClick={() => handleLoad(save.path)}
                           disabled={activePath === save.path || save.incompatible}
                           data-testid="load-save-btn"
-                          className="dm-action dm-action-secondary"
                         >
                           {activePath === save.path ? 'Loaded' : 'Load'}
-                        </button>
+                        </ActionButton>
                         {save.path !== 'dodgeball_sim.db' && (
-                          <button
+                          <ActionButton
+                            variant="danger"
                             onClick={() => handleDelete(save.path)}
                             disabled={deleting === save.path}
                             data-testid="delete-save-btn"
-                            className="dm-action dm-action-danger"
                           >
                             {deleting === save.path ? '…' : 'Delete'}
-                          </button>
+                          </ActionButton>
                         )}
                       </li>
                       );
@@ -628,9 +628,6 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
                             {...radioProps}
                             aria-label={option.label}
                             className={styles.clubOptionRow}
-                            style={{
-                              boxShadow: radioProps.tabIndex === 0 ? 'inset 0 0 0 1px rgba(34,211,238,0.25)' : 'none',
-                            }}
                           >
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div className={styles.clubOptionName}>{club.name}</div>

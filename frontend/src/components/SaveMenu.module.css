@@ -65,9 +65,15 @@
 }
 
 /* ── Panel ─────────────────────────────────────────────────────────────── */
+/* Self-contained Floodlight surface (was legacy dm-panel slate/border/shadow):
+   raised warm-graphite card with a hairline border, lit top edge, soft shadow. */
 .panel {
   border-radius: var(--radius-sm);
   overflow: hidden;
+  background: var(--raise);
+  border: 1px solid var(--line);
+  border-top-color: var(--lit);
+  box-shadow: var(--shadow-2);
 }
 
 /* ── Tab bar ───────────────────────────────────────────────────────────── */
@@ -545,6 +551,11 @@
   outline: none;
   border-bottom: 1px solid var(--line);
   transition: background .1s;
+}
+/* Roving-tabindex active row gets a faint Volt inset ring (was a legacy cyan
+   inline boxShadow). Volt = currently-active/selected, used sparingly. */
+.clubOptionRow[tabindex="0"] {
+  box-shadow: inset 0 0 0 1px var(--volt-soft);
 }
 .clubOptionRow[aria-checked="true"] {
   border-left: var(--space-1) solid var(--volt);

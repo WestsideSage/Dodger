@@ -168,7 +168,7 @@ function App() {
           className={styles.navLogo}
           style={{ display: navCollapsed ? 'none' : undefined }}
         >
-          <p className={`dm-kicker ${styles.navLogoLabel}`}>Dodgeball Manager</p>
+          <p className={styles.navLogoLabel}>Dodgeball Manager</p>
           <p className={styles.navLogoYear}>{seasonYear ?? ''}</p>
         </div>
         <nav
@@ -228,7 +228,7 @@ function App() {
         {/* Broadcast header */}
         <header className={styles.header}>
           <div>
-            <span className={`dm-kicker ${styles.headerKicker}`}>{kicker}</span>
+            <span className={styles.headerKicker}>{kicker}</span>
             <h1 className={styles.headerTitle}>{headerTitle}</h1>
           </div>
           <span className={styles.headerMeta}>
@@ -248,7 +248,7 @@ function App() {
             />
           )}
           {!commandReplay && commandReplayLoading && (
-            <p className="dm-kicker" style={{ padding: '2rem', fontSize: '0.875rem' }}>Loading replay...</p>
+            <p className={styles.replayLoading}>Loading replay...</p>
           )}
           {!commandReplay && !commandReplayLoading && effectiveActiveTab === 'command' && (
             <MatchWeek
