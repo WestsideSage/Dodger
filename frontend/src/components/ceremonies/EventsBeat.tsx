@@ -1,6 +1,7 @@
 import type { OffseasonBeat, EventResultRow } from '../../types';
-import { ActionButton, PageHeader } from '../ui';
+import { ActionButton, PageHeader } from '../../ui';
 import { EventBracket } from './EventBracket';
+import styles from './EventsBeat.module.css';
 
 type EventsBeat = Extract<OffseasonBeat, { key: 'events' }>;
 
@@ -33,19 +34,19 @@ function EventCard({
     const purseText = event.purse_k > 0 ? ` · +${event.purse_k}k purse` : '';
 
     return (
-        <div className="dm-panel" data-testid="event-result-card" style={{ padding: '0.9rem 1rem' }}>
-            <p className="dm-kicker" style={{ margin: '0 0 0.3rem' }}>{label}</p>
-            <p style={{ margin: '0 0 0.5rem', color: '#e2e8f0', fontWeight: 600, fontSize: '1.05rem' }}>
+        <div className={`dm-panel ${styles.card}`} data-testid="event-result-card">
+            <p className={`dm-kicker ${styles.cardKicker}`}>{label}</p>
+            <p className={styles.champion}>
                 🏆 {event.champion_club_name || event.champion_club_id}
-                <span style={{ color: '#64748b', fontWeight: 400, fontSize: '0.78rem' }}>{purseText}</span>
+                <span className={styles.purse}>{purseText}</span>
             </p>
             {worldsSeeding && (
-                <p style={{ margin: '0 0 0.4rem', color: '#22d3ee', fontSize: '0.78rem' }}>
+                <p className={styles.seedingNote}>
                     Worlds seeding note earned.
                 </p>
             )}
             {giantKillings.length > 0 && (
-                <ul style={{ margin: '0 0 0.5rem', paddingLeft: '1.1rem', color: '#f59e0b', fontSize: '0.8rem' }}>
+                <ul className={styles.giantList}>
                     {giantKillings.map((gk, i) => (
                         <li key={i} data-testid="giant-killing">
                             <strong>{gk.winner}</strong> giant-killed <strong>{gk.victim}</strong>
@@ -82,13 +83,13 @@ export function EventsBeat({
             />
 
             {events.length > 0 ? (
-                <div style={{ display: 'grid', gap: '1rem' }}>
+                <div className={styles.list}>
                     {events.map(event => (
                         <EventCard key={event.event_key} event={event} playerClubId={playerClubId} />
                     ))}
                 </div>
             ) : (
-                <div className="dm-panel" style={{ padding: '0.85rem 1rem', color: '#94a3b8' }}>
+                <div className={`dm-panel ${styles.empty}`}>
                     No events resolved this season.
                 </div>
             )}

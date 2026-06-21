@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { OffseasonBeat, TransferExpiringRow, TransferBuyoutRow } from '../../types';
 import { formatK } from '../../money';
-import { ActionButton, PageHeader } from '../ui';
+import { ActionButton, PageHeader, Truncate } from '../../ui';
+import styles from './TransferPeriod.module.css';
 
 type TransferBeat = Extract<OffseasonBeat, { key: 'transfer_period' }>;
 
@@ -34,9 +35,9 @@ export function TransferPeriod({
                 title="Transfer Period"
                 description="Re-sign your expiring players, weigh incoming buyouts, and hold off the clubs above you. Confirm to commit."
                 stats={
-                    <div style={{ display: 'flex', gap: '1.1rem', fontSize: '0.8rem', color: '#cbd5e1' }}>
-                        <span>Treasury <strong style={{ color: treasury_k < 0 ? '#f87171' : '#e2e8f0' }}>{formatK(treasury_k)}</strong></span>
-                        <span>Wage bill <strong style={{ color: '#f87171' }}>{formatK(wage_bill_k)}</strong></span>
+                    <div className={styles.treasury}>
+                        <span>Treasury <strong className={treasury_k < 0 ? styles.treasuryBad : styles.treasuryOk}>{formatK(treasury_k)}</strong></span>
+                        <span>Wage bill <strong className={styles.treasuryBad}>{formatK(wage_bill_k)}</strong></span>
                     </div>
                 }
             />
@@ -46,9 +47,9 @@ export function TransferPeriod({
             ) : (
                 <>
                     {expiring.length > 0 && (
-                        <div className="dm-panel" data-testid="transfer-expiring" style={{ padding: '0.85rem 1rem' }}>
-                            <p className="dm-kicker" style={{ margin: '0 0 0.6rem' }}>Expiring Contracts ({expiring.length})</p>
-                            <div style={{ display: 'grid', gap: '0.5rem' }}>
+                        <div className={`dm-panel ${styles.panel}`} data-testid="transfer-expiring">
+                            <p className={`dm-kicker ${styles.kicker}`}>Expiring Contracts ({expiring.length})</p>
+                            <div className={styles.rows}>
                                 {expiring.map((row) => (
                                     <ExpiringRow
                                         key={row.player_id}
@@ -63,9 +64,9 @@ export function TransferPeriod({
                     )}
 
                     {buyouts.length > 0 && (
-                        <div className="dm-panel" data-testid="transfer-buyouts" style={{ padding: '0.85rem 1rem' }}>
-                            <p className="dm-kicker" style={{ margin: '0 0 0.6rem' }}>Incoming Buyout Offers ({buyouts.length})</p>
-                            <div style={{ display: 'grid', gap: '0.5rem' }}>
+                        <div className={`dm-panel ${styles.panel}`} data-testid="transfer-buyouts">
+                            <p className={`dm-kicker ${styles.kicker}`}>Incoming Buyout Offers ({buyouts.length})</p>
+                            <div className={styles.rows}>
                                 {buyouts.map((row) => (
                                     <BuyoutRow
                                         key={row.player_id}
@@ -80,7 +81,7 @@ export function TransferPeriod({
                     )}
 
                     {expiring.length === 0 && buyouts.length === 0 && (
-                        <div className="dm-panel" style={{ padding: '0.85rem 1rem', color: '#94a3b8', fontSize: '0.85rem' }}>
+                        <div className={`dm-panel ${styles.empty}`}>
                             No contracts to resolve this offseason — your squad is locked in.
                         </div>
                     )}
@@ -122,39 +123,34 @@ function ExpiringRow({
     // disabled) — the latch badge must say so, not "Re-signing", or it
     // contradicts the "won't re-sign" warning on the same row.
     const badge = row.veto
-        ? { text: "✗ Won't re-sign", color: '#f87171' }
+        ? { text: "✗ Won't re-sign", className: styles.latchResign }
         : releasing
-        ? { text: '✗ Letting walk', color: '#f87171' }
-        : { text: '✓ Re-signing', color: '#38bdf8' };
+        ? { text: '✗ Letting walk', className: styles.latchWalk }
+        : { text: '✓ Re-signing', className: styles.latchSelling };
     return (
         <div
             data-testid={`transfer-expiring-${row.player_id}`}
-            style={{
-                display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
-                padding: '0.55rem 0.75rem', borderRadius: '6px',
-                border: `1px solid ${releasing ? '#7f1d1d' : '#1e293b'}`,
-                background: releasing ? 'rgba(239,68,68,0.05)' : 'rgba(15,23,42,0.4)',
-            }}
+            className={`${styles.row} ${releasing ? styles.rowReleasing : ''}`}
         >
-            <span style={{ fontWeight: 700, color: '#e2e8f0' }}>{row.name}</span>
-            <span style={{ color: '#64748b', fontSize: '0.78rem' }}>OVR {row.ovr}</span>
-            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>asks {formatK(row.ask_k)}</span>
+            <Truncate className={styles.name}>{row.name}</Truncate>
+            <span className={styles.meta}>OVR {row.ovr}</span>
+            <span className={styles.metaAlt}>asks {formatK(row.ask_k)}</span>
             {/* PT5/PT6: an explicit, unambiguous latch of the current decision
                 (veto-aware — a "won't re-sign" player never reads as "Re-signing"). */}
-            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: badge.color }}>
+            <span className={`${styles.latch} ${badge.className}`}>
                 {badge.text}
             </span>
             {row.veto && (
-                <span title={`Dealbreaker: ${row.dealbreaker} (${row.dealbreaker_letter})`} style={{ color: '#f87171', fontSize: '0.72rem', fontWeight: 600 }}>
+                <span title={`Dealbreaker: ${row.dealbreaker} (${row.dealbreaker_letter})`} className={styles.veto}>
                     ⚠ {row.dealbreaker} {row.dealbreaker_letter} — won't re-sign
                 </span>
             )}
             {row.top_suitor && (
-                <span style={{ color: '#fb923c', fontSize: '0.74rem' }}>
+                <Truncate className={styles.suitor}>
                     chased by {row.top_suitor.club_name} ({formatK(row.top_suitor.offer_k)})
-                </span>
+                </Truncate>
             )}
-            <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem' }}>
+            <span className={styles.actions}>
                 <ActionButton
                     variant={!releasing ? 'primary' : 'ghost'}
                     onClick={() => onTransfer('resign', row.player_id, row.ask_k)}
@@ -192,22 +188,17 @@ function BuyoutRow({
     return (
         <div
             data-testid={`transfer-buyout-${row.player_id}`}
-            style={{
-                display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
-                padding: '0.55rem 0.75rem', borderRadius: '6px',
-                border: `1px solid ${accepting ? '#065f46' : '#1e293b'}`,
-                background: accepting ? 'rgba(16,185,129,0.06)' : 'rgba(15,23,42,0.4)',
-            }}
+            className={`${styles.row} ${accepting ? styles.rowAccepting : ''}`}
         >
-            <span style={{ fontWeight: 700, color: '#e2e8f0' }}>{row.name}</span>
-            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>
-                {row.buyer_club_name} (Tier {row.buyer_tier}) bids <strong style={{ color: '#10b981' }}>{formatK(row.fee_k)}</strong>
+            <Truncate className={styles.name}>{row.name}</Truncate>
+            <span className={styles.metaAlt}>
+                {row.buyer_club_name} (Tier {row.buyer_tier}) bids <strong className={styles.income}>{formatK(row.fee_k)}</strong>
             </span>
             {/* PT5: explicit latch of the current decision. */}
-            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: accepting ? '#10b981' : '#38bdf8' }}>
+            <span className={`${styles.latch} ${accepting ? styles.latchSelling : styles.latchKeeping}`}>
                 {accepting ? '✓ Selling' : '✓ Keeping him'}
             </span>
-            <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem' }}>
+            <span className={styles.actions}>
                 <ActionButton
                     variant={accepting ? 'primary' : 'ghost'}
                     onClick={() => onTransfer('accept_buyout', row.player_id)}
@@ -233,35 +224,35 @@ function ResultsView({
     results: NonNullable<TransferBeat['payload']['results']>;
 }) {
     return (
-        <div className="dm-panel" data-testid="transfer-results" style={{ padding: '0.85rem 1rem' }}>
-            <p className="dm-kicker" style={{ margin: '0 0 0.6rem' }}>Transfer Period Settled</p>
+        <div className={`dm-panel ${styles.panel}`} data-testid="transfer-results">
+            <p className={`dm-kicker ${styles.kicker}`}>Transfer Period Settled</p>
             {results.resigned.length > 0 && (
-                <p style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', color: '#cbd5e1' }}>
+                <p className={styles.resultLine}>
                     Re-signed{' '}
                     {results.resigned.map((r, i) => (
-                        <span key={i}>{i > 0 ? ', ' : ''}<strong style={{ color: '#10b981' }}>{r.name}</strong> ({formatK(r.salary_k)})</span>
+                        <span key={i}>{i > 0 ? ', ' : ''}<strong className={styles.income}>{r.name}</strong> ({formatK(r.salary_k)})</span>
                     ))}.
                 </p>
             )}
             {results.sold.length > 0 && (
-                <p style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', color: '#cbd5e1' }}>
+                <p className={styles.resultLine}>
                     Sold{' '}
                     {results.sold.map((s, i) => (
-                        <span key={i}>{i > 0 ? ', ' : ''}<strong style={{ color: '#e2e8f0' }}>{s.name}</strong> to {s.buyer} for <strong style={{ color: '#10b981' }}>{formatK(s.fee_k)}</strong></span>
+                        <span key={i}>{i > 0 ? ', ' : ''}<strong className={styles.resultName}>{s.name}</strong> to {s.buyer} for <strong className={styles.income}>{formatK(s.fee_k)}</strong></span>
                     ))}.
                 </p>
             )}
             {results.departed.length > 0 && (
-                <div style={{ display: 'grid', gap: '0.35rem' }}>
+                <div className={styles.departedList}>
                     {results.departed.map((d, i) => (
-                        <p key={i} style={{ margin: 0, fontSize: '0.82rem', color: '#f87171' }}>
+                        <p key={i} className={styles.departed}>
                             ↘ <strong>{d.name}</strong> — {d.receipt}
                         </p>
                     ))}
                 </div>
             )}
             {results.resigned.length === 0 && results.sold.length === 0 && results.departed.length === 0 && (
-                <p style={{ margin: 0, fontSize: '0.85rem', color: '#94a3b8' }}>No moves — your squad rolls on intact.</p>
+                <p className={styles.noMoves}>No moves — your squad rolls on intact.</p>
             )}
         </div>
     );

@@ -1,0 +1,301 @@
+/* Ceremonies.module.css — token-driven AwardsNight / Graduation / SigningDay /
+   NewSeasonEve staged-reveal screens. Floodlight 5-color contract: --gold for
+   elite talent (MVP, top tier), --volt for your-program accents + player match,
+   --ok for positive tiers, warm-graphite neutrals elsewhere. Per-award/tier/kind
+   accents are module classes keyed by name (no inline hex). No raw color
+   literals. */
+
+.emptyCenter { text-align: center; color: var(--text2); }
+
+/* ── BriefProse ─────────────────────────────────────────────────────────── */
+.brief { display: flex; flex-direction: column; gap: var(--space-2); }
+.briefGap { height: var(--space-2); }
+.briefSection { margin: var(--space-1) 0 0; font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.briefLine { margin: 0; }
+.briefIndent { padding-left: var(--space-3); }
+.briefKey { color: var(--text2); }
+.briefSep { color: var(--muted); }
+.briefVal { color: var(--text); font-weight: 600; }
+
+/* ── AwardsNight ────────────────────────────────────────────────────────── */
+.awardsWrap { width: 100%; max-width: 640px; margin: 0 auto; }
+
+.mvpCard {
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  background: linear-gradient(135deg, var(--raise) 0%, var(--court) 60%);
+  box-shadow: var(--shadow-2);
+  position: relative;
+  margin-bottom: var(--space-3);
+}
+/* award-type accent (border + glow) */
+.accentMvp { border-color: var(--gold); }
+.accentThrower { border-color: var(--volt); }
+.accentCatcher { border-color: var(--ok); }
+.accentNewcomer { border-color: var(--gold); }
+.accentDefault { border-color: var(--gold); }
+
+.mvpBadge {
+  position: absolute;
+  top: var(--space-5);
+  right: var(--space-5);
+  color: var(--gold-ink);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+.badgeBgMvp { background: var(--gold); }
+.badgeBgThrower { background: var(--volt); color: var(--court); }
+.badgeBgCatcher { background: var(--ok); color: var(--court); }
+.badgeBgNewcomer { background: var(--gold); }
+.badgeBgDefault { background: var(--gold); }
+
+.mvpName {
+  font-family: var(--font-disp);
+  font-size: 2.1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--gold2);
+  line-height: 1.05;
+  margin-bottom: var(--space-1);
+  /* leave room for the absolute badge but allow wrap on phones */
+  padding-right: 8rem;
+}
+.mvpClub { font-size: 0.8rem; color: var(--text2); margin-bottom: var(--space-6); }
+
+.chips { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+.chip { background: var(--raise2); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); text-align: center; }
+.chipNum { font-size: 1.1rem; font-weight: 800; }
+.chipNumAccentMvp { color: var(--gold); }
+.chipNumAccentThrower { color: var(--volt); }
+.chipNumAccentCatcher { color: var(--ok); }
+.chipNumAccentNewcomer { color: var(--gold); }
+.chipNumAccentDefault { color: var(--gold); }
+.chipNumDanger { color: var(--volt2); }
+.chipNumNeutral { color: var(--text2); }
+.chipNumMuted { color: var(--muted); }
+.chipLabel { font-size: 0.6rem; color: var(--muted); letter-spacing: 0.06em; }
+
+.supportGrid { display: grid; gap: var(--space-3); }
+.supportCard {
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--raise2);
+}
+.supportCardThrower { border-color: var(--volt); }
+.supportCardCatcher { border-color: var(--ok); }
+.supportCardNewcomer { border-color: var(--gold); }
+.supportCardDefault { border-color: var(--line2); }
+.supportIcon { font-size: 1.25rem; margin-bottom: var(--space-2); }
+.supportName2 { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em; margin-bottom: var(--space-1); }
+.supportPlayer { font-size: 0.9rem; font-weight: 700; color: var(--text); margin-bottom: var(--space-1); }
+.supportClub { font-size: 0.7rem; color: var(--muted); margin-bottom: var(--space-2); }
+.supportStat { font-size: 0.7rem; font-weight: 600; }
+.accentTextThrower { color: var(--volt); }
+.accentTextCatcher { color: var(--ok); }
+.accentTextNewcomer { color: var(--gold); }
+.accentTextDefault { color: var(--text2); }
+
+/* ── Graduation ─────────────────────────────────────────────────────────── */
+.farewellList { display: flex; flex-direction: column; gap: var(--space-3); width: 100%; max-width: 560px; margin: 0 auto; }
+.tierElite { color: var(--ok); }
+.tierHigh { color: var(--volt2); }
+.tierSolid { color: var(--text2); }
+.tierLimited { color: var(--muted); }
+.tierUnknown { color: var(--out); }
+
+/* ── SigningDay ─────────────────────────────────────────────────────────── */
+.report { display: flex; flex-direction: column; gap: var(--space-5); width: 100%; max-width: 1040px; margin: 0 auto; }
+.metricRow { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+.metricTile {
+  flex: 1 1 120px;
+  min-width: 0;
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-md);
+  background: var(--raise2);
+  padding: var(--space-3) var(--space-4);
+}
+.metricValue { font-size: 1.4rem; font-weight: 900; line-height: 1.1; }
+.metricLabel { font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-top: var(--space-1); }
+.accentVolt { color: var(--volt2); }
+.accentGold { color: var(--gold); }
+.accentNeutral { color: var(--text); }
+
+.columns { display: flex; gap: var(--space-5); flex-wrap: wrap; align-items: flex-start; }
+.columnsStretch { display: flex; gap: var(--space-5); flex-wrap: wrap; align-items: stretch; }
+
+.glancePanel {
+  flex: 1 1 240px;
+  min-width: 0;
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-lg);
+  background: var(--raise);
+  padding: var(--space-6);
+}
+.glanceHeading { font-size: 0.65rem; color: var(--volt2); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin: 0; }
+.glanceHeadline { font-size: 1.7rem; font-weight: 900; color: var(--text); margin-top: var(--space-3); line-height: 1.1; }
+.glanceSub { font-size: 0.85rem; color: var(--text2); margin-top: var(--space-1); line-height: 1.4; }
+.glanceSlots { font-size: 0.7rem; color: var(--volt2); font-weight: 700; margin-top: var(--space-3); }
+.glanceRows { margin-top: var(--space-3); }
+
+.glanceRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--line2);
+  min-width: 0;
+}
+.glanceRowLabel { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); min-width: 0; }
+.glanceRowValue { font-size: 0.8rem; font-weight: 700; text-align: right; min-width: 0; color: var(--text2); }
+.glanceRowValueVolt { color: var(--volt2); }
+
+.cardsCol { flex: 2 1 320px; min-width: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.tabRow { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.tab {
+  background: transparent;
+  color: var(--text2);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-pill);
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.tabActive { background: var(--volt); color: var(--court); border-color: var(--volt); }
+.tabCount { opacity: 0.7; }
+.sortNote { font-size: 0.7rem; color: var(--muted); }
+
+.emptyCards {
+  border: 1px dashed var(--line2);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  color: var(--muted);
+  text-align: center;
+  font-size: 0.85rem;
+}
+.cardList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+
+/* Signing card (per kind). */
+.signingCard {
+  border: 2px solid var(--line2);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  background: var(--raise2);
+}
+.kindMine { border-color: var(--volt2); }
+.kindRival { border-color: var(--gold); }
+.kindSurprise { border-color: var(--volt); }
+.signingTop { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-3); }
+.signingName { font-size: 1.05rem; font-weight: 800; color: var(--text); }
+.signingClubLine { font-size: 0.75rem; color: var(--text2); margin-top: var(--space-1); }
+.signingClub { color: var(--text2); font-weight: 600; }
+.ovrPill {
+  font-size: 0.75rem;
+  font-weight: 900;
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.ovrPillMine { color: var(--volt2); border: 1px solid var(--volt2); }
+.ovrPillRival { color: var(--gold); border: 1px solid var(--gold); }
+.ovrPillSurprise { color: var(--volt); border: 1px solid var(--volt); }
+.kindBadgeWrap { margin-top: var(--space-3); }
+.kindBadge {
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+}
+.kindBadgeMine { color: var(--volt2); border: 1px solid var(--volt2); background: var(--volt-soft); }
+.kindBadgeRival { color: var(--gold); border: 1px solid var(--gold); background: var(--gold-soft); }
+.kindBadgeSurprise { color: var(--volt); border: 1px solid var(--volt); background: var(--volt-soft); }
+.signingReason { font-size: 0.8rem; color: var(--text2); margin-top: var(--space-3); line-height: 1.4; }
+
+/* Legacy class report. */
+.briefCol { flex: 2 1 360px; min-width: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.briefLabel { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; }
+.briefBox {
+  flex: 1;
+  border: 1px solid var(--line2);
+  border-left: 3px solid var(--volt);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  background: var(--raise2);
+  color: var(--text2);
+  font-size: 0.9rem;
+  line-height: 1.65;
+  min-width: 0;
+}
+.briefEmpty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--line2);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  color: var(--muted);
+  text-align: center;
+  font-size: 0.85rem;
+}
+.otherList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.otherRow {
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  background: var(--raise2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+.otherName { color: var(--text); font-weight: 600; }
+.otherClub { color: var(--muted); font-size: 0.75rem; margin-left: var(--space-3); }
+.otherOvr { color: var(--text2); font-size: 0.75rem; white-space: nowrap; }
+
+/* ── NewSeasonEve ───────────────────────────────────────────────────────── */
+.scheduleWrap { width: 100%; max-width: 640px; margin: 0 auto; }
+.scheduleHead { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3); }
+.scheduleCount { font-size: 0.7rem; color: var(--muted); }
+.scheduleToggle {
+  background: none;
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  color: var(--muted);
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+.scheduleEmpty { color: var(--text2); text-align: center; }
+.fixtures { display: flex; flex-direction: column; gap: var(--space-2); }
+.fixture {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid transparent;
+}
+.fixturePlayer { background: var(--volt-soft); border-color: var(--volt); }
+.fixtureWeek { color: var(--muted); font-size: 0.65rem; width: 3rem; flex-shrink: 0; }
+.fixtureTeams { color: var(--text2); font-size: 0.8rem; flex: 1; }
+.fixtureTeamsPlayer { color: var(--volt2); }
+.prediction {
+  border-left: 3px solid var(--volt);
+  padding-left: var(--space-5);
+  color: var(--text2);
+  font-size: 0.9rem;
+  font-style: italic;
+  line-height: 1.5;
+}

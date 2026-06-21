@@ -1,4 +1,6 @@
 import type { EventBracketRow, EventResultRow } from '../../types';
+import { Truncate } from '../../ui';
+import styles from './EventBracket.module.css';
 
 // A dedicated bracket display for the V27 event-result shape. The
 // `EventBracketRow` the backend records is simpler than `PlayoffBracketMatch`
@@ -22,66 +24,31 @@ function EventMatchCard({
         !!playerClubId && (row.home_club_id === playerClubId || row.away_club_id === playerClubId);
     const playerAdvanced = playerInMatch && row.winner_club_id === playerClubId;
     const playerEliminated = playerInMatch && !playerAdvanced;
-    const outcomeBorder = playerAdvanced ? '#22c55e' : playerEliminated ? '#f43f5e' : '#1e293b';
+    const cardOutcomeClass = playerAdvanced
+        ? styles.cardAdvanced
+        : playerEliminated
+            ? styles.cardEliminated
+            : styles.cardNeutral;
 
     const teamRow = (clubId: string, name: string, isWinner: boolean) => (
         <div
             key={clubId}
-            style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: '0.5rem',
-                padding: '0.4rem 0.6rem',
-                background: isWinner ? 'rgba(34,211,238,0.14)' : 'transparent',
-                color: isWinner ? '#fff' : '#94a3b8',
-                fontWeight: isWinner ? 700 : 500,
-                borderRadius: '3px',
-            }}
+            className={`${styles.team} ${isWinner ? styles.teamWinner : ''}`}
         >
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {name || clubId}
-            </span>
-            <span style={{ color: isWinner ? '#22d3ee' : '#475569' }}>{isWinner ? 'W' : '·'}</span>
+            <Truncate className={styles.teamName}>{name || clubId}</Truncate>
+            <span className={isWinner ? styles.teamMarkWinner : styles.teamMark}>{isWinner ? 'W' : '·'}</span>
         </div>
     );
 
     return (
         <div
             data-player-outcome={playerAdvanced ? 'advanced' : playerEliminated ? 'eliminated' : undefined}
-            style={{
-                border: `1px solid ${outcomeBorder}`,
-                borderLeft: playerInMatch ? `3px solid ${outcomeBorder}` : `1px solid ${outcomeBorder}`,
-                borderRadius: '6px',
-                background: 'rgba(2,6,23,0.55)',
-                padding: '0.3rem',
-                minWidth: '13rem',
-            }}
+            className={`${styles.card} ${cardOutcomeClass}`}
         >
-            <p
-                className="dm-kicker"
-                style={{
-                    margin: '0 0 0.15rem 0.35rem',
-                    fontSize: '0.55rem',
-                    color: '#475569',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    flexWrap: 'wrap',
-                }}
-            >
+            <p className={`dm-kicker ${styles.cardLabel}`}>
                 <span>{label}</span>
                 {(playerAdvanced || playerEliminated) && (
-                    <span
-                        style={{
-                            padding: '0.05rem 0.35rem',
-                            fontSize: '0.5rem',
-                            fontWeight: 800,
-                            letterSpacing: '0.06em',
-                            color: '#0b1220',
-                            background: playerAdvanced ? '#22c55e' : '#f43f5e',
-                            borderRadius: '2px',
-                        }}
-                    >
+                    <span className={`${styles.outcomeChip} ${playerAdvanced ? styles.outcomeChipWon : styles.outcomeChipOut}`}>
                         {playerAdvanced ? 'YOU WON' : 'YOU OUT'}
                     </span>
                 )}
@@ -129,7 +96,7 @@ export function EventBracket({
     const groups = groupByRound(event.bracket);
     if (groups.length === 0) {
         return (
-            <p className="playoff-bracket-empty" style={{ color: '#64748b' }}>
+            <p className={`playoff-bracket-empty ${styles.empty}`}>
                 Bracket details unavailable.
             </p>
         );

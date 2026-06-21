@@ -1,6 +1,7 @@
 import type { OffseasonBeat } from '../../types';
 import { formatK, formatKSigned } from '../../money';
-import { ActionButton, PageHeader } from '../ui';
+import { ActionButton, PageHeader, Truncate } from '../../ui';
+import styles from './RecapStandings.module.css';
 
 type RecapBeat = Extract<OffseasonBeat, { key: 'recap' }>;
 
@@ -61,85 +62,45 @@ export function RecapStandings({
             />
 
             {missed && (
-                <div
-                    data-testid="recap-missed-playoffs"
-                    role="status"
-                    style={{
-                        margin: '0 1rem 1rem',
-                        padding: '0.85rem 1rem',
-                        background: 'linear-gradient(90deg, rgba(239,68,68,0.10), rgba(10,18,32,0) 70%)',
-                        border: '1px solid #7f1d1d',
-                        borderLeft: '3px solid #ef4444',
-                        borderRadius: '6px',
-                    }}
-                >
-                    <p
-                        className="dm-kicker"
-                        style={{ margin: 0, color: '#f87171', fontSize: '0.62rem' }}
-                    >
+                <div className={styles.missed} data-testid="recap-missed-playoffs" role="status">
+                    <p className={`dm-kicker ${styles.missedKicker}`}>
                         Missed The Playoffs
                     </p>
-                    <p style={{ margin: '0.3rem 0 0', color: '#e2e8f0', fontSize: '0.9rem', fontWeight: 600 }}>
+                    <p className={styles.missedFinish}>
                         You finished {ordinal(missed.finish)} of {missed.total} — the top {missed.cutoff} make the playoffs.
                     </p>
-                    <p style={{ margin: '0.2rem 0 0', color: '#94a3b8', fontSize: '0.78rem' }}>
+                    <p className={styles.missedNote}>
                         Season over; on to the offseason.
                     </p>
                 </div>
             )}
 
-            <div className="dm-panel" style={{ padding: '0', overflow: 'hidden' }}>
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: '2rem 1fr 6rem 3.5rem 4rem',
-                        gap: '0 0.75rem',
-                        padding: '0.5rem 1rem',
-                        borderBottom: '1px solid #1e293b',
-                        fontSize: '0.65rem',
-                        color: '#475569',
-                        letterSpacing: '0.06em',
-                    }}
-                >
+            <div className={`dm-panel ${styles.tablePanel}`}>
+                <div className={styles.tableHead}>
                     <span>#</span>
                     <span>Club</span>
-                    <span style={{ textAlign: 'center' }}>W-L-D</span>
-                    <span style={{ textAlign: 'right' }}>Pts</span>
-                    <span style={{ textAlign: 'right' }} title={beat.payload.diff_kind === 'game_points' ? 'Game-point differential: game points scored minus conceded' : 'Elimination differential: players eliminated minus players lost'}>{beat.payload.diff_kind === 'game_points' ? 'GP ±' : 'Elim ±'}</span>
+                    <span className={styles.colCenter}>W-L-D</span>
+                    <span className={styles.colRight}>Pts</span>
+                    <span className={styles.colRight} title={beat.payload.diff_kind === 'game_points' ? 'Game-point differential: game points scored minus conceded' : 'Elimination differential: players eliminated minus players lost'}>{beat.payload.diff_kind === 'game_points' ? 'GP ±' : 'Elim ±'}</span>
                 </div>
 
                 {standings.map((row) => (
                     <div
                         key={row.rank}
-                        style={{
-                            display: 'grid',
-                            gridTemplateColumns: '2rem 1fr 6rem 3.5rem 4rem',
-                            gap: '0 0.75rem',
-                            padding: '0.6rem 1rem',
-                            borderLeft: row.is_player_club ? '3px solid #f97316' : '3px solid transparent',
-                            borderBottom: '1px solid #0f172a',
-                            background: row.is_player_club ? '#1c1009' : 'transparent',
-                            color: row.is_player_club ? '#fb923c' : '#94a3b8',
-                            fontSize: '0.85rem',
-                            alignItems: 'center',
-                        }}
+                        className={`${styles.tableRow} ${row.is_player_club ? styles.tableRowPlayer : ''}`}
                     >
-                        <span style={{ color: '#475569', fontSize: '0.75rem' }}>{row.rank}</span>
-                        <span style={{ fontWeight: row.is_player_club ? 700 : 400, color: row.is_player_club ? '#fb923c' : '#e2e8f0' }}>
-                            {row.club_name}
+                        <span className={styles.rank}>{row.rank}</span>
+                        <span className={row.is_player_club ? styles.clubPlayer : styles.club}>
+                            <Truncate>{row.club_name}</Truncate>
                         </span>
-                        <span style={{ textAlign: 'center', color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>
+                        <span className={styles.wld}>
                             {row.wins}-{row.losses}-{row.draws}
                         </span>
-                        <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#e2e8f0' }}>
+                        <span className={styles.pts}>
                             {row.points}
                         </span>
                         <span
-                            style={{
-                                textAlign: 'right',
-                                fontVariantNumeric: 'tabular-nums',
-                                color: row.diff > 0 ? '#10b981' : row.diff < 0 ? '#ef4444' : '#64748b',
-                            }}
+                            className={`${styles.diff} ${row.diff > 0 ? styles.diffUp : row.diff < 0 ? styles.diffDown : styles.diffFlat}`}
                         >
                             {row.diff > 0 ? '+' : ''}{row.diff}
                         </span>
@@ -148,101 +109,84 @@ export function RecapStandings({
             </div>
 
             {finances && (
-                <div
-                    className="dm-panel"
-                    data-testid="recap-finances"
-                    style={{ padding: '0.85rem 1rem' }}
-                >
-                    <p className="dm-kicker" style={{ margin: '0 0 0.5rem' }}>Season Finances</p>
-                    <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', fontSize: '0.82rem', color: '#cbd5e1' }}>
+                <div className={`dm-panel ${styles.financesPanel}`} data-testid="recap-finances">
+                    <p className={`dm-kicker ${styles.kicker}`}>Season Finances</p>
+                    <div className={styles.financesRow}>
                         <span>
-                            League payout <strong style={{ color: '#10b981' }}>{formatKSigned(finances.league_payout_k)}</strong>
+                            League payout <strong className={styles.income}>{formatKSigned(finances.league_payout_k)}</strong>
                         </span>
                         {finances.playoff_bonus_k > 0 && (
                             <span>
-                                Playoff bonus <strong style={{ color: '#10b981' }}>{formatKSigned(finances.playoff_bonus_k)}</strong>
+                                Playoff bonus <strong className={styles.income}>{formatKSigned(finances.playoff_bonus_k)}</strong>
                             </span>
                         )}
                         {finances.matchday_income_k != null && finances.matchday_income_k > 0 && (
                             <span>
-                                Matchday <strong style={{ color: '#10b981' }}>{formatKSigned(finances.matchday_income_k)}</strong>
+                                Matchday <strong className={styles.income}>{formatKSigned(finances.matchday_income_k)}</strong>
                             </span>
                         )}
                         {finances.merch_income_k != null && finances.merch_income_k > 0 && (
                             <span>
-                                Merch <strong style={{ color: '#10b981' }}>{formatKSigned(finances.merch_income_k)}</strong>
+                                Merch <strong className={styles.income}>{formatKSigned(finances.merch_income_k)}</strong>
                             </span>
                         )}
                         <span>
-                            Staff payroll <strong style={{ color: '#f87171' }}>{formatKSigned(-finances.staff_payroll_k)}</strong>
+                            Staff payroll <strong className={styles.expense}>{formatKSigned(-finances.staff_payroll_k)}</strong>
                         </span>
                         {finances.player_wage_bill_k != null && finances.player_wage_bill_k > 0 && (
                             <span>
-                                Player wages <strong style={{ color: '#f87171' }}>{formatKSigned(-finances.player_wage_bill_k)}</strong>
+                                Player wages <strong className={styles.expense}>{formatKSigned(-finances.player_wage_bill_k)}</strong>
                             </span>
                         )}
                         <span>
-                            Net <strong style={{ color: finances.net_k >= 0 ? '#10b981' : '#f87171' }}>{formatKSigned(finances.net_k)}</strong>
+                            Net <strong className={finances.net_k >= 0 ? styles.income : styles.expense}>{formatKSigned(finances.net_k)}</strong>
                         </span>
-                        <span style={{ marginLeft: 'auto' }}>
-                            Treasury <strong style={{ color: finances.closing_treasury_k < 0 ? '#f87171' : '#e2e8f0' }}>{formatK(finances.closing_treasury_k)}</strong>
+                        <span className={styles.treasury}>
+                            Treasury <strong className={finances.closing_treasury_k < 0 ? styles.expense : styles.neutral}>{formatK(finances.closing_treasury_k)}</strong>
                         </span>
                     </div>
                     {finances.closing_treasury_k < 0 && (
-                        <p style={{ margin: '0.4rem 0 0', fontSize: '0.74rem', color: '#fb923c' }}>
+                        <p className={styles.warnNote}>
                             Treasury is in the red — staff hiring is frozen until the books recover.
                         </p>
                     )}
-                    <p style={{ margin: '0.4rem 0 0', fontSize: '0.7rem', color: '#64748b' }}>
+                    <p className={styles.rulesNote}>
                         {finances.rules}
                     </p>
                 </div>
             )}
 
             {pyramid && (
-                <div
-                    className="dm-panel"
-                    data-testid="recap-pyramid"
-                    style={{ padding: '0.85rem 1rem' }}
-                >
-                    <p className="dm-kicker" style={{ margin: '0 0 0.5rem' }}>League Movement</p>
+                <div className={`dm-panel ${styles.pyramidPanel}`} data-testid="recap-pyramid">
+                    <p className={`dm-kicker ${styles.kicker}`}>League Movement</p>
                     {userMovement && userMovement !== 'stays' && (
                         <p
-                            style={{
-                                margin: '0 0 0.6rem',
-                                padding: '0.5rem 0.75rem',
-                                borderRadius: '6px',
-                                fontWeight: 700,
-                                fontSize: '0.9rem',
-                                color: userMovement === 'promoted' ? '#10b981' : '#f87171',
-                                background: userMovement === 'promoted' ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
-                                border: `1px solid ${userMovement === 'promoted' ? '#065f46' : '#7f1d1d'}`,
-                            }}
+                            className={`${styles.movementBanner} ${userMovement === 'promoted' ? styles.promoted : styles.relegated}`}
                         >
                             {userMovement === 'promoted'
                                 ? `PROMOTED — next season you play in the ${pyramid.user.division_name}.`
                                 : `RELEGATED — next season you play in the ${pyramid.user.division_name}.`}
                         </p>
                     )}
-                    <div style={{ display: 'grid', gap: '0.3rem', fontSize: '0.82rem', color: '#cbd5e1' }}>
+                    <div className={styles.movementList}>
                         {pyramid.champions.map((champion) => (
                             <span key={champion.division_id}>
-                                <strong style={{ color: '#e2e8f0' }}>{champion.division_name}:</strong>{' '}
+                                <strong className={styles.movementLabel}>{champion.division_name}:</strong>{' '}
                                 {champion.club_name} are champions.
                             </span>
                         ))}
                         {pyramid.promoted.map((move) => (
-                            <span key={`up-${move.from_division}`} style={{ color: '#10b981' }}>
+                            <span key={`up-${move.from_division}`} className={styles.up}>
                                 ↑ {move.clubs.join(' and ')} go up to the {move.to_division}.
                             </span>
                         ))}
                         {pyramid.relegated.map((move) => (
-                            <span key={`down-${move.from_division}`} style={{ color: '#f87171' }}>
+                            <span key={`down-${move.from_division}`} className={styles.down}>
                                 ↓ {move.clubs.join(' and ')} drop to the {move.to_division}.
                             </span>
                         ))}
                         {pyramid.worlds && (
-                            <span style={{ marginTop: '0.3rem', color: '#fbbf24' }}>
+                            <span className={styles.worlds}>
                                 ★ WORLDS: {pyramid.worlds.champion_name} are World Champions
                                 {pyramid.worlds.runner_up_name ? ` — ${pyramid.worlds.runner_up_name} fall in the final.` : '.'}
                             </span>
@@ -251,7 +195,7 @@ export function RecapStandings({
                             Receipt the user's OWN Worlds run when they reached it but
                             exited in the semifinal (champion/runner-up are already named). */}
                         {pyramid.worlds_user && pyramid.worlds_user.result === 'semifinalist' && (
-                            <span style={{ color: '#fcd34d' }}>
+                            <span className={styles.worldsUser}>
                                 ★ You reached Worlds as the {{
                                     premier_champion: 'Premier champion',
                                     premier_runner_up: 'Premier runner-up',

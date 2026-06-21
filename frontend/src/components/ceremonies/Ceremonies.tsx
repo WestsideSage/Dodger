@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CeremonyShell } from './CeremonyShell';
+import { Truncate } from '../../ui';
 import type {
   OffseasonAward,
   OffseasonBeat,
@@ -8,6 +9,7 @@ import type {
   OffseasonSigning,
   SigningCard,
 } from '../../types';
+import styles from './Ceremonies.module.css';
 
 type AwardsBeat = Extract<OffseasonBeat, { key: 'awards' }>;
 type RetirementsBeat = Extract<OffseasonBeat, { key: 'retirements' }>;
@@ -21,19 +23,24 @@ const AWARD_ICON: Record<string, string> = {
   best_newcomer: '⚡',
 };
 
-const AWARD_COLOR: Record<string, string> = {
-  mvp: '#f97316',
-  best_thrower: '#3b82f6',
-  best_catcher: '#10b981',
-  best_newcomer: '#eab308',
+// Award-type accent → module-class keys (token-driven; no inline hex).
+const AWARD_ACCENT: Record<string, string> = {
+  mvp: 'Mvp',
+  best_thrower: 'Thrower',
+  best_catcher: 'Catcher',
+  best_newcomer: 'Newcomer',
 };
+function awardAccent(type: string): string {
+  return AWARD_ACCENT[type] ?? 'Default';
+}
 
-const TIER_COLOR: Record<string, string> = {
-  Elite: '#10b981',
-  High: '#3b82f6',
-  Solid: '#94a3b8',
-  Limited: '#64748b',
-  Unknown: '#475569',
+// Potential-tier → farewell-card text class.
+const TIER_CLASS: Record<string, string> = {
+  Elite: styles.tierElite,
+  High: styles.tierHigh,
+  Solid: styles.tierSolid,
+  Limited: styles.tierLimited,
+  Unknown: styles.tierUnknown,
 };
 
 // The ceremony engine emits multi-line briefs ("Current roster sizes:" plus
@@ -43,27 +50,17 @@ const TIER_COLOR: Record<string, string> = {
 function BriefProse({ text }: { text: string }) {
   const lines = text.split('\n');
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+    <div className={styles.brief}>
       {lines.map((line, index) => {
         const trimmed = line.trim();
         if (!trimmed) {
-          return <div key={index} aria-hidden="true" style={{ height: '0.35rem' }} />;
+          return <div key={index} aria-hidden="true" className={styles.briefGap} />;
         }
         const indented = line.startsWith('  ') || trimmed.startsWith('- ');
         const content = trimmed.startsWith('- ') ? trimmed.slice(2) : trimmed;
         if (!indented && trimmed.endsWith(':')) {
           return (
-            <p
-              key={index}
-              style={{
-                margin: '0.2rem 0 0',
-                fontSize: '0.66rem',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                color: '#64748b',
-              }}
-            >
+            <p key={index} className={styles.briefSection}>
               {trimmed.slice(0, -1)}
             </p>
           );
@@ -71,15 +68,15 @@ function BriefProse({ text }: { text: string }) {
         const kv = /^([^:]{2,42}):\s+(.+)$/.exec(content);
         if (kv) {
           return (
-            <p key={index} style={{ margin: 0, paddingLeft: indented ? '0.85rem' : 0 }}>
-              <span style={{ color: '#94a3b8' }}>{kv[1]}</span>
-              <span style={{ color: '#475569' }}>{' · '}</span>
-              <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{kv[2]}</span>
+            <p key={index} className={`${styles.briefLine} ${indented ? styles.briefIndent : ''}`}>
+              <span className={styles.briefKey}>{kv[1]}</span>
+              <span className={styles.briefSep}>{' · '}</span>
+              <span className={styles.briefVal}>{kv[2]}</span>
             </p>
           );
         }
         return (
-          <p key={index} style={{ margin: 0, paddingLeft: indented ? '0.85rem' : 0 }}>
+          <p key={index} className={`${styles.briefLine} ${indented ? styles.briefIndent : ''}`}>
             {content}
           </p>
         );
@@ -101,7 +98,7 @@ export function AwardsNight({ beat, onComplete, acting }: { beat: AwardsBeat; on
                 description="The league honors the season's finest."
                 stages={1}
                 renderStage={() => (
-                    <div style={{ textAlign: 'center', color: '#94a3b8' }}>
+                    <div className={styles.emptyCenter}>
                         {typeof beat.body === 'string' ? beat.body : 'No awards this season.'}
                     </div>
                 )}
@@ -125,89 +122,57 @@ export function AwardsNight({ beat, onComplete, acting }: { beat: AwardsBeat; on
             description="The league gathers to honor the season's best."
             stages={orderedAwards.length}
             renderStage={(stage) => (
-                <div style={{ width: '100%', maxWidth: '640px', margin: '0 auto' }}>
+                <div className={styles.awardsWrap}>
                     {/* MVP Hero Card — revealed at stage 1 */}
                     {stage >= 1 && orderedAwards[0] && (() => {
                         const award = orderedAwards[0];
-                        const color = AWARD_COLOR[award.award_type] ?? '#f97316';
+                        const accent = awardAccent(award.award_type);
                         const icon = AWARD_ICON[award.award_type] ?? '🏅';
                         return (
-                            <div
-                                className="fade-in"
-                                style={{
-                                    border: `1px solid ${color}`,
-                                    borderRadius: '12px',
-                                    padding: '1.5rem',
-                                    background: 'linear-gradient(135deg, #1c0900 0%, #0f172a 60%)',
-                                    boxShadow: `0 0 40px ${color}33`,
-                                    position: 'relative',
-                                    marginBottom: '0.75rem',
-                                }}
-                            >
+                            <div className={`fade-in ${styles.mvpCard} ${styles[`accent${accent}`]}`}>
                                 {/* Award badge - top right */}
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '1rem',
-                                    right: '1rem',
-                                    background: color,
-                                    color: '#fff',
-                                    padding: '0.2rem 0.6rem',
-                                    borderRadius: '999px',
-                                    fontSize: '0.65rem',
-                                    fontWeight: 800,
-                                    letterSpacing: '0.1em',
-                                }}>
+                                <div className={`${styles.mvpBadge} ${styles[`badgeBg${accent}`]}`}>
                                     {icon} {award.award_name.toUpperCase()}
                                 </div>
 
                                 {/* Player name — headline */}
-                                <div style={{
-                                    fontFamily: 'var(--font-display)',
-                                    fontSize: '2.1rem',
-                                    fontWeight: 700,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.03em',
-                                    color: '#fbbf24',
-                                    lineHeight: 1.05,
-                                    marginBottom: '0.2rem',
-                                    paddingRight: '8rem',
-                                }}>
+                                <Truncate className={styles.mvpName}>
                                     {award.player_name}
-                                </div>
-                                <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '1.25rem' }}>
+                                </Truncate>
+                                <div className={styles.mvpClub}>
                                     {award.club_name}
                                 </div>
 
                                 {/* Stats chips */}
-                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <div className={styles.chips}>
                                     {award.extra_stats ? (
                                         <>
-                                            <div style={{ background: '#1e293b', borderRadius: '6px', padding: '0.4rem 0.75rem', textAlign: 'center' }}>
-                                                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: color }}>{award.extra_stats.throw_elims}</div>
-                                                <div style={{ fontSize: '0.6rem', color: '#475569', letterSpacing: '0.06em' }}>THROW ELIMS</div>
+                                            <div className={styles.chip}>
+                                                <div className={`${styles.chipNum} ${styles[`chipNumAccent${accent}`]}`}>{award.extra_stats.throw_elims}</div>
+                                                <div className={styles.chipLabel}>THROW ELIMS</div>
                                             </div>
-                                            <div style={{ background: '#1e293b', borderRadius: '6px', padding: '0.4rem 0.75rem', textAlign: 'center' }}>
-                                                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: color }}>{award.extra_stats.catches}</div>
-                                                <div style={{ fontSize: '0.6rem', color: '#475569', letterSpacing: '0.06em' }}>CATCHES</div>
+                                            <div className={styles.chip}>
+                                                <div className={`${styles.chipNum} ${styles[`chipNumAccent${accent}`]}`}>{award.extra_stats.catches}</div>
+                                                <div className={styles.chipLabel}>CATCHES</div>
                                             </div>
-                                            <div style={{ background: '#1e293b', borderRadius: '6px', padding: '0.4rem 0.75rem', textAlign: 'center' }}>
-                                                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ef4444' }}>{award.extra_stats.times_eliminated}</div>
-                                                <div style={{ fontSize: '0.6rem', color: '#475569', letterSpacing: '0.06em' }}>TIMES OUT</div>
+                                            <div className={styles.chip}>
+                                                <div className={`${styles.chipNum} ${styles.chipNumDanger}`}>{award.extra_stats.times_eliminated}</div>
+                                                <div className={styles.chipLabel}>TIMES OUT</div>
                                             </div>
                                         </>
                                     ) : (
-                                        <div style={{ background: '#1e293b', borderRadius: '6px', padding: '0.4rem 0.75rem', textAlign: 'center' }}>
-                                            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: color }}>{award.season_stat}</div>
-                                            <div style={{ fontSize: '0.6rem', color: '#475569', letterSpacing: '0.06em' }}>SEASON ELIMS</div>
+                                        <div className={styles.chip}>
+                                            <div className={`${styles.chipNum} ${styles[`chipNumAccent${accent}`]}`}>{award.season_stat}</div>
+                                            <div className={styles.chipLabel}>SEASON ELIMS</div>
                                         </div>
                                     )}
-                                    <div style={{ background: '#1e293b', borderRadius: '6px', padding: '0.4rem 0.75rem', textAlign: 'center' }}>
-                                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#94a3b8' }}>{award.ovr}</div>
-                                        <div style={{ fontSize: '0.6rem', color: '#475569', letterSpacing: '0.06em' }}>OVR</div>
+                                    <div className={styles.chip}>
+                                        <div className={`${styles.chipNum} ${styles.chipNumNeutral}`}>{award.ovr}</div>
+                                        <div className={styles.chipLabel}>OVR</div>
                                     </div>
-                                    <div style={{ background: '#1e293b', borderRadius: '6px', padding: '0.4rem 0.75rem', textAlign: 'center' }}>
-                                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#64748b' }}>{award.career_stat}</div>
-                                        <div style={{ fontSize: '0.6rem', color: '#475569', letterSpacing: '0.06em' }}>CAREER ELIMS</div>
+                                    <div className={styles.chip}>
+                                        <div className={`${styles.chipNum} ${styles.chipNumMuted}`}>{award.career_stat}</div>
+                                        <div className={styles.chipLabel}>CAREER ELIMS</div>
                                     </div>
                                 </div>
                             </div>
@@ -216,36 +181,26 @@ export function AwardsNight({ beat, onComplete, acting }: { beat: AwardsBeat; on
 
                     {/* Supporting awards — grid, revealed one per stage */}
                     {stage >= 2 && orderedAwards.length > 1 && (
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: `repeat(${Math.min(supportingAwards.length, 3)}, 1fr)`,
-                            gap: '0.5rem',
-                        }}>
+                        <div
+                            className={styles.supportGrid}
+                            style={{ gridTemplateColumns: `repeat(${Math.min(supportingAwards.length, 3)}, minmax(0, 1fr))` }}
+                        >
                             {orderedAwards.slice(1, stage).map((award: OffseasonAward, i: number) => {
-                                const color = AWARD_COLOR[award.award_type] ?? '#64748b';
+                                const accent = awardAccent(award.award_type);
                                 const icon = AWARD_ICON[award.award_type] ?? '🏅';
                                 return (
-                                    <div
-                                        key={i}
-                                        className="fade-in"
-                                        style={{
-                                            border: `1px solid ${color}55`,
-                                            borderRadius: '8px',
-                                            padding: '0.75rem',
-                                            background: '#0f172a',
-                                        }}
-                                    >
-                                        <div style={{ fontSize: '1.25rem', marginBottom: '0.3rem' }}>{icon}</div>
-                                        <div style={{ fontSize: '0.6rem', color, fontWeight: 700, letterSpacing: '0.08em', marginBottom: '0.2rem' }}>
+                                    <div key={i} className={`fade-in ${styles.supportCard} ${styles[`supportCard${accent}`]}`}>
+                                        <div className={styles.supportIcon}>{icon}</div>
+                                        <div className={`${styles.supportName2} ${styles[`accentText${accent}`]}`}>
                                             {award.award_name.toUpperCase()}
                                         </div>
-                                        <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#e2e8f0', marginBottom: '0.1rem' }}>
+                                        <div className={styles.supportPlayer}>
                                             {award.player_name}
                                         </div>
-                                        <div style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: '0.3rem' }}>
+                                        <div className={styles.supportClub}>
                                             {award.club_name}
                                         </div>
-                                        <div style={{ fontSize: '0.7rem', color: color, fontWeight: 600 }}>
+                                        <div className={`${styles.supportStat} ${styles[`accentText${accent}`]}`}>
                                             {award.season_stat_label}
                                         </div>
                                     </div>
@@ -274,7 +229,7 @@ export function Graduation({ beat, onComplete, acting }: { beat: RetirementsBeat
         description="Farewell to departing veterans."
         stages={1}
         renderStage={() => (
-          <div style={{ textAlign: 'center', color: '#94a3b8' }}>
+          <div className={styles.emptyCenter}>
             {typeof beat.body === 'string' ? beat.body : 'No retirements this off-season.'}
           </div>
         )}
@@ -293,10 +248,10 @@ export function Graduation({ beat, onComplete, acting }: { beat: RetirementsBeat
       description="Saying goodbye to departing veterans."
       stages={retirees.length}
       renderStage={(stage) => (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '560px', margin: '0 auto' }}>
+        <div className={styles.farewellList}>
           {retirees.slice(0, stage).map((r: OffseasonRetiree, i: number) => {
             const isLatest = i === stage - 1;
-            const tierColor = TIER_COLOR[r.potential_tier] ?? '#475569';
+            const tierClass = TIER_CLASS[r.potential_tier] ?? styles.tierUnknown;
             return (
               <div
                 key={i}
@@ -313,7 +268,7 @@ export function Graduation({ beat, onComplete, acting }: { beat: RetirementsBeat
                       farewell card read as a mislabel. */}
                   <span>{r.career_seasons ?? r.seasons_played} seasons</span>
                 </div>
-                <div className="farewell-tier" style={{ color: tierColor }}>
+                <div className={`farewell-tier ${tierClass}`}>
                   {r.potential_tier} potential
                 </div>
               </div>
@@ -352,10 +307,16 @@ const FILTER_TO_KIND: Record<SigningFilter, SigningKind> = {
 
 // Per-kind visual treatment: your picks = cyan/primary, rivals = orange/competitive,
 // surprises = violet/distinct-but-lower-urgency. Brief 4.1 design vision.
-const KIND_META: Record<SigningKind, { accent: string; bg: string; badge: string }> = {
-  my_signing: { accent: '#22d3ee', bg: '#083344', badge: 'My Signing' },
-  rival_signing: { accent: '#f97316', bg: '#1f1305', badge: 'Rival Signing' },
-  surprise: { accent: '#8b5cf6', bg: '#1e1b3a', badge: 'Surprise' },
+const KIND_BADGE: Record<SigningKind, string> = {
+  my_signing: 'My Signing',
+  rival_signing: 'Rival Signing',
+  surprise: 'Surprise',
+};
+// Per-kind module-class suffix (token-driven; no inline hex).
+const KIND_SUFFIX: Record<SigningKind, string> = {
+  my_signing: 'Mine',
+  rival_signing: 'Rival',
+  surprise: 'Surprise',
 };
 
 function countSigningsByKind(signings: SigningCard[]): Record<SigningFilter, number> {
@@ -381,63 +342,32 @@ function topCard<T extends { ovr: number }>(cards: T[]): T | null {
   return cards.length ? cards.reduce((best, c) => (c.ovr > best.ovr ? c : best), cards[0]) : null;
 }
 
-function MetricTile({ label, value, accent = '#e2e8f0' }: { label: string; value: React.ReactNode; accent?: string }) {
+function MetricTile({ label, value, accentClass = styles.accentNeutral }: { label: string; value: React.ReactNode; accentClass?: string }) {
   return (
-    <div
-      style={{
-        flex: '1 1 120px',
-        minWidth: 0,
-        border: '1px solid #1e293b',
-        borderRadius: '8px',
-        background: '#0f172a',
-        padding: '0.6rem 0.75rem',
-      }}
-    >
-      <div style={{ fontSize: '1.4rem', fontWeight: 900, color: accent, lineHeight: 1.1 }}>{value}</div>
-      <div style={{ fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b', marginTop: '0.2rem' }}>
+    <div className={styles.metricTile}>
+      <div className={`${styles.metricValue} ${accentClass}`}>{value}</div>
+      <div className={styles.metricLabel}>
         {label}
       </div>
     </div>
   );
 }
 
-function GlanceRow({ label, value, accent = '#cbd5e1' }: { label: string; value: React.ReactNode; accent?: string }) {
+function GlanceRow({ label, value, accentClass }: { label: string; value: React.ReactNode; accentClass?: string }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        gap: '0.75rem',
-        padding: '0.5rem 0',
-        borderTop: '1px solid #1e293b',
-        minWidth: 0,
-      }}
-    >
-      <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b', minWidth: 0 }}>
+    <div className={styles.glanceRow}>
+      <span className={styles.glanceRowLabel}>
         {label}
       </span>
-      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: accent, textAlign: 'right', minWidth: 0 }}>{value}</span>
+      <span className={`${styles.glanceRowValue} ${accentClass ?? ''}`}>{value}</span>
     </div>
   );
 }
 
 function GlancePanel({ children }: { children: React.ReactNode }) {
   return (
-    <section
-      aria-labelledby="class-glance-heading"
-      style={{
-        flex: '1 1 240px',
-        minWidth: 0,
-        border: '1px solid #1e293b',
-        borderRadius: '10px',
-        background: 'linear-gradient(160deg, #0b1f2b 0%, #0f172a 70%)',
-        padding: '1.1rem 1.15rem',
-      }}
-    >
-      <h3
-        id="class-glance-heading"
-        style={{ fontSize: '0.65rem', color: '#22d3ee', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}
-      >
+    <section aria-labelledby="class-glance-heading" className={styles.glancePanel}>
+      <h3 id="class-glance-heading" className={styles.glanceHeading}>
         Your Class at a Glance
       </h3>
       {children}
@@ -446,59 +376,28 @@ function GlancePanel({ children }: { children: React.ReactNode }) {
 }
 
 function SigningCardView({ card }: { card: SigningCard }) {
-  const { accent, bg, badge } = KIND_META[card.outcome_kind];
+  const suffix = KIND_SUFFIX[card.outcome_kind];
+  const badge = KIND_BADGE[card.outcome_kind];
   return (
-    <div
-      className="fade-in"
-      style={{
-        border: `2px solid ${accent}`,
-        borderRadius: '8px',
-        padding: '1rem 1.1rem',
-        background: bg,
-        boxShadow: `0 0 18px ${accent}1f`,
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+    <div className={`fade-in ${styles.signingCard} ${styles[`kind${suffix}`]}`}>
+      <div className={styles.signingTop}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#e2e8f0' }}>{card.name}</div>
-          <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.15rem' }}>
-            <span style={{ color: '#cbd5e1', fontWeight: 600 }}>{card.club_name}</span>
+          <div className={styles.signingName}>{card.name}</div>
+          <div className={styles.signingClubLine}>
+            <span className={styles.signingClub}>{card.club_name}</span>
             {card.role ? <span> &middot; {card.role}</span> : null}
           </div>
         </div>
-        <div
-          style={{
-            fontSize: '0.75rem',
-            fontWeight: 900,
-            color: accent,
-            border: `1px solid ${accent}`,
-            borderRadius: '6px',
-            padding: '0.25rem 0.55rem',
-            letterSpacing: '0.04em',
-            whiteSpace: 'nowrap',
-          }}
-        >
+        <div className={`${styles.ovrPill} ${styles[`ovrPill${suffix}`]}`}>
           OVR {card.ovr}
         </div>
       </div>
-      <div style={{ marginTop: '0.5rem' }}>
-        <span
-          style={{
-            fontSize: '0.55rem',
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            fontWeight: 700,
-            color: accent,
-            border: `1px solid ${accent}66`,
-            background: `${accent}14`,
-            borderRadius: '999px',
-            padding: '0.15rem 0.5rem',
-          }}
-        >
+      <div className={styles.kindBadgeWrap}>
+        <span className={`${styles.kindBadge} ${styles[`kindBadge${suffix}`]}`}>
           {badge}
         </span>
       </div>
-      <div style={{ fontSize: '0.8rem', color: '#cbd5e1', marginTop: '0.55rem', lineHeight: 1.4 }}>
+      <div className={styles.signingReason}>
         {card.reason}
       </div>
     </div>
@@ -531,16 +430,16 @@ function LegacyClassReport({
   const showBrief = otherCount === 0 && prose.length > 0;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', maxWidth: '1040px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-        <MetricTile label="Your Signings" value={`${signedCount}/${signingLimit}`} accent="#22d3ee" />
-        <MetricTile label="Others Joined" value={otherCount} accent="#f97316" />
+    <div className={styles.report}>
+      <div className={styles.metricRow}>
+        <MetricTile label="Your Signings" value={`${signedCount}/${signingLimit}`} accentClass={styles.accentVolt} />
+        <MetricTile label="Others Joined" value={otherCount} accentClass={styles.accentGold} />
         <MetricTile label="Total Rookies" value={totalClass} />
       </div>
 
-      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'stretch' }}>
+      <div className={styles.columnsStretch}>
         <GlancePanel>
-          <div style={{ fontSize: '1.7rem', fontWeight: 900, color: '#e2e8f0', marginTop: '0.6rem', lineHeight: 1.1 }}>
+          <div className={styles.glanceHeadline}>
             {/* BUG #5 / ADR 0002: the headline count was hardcoded to "1"
                 whenever any signing existed, so it read "You signed 1." while
                 the tile beside it read "2/3 used" — the exact contradiction the
@@ -549,25 +448,25 @@ function LegacyClassReport({
                 this card agrees. */}
             {signedCount > 0 ? `You signed ${signedCount}.` : "You didn't sign anyone."}
           </div>
-          <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '0.3rem', lineHeight: 1.4 }}>
+          <div className={styles.glanceSub}>
             {signedCount > 0
               ? `${otherCount} other${otherCount !== 1 ? 's' : ''} joined the league.`
               : otherCount > 0
                 ? `${otherCount} rookie${otherCount !== 1 ? 's' : ''} joined the league.`
                 : 'No prospects committed to your program this offseason.'}
           </div>
-          <div style={{ fontSize: '0.7rem', color: '#22d3ee', fontWeight: 700, marginTop: '0.6rem' }}>
+          <div className={styles.glanceSlots}>
             {signedCount}/{signingLimit} slots used
           </div>
           {playerSigning && (
-            <div style={{ marginTop: '0.85rem' }}>
+            <div className={styles.glanceRows}>
               <GlanceRow
                 // Only the last signee is carried in player_signing, so when you
                 // signed more than one this is the "latest", not the sole pick —
                 // label it honestly rather than implying it was your only signing.
                 label={signedCount > 1 ? 'Latest signing' : 'Your signing'}
                 value={`${playerSigning.name} · OVR ${playerSigning.ovr}`}
-                accent="#22d3ee"
+                accentClass={styles.glanceRowValueVolt}
               />
               {playerSigning.role ? <GlanceRow label="Role" value={playerSigning.role} /> : null}
               {playerSigning.age ? <GlanceRow label="Age" value={playerSigning.age} /> : null}
@@ -575,68 +474,29 @@ function LegacyClassReport({
           )}
         </GlancePanel>
 
-        <div style={{ flex: '2 1 360px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-          <div style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>
+        <div className={styles.briefCol}>
+          <div className={styles.briefLabel}>
             {showBrief ? 'Class Brief' : 'Around the League'}
           </div>
           {showBrief ? (
-            <div
-              style={{
-                flex: 1,
-                border: '1px solid #1e293b',
-                borderLeft: '3px solid #22d3ee',
-                borderRadius: '8px',
-                padding: '1.1rem 1.25rem',
-                background: '#0f172a',
-                color: '#cbd5e1',
-                fontSize: '0.9rem',
-                lineHeight: 1.65,
-                minWidth: 0,
-              }}
-            >
+            <div className={styles.briefBox}>
               <BriefProse text={prose} />
             </div>
           ) : otherCount === 0 ? (
-            <div
-              style={{
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px dashed #334155',
-                borderRadius: '8px',
-                padding: '1.5rem',
-                color: '#64748b',
-                textAlign: 'center',
-                fontSize: '0.85rem',
-              }}
-            >
+            <div className={styles.briefEmpty}>
               No other signings to report.
             </div>
           ) : (
-            <ul role="list" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+            <ul role="list" className={styles.otherList}>
               {otherSignings.map((s: OffseasonSigning, i: number) => (
-                <li
-                  key={i}
-                  className="fade-in"
-                  style={{
-                    border: '1px solid #334155',
-                    borderRadius: '6px',
-                    padding: '0.6rem 0.85rem',
-                    background: '#0f172a',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                  }}
-                >
+                <li key={i} className={`fade-in ${styles.otherRow}`}>
                   <span style={{ minWidth: 0 }}>
-                    <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{s.name}</span>
+                    <span className={styles.otherName}>{s.name}</span>
                     {s.club_name ? (
-                      <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '0.5rem' }}>to {s.club_name}</span>
+                      <span className={styles.otherClub}>to {s.club_name}</span>
                     ) : null}
                   </span>
-                  <span style={{ color: '#94a3b8', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>OVR {s.ovr}</span>
+                  <span className={styles.otherOvr}>OVR {s.ovr}</span>
                 </li>
               ))}
             </ul>
@@ -695,42 +555,42 @@ export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat
       stages={0}
       renderStage={() =>
         hasCards ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', maxWidth: '1040px', margin: '0 auto' }}>
+          <div className={styles.report}>
             {/* Hero metric strip — league + own-class summary visible without switching tabs */}
             {/* PT5: tile 1 is player-scoped (your slots); tiles 2-3 are LEAGUE-wide
                 (every club's signings / the whole rookie class) — label them so the
                 big numbers can't be misread as your own program beside the body's
                 "You signed N". */}
-            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-              <MetricTile label="Your Signings" value={`${signedCount}/${signingLimit}`} accent="#22d3ee" />
-              <MetricTile label="Rival Signings (League)" value={rivalCount} accent="#f97316" />
+            <div className={styles.metricRow}>
+              <MetricTile label="Your Signings" value={`${signedCount}/${signingLimit}`} accentClass={styles.accentVolt} />
+              <MetricTile label="Rival Signings (League)" value={rivalCount} accentClass={styles.accentGold} />
               <MetricTile label="Rookies (League)" value={classSize} />
-              {classTopOvr != null && <MetricTile label="Top OVR in Class" value={classTopOvr} accent="#8b5cf6" />}
+              {classTopOvr != null && <MetricTile label="Top OVR in Class" value={classTopOvr} accentClass={styles.accentGold} />}
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            <div className={styles.columns}>
               {/* Primary: the player's own outcome */}
               <GlancePanel>
-                <div style={{ fontSize: '1.7rem', fontWeight: 900, color: '#e2e8f0', marginTop: '0.6rem', lineHeight: 1.1 }}>
+                <div className={styles.glanceHeadline}>
                   {myCount > 0 ? `You signed ${myCount}.` : "You didn't sign anyone."}
                 </div>
-                <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '0.25rem' }}>
+                <div className={styles.glanceSub}>
                   {othersJoined} other{othersJoined !== 1 ? 's' : ''} joined the league.
                 </div>
-                <div style={{ fontSize: '0.7rem', color: '#22d3ee', fontWeight: 700, marginTop: '0.5rem' }}>
+                <div className={styles.glanceSlots}>
                   {signedCount}/{signingLimit} slots used
                 </div>
 
-                <div style={{ marginTop: '0.75rem' }}>
+                <div className={styles.glanceRows}>
                   {topMine ? (
-                    <GlanceRow label="Top signing" value={`${topMine.name} · OVR ${topMine.ovr}`} accent="#22d3ee" />
+                    <GlanceRow label="Top signing" value={`${topMine.name} · OVR ${topMine.ovr}`} accentClass={styles.glanceRowValueVolt} />
                   ) : playerSigning ? (
                     // No per-pick card on file (the offseason signing flow records
                     // a roster add + the latest signee, not a recruitment_signing
                     // row), so surface the last signee the backend DID persist
                     // rather than a phantom card. Keeps the panel consistent with
                     // signedCount instead of inventing a list. (BUG #5)
-                    <GlanceRow label="Latest signing" value={`${playerSigning.name} · OVR ${playerSigning.ovr}`} accent="#22d3ee" />
+                    <GlanceRow label="Latest signing" value={`${playerSigning.name} · OVR ${playerSigning.ovr}`} accentClass={styles.glanceRowValueVolt} />
                   ) : topClass ? (
                     <GlanceRow label="Top OVR in class" value={`${topClass.name} (${topClass.ovr})`} />
                   ) : null}
@@ -742,8 +602,8 @@ export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat
               </GlancePanel>
 
               {/* Secondary: tab-filtered signing cards */}
-              <div style={{ flex: '2 1 320px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <div role="tablist" aria-label="Filter signings" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              <div className={styles.cardsCol}>
+                <div role="tablist" aria-label="Filter signings" className={styles.tabRow}>
                   {(['my', 'rival', 'surprise'] as SigningFilter[]).map((f) => {
                     const active = filter === f;
                     return (
@@ -752,39 +612,20 @@ export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat
                         role="tab"
                         aria-selected={active}
                         onClick={() => setFilter(f)}
-                        style={{
-                          background: active ? '#22d3ee' : 'transparent',
-                          color: active ? '#0f172a' : '#94a3b8',
-                          border: `1px solid ${active ? '#22d3ee' : '#334155'}`,
-                          borderRadius: '999px',
-                          padding: '0.3rem 0.75rem',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          letterSpacing: '0.04em',
-                          cursor: 'pointer',
-                        }}
+                        className={`${styles.tab} ${active ? styles.tabActive : ''}`}
                       >
-                        {FILTER_LABELS[f]} <span style={{ opacity: 0.7 }}>({tabCounts[f]})</span>
+                        {FILTER_LABELS[f]} <span className={styles.tabCount}>({tabCounts[f]})</span>
                       </button>
                     );
                   })}
                 </div>
 
-                <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                <div className={styles.sortNote}>
                   {FILTER_LABELS[filter]} &middot; sorted by OVR
                 </div>
 
                 {visible.length === 0 ? (
-                  <div
-                    style={{
-                      border: '1px dashed #334155',
-                      borderRadius: '8px',
-                      padding: '1.5rem',
-                      color: '#64748b',
-                      textAlign: 'center',
-                      fontSize: '0.85rem',
-                    }}
-                  >
+                  <div className={styles.emptyCards}>
                     {/* BUG #5: when you signed players this offseason but no
                         per-pick card was recorded (free-agent signings don't
                         write contested-round cards), don't claim "you didn't
@@ -794,7 +635,7 @@ export function SigningDay({ beat, onComplete, acting }: { beat: RecruitmentBeat
                       : FILTER_EMPTY[filter]}
                   </div>
                 ) : (
-                  <ul role="list" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  <ul role="list" className={styles.cardList}>
                     {visible.map((card) => (
                       <li key={card.player_id}>
                         <SigningCardView card={card} />
@@ -840,54 +681,35 @@ export function NewSeasonEve({ beat, onComplete, acting }: { beat: ScheduleRevea
             description="A new chapter begins."
             stages={2}
             renderStage={(stage) => (
-                <div style={{ width: '100%', maxWidth: '640px', margin: '0 auto' }}>
+                <div className={styles.scheduleWrap}>
                     {stage >= 1 && (
                         <div className="fade-in" style={{ marginBottom: '1rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                            <div className={styles.scheduleHead}>
+                                <span className={styles.scheduleCount}>
                                     {showAll ? `All ${fixtures.length} matches` : `Your ${playerFixtures.length} match${playerFixtures.length !== 1 ? 'es' : ''}`}
                                 </span>
                                 {fixtures.length > playerFixtures.length && (
-                                    <button
-                                        onClick={() => setShowAll(!showAll)}
-                                        style={{
-                                            background: 'none',
-                                            border: '1px solid #334155',
-                                            borderRadius: '4px',
-                                            padding: '0.2rem 0.5rem',
-                                            color: '#64748b',
-                                            fontSize: '0.7rem',
-                                            cursor: 'pointer',
-                                        }}
-                                    >
+                                    <button onClick={() => setShowAll(!showAll)} className={styles.scheduleToggle}>
                                         {showAll ? 'My Games' : 'Full Schedule'}
                                     </button>
                                 )}
                             </div>
 
                             {displayedFixtures.length === 0 ? (
-                                <div style={{ color: '#94a3b8', textAlign: 'center' }}>
+                                <div className={styles.scheduleEmpty}>
                                     {typeof beat.body === 'string' ? beat.body : 'Schedule not available.'}
                                 </div>
                             ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                <div className={styles.fixtures}>
                                     {displayedFixtures.map((f: OffseasonFixture, i: number) => (
                                         <div
                                             key={i}
-                                            style={{
-                                                display: 'flex',
-                                                gap: '0.5rem',
-                                                alignItems: 'center',
-                                                padding: '0.4rem 0.6rem',
-                                                borderRadius: '4px',
-                                                background: f.is_player_match ? '#1c1009' : 'transparent',
-                                                border: f.is_player_match ? '1px solid #f97316' : '1px solid transparent',
-                                            }}
+                                            className={`${styles.fixture} ${f.is_player_match ? styles.fixturePlayer : ''}`}
                                         >
-                                            <span style={{ color: '#475569', fontSize: '0.65rem', width: '3rem', flexShrink: 0 }}>
+                                            <span className={styles.fixtureWeek}>
                                                 Wk {f.week}
                                             </span>
-                                            <span style={{ color: f.is_player_match ? '#fb923c' : '#94a3b8', fontSize: '0.8rem', flex: 1 }}>
+                                            <span className={`${styles.fixtureTeams} ${f.is_player_match ? styles.fixtureTeamsPlayer : ''}`}>
                                                 {f.home && f.away ? `${f.home} vs ${f.away}` : 'Bye Week'}
                                             </span>
                                         </div>
@@ -898,17 +720,7 @@ export function NewSeasonEve({ beat, onComplete, acting }: { beat: ScheduleRevea
                     )}
 
                     {stage >= 2 && prediction && (
-                        <div
-                            className="fade-in"
-                            style={{
-                                borderLeft: '3px solid #f97316',
-                                paddingLeft: '1rem',
-                                color: '#cbd5e1',
-                                fontSize: '0.9rem',
-                                fontStyle: 'italic',
-                                lineHeight: 1.5,
-                            }}
-                        >
+                        <div className={`fade-in ${styles.prediction}`}>
                             {prediction}
                         </div>
                     )}
