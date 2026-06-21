@@ -1,4 +1,5 @@
-import { ActionButton } from '../ui';
+import { ActionButton } from '../../ui';
+import styles from './CoachStep.module.css';
 
 const ARCHETYPES: Record<string, { tagline: string; description: string }> = {
   'Tactical Mastermind': {
@@ -35,19 +36,14 @@ export function CoachStep({
   const coachReady = Boolean(coach.coach_name.trim());
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      <div>
-        <p className="dm-kicker" style={{ marginBottom: '0.25rem' }}>Step 2 of 4</p>
-        <h2 style={{ fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', margin: 0, fontSize: '1.25rem' }}>
-          Head Coach
-        </h2>
+    <div className={styles.wrap}>
+      <div className={styles.header}>
+        <p className={styles.kicker}>Step 2 of 4</p>
+        <h2 className={styles.title}>Head Coach</h2>
       </div>
 
       <div>
-        <label
-          htmlFor="coach-name"
-          style={{ display: 'block', fontSize: '0.6875rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', marginBottom: '0.375rem' }}
-        >
+        <label htmlFor="coach-name" className={styles.fieldLabel}>
           Coach Name
         </label>
         <input
@@ -56,24 +52,13 @@ export function CoachStep({
           placeholder="e.g. Ray Holloway"
           value={coach.coach_name}
           onChange={e => setCoach({ ...coach, coach_name: e.target.value })}
-          style={{
-            width: '100%',
-            boxSizing: 'border-box',
-            background: '#0f172a',
-            border: '1px solid #334155',
-            borderRadius: '4px',
-            padding: '0.5rem 0.75rem',
-            color: '#e2e8f0',
-            fontSize: '0.875rem',
-          }}
+          className={styles.input}
         />
       </div>
 
-      <fieldset style={{ margin: 0, padding: 0, border: 'none' }}>
-        <legend style={{ padding: 0, fontSize: '0.6875rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', marginBottom: '0.5rem' }}>
-          Coaching Archetype
-        </legend>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      <fieldset className={styles.fieldset}>
+        <legend className={styles.legend}>Coaching Archetype</legend>
+        <div className={styles.archetypeList}>
           {Object.entries(ARCHETYPES).map(([key, arch]) => {
             const isSelected = coach.coach_backstory === key;
             return (
@@ -82,26 +67,15 @@ export function CoachStep({
                 type="button"
                 aria-pressed={isSelected}
                 onClick={() => setCoach({ ...coach, coach_backstory: key })}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.25rem',
-                  padding: '0.875rem 1rem',
-                  background: isSelected ? 'rgba(249,115,22,0.08)' : '#0f172a',
-                  border: isSelected ? '1px solid rgba(249,115,22,0.4)' : '1px solid #334155',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'border-color 0.15s, background 0.15s',
-                }}
+                className={`${styles.archetypeCard} ${isSelected ? styles.archetypeCardSelected : ''}`.trim()}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.875rem', color: isSelected ? '#f97316' : '#e2e8f0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <div className={styles.archetypeHead}>
+                  <span className={`${styles.archetypeName} ${isSelected ? styles.archetypeNameSelected : ''}`.trim()}>
                     {key}
                   </span>
-                  <span className="dm-badge dm-badge-slate" style={{ fontSize: '0.6rem' }}>{arch.tagline}</span>
+                  <span className={styles.tagline}>{arch.tagline}</span>
                 </div>
-                <p style={{ margin: 0, fontSize: '0.8125rem', color: '#94a3b8', lineHeight: 1.4 }}>{arch.description}</p>
+                <p className={styles.archetypeDesc}>{arch.description}</p>
               </button>
             );
           })}
@@ -109,26 +83,26 @@ export function CoachStep({
       </fieldset>
 
       {coach.coach_name && (
-        <div style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: '4px', padding: '0.75rem 1rem' }}>
-          <p style={{ margin: 0, fontSize: '0.8125rem', color: '#94a3b8' }}>
-            <span style={{ color: '#f97316', fontWeight: 700 }}>{coach.coach_name}</span>
+        <div className={styles.summary}>
+          <p className={styles.summaryText}>
+            <span className={styles.summaryName}>{coach.coach_name}</span>
             {' | '}
-            <span style={{ color: '#e2e8f0' }}>{coach.coach_backstory}</span>
+            <span className={styles.summaryArchetype}>{coach.coach_backstory}</span>
             {' - '}
             {selected.description}
           </p>
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+      <div className={styles.actions}>
+        <div className={styles.actionRow}>
           <ActionButton variant="secondary" onClick={onBack}>Back</ActionButton>
           <ActionButton variant="primary" onClick={onNext} disabled={!coachReady} aria-describedby="coach-step-help">
             Next: Recruit Roster
           </ActionButton>
         </div>
         {!coachReady && (
-          <p id="coach-step-help" className="dm-helper-copy dm-helper-copy-warning" style={{ margin: 0 }}>
+          <p id="coach-step-help" className={styles.helperWarning}>
             Enter a coach name to continue.
           </p>
         )}

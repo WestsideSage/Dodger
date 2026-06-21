@@ -1,0 +1,87 @@
+/* AlumniLineage — Record Room (cream/ink). Tier tones are ink-on-paper
+   variants with a brick accent for Elite (§3.8), NOT live Floodlight color. */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--legacy-ink);
+}
+.main {
+  min-width: 0;
+}
+.name {
+  display: block;
+  font: 700 0.92rem var(--font-serif);
+  color: var(--legacy-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.meta {
+  display: block;
+  font: 400 0.74rem var(--font-ui);
+  color: var(--legacy-ink);
+  opacity: 0.8;
+}
+.side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+}
+.note {
+  font: 400 0.72rem var(--font-ui);
+  color: var(--legacy-ink);
+  opacity: 0.75;
+  text-align: right;
+}
+
+/* Tier tones — every canonical tier gets a distinct ink-on-paper treatment. */
+.tier {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font: 700 0.7rem var(--font-ui);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.toneElite {
+  color: var(--legacy-paper);
+  background: var(--legacy-brick);
+  border: 1px solid var(--legacy-brick);
+}
+.toneHigh {
+  color: var(--legacy-paper);
+  background: var(--legacy-ink);
+  border: 1px solid var(--legacy-ink);
+}
+.toneMid {
+  color: var(--legacy-ink);
+  background: transparent;
+  border: 1px solid var(--legacy-ink);
+}
+.toneLow {
+  color: var(--legacy-ink);
+  background: transparent;
+  border: 1px dashed var(--legacy-ink);
+}
+.toneRaw {
+  color: var(--legacy-ink);
+  background: transparent;
+  border: 1px dotted var(--legacy-ink);
+}
+.toneUnknown {
+  color: var(--legacy-ink);
+  background: transparent;
+  border: 1px solid var(--legacy-brick);
+}

@@ -5,7 +5,7 @@ import { Popover } from './index';
 
 describe('ui barrel', () => {
   it('exports every primitive', () => {
-    for (const name of ['Truncate','Surface','Card','Grid','ScrollRegion','Tag','RecordCell','Popover','Modal','ActionBar','Table']) {
+    for (const name of ['Truncate','Surface','Card','Grid','ScrollRegion','Tag','RecordCell','Popover','Modal','ActionBar','Table','CeilingBadge','StatBar']) {
       expect(UI).toHaveProperty(name);
     }
   });

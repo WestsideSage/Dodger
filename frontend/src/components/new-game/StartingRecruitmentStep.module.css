@@ -1,0 +1,298 @@
+/* StartingRecruitmentStep.module.css — Floodlight token-driven Step 4 of the
+   wizard (the founding draft). Selected prospect = Volt (active/selected).
+   Met-foundation chip = Mint (positive/verified); unmet = Gold (advisory).
+   Ceiling value = Gold (elite talent ceiling). No raw color literals: colors
+   come from var(--…) tokens only. The prospect list scroll is bounded via
+   .prospectScroll (min cap, 50vh) and names truncate via .prospectName, so the
+   footer stays on-screen and the row never forces wide (audit §3 "high"). */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+}
+.kicker {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: .15em;
+  font-size: .625rem;
+  color: var(--muted);
+  margin: 0 0 var(--space-2);
+}
+.title {
+  font-family: var(--font-disp);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text);
+  margin: 0;
+  font-size: 1.25rem;
+}
+.intro {
+  margin: var(--space-2) 0 0;
+  font-size: .8125rem;
+  color: var(--muted);
+}
+.introFine {
+  font-size: .75rem;
+  color: var(--text2);
+  margin-top: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+/* ── Composition guide ────────────────────────────────────────────────── */
+.guide {
+  background: var(--raise);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: .625rem .75rem;
+}
+.guideHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.guideTitle {
+  font-size: .6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text2);
+}
+.guideCount {
+  font-size: .625rem;
+  color: var(--out);
+  font-weight: 500;
+}
+.chipRow {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.foundationChip {
+  flex: 1 1 0;
+  min-width: 6.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: .1875rem;
+  padding: .375rem .5rem;
+  border-radius: var(--radius-sm);
+  background: var(--raise2);
+  border: 1px solid transparent;
+  transition: background .15s, border-color .15s;
+}
+.chipMet {
+  background: var(--ok-soft);
+  border-color: var(--ok-soft);
+}
+.chipUnmet {
+  background: var(--gold-soft);
+  border-color: var(--gold-soft);
+}
+.chipTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.chipLabel {
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.chipCount {
+  font-size: .75rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--out);
+}
+.chipCountMet { color: var(--ok); }
+.chipCountUnmet { color: var(--gold2); }
+.chipTip {
+  font-size: .625rem;
+  color: var(--muted);
+  line-height: 1.3;
+}
+.imbalanceWarning {
+  margin: var(--space-2) 0 0;
+  font-size: .6875rem;
+  color: var(--gold2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ── Load / loading states ────────────────────────────────────────────── */
+.loadError {
+  padding: .75rem;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  color: var(--danger2);
+  font-size: .875rem;
+}
+.loadingText {
+  color: var(--muted);
+  font-size: .875rem;
+}
+
+/* ── Prospect scroll region (bounded; no inline height literal) ───────── */
+.prospectScroll {
+  max-height: min(22.5rem, 50vh);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-right: var(--space-2);
+}
+
+/* ── Prospect row (keeps role=checkbox + aria-checked + aria-label) ────── */
+.prospectRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .625rem .875rem;
+  background: var(--court);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color .12s, background .12s;
+  flex-shrink: 0;
+  text-align: left;
+}
+.prospectRowSelected {
+  background: var(--volt-soft);
+  border-color: var(--volt);
+}
+.prospectRowDisabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+.prospectMain {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.prospectNameRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.prospectName {
+  font-weight: 700;
+  font-size: .9375rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.prospectNameSelected {
+  color: var(--volt2);
+}
+.prospectAge {
+  font-size: .7rem;
+  color: var(--muted);
+}
+.prospectMeta {
+  font-size: .75rem;
+  color: var(--muted);
+  margin-top: var(--space-1);
+  display: flex;
+  align-items: baseline;
+  gap: .35rem;
+  flex-wrap: wrap;
+}
+.prospectRole { color: var(--text2); }
+.prospectRoleHint { color: var(--muted); }
+
+/* ── Unfogged ratings strip (#22 — never hidden) ──────────────────────── */
+.ratingsStrip {
+  display: flex;
+  gap: .55rem;
+  margin-top: .3rem;
+  font-size: .66rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  flex-wrap: wrap;
+}
+.ratingHigh { color: var(--text2); }
+.ratingLow { color: var(--muted); }
+
+/* ── OVR + ceiling column ─────────────────────────────────────────────── */
+.prospectStats {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-shrink: 0;
+  margin-left: 1rem;
+}
+.statsCol { text-align: right; }
+.ovr {
+  font-weight: 800;
+  color: var(--text2);
+  font-size: .875rem;
+  font-variant-numeric: tabular-nums;
+}
+.ovrSelected { color: var(--volt); }
+.ovrUnit {
+  font-size: .5625rem;
+  opacity: .6;
+  margin-left: var(--space-2);
+}
+.ceiling {
+  font-size: .66rem;
+  color: var(--muted);
+  margin-top: .15rem;
+  font-variant-numeric: tabular-nums;
+}
+.ceilingValue { color: var(--gold2); }
+.ceilingTier {
+  margin-left: var(--space-2);
+  color: var(--muted);
+}
+.checkDot {
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--line2);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.checkDotSelected {
+  border-color: var(--volt);
+  background: var(--volt-soft);
+}
+.checkMark {
+  color: var(--volt);
+  font-size: .625rem;
+  line-height: 1;
+}
+
+/* ── Actions + helper copy ────────────────────────────────────────────── */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.actionRow {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.helper {
+  margin: 0;
+  font-size: .75rem;
+  color: var(--text2);
+}
+.helperWarning {
+  color: var(--gold2);
+}

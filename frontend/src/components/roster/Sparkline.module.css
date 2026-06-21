@@ -1,0 +1,9 @@
+/* OVR sparkline — token-only. Fallback gauge dims live here so the component
+   carries no raw px literals once src/components/roster is scanned (#36 NO-DATA
+   gate behavior is unchanged — this only restyles the fallback element). */
+.fallback {
+  height: var(--space-5);
+  width: var(--space-9);
+  background: var(--line);
+  border-radius: var(--radius-sm);
+}

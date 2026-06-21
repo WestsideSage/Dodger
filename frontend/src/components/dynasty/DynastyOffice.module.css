@@ -1,0 +1,678 @@
+/* DynastyOffice shell + Recruit/Staff subtab chrome — Floodlight warm-graphite.
+   5-color contract: --volt active/primary, --ok positive, --gold talent,
+   --out dim, --danger destructive, warm neutrals for everything else. */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* ---- tab bar ---- */
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.tab {
+  appearance: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  font: 700 0.82rem var(--font-ui);
+  color: var(--text2);
+  background: transparent;
+  border: 1px solid transparent;
+}
+.tab:hover {
+  color: var(--text);
+}
+.tabActive {
+  color: var(--volt);
+  background: var(--volt-soft);
+  border-color: var(--volt);
+}
+.tabCount {
+  font: 700 0.7rem var(--font-mono);
+  color: var(--muted);
+}
+.tabsSpacer {
+  flex: 1 1 auto;
+}
+.treasuryChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-pill);
+  font: 800 0.7rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ok);
+  background: var(--ok-soft);
+  border: 1px solid var(--ok);
+}
+.treasuryChipNegative {
+  color: var(--danger2);
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}
+.tabsNote {
+  font: 400 0.7rem var(--font-ui);
+  color: var(--muted);
+}
+
+/* ---- generic content + panels ---- */
+.tabContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.gridRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--grid-min-default), 1fr));
+  gap: var(--space-5);
+}
+.panel {
+  background: var(--raise);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+}
+.panelHead {
+  margin-bottom: var(--space-4);
+}
+.kicker {
+  display: block;
+  font: 700 0.72rem var(--font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.heading {
+  margin: var(--space-2) 0 0;
+  font: 600 1.05rem var(--font-head);
+  color: var(--text);
+}
+.subheading {
+  margin: var(--space-2) 0 0;
+  font: 600 0.92rem var(--font-head);
+  color: var(--text);
+}
+.note {
+  margin: var(--space-2) 0 0;
+  font: 400 0.72rem var(--font-ui);
+  line-height: 1.4;
+  color: var(--text2);
+}
+.noteDim {
+  color: var(--muted);
+}
+.danger {
+  color: var(--danger2);
+}
+
+/* ---- buttons ---- */
+.btn {
+  appearance: none;
+  cursor: pointer;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  font: 700 0.76rem var(--font-ui);
+  color: var(--text2);
+  background: var(--raise2);
+  border: 1px solid var(--line2);
+}
+.btn:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--lit);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btnPrimary {
+  color: var(--volt);
+  background: var(--volt-soft);
+  border-color: var(--volt);
+}
+.btnPrimary:hover:not(:disabled) {
+  color: var(--volt2);
+  border-color: var(--volt2);
+}
+
+/* ---- filter pills (shared by board + history mounts) ---- */
+.filter {
+  appearance: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  font: 700 0.72rem var(--font-ui);
+  color: var(--text2);
+  background: var(--tint-neutral);
+  border: 1px solid var(--line2);
+}
+.filter:hover {
+  color: var(--text);
+}
+.filterActive {
+  color: var(--volt);
+  background: var(--volt-soft);
+  border-color: var(--volt);
+}
+.filterCount {
+  font: 700 0.68rem var(--font-mono);
+  color: var(--muted);
+}
+
+/* ---- chips / badges ---- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font: 700 0.68rem var(--font-ui);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text2);
+  background: var(--tint-neutral);
+  border: 1px solid var(--line2);
+  white-space: nowrap;
+}
+.chipOk { color: var(--ok); border-color: var(--ok); background: var(--ok-soft); }
+.chipNeutral { color: var(--muted); }
+.chipBroken { color: var(--danger2); border-color: var(--danger); background: var(--danger-soft); }
+.chipTalent { color: var(--gold); border-color: var(--gold); background: var(--gold-soft); }
+
+/* ---- promises panel ---- */
+.promisesPanel {
+  background: var(--raise);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+}
+.promisesHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.promisesCount {
+  margin-left: var(--space-3);
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--muted);
+  font-weight: 400;
+}
+.promisesHelp {
+  font: 400 0.68rem var(--font-ui);
+  color: var(--muted);
+}
+.promisesList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.promiseRow {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  flex-wrap: wrap;
+  font: 400 0.78rem var(--font-ui);
+}
+.promiseName { color: var(--text); }
+.promiseMeaning { color: var(--muted); }
+
+/* ---- recruiting context strip ---- */
+.context {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-4) var(--space-5);
+  background: var(--raise);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+.contextCell {
+  flex: 1 1 8rem;
+  min-width: 8rem;
+}
+.contextCellWide {
+  flex: 1 1 9rem;
+  min-width: 9rem;
+}
+.cellLbl {
+  display: block;
+  font: 700 0.7rem var(--font-ui);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.cellVal {
+  font: 700 0.95rem var(--font-head);
+  color: var(--text);
+}
+.cellVal span {
+  font: 400 0.74rem var(--font-ui);
+  color: var(--text2);
+}
+.cellTrend {
+  display: block;
+  font: 400 0.7rem var(--font-ui);
+  color: var(--text2);
+  margin-top: var(--space-1);
+}
+.cellTrendDim { color: var(--muted); }
+.cellTrendWarn { color: var(--gold); }
+.cellTrendOk { color: var(--ok); }
+
+/* ---- slot meter ---- */
+.slots {
+  background: var(--raise);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+}
+.slotBody {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+.slot {
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+.slotHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.slotLbl {
+  font: 700 0.74rem var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text2);
+}
+.slotCount {
+  font: 700 0.78rem var(--font-mono);
+  color: var(--text);
+}
+.slotPips {
+  display: flex;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+.slotPip {
+  width: 0.75rem;
+  height: 0.375rem;
+  border-radius: var(--radius-pill);
+  background: var(--tint-neutral);
+  border: 1px solid var(--line2);
+}
+.slotPipUsed {
+  background: var(--volt);
+  border-color: var(--volt);
+}
+.slotHelp {
+  font: 400 0.68rem var(--font-ui);
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* ---- staff brief + rows ---- */
+.staff {
+  background: var(--raise);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+}
+.staffList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.staffRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+.staffId {
+  min-width: 0;
+}
+.dept {
+  display: block;
+  font: 700 0.74rem var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text2);
+}
+.staffName {
+  display: block;
+  font: 600 0.88rem var(--font-head);
+  color: var(--text);
+}
+.voice {
+  display: block;
+  font: 400 0.72rem var(--font-ui);
+  font-style: italic;
+  color: var(--muted);
+}
+.staffRating {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  flex: 0 0 auto;
+}
+.ratingNum {
+  font: 800 1.05rem var(--font-mono);
+  color: var(--text);
+}
+.ratingLbl {
+  font: 700 0.62rem var(--font-ui);
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+/* ---- glance strip (history + staff tabs) ---- */
+.glance {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: var(--space-4);
+}
+.glanceCell {
+  background: var(--raise);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+/* ---- staff cards grid ---- */
+.staffGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-5);
+}
+.staffCard {
+  background: var(--raise);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.staffCardHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+.rating {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.specs {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.meta {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+  margin: 0;
+}
+.meta div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font: 400 0.72rem var(--font-ui);
+}
+.meta dt {
+  color: var(--muted);
+}
+.meta dd {
+  margin: 0;
+  color: var(--text2);
+  font-family: var(--font-mono);
+}
+.impact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.impactLbl {
+  font: 700 0.62rem var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.impactVal {
+  font: 400 0.74rem var(--font-ui);
+  line-height: 1.4;
+  color: var(--text2);
+}
+
+/* ---- vacancy + pipeline cards ---- */
+.vacRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+.vacId { min-width: 0; }
+.vacAction {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 0 0 auto;
+}
+.priorityTag {
+  font: 700 0.64rem var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.priorityHigh { color: var(--gold); }
+.pipeRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+.pipeId { min-width: 0; }
+.pipeMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+.salary {
+  font: 400 0.68rem var(--font-mono);
+  color: var(--text2);
+  white-space: nowrap;
+}
+.salaryUp { color: var(--gold); }
+.salaryDown { color: var(--ok); }
+.stage {
+  font: 700 0.64rem var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+/* ---- scouting network / facilities ---- */
+.facilityRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line2);
+  background: var(--tint-neutral);
+}
+.facilityRowOwned {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+}
+.facilityName {
+  font: 600 0.84rem var(--font-head);
+  color: var(--text);
+}
+.facilityCat {
+  font: 400 0.7rem var(--font-ui);
+  color: var(--muted);
+}
+.facilityBuilt {
+  font: 700 0.74rem var(--font-ui);
+  color: var(--ok);
+}
+.facilityList {
+  display: grid;
+  gap: var(--space-3);
+}
+.networkActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* ---- settings modal (focus radios) ---- */
+.settingsPanel {
+  background: var(--raise);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-2);
+}
+.settingsHead {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+.settingsClose {
+  appearance: none;
+  cursor: pointer;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid var(--line2);
+  color: var(--text2);
+  font: 700 0.8rem var(--font-ui);
+}
+.focusGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.focusOption {
+  appearance: none;
+  cursor: pointer;
+  text-align: left;
+  padding: var(--space-4) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--raise2);
+  border: 1px solid var(--line2);
+  border-left: var(--border-accent) solid var(--line2);
+  color: var(--text2);
+  font-family: inherit;
+}
+.focusOptionSelected {
+  background: var(--volt-soft);
+  border-color: var(--volt);
+  border-left-color: var(--volt);
+}
+.focusOptionLabel {
+  font: 700 0.72rem var(--font-ui);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.focusOptionLabelSelected {
+  color: var(--volt);
+}
+.focusOptionEffect {
+  margin: var(--space-2) 0 0;
+  font: 400 0.74rem var(--font-ui);
+  line-height: 1.45;
+  color: var(--text2);
+}
+
+/* ---- recruit board legend + sort ---- */
+.boardHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.boardFilters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.boardSep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--line2);
+}
+.sortGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.sortLbl {
+  font: 700 0.62rem var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.legend {
+  display: flex;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+  align-items: center;
+  margin: var(--space-3) 0 var(--space-4);
+  font: 400 0.66rem var(--font-ui);
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.legendStrong { color: var(--ok); }
+.legendFair { color: var(--gold); }
+.legendRisk { color: var(--out); }
+.boardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--grid-min-default), 1fr));
+  gap: var(--space-5);
+}

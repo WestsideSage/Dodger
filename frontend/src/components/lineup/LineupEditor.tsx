@@ -3,7 +3,8 @@ import type { Player } from '../../types';
 import { commandApi } from '../../api/client';
 import { ApiError } from '../../api/client';
 import { TermTip } from '../../legibility';
-import { ActionButton, Dialog } from '../ui';
+import { ActionButton, Modal } from '../../ui';
+import styles from './LineupEditor.module.css';
 
 const STARTERS_COUNT = 6;
 const ROLE_LABELS = ['Captain', 'Striker', 'Anchor', 'Runner', 'Rookie', 'Utility'];
@@ -216,95 +217,25 @@ export function LineupEditor({
   }
 
   return (
-    <Dialog
-      label="Lineup Editor"
-      onClose={onClose}
-      panelClassName="dm-panel"
-      panelStyle={{
-        width: '100%',
-        maxWidth: '52rem',
-        maxHeight: '90vh',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        borderRadius: 8,
-        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
-      }}
-    >
-        <div
-          style={{
-            padding: '1.25rem',
-            borderBottom: '1px solid #1e293b',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-          }}
-        >
+    <Modal label="Lineup Editor" onClose={onClose} panelClassName={styles.panel}>
+        <div className={styles.header}>
           <div>
-            <span className="dm-kicker">Lineup</span>
-            <h2
-              style={{
-                margin: 0,
-                fontFamily: 'var(--font-display)',
-                color: '#fff',
-                fontSize: '1.5rem',
-                textTransform: 'uppercase',
-              }}
-            >
-              Manual Lineup Editor
-            </h2>
-            <div style={{ marginTop: '0.25rem', color: '#94a3b8', fontSize: '0.8rem', lineHeight: 1.5 }}>
+            <span className={styles.kicker}>Lineup</span>
+            <h2 className={styles.title}>Manual Lineup Editor</h2>
+            <div className={styles.subtitle}>
               Click a starter slot, then a bench player to swap.{' '}
               <TermTip term="lineup.slot_order">Slot order</TermTip> sets role labels (Captain → Utility).
             </div>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#64748b',
-              cursor: 'pointer',
-              fontSize: '1.25rem',
-            }}
-            aria-label="Close"
-          >
-            ×
-          </button>
+          <button onClick={onClose} className={styles.closeBtn} aria-label="Close">×</button>
         </div>
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '1rem',
-            padding: '1.25rem',
-            overflowY: 'auto',
-            flex: 1,
-          }}
-        >
+        <div className={styles.body}>
           <div role="group" aria-label="Active starters — fielded six">
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                marginBottom: '0.5rem',
-                paddingBottom: '0.35rem',
-                borderBottom: '2px solid #22d3ee',
-              }}
-            >
-              <span className="dm-kicker" style={{ color: '#22d3ee' }}>Active</span>
+            <div className={`${styles.colHead} ${styles.colHeadActive}`}>
+              <span className={`${styles.kicker} ${styles.kickerActive}`}>Active</span>
               <span
-                style={{
-                  background: '#22d3ee',
-                  color: '#0b1220',
-                  borderRadius: '3px',
-                  fontWeight: 800,
-                  fontSize: '0.6rem',
-                  padding: '0.05rem 0.35rem',
-                  letterSpacing: '0.04em',
-                }}
+                className={`${styles.countTag} ${styles.countTagActive}`}
                 aria-label="Fielded six — exactly 6 starters"
               >
                 {STARTERS_COUNT} fielded
@@ -312,33 +243,18 @@ export function LineupEditor({
             </div>
             <div
               aria-label="Slot role order: Captain, Striker, Anchor, Runner, Rookie, Utility"
-              style={{
-                display: 'flex',
-                gap: '0.3rem',
-                flexWrap: 'wrap',
-                marginBottom: '0.5rem',
-              }}
+              className={styles.roleRow}
             >
               {ROLE_LABELS.map((label, i) => (
                 <span
                   key={label}
-                  style={{
-                    fontSize: '0.55rem',
-                    fontWeight: 700,
-                    letterSpacing: '0.04em',
-                    color: i === 0 ? '#22d3ee' : '#64748b',
-                    background: '#0f172a',
-                    border: '1px solid #1e293b',
-                    borderRadius: '3px',
-                    padding: '0.05rem 0.3rem',
-                    textTransform: 'uppercase',
-                  }}
+                  className={`${styles.roleChip} ${i === 0 ? styles.roleChipLead : ''}`.trim()}
                 >
                   {i + 1}. {label}
                 </span>
               ))}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div className={styles.slotList}>
               {starters.map((id, idx) => {
                 const player = rosterById.get(id);
                 const isSelected = selectedSlot === idx;
@@ -347,33 +263,16 @@ export function LineupEditor({
                   <button
                     key={`${id}-${idx}`}
                     type="button"
+                    data-testid={`lineup-slot-${idx}`}
                     onClick={() => handleSlotClick(idx)}
                     disabled={saving}
                     aria-pressed={isSelected}
-                    style={{
-                      textAlign: 'left',
-                      padding: '0.75rem',
-                      borderRadius: 4,
-                      background: isSelected ? '#0f4c5c' : '#0f172a',
-                      border: hasError
-                        ? '1px solid #ef4444'
-                        : isSelected
-                        ? '1px solid #22d3ee'
-                        : '1px solid #1e293b',
-                      borderLeft: hasError
-                        ? '3px solid #ef4444'
-                        : isSelected
-                        ? '3px solid #22d3ee'
-                        : '3px solid rgba(34,211,238,0.4)',
-                      color: '#fff',
-                      cursor: saving ? 'wait' : 'pointer',
-                      fontFamily: 'inherit',
-                    }}
+                    className={`${styles.slot} ${isSelected ? styles.slotSelected : ''} ${hasError ? styles.slotError : ''}`.trim()}
                   >
-                    <div className="dm-kicker">{ROLE_LABELS[idx] ?? `Slot ${idx + 1}`}</div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem' }}>
-                      <span>{player ? player.name : id}</span>
-                      <span style={{ color: '#94a3b8' }}>
+                    <div className={styles.kicker}>{ROLE_LABELS[idx] ?? `Slot ${idx + 1}`}</div>
+                    <div className={styles.slotTop}>
+                      <span className={styles.slotName}>{player ? player.name : id}</span>
+                      <span className={styles.slotOvr}>
                         {player ? `OVR ${player.overall}` : ''}
                       </span>
                     </div>
@@ -384,43 +283,18 @@ export function LineupEditor({
           </div>
 
           <div role="group" aria-label="Bench players — not fielded">
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                marginBottom: '0.5rem',
-                paddingBottom: '0.35rem',
-                borderBottom: '1px solid #1e293b',
-              }}
-            >
-              <span className="dm-kicker" style={{ color: '#64748b' }}>Bench</span>
+            <div className={`${styles.colHead} ${styles.colHeadBench}`}>
+              <span className={`${styles.kicker} ${styles.kickerBench}`}>Bench</span>
               <span
-                style={{
-                  background: '#1e293b',
-                  color: '#94a3b8',
-                  borderRadius: '3px',
-                  fontWeight: 700,
-                  fontSize: '0.6rem',
-                  padding: '0.05rem 0.35rem',
-                  letterSpacing: '0.04em',
-                }}
+                className={`${styles.countTag} ${styles.countTagBench}`}
                 aria-label={`${benchPlayers.length} bench players — not fielded`}
               >
                 {benchPlayers.length} not fielded
               </span>
             </div>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.5rem',
-                maxHeight: '24rem',
-                overflowY: 'auto',
-              }}
-            >
+            <div className={styles.benchScroll}>
               {benchPlayers.length === 0 ? (
-                <div style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
+                <div className={styles.benchEmpty}>
                   No bench players available.
                 </div>
               ) : (
@@ -428,26 +302,16 @@ export function LineupEditor({
                   <button
                     key={player.id}
                     type="button"
+                    data-testid={`lineup-bench-${player.id}`}
                     onClick={() => handleBenchClick(player.id)}
                     disabled={saving || selectedSlot === null}
-                    style={{
-                      textAlign: 'left',
-                      padding: '0.75rem',
-                      borderRadius: 4,
-                      background: '#0f172a',
-                      border: '1px solid #1e293b',
-                      color: '#fff',
-                      cursor:
-                        saving || selectedSlot === null ? 'not-allowed' : 'pointer',
-                      opacity: selectedSlot === null ? 0.7 : 1,
-                      fontFamily: 'inherit',
-                    }}
+                    className={styles.bench}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>{player.name}</span>
-                      <span style={{ color: '#94a3b8' }}>OVR {player.overall}</span>
+                    <div className={styles.benchTop}>
+                      <span className={styles.benchName}>{player.name}</span>
+                      <span className={styles.benchOvr}>OVR {player.overall}</span>
                     </div>
-                    <div className="dm-kicker" style={{ marginTop: '0.25rem' }}>
+                    <div className={`${styles.kicker} ${styles.benchRole}`}>
                       {player.role}
                     </div>
                   </button>
@@ -457,49 +321,29 @@ export function LineupEditor({
           </div>
         </div>
 
-        <div
-          style={{
-            padding: '0.75rem 1.25rem',
-            borderTop: '1px solid #1e293b',
-            background: '#0f172a',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '0.75rem',
-          }}
-        >
+        <div className={styles.footer}>
           {/* WT-21: announce the lineup save outcome. Errors are asserted
               (role="alert"); the "Saved." / "Reset" note is polite
               (role="status"). Previously this was a silent coloured span. */}
           <div
             role={error ? 'alert' : 'status'}
             aria-live={error ? 'assertive' : 'polite'}
-            style={{ fontSize: '0.85rem', minHeight: '1.25rem' }}
+            className={styles.status}
           >
-            {error && <span style={{ color: '#ef4444' }}>{error}</span>}
-            {!error && statusNote && <span style={{ color: '#22d3ee' }}>{statusNote}</span>}
+            {error && <span className={styles.statusError}>{error}</span>}
+            {!error && statusNote && <span className={styles.statusNote}>{statusNote}</span>}
             {/* Codex playtest issue 20: after offseason growth a hands-on
                 lineup can silently go stale (a developed bench player
                 out-rating a fielded starter). Persistent, computed warning —
                 not a transient toast — so the player always knows. */}
             {!error && !statusNote && staleNote && (
-              <span data-testid="lineup-stale-note" style={{ color: '#fbbf24' }}>{staleNote}</span>
+              <span data-testid="lineup-stale-note" className={styles.staleNote}>{staleNote}</span>
             )}
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <div className={styles.footerActions}>
             <label
               title="ON: each offseason re-seats your fielded six with the optimal lineup (set-and-forget). OFF: hands-on — offseasons only remove retired players and never re-rank a seat you chose. Saving a manual lineup turns this off automatically."
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                fontSize: '0.72rem',
-                fontWeight: 600,
-                color: autoReorder ? '#22d3ee' : '#94a3b8',
-                cursor: saving ? 'wait' : 'pointer',
-                whiteSpace: 'nowrap',
-                userSelect: 'none',
-              }}
+              className={`${styles.autoLabel} ${autoReorder ? styles.autoLabelOn : ''}`.trim()}
             >
               <input
                 type="checkbox"
@@ -507,7 +351,7 @@ export function LineupEditor({
                 onChange={handleToggleAutoReorder}
                 disabled={saving}
                 aria-label="Auto-reorder lineup each offseason"
-                style={{ accentColor: '#22d3ee', cursor: 'inherit' }}
+                className={styles.autoCheckbox}
               />
               Auto-reorder each offseason
             </label>
@@ -517,38 +361,13 @@ export function LineupEditor({
               disabled={saving}
               title="Seat the optimal six right now — the same logic the offseason auto-reorder uses. One-shot: doesn't change the toggle."
               aria-label="Auto-Assign: seat the optimal starting six now"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                padding: '0.4rem 0.75rem',
-                borderRadius: '4px',
-                background: 'transparent',
-                border: '1px solid #334155',
-                color: '#94a3b8',
-                fontSize: '0.78rem',
-                fontWeight: 600,
-                fontFamily: 'inherit',
-                cursor: saving ? 'wait' : 'pointer',
-                opacity: saving ? 0.6 : 1,
-                transition: 'border-color 0.15s, color 0.15s',
-              }}
-              onMouseEnter={(e) => {
-                if (!saving) {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = '#22d3ee';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#22d3ee';
-                }
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = '#334155';
-                (e.currentTarget as HTMLButtonElement).style.color = '#94a3b8';
-              }}
+              className={styles.autoAssign}
             >
               ⚙ Auto-Assign
             </button>
             <ActionButton onClick={onClose}>Done</ActionButton>
           </div>
         </div>
-    </Dialog>
+    </Modal>
   );
 }

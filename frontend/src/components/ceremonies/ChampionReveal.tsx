@@ -1,7 +1,8 @@
 import type { OffseasonBeat, PlayoffBracketResponse } from '../../types';
-import { ActionButton, PageHeader } from '../ui';
+import { ActionButton, PageHeader } from '../../ui';
 import { useApiResource } from '../../hooks/useApiResource';
 import { PlayoffBracket } from '../standings/PlayoffBracket';
+import styles from './ChampionReveal.module.css';
 
 type ChampionBeat = Extract<OffseasonBeat, { key: 'champion' }>;
 
@@ -60,14 +61,14 @@ export function ChampionReveal({
                         </div>
                     </>
                 ) : (
-                    <p style={{ color: '#94a3b8', fontSize: '1rem', margin: 0 }}>
+                    <p className={styles.fallback}>
                         {typeof beat.body === 'string' ? beat.body : 'No champion determined this season.'}
                     </p>
                 )}
             </div>
 
             {bracket && (
-                <div style={{ marginTop: '2rem', borderTop: '1px solid #1e293b', paddingTop: '2rem', paddingLeft: '1.5rem', paddingRight: '1.5rem' }}>
+                <div className={styles.bracketWrap}>
                     <PlayoffBracket data={bracket} />
                 </div>
             )}

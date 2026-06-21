@@ -1,0 +1,37 @@
+/* HistorySubTab — Record Room (cream/ink) filter bar. */
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.filters {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.filterRow {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.filter {
+  appearance: none;
+  cursor: pointer;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  font: 700 0.74rem var(--font-ui);
+  color: var(--legacy-ink);
+  background: transparent;
+  border: 1px solid var(--legacy-ink);
+}
+.filterActive {
+  color: var(--legacy-paper);
+  background: var(--legacy-ink);
+}
+.meta {
+  font: 400 0.74rem var(--font-ui);
+  color: var(--legacy-ink);
+  opacity: 0.8;
+}

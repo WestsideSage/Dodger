@@ -16,3 +16,6 @@ export type { Tone } from './StatusMessage';
 export { RatingBar } from './RatingBar';
 export { RadioGroup } from './RadioGroup';
 export type { RadioGroupOption } from './RadioGroup';
+export { CeilingBadge, CEILING_LADDER } from './CeilingBadge';
+export type { CeilingGradeLetter } from './CeilingBadge';
+export { StatBar } from './StatBar';

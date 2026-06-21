@@ -1,0 +1,87 @@
+/* PlayerDetailModal — Floodlight reskin (token-only). */
+
+.panel {
+  width: 100%; max-width: 46rem; max-height: 90vh;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+
+.header {
+  padding: var(--space-5); border-bottom: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4);
+}
+.kicker { font: 800 .58rem var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.playerName { margin: 0; font: 800 1.5rem var(--font-disp); text-transform: uppercase; color: var(--text); }
+.headMeta { display: flex; gap: var(--space-3); align-items: center; margin-top: var(--space-1); color: var(--text2); font: 500 .85rem var(--font-ui); }
+.headRole { color: var(--volt); }
+.closeBtn { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 1.25rem; line-height: 1; }
+.closeBtn:hover { color: var(--text); }
+
+/* responsive two-column body that collapses (P3 fix) */
+.body {
+  padding: var(--space-6); overflow-y: auto; flex: 1; min-height: 0;
+  display: grid; gap: var(--space-6); align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+}
+
+.overview { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
+.sectionHead { margin: 0 0 var(--space-3); font: 700 .875rem var(--font-ui); color: var(--text); }
+
+.card {
+  background: var(--raise2); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: var(--space-4) var(--space-5); display: flex; flex-direction: column; gap: var(--space-3);
+}
+.bioText { margin: 0; font: 500 .875rem var(--font-ui); color: var(--text2); line-height: 1.5; }
+.bioRole { color: var(--volt); font-weight: 600; }
+.bioStrong { color: var(--text); }
+.bioNarrative { margin: 0; font: 500 .8rem var(--font-ui); color: var(--muted); line-height: 1.4; }
+
+.cards { display: grid; grid-template-columns: 1fr; gap: var(--space-3); }
+.statCard {
+  background: var(--raise2); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: var(--space-5);
+}
+.potTier { font: 700 1.125rem var(--font-ui); color: var(--text); }
+.potRows { margin-top: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.potRow { display: flex; gap: var(--space-3); align-items: center; font: 500 .8rem var(--font-ui); }
+.potLabel { color: var(--muted); }
+.potValue { color: var(--text); font-variant-numeric: tabular-nums; font-weight: 600; }
+.potHeadroom { color: var(--gold); font-variant-numeric: tabular-nums; font-weight: 600; }
+.potNote { font: 500 .75rem var(--font-ui); color: var(--muted); }
+
+.growthValue { font: 700 1.125rem var(--font-ui); color: var(--text); }
+.growthGrowing { color: var(--ok); }
+.growthDeclining { color: var(--danger); }
+.growthPlateau { color: var(--muted); }
+.growthCurrent { margin-top: var(--space-2); font: 500 .75rem var(--font-ui); color: var(--muted); }
+
+.ratingsCol { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+
+/* release confirm strip — restrained destructive (clay), never bright red */
+.releaseStrip {
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--danger-soft); background: var(--danger-soft);
+}
+.releaseTitle { margin: 0; font: 700 .85rem var(--font-ui); color: var(--danger2); }
+.releaseBody { margin: var(--space-1) 0 var(--space-4); font: 500 .78rem var(--font-ui); color: var(--text2); line-height: 1.45; }
+.releaseWarn { color: var(--gold); font-weight: 700; }
+.releaseError { margin: 0 0 var(--space-3); font: 500 .78rem var(--font-ui); color: var(--danger); }
+.releaseActions { display: flex; gap: var(--space-3); }
+.confirmBtn {
+  background: var(--danger); border: none; border-radius: var(--radius-sm);
+  color: var(--text); font: 700 .8rem var(--font-ui); padding: var(--space-3) var(--space-5); cursor: pointer;
+}
+.confirmBtn:disabled { cursor: not-allowed; opacity: .7; }
+.keepBtn {
+  background: none; border: 1px solid var(--line2); border-radius: var(--radius-sm);
+  color: var(--text2); font: 500 .8rem var(--font-ui); padding: var(--space-3) var(--space-5); cursor: pointer;
+}
+
+.footer {
+  padding: var(--space-5); border-top: 1px solid var(--line); background: var(--raise);
+  display: flex; justify-content: space-between; align-items: center; gap: var(--space-4);
+}
+.releaseBtn {
+  background: none; border: 1px solid var(--danger-soft); border-radius: var(--radius-sm);
+  color: var(--danger2); font: 700 .8rem var(--font-ui); padding: var(--space-3) var(--space-5); cursor: pointer;
+}
+.releaseBtn:disabled { color: var(--out); cursor: not-allowed; }

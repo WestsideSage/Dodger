@@ -1,0 +1,97 @@
+/* RecapStandings.module.css — token-driven final-table + finances + pyramid
+   movement recap. Floodlight 5-color contract: Volt for the player club + the
+   missed/relegated negatives, --ok for promotions/payouts, --gold for WORLDS.
+   No raw color literals. */
+
+/* Missed-playoffs banner (#18). */
+.missed {
+  margin: 0 var(--space-5) var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  background: linear-gradient(90deg, var(--volt-soft), transparent 70%);
+  border: 1px solid var(--volt-soft);
+  border-left: 3px solid var(--volt);
+  border-radius: var(--radius-sm);
+}
+.missedKicker { margin: 0; color: var(--volt2); font-size: 0.62rem; }
+.missedFinish { margin: var(--space-2) 0 0; color: var(--text); font-size: 0.9rem; font-weight: 600; }
+.missedNote { margin: var(--space-1) 0 0; color: var(--text2); font-size: 0.78rem; }
+
+/* Standings table. */
+.tablePanel { padding: 0; overflow: hidden; }
+
+.tableHead,
+.tableRow {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) 6rem 3.5rem 4rem;
+  gap: 0 var(--space-4);
+  align-items: center;
+}
+
+.tableHead {
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--line2);
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+.colCenter { text-align: center; }
+.colRight { text-align: right; }
+
+.tableRow {
+  padding: var(--space-3) var(--space-5);
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.85rem;
+  color: var(--text2);
+}
+.tableRowPlayer {
+  border-left-color: var(--volt);
+  background: var(--volt-soft);
+  color: var(--volt2);
+}
+
+.rank { color: var(--muted); font-size: 0.75rem; }
+.club { color: var(--text); }
+.clubPlayer { font-weight: 700; color: var(--volt2); }
+.wld { text-align: center; color: var(--text2); font-variant-numeric: tabular-nums; }
+.pts { text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
+.diff { text-align: right; font-variant-numeric: tabular-nums; }
+.diffUp { color: var(--ok); }
+.diffDown { color: var(--volt2); }
+.diffFlat { color: var(--muted); }
+
+/* Finances panel (#71 integer money via formatK). */
+.financesPanel { padding: var(--space-4) var(--space-5); }
+.kicker { margin: 0 0 var(--space-3); }
+.financesRow {
+  display: flex;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  color: var(--text2);
+}
+.income { color: var(--ok); }
+.expense { color: var(--volt2); }
+.neutral { color: var(--text); }
+.treasury { margin-left: auto; }
+.warnNote { margin: var(--space-3) 0 0; font-size: 0.74rem; color: var(--volt2); }
+.rulesNote { margin: var(--space-3) 0 0; font-size: 0.7rem; color: var(--muted); }
+
+/* Pyramid / league-movement panel (#17 worlds_user, #32 honest movement). */
+.pyramidPanel { padding: var(--space-4) var(--space-5); }
+.movementBanner {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.promoted { color: var(--ok); background: var(--ok-soft); border: 1px solid var(--ok-soft); }
+.relegated { color: var(--volt2); background: var(--volt-soft); border: 1px solid var(--volt-soft); }
+
+.movementList { display: grid; gap: var(--space-2); font-size: 0.82rem; color: var(--text2); }
+.movementLabel { color: var(--text); }
+.up { color: var(--ok); }
+.down { color: var(--volt2); }
+.worlds { margin-top: var(--space-2); color: var(--gold2); }
+.worldsUser { color: var(--gold); }

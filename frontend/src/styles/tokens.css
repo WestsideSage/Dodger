@@ -13,6 +13,10 @@
   --ok: #54B98E; --ok-soft: rgba(84,185,142,.13);
   --gold: #F2B23C; --gold2: #FFD27A; --gold-soft: rgba(242,178,60,.14);
   --gold-ink: #1a1407;
+  /* gold ceiling-glow shadows (§3.5 ladder) — full box-shadow values so
+     consuming CSS Modules never carry raw px glow geometry */
+  --gold-glow-1: 0 0 18px -4px #F2B23C;  /* brightest (A+) */
+  --gold-glow-2: 0 0 12px -5px #F2B23C;  /* strong (A) */
   /* Restrained destructive affordance. NOT a 6th loud role: a desaturated,
      darkened clay that reads "destructive" without competing with Volt coral
      (live/primary) or shouting bright red. Used only by genuinely destructive
@@ -37,6 +41,7 @@
   /* shell-specific tokens (Phase 1) */
   --nav-dot: 6px;         /* nav-rail active-dot diameter */
   --border-accent: 3px;   /* heavy accent left-border (ruleset card) */
+  --border-thick: 2px;    /* 2px accent underline / seat marker / bar cap */
   --badge-nudge: -10px;   /* "Faster Start" badge vertical overlap */
   /* court background geometry (SaveMenu landing gradient coords) */
   --court-bg-r1: 340px; --court-bg-r1-in: 337px; --court-bg-r1-out: 342px;

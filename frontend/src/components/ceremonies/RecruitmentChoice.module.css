@@ -1,0 +1,201 @@
+/* RecruitmentChoice.module.css — token-driven Signing Day desk.
+   Floodlight 5-color contract: Volt for selection/latest-signing/win, --gold
+   for promises + lock-class warning, --ok for the contested-round-won banner,
+   warm-graphite neutrals for rival/release banners. No raw color literals. */
+
+.disclosure { margin: var(--space-2) 0 0; font-size: 0.74rem; color: var(--text2); line-height: 1.45; }
+
+/* Outcome / rival / release banners. */
+.banner {
+  margin: var(--space-3) 0 0;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+}
+.bannerSnipe { border: 1px solid var(--volt-soft); border-left: 3px solid var(--volt); background: var(--volt-soft); }
+.bannerRival { border: 1px solid var(--line2); border-left: 3px solid var(--out); background: var(--tint-neutral); }
+.bannerRelease { border: 1px solid var(--line2); border-left: 3px solid var(--muted); background: var(--tint-neutral); }
+.bannerWin { border: 1px solid var(--ok-soft); border-left: 3px solid var(--ok); background: var(--ok-soft); }
+
+.bannerLabel { margin: 0; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.bannerLabelVolt { color: var(--volt2); }
+.bannerLabelMuted { color: var(--text2); }
+.bannerLabelOk { color: var(--ok); }
+.bannerTitle { margin: var(--space-1) 0 0; color: var(--text); font-weight: 700; }
+.bannerBody { margin: var(--space-1) 0 0; font-size: 0.78rem; color: var(--text2); }
+.bannerReveal { margin: var(--space-1) 0 0; font-size: 0.78rem; color: var(--ok); }
+.bannerWarn { margin: var(--space-1) 0 0; font-size: 0.78rem; color: var(--gold2); }
+.rivalSep { color: var(--muted); }
+.rivalName { color: var(--text); }
+
+/* Progress / roster stat tiles. */
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.statTile { border: 1px solid var(--line2); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); background: var(--raise2); }
+.statLabel { margin: 0; font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.statValue { margin: var(--space-1) 0 0; color: var(--text); font-size: 0.95rem; font-weight: 700; }
+
+/* Latest signing card. */
+.latest {
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--volt-soft);
+  border-left: 3px solid var(--volt);
+  background: var(--volt-soft);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+}
+.latestLabel { margin: 0; font-size: 0.68rem; color: var(--volt2); text-transform: uppercase; letter-spacing: 0.08em; }
+.latestName { margin: var(--space-1) 0 0; color: var(--text); font-weight: 700; }
+.latestMeta { margin: var(--space-1) 0 0; font-size: 0.78rem; color: var(--text2); }
+
+/* Prospect list. */
+.prospectList { display: grid; gap: var(--space-3); margin-top: var(--space-3); }
+.prospectRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  background: var(--raise2);
+  border: 1px solid var(--line2);
+  border-left: 3px solid var(--line2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.prospectRowSelected { background: var(--volt-soft); border-left-color: var(--volt2); }
+.prospectMain { min-width: 0; }
+.prospectName { margin: 0; color: var(--text); font-weight: 700; }
+.prospectMeta { margin: var(--space-1) 0 0; font-size: 0.74rem; color: var(--text2); }
+
+.badgeRow { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-2) 0 0; }
+.tagBadge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  border-radius: 3px;
+  padding: 1px 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.tagPromise { background: var(--gold-soft); color: var(--gold); margin-left: var(--space-3); }
+.tagFreeAgent { background: var(--raise); color: var(--text2); margin-left: var(--space-3); }
+
+.motivBadge {
+  font-size: 0.55rem;
+  border-radius: 3px;
+  padding: 1px 5px;
+  background: var(--raise);
+  color: var(--text2);
+  border: 1px solid var(--line2);
+}
+.motivBadgeVeto { background: var(--volt-soft); color: var(--volt2); border-color: var(--volt-soft); }
+.motivBadgeDealbreaker { background: var(--gold-soft); color: var(--gold); border-color: var(--gold-soft); }
+
+.prospectRight { text-align: right; }
+.interest { margin-top: var(--space-1); font-size: 0.62rem; color: var(--text2); }
+.ceilingWrap { margin-top: var(--space-1); }
+.verifiedOvr { font-size: 1.15rem; font-weight: 900; color: var(--volt2); }
+.verifiedLabel { font-size: 0.58rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Release picker (#73). */
+.releasePicker {
+  margin: 0 0 var(--space-3);
+  border: 1px solid var(--volt-soft);
+  border-left: 3px solid var(--volt);
+  background: var(--volt-soft);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+}
+.releaseTitle { margin: 0; font-weight: 700; color: var(--volt2); }
+.releaseSub { margin: var(--space-1) 0 var(--space-3); font-size: 0.78rem; color: var(--text2); }
+.releaseRows { display: grid; gap: var(--space-2); }
+.releaseRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--raise2);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+.releaseRowSelected { background: var(--volt-soft); }
+.releaseName { font-weight: 700; }
+.releaseMeta { color: var(--text2); }
+.releasePromise {
+  margin-left: auto;
+  font-size: 0.6rem;
+  font-weight: 700;
+  background: var(--gold-soft);
+  color: var(--gold);
+  border-radius: 3px;
+  padding: 1px 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.pickerActions { display: flex; gap: var(--space-3); margin-top: var(--space-3); }
+.confirmBtn {
+  background: var(--volt);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--court);
+  font-weight: 700;
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.confirmBtnDisabled { background: var(--raise2); color: var(--muted); cursor: not-allowed; }
+.cancelBtn {
+  background: none;
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+  color: var(--text2);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+/* Confirm-finish prompt. */
+.confirmFinish {
+  margin: 0 0 var(--space-3);
+  border: 1px solid var(--gold-soft);
+  border-left: 3px solid var(--gold);
+  background: var(--gold-soft);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+}
+.confirmFinishTitle { margin: 0; font-weight: 700; color: var(--gold); }
+.confirmFinishBody { margin: var(--space-1) 0 var(--space-3); font-size: 0.8rem; color: var(--text2); }
+.confirmFinishActions { display: flex; gap: var(--space-3); }
+.lockBtn {
+  background: var(--gold);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--gold-ink);
+  font-weight: 700;
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.lockBtnDisabled { cursor: not-allowed; opacity: 0.6; }
+
+/* Action-bar skip note + skip button. */
+.skipReason { margin: var(--space-1) 0 0; font-size: 0.74rem; color: var(--gold2); }
+.skipBtn {
+  background: none;
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.skipBtnDisabled { cursor: not-allowed; opacity: 0.5; }
