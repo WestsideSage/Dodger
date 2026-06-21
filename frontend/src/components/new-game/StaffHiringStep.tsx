@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ActionButton } from '../ui';
+import { ActionButton } from '../../ui';
 import { formatK } from '../../money';
 import { saveApi } from '../../api/client';
 import type { StaffCandidate, StartingStaffResponse } from '../../types';
+import styles from './StaffHiringStep.module.css';
 
 // V22 Phase 3 (owner: "up the stakes and add a budget component"): the
 // create-a-club wizard hires its founding six department heads from a
@@ -10,10 +11,16 @@ import type { StaffCandidate, StartingStaffResponse } from '../../types';
 // cheap journeyman, so filling all six can never soft-lock the step — the
 // stakes are in the PAYROLL you commit, which the treasury pays every season.
 
-const TIER_LABEL: Record<StaffCandidate['tier'], { label: string; color: string }> = {
-  journeyman: { label: 'Journeyman', color: '#94a3b8' },
-  solid: { label: 'Solid', color: '#22d3ee' },
-  premium: { label: 'Premium', color: '#fbbf24' },
+const TIER_LABEL: Record<StaffCandidate['tier'], string> = {
+  journeyman: 'Journeyman',
+  solid: 'Solid',
+  premium: 'Premium',
+};
+
+const TIER_TONE: Record<StaffCandidate['tier'], string> = {
+  journeyman: styles.tierJourneyman,
+  solid: styles.tierSolid,
+  premium: styles.tierPremium,
 };
 
 function titleize(department: string): string {
@@ -78,13 +85,11 @@ export function StaffHiringStep({
   const overBudget = committedPayroll > budget;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
-      <div>
-        <p className="dm-kicker" style={{ marginBottom: '0.25rem' }}>Step 3 of 4</p>
-        <h2 style={{ fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', margin: 0, fontSize: '1.25rem' }}>
-          Hire Your Staff
-        </h2>
-        <p style={{ margin: '0.375rem 0 0', fontSize: '0.8125rem', color: '#64748b' }}>
+    <div className={styles.wrap}>
+      <div className={styles.header}>
+        <p className={styles.kicker}>Step 3 of 4</p>
+        <h2 className={styles.title}>Hire Your Staff</h2>
+        <p className={styles.intro}>
           One head per department. Their salaries become your annual payroll — what you
           don&apos;t commit opens the club treasury.
         </p>
@@ -94,32 +99,22 @@ export function StaffHiringStep({
       {market && (
         <div
           data-testid="staff-budget-bar"
-          style={{
-            background: 'rgba(15,23,42,0.6)',
-            border: `1px solid ${overBudget ? 'rgba(248,113,113,0.5)' : '#1e293b'}`,
-            borderRadius: '6px',
-            padding: '0.625rem 0.75rem',
-            display: 'flex',
-            gap: '1.25rem',
-            flexWrap: 'wrap',
-            fontSize: '0.78rem',
-            color: '#cbd5e1',
-          }}
+          className={`${styles.budgetBar} ${overBudget ? styles.budgetBarOver : ''}`.trim()}
         >
-          <span>Budget <strong style={{ color: '#e2e8f0' }}>{formatK(budget)}</strong></span>
+          <span>Budget <strong className={styles.amountValue}>{formatK(budget)}</strong></span>
           <span>
             Committed payroll{' '}
-            <strong style={{ color: overBudget ? '#f87171' : '#fbbf24' }}>
+            <strong className={overBudget ? styles.amountOver : styles.amountPayroll}>
               {formatK(committedPayroll)}/season
             </strong>
           </span>
           <span>
             Opening treasury{' '}
-            <strong style={{ color: openingTreasury < 0 ? '#f87171' : '#34d399' }}>
+            <strong className={openingTreasury < 0 ? styles.amountTreasuryNeg : styles.amountTreasury}>
               {formatK(openingTreasury)}
             </strong>
           </span>
-          <span style={{ color: '#64748b' }}>
+          <span className={styles.budgetNote}>
             Mid-table season pays ≈ {formatK(market.mid_table_payout_k)} — a heavy payroll
             is a real squeeze if you finish low.
           </span>
@@ -127,31 +122,30 @@ export function StaffHiringStep({
       )}
 
       {loadError && (
-        <div style={{ padding: '0.75rem', background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.3)', borderRadius: '4px', color: '#fb7185', fontSize: '0.875rem' }}>
+        <div className={styles.loadError}>
           {loadError}
         </div>
       )}
       {!market && !loadError && (
-        <p style={{ color: '#64748b', fontSize: '0.875rem' }}>Opening the staff market...</p>
+        <p className={styles.loadingText}>Opening the staff market...</p>
       )}
 
       {market && (
-        <div style={{ maxHeight: '380px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.25rem' }}>
+        <div data-testid="staff-dept-scroll" className={styles.deptScroll}>
           {market.departments.map(dept => {
             const options = market.candidates.filter(c => c.department === dept);
             const effect = options[0]?.effect_summary;
             return (
               <div key={dept}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.3rem' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#e2e8f0' }}>
+                <div className={styles.deptHead}>
+                  <span className={styles.deptName}>
                     {titleize(dept)}
                   </span>
-                  <span style={{ fontSize: '0.66rem', color: '#64748b' }}>{effect}</span>
+                  <span className={styles.deptEffect}>{effect}</span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.4rem' }}>
+                <div className={styles.candidateGrid}>
                   {options.map(candidate => {
                     const selected = choices[dept] === candidate.candidate_id;
-                    const tier = TIER_LABEL[candidate.tier];
                     return (
                       <button
                         key={candidate.candidate_id}
@@ -160,38 +154,28 @@ export function StaffHiringStep({
                         aria-checked={selected}
                         data-testid="staff-candidate-card"
                         onClick={() => setChoices({ ...choices, [dept]: candidate.candidate_id })}
-                        style={{
-                          textAlign: 'left',
-                          padding: '0.5rem 0.6rem',
-                          background: selected ? 'rgba(34,211,238,0.07)' : '#0f172a',
-                          border: selected ? '1px solid rgba(34,211,238,0.45)' : '1px solid #1e293b',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.2rem',
-                        }}
+                        className={`${styles.candidateCard} ${selected ? styles.candidateCardSelected : ''}`.trim()}
                       >
-                        <span style={{ display: 'flex', justifyContent: 'space-between', gap: '0.4rem', alignItems: 'baseline' }}>
-                          <span style={{ fontWeight: 700, fontSize: '0.8rem', color: selected ? '#67e8f9' : '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <span className={styles.candidateTop}>
+                          <span className={`${styles.candidateName} ${selected ? styles.candidateNameSelected : ''}`.trim()}>
                             {candidate.name}
                           </span>
-                          <span style={{ fontSize: '0.62rem', fontWeight: 800, color: tier.color, textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0 }}>
-                            {tier.label}
+                          <span className={`${styles.tierLabel} ${TIER_TONE[candidate.tier]}`}>
+                            {TIER_LABEL[candidate.tier]}
                           </span>
                         </span>
-                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>
+                        <span className={styles.candidateRatings}>
                           {candidate.rating_primary}/{candidate.rating_secondary} ratings ·{' '}
-                          <strong style={{ color: '#e2e8f0' }}>{formatK(candidate.salary_k)}/yr</strong>
+                          <strong className={styles.candidateSalary}>{formatK(candidate.salary_k)}/yr</strong>
                         </span>
                         {/* V22 Phase 4: the wired number this hire's rating
                             drives — the decision is about THIS. */}
                         {candidate.effect_detail && (
-                          <span style={{ fontSize: '0.64rem', color: '#34d399', lineHeight: 1.35 }}>
+                          <span className={styles.candidateEffect}>
                             {candidate.effect_detail}
                           </span>
                         )}
-                        <span style={{ fontSize: '0.64rem', color: '#475569', fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <span className={styles.candidateVoice}>
                           “{candidate.voice}”
                         </span>
                       </button>
@@ -205,10 +189,10 @@ export function StaffHiringStep({
       )}
 
       {market && (
-        <p style={{ margin: 0, fontSize: '0.7rem', color: '#64748b' }}>{market.rules}</p>
+        <p className={styles.rules}>{market.rules}</p>
       )}
 
-      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+      <div className={styles.actionRow}>
         <ActionButton variant="secondary" onClick={onBack}>Back</ActionButton>
         <ActionButton
           variant="primary"

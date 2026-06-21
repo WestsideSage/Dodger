@@ -1,0 +1,159 @@
+/* CoachStep.module.css — Floodlight token-driven Step 2 of the wizard.
+   Selected archetype = Volt (active/selected). Neutral warm-graphite for the
+   rest. No raw color literals: colors come from var(--…) tokens only. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+}
+.kicker {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: .15em;
+  font-size: .625rem;
+  color: var(--muted);
+  margin: 0 0 var(--space-2);
+}
+.title {
+  font-family: var(--font-disp);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text);
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+/* ── Coach name field ─────────────────────────────────────────────────── */
+.fieldLabel {
+  display: block;
+  font-size: .6875rem;
+  font-family: var(--font-disp);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--muted);
+  margin-bottom: var(--space-2);
+}
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--court);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+  padding: .5rem .75rem;
+  color: var(--text);
+  font-size: .875rem;
+  outline: none;
+}
+
+/* ── Archetype fieldset ───────────────────────────────────────────────── */
+.fieldset {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+.legend {
+  padding: 0;
+  font-size: .6875rem;
+  font-family: var(--font-disp);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--muted);
+  margin-bottom: var(--space-3);
+}
+.archetypeList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.archetypeCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: .875rem 1rem;
+  background: var(--court);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .15s, background .15s;
+}
+.archetypeCardSelected {
+  background: var(--volt-soft);
+  border-color: var(--volt);
+}
+.archetypeHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.archetypeName {
+  font-family: var(--font-disp);
+  font-weight: 700;
+  font-size: .875rem;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.archetypeNameSelected {
+  color: var(--volt2);
+}
+.tagline {
+  font-size: .6rem;
+  font-family: var(--font-disp);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text2);
+  background: var(--tint-neutral);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: .1rem .35rem;
+}
+.archetypeDesc {
+  margin: 0;
+  font-size: .8125rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* ── Summary block ─────────────────────────────────────────────────────── */
+.summary {
+  background: var(--volt-soft);
+  border: 1px solid var(--volt-soft);
+  border-radius: var(--radius-sm);
+  padding: .75rem 1rem;
+}
+.summaryText {
+  margin: 0;
+  font-size: .8125rem;
+  color: var(--muted);
+}
+.summaryName {
+  color: var(--volt2);
+  font-weight: 700;
+}
+.summaryArchetype {
+  color: var(--text);
+}
+
+/* ── Actions ───────────────────────────────────────────────────────────── */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.actionRow {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.helperWarning {
+  margin: 0;
+  font-size: .75rem;
+  color: var(--gold2);
+}
