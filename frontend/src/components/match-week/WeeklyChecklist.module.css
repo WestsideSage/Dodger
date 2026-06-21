@@ -1,0 +1,130 @@
+/* WeeklyChecklist — Floodlight 5-color contract.
+   All color treatment uses tokens from tokens.css:
+   - --ok (positive/readiness green)
+   - --out (dim warning, never gold — gold is talent-only)
+   - warm neutrals (--text, --text2, --muted, --line, --line2, --raise, --raise2, --court)
+   Volt is reserved for primary/active CTA (ActionButton handles it).
+   Raw hex/rgba/legacy dm-* classes are not used here. */
+
+.root {
+  overflow: hidden;
+  background: var(--raise);
+  border: 1px solid var(--line);
+  border-top-color: var(--lit);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  flex: 6;
+}
+
+.header {
+  border-bottom: 1px solid var(--line);
+  padding: var(--space-5) var(--space-6);
+}
+
+.eyebrow {
+  margin: 0 0 var(--space-1);
+  font: 600 0.62rem var(--font-mono);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.title {
+  margin: 0;
+  font: 600 1.1rem var(--font-disp);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+/* Section label — replaces dm-kicker */
+.sectionLabel {
+  margin: 0 0 var(--space-2);
+  font: 600 0.62rem var(--font-mono);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Lineup names */
+.lineupNames {
+  font: 400 0.8125rem var(--font-ui);
+  color: var(--text2);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Status row (icon + message) */
+.statusRow {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.statusIcon {
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.statusIcon--ok {
+  color: var(--ok);
+}
+
+.statusIcon--warn {
+  color: var(--out);
+}
+
+.statusText {
+  font: 400 0.8125rem var(--font-ui);
+  line-height: 1.4;
+}
+
+.statusText--ok {
+  color: var(--ok);
+}
+
+.statusText--warn {
+  color: var(--text2);
+}
+
+.statusText--confirmed {
+  color: var(--ok);
+}
+
+/* Warning list */
+.warnList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Divider section (recommendations + action) */
+.divider {
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-4);
+}
+
+/* Staff recommendation text */
+.recText {
+  font: 400 0.8125rem var(--font-ui);
+  color: var(--text2);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Recommendation department kicker override — smaller font size */
+.recLabel {
+  margin: 0 0 var(--space-2);
+  font: 600 0.56rem var(--font-mono);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--muted);
+}

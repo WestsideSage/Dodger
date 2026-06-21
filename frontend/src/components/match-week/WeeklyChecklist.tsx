@@ -1,5 +1,6 @@
 import type { CommandCenterPlan } from '../../types';
-import { ActionButton } from '../ui';
+import { ActionButton } from '../../ui';
+import styles from './WeeklyChecklist.module.css';
 
 export function WeeklyChecklist({
   plan,
@@ -20,88 +21,86 @@ export function WeeklyChecklist({
   const starterNames: string[] = (plan?.lineup?.players ?? []).slice(0, 6).map(player => player.name);
 
   const content = (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+    <div className={styles.body}>
 
-        {/* Lineup status */}
-        <div>
-          <p className="dm-kicker" style={{ marginBottom: '0.375rem' }}>Lineup</p>
-          {starterNames.length > 0 ? (
-            <p style={{ fontSize: '0.8125rem', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
-              {starterNames.join(' · ')}
-            </p>
-          ) : lineupSummary ? (
-            <p style={{ fontSize: '0.8125rem', color: '#94a3b8', margin: 0 }}>{lineupSummary}</p>
-          ) : null}
-        </div>
+      {/* Lineup status */}
+      <div>
+        <p className={styles.sectionLabel}>Lineup</p>
+        {starterNames.length > 0 ? (
+          <p className={styles.lineupNames}>{starterNames.join(' · ')}</p>
+        ) : lineupSummary ? (
+          <p className={styles.lineupNames}>{lineupSummary}</p>
+        ) : null}
+      </div>
 
-        {/* Readiness / warnings */}
-        <div>
-          <p className="dm-kicker" style={{ marginBottom: '0.375rem' }}>Readiness</p>
-          {warnings.length === 0 ? (
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-              <span style={{ color: '#10b981', flexShrink: 0, fontSize: '0.875rem' }}>✓</span>
-              <span style={{ fontSize: '0.8125rem', color: '#10b981' }}>
-                Lineup and tactics are aligned. Squad is ready for match day.
-              </span>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-              {warnings.map((w, i) => (
-                <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-                  <span style={{ color: '#f59e0b', flexShrink: 0, fontSize: '0.875rem' }}>!</span>
-                  <span style={{ fontSize: '0.8125rem', color: '#cbd5e1', lineHeight: 1.4 }}>{w}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Gated on planConfirmed to flip right-rail Plan Status to OK after lock */}
-        <div>
-          <p className="dm-kicker" style={{ marginBottom: '0.375rem' }}>Plan Status</p>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-            <span style={{ color: planConfirmed ? '#10b981' : '#f59e0b', flexShrink: 0, fontSize: '0.875rem' }}>
-              {planConfirmed ? 'OK' : '!'}
-            </span>
-            <span style={{ fontSize: '0.8125rem', color: planConfirmed ? '#10b981' : '#cbd5e1', lineHeight: 1.4 }}>
-              {planConfirmed
-                ? 'Staff plan is confirmed. Risk notes stay visible but do not block match day.'
-                : 'Confirm the staff plan to unlock match simulation.'}
+      {/* Readiness / warnings */}
+      <div>
+        <p className={styles.sectionLabel}>Readiness</p>
+        {warnings.length === 0 ? (
+          <div className={styles.statusRow}>
+            <span className={`${styles.statusIcon} ${styles['statusIcon--ok']}`}>✓</span>
+            <span className={`${styles.statusText} ${styles['statusText--ok']}`}>
+              Lineup and tactics are aligned. Squad is ready for match day.
             </span>
           </div>
-        </div>
-
-        {/* Top staff recommendation */}
-        {recommendations.length > 0 && (
-          <div style={{ borderTop: '1px solid #1e293b', paddingTop: '0.75rem' }}>
-            <p className="dm-kicker" style={{ marginBottom: '0.375rem', fontSize: '0.625rem' }}>
-              {recommendations[0].department} Dept.
-            </p>
-            <p style={{ fontSize: '0.8125rem', color: '#94a3b8', margin: 0, lineHeight: 1.4 }}>
-              {recommendations[0].text}
-            </p>
-          </div>
-        )}
-
-        {showAction && (
-          <div style={{ borderTop: '1px solid #1e293b', paddingTop: '0.75rem' }}>
-            <ActionButton variant={planConfirmed ? 'ghost' : 'accent'} onClick={onAcceptPlan}>
-              {planConfirmed ? 'Plan Confirmed' : 'Confirm Plan'}
-            </ActionButton>
+        ) : (
+          <div className={styles.warnList}>
+            {warnings.map((w, i) => (
+              <div key={i} className={styles.statusRow}>
+                <span className={`${styles.statusIcon} ${styles['statusIcon--warn']}`}>!</span>
+                <span className={`${styles.statusText} ${styles['statusText--warn']}`}>{w}</span>
+              </div>
+            ))}
           </div>
         )}
       </div>
+
+      {/* Gated on planConfirmed to flip right-rail Plan Status to OK after lock */}
+      <div>
+        <p className={styles.sectionLabel}>Plan Status</p>
+        <div className={styles.statusRow}>
+          <span
+            className={`${styles.statusIcon} ${planConfirmed ? styles['statusIcon--ok'] : styles['statusIcon--warn']}`}
+          >
+            {planConfirmed ? 'OK' : '!'}
+          </span>
+          <span
+            className={`${styles.statusText} ${planConfirmed ? styles['statusText--confirmed'] : styles['statusText--warn']}`}
+          >
+            {planConfirmed
+              ? 'Staff plan is confirmed. Risk notes stay visible but do not block match day.'
+              : 'Confirm the staff plan to unlock match simulation.'}
+          </span>
+        </div>
+      </div>
+
+      {/* Top staff recommendation */}
+      {recommendations.length > 0 && (
+        <div className={styles.divider}>
+          <p className={styles.recLabel}>{recommendations[0].department} Dept.</p>
+          <p className={styles.recText}>{recommendations[0].text}</p>
+        </div>
+      )}
+
+      {showAction && (
+        <div className={styles.divider}>
+          <ActionButton variant={planConfirmed ? 'ghost' : 'primary'} onClick={onAcceptPlan}>
+            {planConfirmed ? 'Plan Confirmed' : 'Confirm Plan'}
+          </ActionButton>
+        </div>
+      )}
+    </div>
   );
 
   if (bare) return content;
 
   return (
-    <div className="dm-panel" style={{ flex: 6 }}>
-      <div className="dm-panel-header">
-        <p className="dm-kicker">Pre-Game</p>
-        <h3 className="dm-panel-title">Weekly Checklist</h3>
+    <div className={styles.root}>
+      <div className={styles.header}>
+        <p className={styles.eyebrow}>Pre-Game</p>
+        <h3 className={styles.title}>Weekly Checklist</h3>
       </div>
-      <div style={{ padding: '1rem' }}>{content}</div>
+      {content}
     </div>
   );
 }
