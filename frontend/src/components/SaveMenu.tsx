@@ -6,7 +6,7 @@ import { CoachStep } from './new-game/CoachStep';
 import { StaffHiringStep } from './new-game/StaffHiringStep';
 import { StartingRecruitmentStep } from './new-game/StartingRecruitmentStep';
 import { saveApi } from '../api/client';
-import { ActionButton, RadioGroup } from './ui';
+import { ActionButton, RadioGroup } from '../ui';
 import styles from './SaveMenu.module.css';
 
 const DEBUG_PREFIXES = ['qa-playthrough-', 'debug-', 'playtest-', 'ux-teardown-', 'test_', 'e2e-', 'e2e_', 'codex', 'command-aftermath'];
