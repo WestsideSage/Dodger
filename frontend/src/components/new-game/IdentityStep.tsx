@@ -1,4 +1,4 @@
-import { ActionButton } from '../ui';
+import { ActionButton } from '../../ui';
 
 const COLOR_PRESETS = [
   { label: 'Ocean', primary: '#22d3ee', secondary: '#0f172a' },

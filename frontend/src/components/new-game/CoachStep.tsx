@@ -1,4 +1,4 @@
-import { ActionButton } from '../ui';
+import { ActionButton } from '../../ui';
 
 const ARCHETYPES: Record<string, { tagline: string; description: string }> = {
   'Tactical Mastermind': {

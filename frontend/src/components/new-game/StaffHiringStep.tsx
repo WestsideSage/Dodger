@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ActionButton } from '../ui';
+import { ActionButton } from '../../ui';
 import { formatK } from '../../money';
 import { saveApi } from '../../api/client';
 import type { StaffCandidate, StartingStaffResponse } from '../../types';

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ActionButton } from '../ui';
+import { ActionButton } from '../../ui';
 import { TermTip, CeilingGrade } from '../../legibility';
 import type { TermId } from '../../legibility';
 import { formatOverall, formatPlayerName, formatRole } from '../roster/playerDisplay';
