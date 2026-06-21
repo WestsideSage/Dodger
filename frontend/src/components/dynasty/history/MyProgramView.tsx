@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApiResource } from '../../../hooks/useApiResource';
-import { StatusMessage } from '../../ui';
+import { StatusMessage } from '../../../ui';
 import { EmptyState, ProofChip, TermTip } from '../../../legibility';
 import { AlumniLineage } from './AlumniLineage';
 import { BannerShelf } from './BannerShelf';

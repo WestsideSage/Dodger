@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CommandCenterPlan, CommandCenterResponse, DynastyOfficeResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
-import { StatusMessage, Dialog } from './ui';
+import { Dialog } from './ui';
+import { StatusMessage } from '../ui';
 import { CredibilityStrip } from './dynasty/CredibilityStrip';
 import { ProspectCard } from './dynasty/ProspectCard';
 import { HistorySubTab } from './dynasty/HistorySubTab';

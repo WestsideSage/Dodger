@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApiResource } from '../../../hooks/useApiResource';
-import { StatusMessage } from '../../ui';
+import { StatusMessage } from '../../../ui';
 import { ProgramModal } from './ProgramModal';
 import { formatRecordLabel, formatSeasonLabel, humanizeHistoryToken } from './formatters';
 import { EmptyState } from '../../../legibility/EmptyState';
