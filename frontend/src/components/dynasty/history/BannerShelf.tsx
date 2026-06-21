@@ -1,5 +1,6 @@
 import { formatSeasonLabel } from './formatters';
 import { EmptyState } from '../../../legibility/EmptyState';
+import styles from './BannerShelf.module.css';
 
 interface BannerEntry {
   type: string;
@@ -19,19 +20,19 @@ export function BannerShelf({
   }
 
   return (
-    <div className="do-hist-banners">
+    <div className={styles.banners}>
       {banners.map((banner, index) => (
-        <div key={`${banner.type}-${banner.season}-${index}`} className={`do-hist-banner ${banner.type === 'championship' ? 'is-title' : 'is-award'}`}>
-          <span className="do-hist-banner-type">{banner.type === 'championship' ? 'Title' : 'Award'}</span>
-          <strong className="do-hist-banner-label">{banner.label}</strong>
-          <span className="do-hist-banner-season">{formatSeasonLabel(banner.season)}</span>
+        <div key={`${banner.type}-${banner.season}-${index}`} className={`${styles.banner} ${banner.type === 'championship' ? styles.bannerTitle : ''}`}>
+          <span className={styles.bannerType}>{banner.type === 'championship' ? 'Title' : 'Award'}</span>
+          <strong className={styles.bannerLabel}>{banner.label}</strong>
+          <span className={styles.bannerSeason}>{formatSeasonLabel(banner.season)}</span>
         </div>
       ))}
       {showNextPlaceholder ? (
-        <div className="do-hist-banner do-hist-banner-empty">
-          <span className="do-hist-banner-type">Open Slot</span>
-          <strong className="do-hist-banner-label">Next banner</strong>
-          <span className="do-hist-banner-season">Still to be won</span>
+        <div className={`${styles.banner} ${styles.bannerEmpty}`}>
+          <span className={styles.bannerType}>Open Slot</span>
+          <strong className={styles.bannerLabel}>Next banner</strong>
+          <span className={styles.bannerSeason}>Still to be won</span>
         </div>
       ) : null}
     </div>

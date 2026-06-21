@@ -1,0 +1,235 @@
+/* MyProgramView — Record Room (cream/ink/Fraunces) §3.8. */
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  color: var(--legacy-ink);
+}
+
+/* glance strip — responsive collapse (was a hard 5-col grid) */
+.glance {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-4);
+}
+.cell {
+  background: var(--legacy-paper);
+  border: 1px solid var(--legacy-ink);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+.cellLbl {
+  display: block;
+  font: 700 0.7rem var(--font-ui);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--legacy-brick);
+}
+.cellVal {
+  display: block;
+  margin-top: var(--space-1);
+  font: 700 1rem var(--font-serif);
+  color: var(--legacy-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cellTrend {
+  display: block;
+  margin-top: var(--space-1);
+  font: 400 0.72rem var(--font-ui);
+  color: var(--legacy-ink);
+  opacity: 0.8;
+}
+.cellTrendOk {
+  opacity: 1;
+  color: var(--legacy-brick);
+}
+
+/* filter bar */
+.filters {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.filterRow {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.filter {
+  appearance: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  font: 700 0.74rem var(--font-ui);
+  color: var(--legacy-ink);
+  background: transparent;
+  border: 1px solid var(--legacy-ink);
+}
+.filterActive {
+  color: var(--legacy-paper);
+  background: var(--legacy-ink);
+}
+.filterCount {
+  font: 700 0.68rem var(--font-ui);
+  opacity: 0.7;
+}
+.meta {
+  font: 400 0.74rem var(--font-ui);
+  color: var(--legacy-ink);
+  opacity: 0.8;
+}
+
+/* timeline */
+.timeline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.entry {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+.wk {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 48px;
+}
+.wkNum {
+  font: 700 0.74rem var(--font-mono);
+  color: var(--legacy-brick);
+}
+.entryBody {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-left: 1px solid var(--legacy-ink);
+  padding-left: var(--space-4);
+}
+.entryHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.kickerInline {
+  font: 600 0.7rem var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--legacy-ink);
+  opacity: 0.75;
+}
+.tag {
+  font: 400 0.7rem var(--font-ui);
+  color: var(--legacy-ink);
+  opacity: 0.7;
+}
+.entryTitle {
+  margin: var(--space-2) 0 0;
+  font: 600 0.98rem var(--font-serif);
+  color: var(--legacy-ink);
+}
+.entryCopy {
+  margin: var(--space-2) 0 0;
+  font: 400 0.8rem var(--font-ui);
+  line-height: 1.45;
+  color: var(--legacy-ink);
+  opacity: 0.85;
+}
+
+/* badge (timeline type chip) */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font: 700 0.66rem var(--font-ui);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--legacy-paper);
+  background: var(--legacy-ink);
+  white-space: nowrap;
+}
+.badgeBrick {
+  background: var(--legacy-brick);
+}
+
+/* program arc grid — responsive collapse */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-5);
+}
+.card {
+  background: var(--legacy-paper);
+  border: 1px solid var(--legacy-ink);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+}
+.cardHead {
+  margin-bottom: var(--space-4);
+}
+.cardKicker {
+  display: block;
+  font: 600 0.72rem var(--font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--legacy-brick);
+}
+.cardTitle {
+  margin: var(--space-2) 0 0;
+  font: 600 1rem var(--font-serif);
+  color: var(--legacy-ink);
+}
+.shelfTabs {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* hero cards */
+.heroGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-4);
+}
+.heroCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--legacy-ink);
+  background: var(--legacy-paper);
+}
+.heroCardCurrent {
+  border-color: var(--legacy-brick);
+}
+.heroLabel {
+  font: 700 0.68rem var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--legacy-brick);
+}
+.heroSeason {
+  font: 400 0.76rem var(--font-ui);
+  color: var(--legacy-ink);
+  opacity: 0.8;
+}
+.heroRecord {
+  font: 700 1.3rem var(--font-serif);
+  color: var(--legacy-ink);
+}
+.heroMeta {
+  font: 400 0.74rem var(--font-ui);
+  color: var(--legacy-ink);
+  opacity: 0.8;
+}

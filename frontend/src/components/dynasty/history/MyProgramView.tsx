@@ -5,6 +5,7 @@ import { EmptyState, ProofChip, TermTip } from '../../../legibility';
 import { AlumniLineage } from './AlumniLineage';
 import { BannerShelf } from './BannerShelf';
 import { formatSeasonLabel, formatTimelineLabel, humanizeHistoryToken } from './formatters';
+import styles from './MyProgramView.module.css';
 
 interface HeroSeason {
   season_label: string;
@@ -101,18 +102,9 @@ const FILTERS: Array<{ id: ProgramFilter; label: string }> = [
 ];
 
 function badgeToneClass(tone: DisplayEntry['tone']) {
-  switch (tone) {
-    case 'amber':
-      return 'dm-badge-amber';
-    case 'emerald':
-      return 'dm-badge-emerald';
-    case 'rose':
-      return 'dm-badge-rose';
-    case 'violet':
-      return 'dm-badge-violet';
-    default:
-      return 'dm-badge-cyan';
-  }
+  // Record Room: titles (amber) get the brick accent; every other type uses the
+  // ink badge. The original per-tone palette is retired with the legacy classes.
+  return tone === 'amber' ? `${styles.badge} ${styles.badgeBrick}` : styles.badge;
 }
 
 function seasonTick(season: string, week: number | null) {
@@ -219,13 +211,13 @@ function fallbackEntry(programArchetype: string | undefined): DisplayEntry {
 
 function HeroCard({ data, highlight, label }: { data: HeroSeason; highlight?: boolean; label: string }) {
   return (
-    <div className={`do-hist-hero-card ${highlight ? 'is-current' : ''}`}>
-      <span className="do-hist-hero-label">{label}</span>
-      <span className="do-hist-hero-season">{formatSeasonLabel(data.season_label)}</span>
-      <span className="do-hist-hero-record">
+    <div className={`${styles.heroCard} ${highlight ? styles.heroCardCurrent : ''}`}>
+      <span className={styles.heroLabel}>{label}</span>
+      <span className={styles.heroSeason}>{formatSeasonLabel(data.season_label)}</span>
+      <span className={styles.heroRecord}>
         {data.wins}-{data.losses}-{data.draws}
       </span>
-      <div className="do-hist-hero-meta">
+      <div className={styles.heroMeta}>
         {data.championships ? (
           <span>{data.championships} title{data.championships === 1 ? '' : 's'}</span>
         ) : null}
@@ -263,34 +255,34 @@ export function MyProgramView({ clubId, isSelf = true }: { clubId: string; isSel
   const identityLabel = humanizeHistoryToken(latestTrajectory?.archetype ?? data.program_archetype ?? 'Balanced Rebuild');
 
   return (
-    <div className="do-tab-content">
+    <div className={styles.content}>
       {/* Glance strip — de-jargoned copy */}
-      <div className="do-hist-glance">
-        <div className="cell">
-          <span className="lbl">Season Range</span>
-          <span className="val">
+      <div className={styles.glance}>
+        <div className={styles.cell}>
+          <span className={styles.cellLbl}>Season Range</span>
+          <span className={styles.cellVal}>
             {currentHero ? formatSeasonLabel(currentHero.season_label) : 'Season 1'}
           </span>
-          <span className="trend">
+          <span className={styles.cellTrend}>
             {entries.length === 1 && entries[0].id === 'history-baseline'
               ? 'Archive is live — no milestones logged yet'
               : `${entries.length} milestone${entries.length === 1 ? '' : 's'} logged`}
           </span>
         </div>
-        <div className="cell">
+        <div className={styles.cell}>
           {/* hero.current is the LATEST season's snapshot — rendering it under
               an "Across completed seasons" label showed a week-2 "1-0-0" as
               the program's all-time record. Use the real career totals; if an
               older payload lacks them, label the snapshot as what it is. */}
-          <span className="lbl">{allTime ? 'All-Time Record' : 'Latest Season Record'}</span>
-          <span className="val">
+          <span className={styles.cellLbl}>{allTime ? 'All-Time Record' : 'Latest Season Record'}</span>
+          <span className={styles.cellVal}>
             {allTime
               ? `${allTime.wins}-${allTime.losses}-${allTime.draws}`
               : currentHero
                 ? `${currentHero.wins}-${currentHero.losses}-${currentHero.draws}`
                 : '—'}
           </span>
-          <span className="trend">
+          <span className={styles.cellTrend}>
             {allTime
               ? `Across ${allTime.seasons} completed season${allTime.seasons === 1 ? '' : 's'}`
               : currentHero
@@ -298,30 +290,30 @@ export function MyProgramView({ clubId, isSelf = true }: { clubId: string; isSel
                 : 'First completed season will appear here'}
           </span>
         </div>
-        <div className="cell">
-          <span className="lbl">
+        <div className={styles.cell}>
+          <span className={styles.cellLbl}>
             <TermTip term="identity.intent">Program Identity</TermTip>
           </span>
-          <span className="val">{identityLabel}</span>
-          <span className="trend">
+          <span className={styles.cellVal}>{identityLabel}</span>
+          <span className={styles.cellTrend}>
             {latestTrajectory
               ? `Lean: ${humanizeHistoryToken(latestTrajectory.dominant_intent)} — shaped by your season tactics`
               : 'Set at club creation · evolves from your season-by-season choices'}
           </span>
         </div>
-        <div className="cell">
-          <span className="lbl">Championship Banners</span>
-          <span className="val">{championshipCount}</span>
-          <span className={`trend ${championshipCount > 0 ? 'ok' : ''}`}>
+        <div className={styles.cell}>
+          <span className={styles.cellLbl}>Championship Banners</span>
+          <span className={styles.cellVal}>{championshipCount}</span>
+          <span className={`${styles.cellTrend} ${championshipCount > 0 ? styles.cellTrendOk : ''}`}>
             {championshipCount > 0
               ? `${championshipCount} title${championshipCount === 1 ? '' : 's'} in the archive`
               : 'First banner still ahead'}
           </span>
         </div>
-        <div className="cell">
-          <span className="lbl">Alumni</span>
-          <span className="val">{data.alumni.length}</span>
-          <span className="trend">
+        <div className={styles.cell}>
+          <span className={styles.cellLbl}>Alumni</span>
+          <span className={styles.cellVal}>{data.alumni.length}</span>
+          <span className={styles.cellTrend}>
             {data.alumni.length > 0
               ? `${data.alumni.length} player${data.alumni.length === 1 ? '' : 's'} who shaped this program`
               : isSelf ? 'Your first alumni season is ahead' : 'No departed players yet'}
@@ -330,8 +322,8 @@ export function MyProgramView({ clubId, isSelf = true }: { clubId: string; isSel
       </div>
 
       {/* Timeline filter + list */}
-      <div className="do-hist-filters">
-        <div className="filters">
+      <div className={styles.filters}>
+        <div className={styles.filterRow}>
           {FILTERS.map((item) => {
             const count =
               item.id === 'all'
@@ -340,38 +332,36 @@ export function MyProgramView({ clubId, isSelf = true }: { clubId: string; isSel
             return (
               <button
                 key={item.id}
-                className={`do-board-filter ${filter === item.id ? 'is-active' : ''}`}
+                className={`${styles.filter} ${filter === item.id ? styles.filterActive : ''}`}
                 onClick={() => setFilter(item.id)}
                 type="button"
               >
                 {item.label}
-                <span className="n">{count}</span>
+                <span className={styles.filterCount}>{count}</span>
               </button>
             );
           })}
         </div>
-        <span className="do-board-meta">
+        <span className={styles.meta}>
           {isSelf ? 'Program archive' : `${clubId.toUpperCase()} archive`}
         </span>
       </div>
 
-      <div className="do-hist-timeline">
-        <div className="rail" />
+      <div className={styles.timeline}>
         {visibleEntries.length > 0 ? (
           visibleEntries.map((entry) => (
-            <article key={entry.id} className={`do-hist-entry tone-${entry.tone}`}>
-              <div className="do-hist-wk">
-                <span className="wk-num">{entry.tick}</span>
-                <span className="dot" />
+            <article key={entry.id} className={styles.entry}>
+              <div className={styles.wk}>
+                <span className={styles.wkNum}>{entry.tick}</span>
               </div>
-              <div className="do-hist-body">
-                <header>
-                  <span className={`dm-badge ${badgeToneClass(entry.tone)}`}>{entry.typeLabel}</span>
-                  <span className="kicker">{entry.kicker}</span>
-                  <span className="tag">{entry.tag}</span>
+              <div className={styles.entryBody}>
+                <header className={styles.entryHead}>
+                  <span className={badgeToneClass(entry.tone)}>{entry.typeLabel}</span>
+                  <span className={styles.kickerInline}>{entry.kicker}</span>
+                  <span className={styles.tag}>{entry.tag}</span>
                 </header>
-                <h4 className="title">{entry.title}</h4>
-                <p className="copy">{entry.copy}</p>
+                <h4 className={styles.entryTitle}>{entry.title}</h4>
+                <p className={styles.entryCopy}>{entry.copy}</p>
                 {entry.proofStat && entry.holderName ? (
                   <ProofChip
                     label={entry.holderName}
@@ -387,33 +377,32 @@ export function MyProgramView({ clubId, isSelf = true }: { clubId: string; isSel
             </article>
           ))
         ) : (
-          <article className="do-hist-entry tone-cyan">
-            <div className="do-hist-wk">
-              <span className="wk-num">NONE</span>
-              <span className="dot" />
+          <article className={styles.entry}>
+            <div className={styles.wk}>
+              <span className={styles.wkNum}>NONE</span>
             </div>
-            <div className="do-hist-body">
-              <header>
-                <span className="dm-badge dm-badge-cyan">Filter</span>
-                <span className="kicker">No matching entries</span>
-                <span className="tag">Clear filter</span>
+            <div className={styles.entryBody}>
+              <header className={styles.entryHead}>
+                <span className={styles.badge}>Filter</span>
+                <span className={styles.kickerInline}>No matching entries</span>
+                <span className={styles.tag}>Clear filter</span>
               </header>
-              <h4 className="title">No archive items in this lane</h4>
-              <p className="copy">Switch back to All to see the full program archive.</p>
+              <h4 className={styles.entryTitle}>No archive items in this lane</h4>
+              <p className={styles.entryCopy}>Switch back to All to see the full program archive.</p>
             </div>
           </article>
         )}
       </div>
 
       {/* Program Arc — kept, Avg OVR removed from HeroCard */}
-      <div className="do-hist-grid">
-        <section className="dm-panel do-hist-card">
-          <div className="do-hist-card-head">
-            <span className="dm-kicker">Program Arc</span>
-            <h3>How it started vs today</h3>
+      <div className={styles.grid}>
+        <section className={styles.card}>
+          <div className={styles.cardHead}>
+            <span className={styles.cardKicker}>Program Arc</span>
+            <h3 className={styles.cardTitle}>How it started vs today</h3>
           </div>
           {firstHero || currentHero ? (
-            <div className="do-hist-hero-grid">
+            <div className={styles.heroGrid}>
               {firstHero ? <HeroCard data={firstHero} label="Opening season" /> : null}
               {currentHero ? <HeroCard data={currentHero} label="Current snapshot" highlight /> : null}
             </div>
@@ -431,22 +420,22 @@ export function MyProgramView({ clubId, isSelf = true }: { clubId: string; isSel
 
         {/* Banner Shelf + Alumni Lineage folded into tabs (interim).
             The future archive-tree spec will re-home these into the dynamic tree. */}
-        <section className="dm-panel do-hist-card">
-          <div className="do-hist-card-head">
-            <span className="dm-kicker">
+        <section className={styles.card}>
+          <div className={styles.cardHead}>
+            <span className={styles.cardKicker}>
               {shelfTab === 'banners' ? 'Banner Shelf' : 'Alumni Lineage'}
             </span>
-            <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <div className={styles.shelfTabs}>
               <button
                 type="button"
-                className={`do-board-filter${shelfTab === 'banners' ? ' is-active' : ''}`}
+                className={`${styles.filter}${shelfTab === 'banners' ? ` ${styles.filterActive}` : ''}`}
                 onClick={() => setShelfTab('banners')}
               >
                 Banners
               </button>
               <button
                 type="button"
-                className={`do-board-filter${shelfTab === 'alumni' ? ' is-active' : ''}`}
+                className={`${styles.filter}${shelfTab === 'alumni' ? ` ${styles.filterActive}` : ''}`}
                 onClick={() => setShelfTab('alumni')}
               >
                 Alumni

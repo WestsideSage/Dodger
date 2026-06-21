@@ -1,0 +1,37 @@
+/* BannerShelf — Record Room (cream/ink) banner grid. */
+.banners {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-4);
+}
+.banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--legacy-ink);
+  background: var(--legacy-paper);
+}
+.bannerTitle {
+  border-color: var(--legacy-brick);
+}
+.bannerEmpty {
+  border-style: dashed;
+  opacity: 0.75;
+}
+.bannerType {
+  font: 700 0.68rem var(--font-ui);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--legacy-brick);
+}
+.bannerLabel {
+  font: 700 0.92rem var(--font-serif);
+  color: var(--legacy-ink);
+}
+.bannerSeason {
+  font: 400 0.74rem var(--font-ui);
+  color: var(--legacy-ink);
+  opacity: 0.8;
+}
