@@ -1,3 +1,5 @@
+import styles from './aftermathCards.module.css';
+
 function advanceLabel(result?: string): string {
   if (result === 'Win') return 'BANK THE RESULT →';
   return 'NEXT WEEK →';
@@ -19,20 +21,16 @@ export function AftermathActionBar({
   const hasReplay = Boolean(matchId && onViewReplay);
 
   return (
-    <div
-      className="command-action-bar"
-      data-testid="after-action-bar"
-      style={{ position: 'sticky', bottom: 0, background: '#0a0f1c', zIndex: 10, borderTop: '1px solid #1e293b' }}
-    >
+    <div className={`command-action-bar ${styles.actionBar}`} data-testid="after-action-bar">
       {hasReplay && (
-        <button onClick={onViewReplay} className="command-action-bar-secondary">
+        <button onClick={onViewReplay} className={`command-action-bar-secondary ${styles.actionSecondary}`}>
           VIEW FULL REPLAY
         </button>
       )}
       <button
         onClick={onAdvance}
         disabled={isAdvancing}
-        className={`command-action-bar-primary${isAdvancing ? ' is-advancing' : ''}`}
+        className={`command-action-bar-primary ${styles.actionPrimary}`}
       >
         {isAdvancing ? 'ADVANCING...' : advanceLabel(result)}
       </button>

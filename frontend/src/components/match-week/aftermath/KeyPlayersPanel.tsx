@@ -1,41 +1,25 @@
-import type React from 'react';
 import type { TopPerformer } from '../../../types';
+import styles from './aftermathCards.module.css';
 
 function StatChips({ player }: { player: TopPerformer }) {
-  const chipStyle = (bg: string, color: string): React.CSSProperties => ({
-    fontFamily: 'JetBrains Mono, monospace',
-    fontSize: '0.55rem',
-    background: bg,
-    color,
-    borderRadius: '3px',
-    padding: '1px 4px',
-  });
-
   return (
-    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '2px', alignItems: 'center' }}>
+    <div className={styles.statChips}>
       {player.eliminations_by_throw > 0 && (
-        <span title="Eliminations by throw" style={chipStyle('rgba(249,115,22,0.15)', '#f97316')}>
+        <span title="Eliminations by throw" className={styles.statChip}>
           {player.eliminations_by_throw}K
         </span>
       )}
       {player.catches_made > 0 && (
-        <span title="Catches made" style={chipStyle('rgba(34,211,238,0.12)', '#22d3ee')}>
+        <span title="Catches made" className={styles.statChip}>
           {player.catches_made}C
         </span>
       )}
       {player.dodges_successful > 0 && (
-        <span title="Successful dodges" style={chipStyle('rgba(163,230,53,0.12)', '#a3e635')}>
+        <span title="Successful dodges" className={styles.statChip}>
           {player.dodges_successful}D
         </span>
       )}
-      <span
-        title="Impact — match-stat score, weighted up for players on the winning side"
-        style={{
-          fontFamily: 'JetBrains Mono, monospace',
-          fontSize: '0.55rem',
-          color: '#475569',
-        }}
-      >
+      <span title="Impact — match-stat score, weighted up for players on the winning side" className={styles.statImpact}>
         Imp {Math.round(player.score)}
       </span>
     </div>
@@ -50,75 +34,47 @@ export function KeyPlayersPanel({
   playerClubName?: string;
 }) {
   const top3 = performers.slice(0, 3);
-  const top3HasYours = playerClubName
-    ? top3.some(p => p.club_name === playerClubName)
-    : false;
+  const top3HasYours = playerClubName ? top3.some(p => p.club_name === playerClubName) : false;
 
   // Best user-club performer not already in top 3
-  const yourStandout = (!top3HasYours && playerClubName)
-    ? performers.find(p => p.club_name === playerClubName)
-    : null;
+  const yourStandout = !top3HasYours && playerClubName ? performers.find(p => p.club_name === playerClubName) : null;
 
   if (performers.length === 0) {
     return (
-      <section className="dm-panel command-key-players" data-testid="key-players-panel">
-        <div className="dm-panel-header">
-          <p className="dm-kicker">Key Performers</p>
+      <section className={styles.card} data-testid="key-players-panel">
+        <div className={styles.keyHeader}>
+          <p className={styles.kicker}>Key Performers</p>
         </div>
-        <p className="command-fallout-empty">No standout performances recorded.</p>
+        <p className={styles.empty}>No standout performances recorded.</p>
       </section>
     );
   }
 
   return (
-    <section className="dm-panel command-key-players" data-testid="key-players-panel">
-      <div className="dm-panel-header">
-        <p className="dm-kicker">Key Performers</p>
+    <section className={styles.card} data-testid="key-players-panel">
+      <div className={styles.keyHeader}>
+        <p className={styles.kicker}>Key Performers</p>
         {/* First-hour legend: K/C/D/Imp are never expanded anywhere else, and
             tooltips alone are not discoverable. One quiet line decodes them. */}
-        <p style={{ margin: 0, fontSize: '0.55rem', color: '#475569', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-          K eliminations · C catches · D dodges · Imp impact
-        </p>
+        <p className={styles.keyLegend}>K eliminations · C catches · D dodges · Imp impact</p>
       </div>
-      <div className="command-key-player-list">
+      <div className={styles.keyList}>
         {top3.map((player, index) => {
           const isYours = Boolean(playerClubName && player.club_name === playerClubName);
-          const badgeColor = isYours ? '#f97316' : '#334155';
-
           return (
-            <article
-              key={player.player_id}
-              className="command-key-player"
-              style={{ paddingTop: '2px', paddingBottom: '2px' }}
-            >
+            <article key={player.player_id} className={styles.keyPlayer}>
               <span
-                className="command-rank-badge"
-                style={{ background: badgeColor }}
+                className={`${styles.rankBadge}${isYours ? ` ${styles.rankBadgeYours}` : ''}`}
                 aria-label={`Rank ${index + 1}`}
               >
                 {index + 1}
               </span>
               <div>
-                <strong style={{ fontSize: '0.82rem', color: '#f1f5f9' }}>{player.player_name}</strong>
+                <strong className={styles.playerName}>{player.player_name}</strong>
                 {isYours ? (
-                  <span
-                    style={{
-                      marginLeft: '0.4rem',
-                      fontSize: '0.6rem',
-                      fontWeight: 700,
-                      background: '#f97316',
-                      color: '#000',
-                      borderRadius: '3px',
-                      padding: '1px 5px',
-                      letterSpacing: '0.5px',
-                    }}
-                  >
-                    Your Club
-                  </span>
+                  <span className={styles.yourBadge}>Your Club</span>
                 ) : player.club_name ? (
-                  <span style={{ fontSize: '0.7rem', color: '#64748b', marginLeft: '0.35rem' }}>
-                    {player.club_name}
-                  </span>
+                  <span className={styles.clubName}>{player.club_name}</span>
                 ) : null}
                 <StatChips player={player} />
               </div>
@@ -128,52 +84,15 @@ export function KeyPlayersPanel({
       </div>
 
       {yourStandout && (
-        <div
-          data-testid="your-standout"
-          style={{
-            marginTop: '0.75rem',
-            paddingTop: '0.75rem',
-            borderTop: '1px solid #1e293b',
-          }}
-        >
-          <p
-            style={{
-              fontSize: '0.6rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.1em',
-              color: '#64748b',
-              margin: '0 0 0.4rem',
-            }}
-          >
-            Your Club&apos;s Best
-          </p>
-          <article
-            className="command-key-player"
-            style={{ paddingTop: '2px', paddingBottom: '2px' }}
-          >
-            <span
-              className="command-rank-badge"
-              style={{ background: '#f97316' }}
-              aria-label="Your standout"
-            >
+        <div data-testid="your-standout" className={styles.yourStandout}>
+          <p className={styles.kicker}>Your Club&apos;s Best</p>
+          <article className={styles.keyPlayer}>
+            <span className={`${styles.rankBadge} ${styles.rankBadgeYours}`} aria-label="Your standout">
               ★
             </span>
             <div>
-              <strong style={{ fontSize: '0.82rem', color: '#f1f5f9' }}>{yourStandout.player_name}</strong>
-              <span
-                style={{
-                  marginLeft: '0.4rem',
-                  fontSize: '0.6rem',
-                  fontWeight: 700,
-                  background: '#f97316',
-                  color: '#000',
-                  borderRadius: '3px',
-                  padding: '1px 5px',
-                  letterSpacing: '0.5px',
-                }}
-              >
-                Your Club
-              </span>
+              <strong className={styles.playerName}>{yourStandout.player_name}</strong>
+              <span className={styles.yourBadge}>Your Club</span>
               <StatChips player={yourStandout} />
             </div>
           </article>

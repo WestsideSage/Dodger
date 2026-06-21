@@ -1,4 +1,5 @@
 import type { CommandDashboardLane } from '../../../types';
+import styles from './aftermathCards.module.css';
 
 function buildStatLine(lanes: CommandDashboardLane[], exclude: string): string | null {
   const normalized = exclude.trim();
@@ -23,42 +24,14 @@ export function TacticalSummaryCard({
   if (!turningPoint) return null;
 
   const statLine = buildStatLine(evidenceLanes, turningPoint);
-  const evidenceLabel = evidenceLanes.length > 0
-    ? `Based on ${evidenceLanes[0].title}`
-    : null;
+  const evidenceLabel = evidenceLanes.length > 0 ? `Based on ${evidenceLanes[0].title}` : null;
 
   return (
-    <section
-      className="dm-panel command-tactical-card"
-      data-testid="tactical-summary"
-    >
-      <p className="dm-kicker" style={{ letterSpacing: '2px', marginBottom: '6px' }}>
-        TACTICAL READ
-      </p>
-      <p style={{ fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.55, margin: 0 }}>
-        {turningPoint}
-      </p>
-      {statLine && (
-        <p
-          style={{
-            marginTop: '0.75rem',
-            marginBottom: 0,
-            fontFamily: 'JetBrains Mono, monospace',
-            fontSize: '0.65rem',
-            color: '#64748b',
-            lineHeight: 1.45,
-            borderLeft: '2px solid #1e293b',
-            paddingLeft: '0.6rem',
-          }}
-        >
-          {statLine}
-        </p>
-      )}
-      {evidenceLabel && (
-        <p className="command-tactical-card-footer">
-          {evidenceLabel}
-        </p>
-      )}
+    <section className={styles.tacticalCard} data-testid="tactical-summary">
+      <p className={styles.tacticalKicker}>TACTICAL READ</p>
+      <p className={styles.tacticalText}>{turningPoint}</p>
+      {statLine && <p className={styles.tacticalStat}>{statLine}</p>}
+      {evidenceLabel && <p className={styles.tacticalFooter}>{evidenceLabel}</p>}
     </section>
   );
 }

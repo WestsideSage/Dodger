@@ -1,5 +1,6 @@
 import { useApiResource } from '../../hooks/useApiResource';
 import type { StandingsResponse } from '../../types';
+import styles from './aftermath/aftermathCards.module.css';
 
 export function ProgramStatusStrip() {
   const { data } = useApiResource<StandingsResponse>('/api/standings');
@@ -13,35 +14,35 @@ export function ProgramStatusStrip() {
     ? (data?.is_official_career ? (userRow.game_point_differential ?? 0) : userRow.elimination_differential)
     : 0;
 
-  const pctColor = userRow
-    ? userRow.wins > userRow.losses ? '#10b981' : userRow.wins < userRow.losses ? '#f43f5e' : '#94a3b8'
-    : '#64748b';
+  const pointsToneClass = userRow
+    ? userRow.wins > userRow.losses ? styles.pos : userRow.wins < userRow.losses ? styles.neg : styles.neutral
+    : styles.neutral;
 
   return (
-    <div className="dm-panel command-program-status" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem' }}>
+    <div className={`command-program-status ${styles.statusStrip}`}>
       <div>
-        <p className="dm-kicker">Your Program</p>
-        <h3 className="dm-panel-title" style={{ margin: 0, fontSize: '1.25rem' }}>Season Status</h3>
+        <p className={styles.kicker}>Your Program</p>
+        <h3 className={styles.statusTitle}>Season Status</h3>
       </div>
 
-      <div style={{ display: 'flex', gap: '3rem', alignItems: 'center' }}>
+      <div className={styles.statusMetrics}>
         {userRow ? (
           <>
             {/* Rank + points */}
-            <div style={{ display: 'flex', gap: '1.5rem' }}>
+            <div className={styles.statusGroup}>
               {rank !== null && (
                 <div>
-                  <span className="dm-kicker" style={{ display: 'block' }}>League Rank</span>
-                  <span className="dm-data" style={{ color: rank <= 2 ? '#22d3ee' : '#e2e8f0', fontWeight: 800, fontSize: '1.25rem' }}>
-                    #{rank} <span style={{ fontSize: '0.75rem', color: '#64748b' }}>of {total}</span>
+                  <span className={styles.kicker}>League Rank</span>
+                  <span className={`${styles.statusValue}${rank <= 2 ? ` ${styles.statusValueTop}` : ''}`}>
+                    #{rank} <span className={styles.statusValueMuted}>of {total}</span>
                   </span>
                 </div>
               )}
               <div>
-                <span className="dm-kicker" style={{ display: 'block' }}>Points</span>
-                <span className="dm-data" style={{ color: pctColor, fontWeight: 800, fontSize: '1.25rem' }}>{userRow.points}</span>
+                <span className={styles.kicker}>Points</span>
+                <span className={`${styles.statusValue} ${pointsToneClass}`}>{userRow.points}</span>
                 {strapDiff !== 0 && (
-                  <span style={{ color: strapDiff > 0 ? '#10b981' : '#f43f5e', marginLeft: '0.5rem', fontSize: '0.75rem', fontWeight: 700 }}>
+                  <span className={`${styles.statusDiff} ${strapDiff > 0 ? styles.pos : styles.neg}`}>
                     {strapDiff > 0 ? '+' : ''}{strapDiff} diff
                   </span>
                 )}
@@ -49,21 +50,21 @@ export function ProgramStatusStrip() {
             </div>
 
             {/* W-L-D row */}
-            <div style={{ display: 'flex', gap: '1.25rem', borderLeft: '1px solid #1e293b', paddingLeft: '3rem' }}>
+            <div className={styles.statusWld}>
               {[
-                { label: 'Wins', value: userRow.wins, color: '#10b981' },
-                { label: 'Losses', value: userRow.losses, color: '#f43f5e' },
-                { label: 'Ties', value: userRow.draws, color: '#94a3b8' },
-              ].map(({ label, value, color }) => (
-                <div key={label} style={{ textAlign: 'center' }}>
-                  <div className="dm-data" style={{ fontSize: '1.25rem', fontWeight: 800, color, lineHeight: 1 }}>{value}</div>
-                  <div style={{ fontSize: '0.625rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', marginTop: '0.25rem' }}>{label}</div>
+                { label: 'Wins', value: userRow.wins, tone: styles.pos },
+                { label: 'Losses', value: userRow.losses, tone: styles.neg },
+                { label: 'Ties', value: userRow.draws, tone: styles.neutral },
+              ].map(({ label, value, tone }) => (
+                <div key={label} className={styles.statusStat}>
+                  <div className={`${styles.statusStatNum} ${tone}`}>{value}</div>
+                  <div className={styles.statusStatLabel}>{label}</div>
                 </div>
               ))}
             </div>
           </>
         ) : (
-          <p style={{ fontSize: '0.8125rem', color: '#64748b', margin: 0 }}>Loading...</p>
+          <p className={styles.empty}>Loading...</p>
         )}
       </div>
     </div>

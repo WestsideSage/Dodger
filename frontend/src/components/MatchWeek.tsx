@@ -434,7 +434,7 @@ export function MatchWeek({
               stage={activeResult.dashboard.stage}
               kicker={isBye ? 'Bye Week' : undefined}
               subLabel={isBye ? 'Rest Report' : undefined}
-              accent={isBye ? '#22d3ee' : undefined}
+              accent={isBye ? 'bye' : undefined}
               contextLine={
                 isBye
                   ? undefined
