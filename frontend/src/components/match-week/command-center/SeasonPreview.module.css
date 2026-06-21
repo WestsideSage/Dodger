@@ -1,0 +1,262 @@
+/* SeasonPreview — Floodlight reskin.
+   5-color contract: Volt (--volt/--volt2) reserved for primary/selected.
+   --ok marks positive/goal callout. --gold TALENT-only (not used here).
+   --out marks dim/neutral warnings. --danger = destructive (not used here).
+   Warm neutrals (--court/--raise/--raise2/--text/--text2/--muted/--line/--line2)
+   carry the rest. No raw hex/rgba/hsl color literals anywhere in this file.
+   Bye-note color is conditional via a data-attr/sibling approach expressed
+   in TSX via className composition. */
+
+.root {
+  border: 1px solid var(--line);
+  background: var(--raise);
+  border-radius: var(--radius-md);
+  padding: var(--space-7);
+  margin: var(--space-5) auto;
+  width: 100%;
+  max-width: 64rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* ---- Kicker + heading ---- */
+.kicker {
+  font: 900 0.65rem var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--volt2);
+}
+
+.heading {
+  font: 900 1.4rem var(--font-disp);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text);
+  margin: var(--space-2) 0 0;
+  line-height: 1.1;
+}
+
+/* ---- Division callout ---- */
+.divisionCallout {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--tint-neutral);
+  border-left: var(--border-thick) solid var(--text2);
+}
+
+.divisionName {
+  font: 900 0.65rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+
+.divisionStakes {
+  font: 600 0.82rem var(--font-ui);
+  color: var(--text);
+  margin-left: var(--space-3);
+}
+
+.divisionNote {
+  margin: var(--space-2) 0 0;
+  font: 500 0.72rem var(--font-ui);
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* ---- Officiating emphasis (league bulletin) ---- */
+.bulletinCallout {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--tint-neutral);
+  border-left: var(--border-thick) solid var(--out);
+}
+
+.bulletinLabel {
+  font: 900 0.65rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--out);
+}
+
+.bulletinBody {
+  margin: var(--space-2) 0 0;
+  font: 600 0.82rem var(--font-ui);
+  color: var(--text);
+  line-height: 1.45;
+}
+
+/* ---- Season-shape timeline ---- */
+.timeline {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 2.2rem;
+}
+
+.tick {
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: 2px;
+  height: 55%;
+  align-self: flex-end;
+  border: 1px solid var(--line2);
+  background: var(--raise2);
+}
+
+.tickBye {
+  height: 100%;
+  border: none;
+  background: var(--out);
+}
+
+.cutFlag {
+  flex: 0 0 auto;
+  margin-left: 4px;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--volt-soft);
+  border: 1px solid var(--volt2);
+  color: var(--volt2);
+  font: 800 0.6rem var(--font-mono);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.timelineAxis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-2);
+  font: 500 0.62rem var(--font-mono);
+  color: var(--muted);
+}
+
+.byeNote {
+  margin: var(--space-2) 0 0;
+  font: 500 0.62rem var(--font-ui);
+  color: var(--muted);
+}
+
+.byeNoteActive {
+  color: var(--out);
+  font-weight: 700;
+}
+
+/* ---- Stat tiles ---- */
+.statGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+}
+
+.statTile {
+  flex: 1 1 0;
+  min-width: 6.5rem;
+  background: var(--court);
+  border: 1px solid var(--line);
+  border-top: var(--border-thick) solid var(--line2);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  list-style: none;
+}
+
+/* Variant: volt accent on top for primary stat */
+.statTileVolt { border-top-color: var(--volt); }
+/* Variant: ok accent for positive/goal stats */
+.statTileOk { border-top-color: var(--ok); }
+/* Variant: out accent for bye/neutral-marked stats */
+.statTileOut { border-top-color: var(--out); }
+
+.statLabel {
+  display: block;
+  font: 800 0.58rem var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.statValue {
+  display: block;
+  font: 800 1.1rem var(--font-disp);
+  color: var(--text);
+  margin-top: var(--space-1);
+  line-height: 1.2;
+}
+
+/* ---- Goal callout ---- */
+.goalCallout {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--ok-soft);
+  border-left: var(--border-thick) solid var(--ok);
+  color: var(--text);
+  font: 600 0.85rem var(--font-ui);
+  line-height: 1.45;
+}
+
+/* ---- Roster insight cards (strength / weakness) ---- */
+.insightGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.insightCard {
+  flex: 1 1 0;
+  min-width: 12rem;
+  background: var(--court);
+  border: 1px solid var(--line);
+  border-left: var(--border-thick) solid var(--line2);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+}
+
+.insightCardOk { border-left-color: var(--ok); }
+.insightCardOut { border-left-color: var(--out); }
+
+.insightLabel {
+  font: 800 0.7rem var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.insightValue {
+  font: 700 0.9rem var(--font-ui);
+  color: var(--text);
+  margin-top: var(--space-1);
+  line-height: 1.35;
+}
+
+.insightHint {
+  font: 500 0.72rem var(--font-ui);
+  color: var(--muted);
+  margin-top: var(--space-2);
+  line-height: 1.4;
+}
+
+/* ---- Footer (CTA + skip) ---- */
+.footer {
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.skipLabel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font: 500 0.74rem var(--font-ui);
+  color: var(--muted);
+  cursor: pointer;
+}
