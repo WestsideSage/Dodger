@@ -1,0 +1,134 @@
+/* DevelopmentResults.module.css — token-driven roster-progress + training-credit
+   receipt. Floodlight 5-color contract: warm-graphite neutrals; --ok for
+   positive growth, --volt2 for regression, --gold2 for breakout notes. No raw
+   color literals. */
+
+.panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.empty {
+  padding: var(--space-5);
+  color: var(--muted);
+  text-align: center;
+}
+
+.row {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--line);
+}
+
+.rowHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.rowName {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.name {
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.ceiling {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.note {
+  color: var(--gold2);
+  font-size: 0.75rem;
+  font-style: italic;
+}
+
+.ovr {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.delta {
+  min-width: 2.5rem;
+  text-align: right;
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.deltaUp { color: var(--ok); }
+.deltaDown { color: var(--volt2); }
+.deltaFlat { color: var(--muted); }
+
+.attrs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.attr {
+  font-size: 0.7rem;
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+}
+
+.attrUp { color: var(--ok); font-weight: 600; }
+.attrDown { color: var(--volt2); font-weight: 600; }
+
+/* Training-credit receipt — the deliberate .toFixed(1) exception. */
+.receipt {
+  background: var(--ok-soft);
+  border: 1px solid var(--ok-soft);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  margin: var(--space-5) 0 0 0;
+  font-size: 0.8rem;
+  color: var(--text2);
+  line-height: 1.5;
+}
+
+.receiptStrong { color: var(--ok); }
+.receiptValue { color: var(--text); }
+
+/* League-transition checklist callout. */
+.checklist {
+  background: var(--tint-neutral);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  margin: var(--space-7) 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.checklistIcon { font-size: 2rem; }
+
+.checklistTitle {
+  margin: 0 0 var(--space-2) 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.checklistBody {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text2);
+  line-height: 1.4;
+}

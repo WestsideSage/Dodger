@@ -1,6 +1,7 @@
 import type { OffseasonBeat } from '../../types';
-import { ActionButton, PageHeader } from '../ui';
+import { ActionButton, PageHeader } from '../../ui';
 import { TermTip } from '../../legibility';
+import styles from './DevelopmentResults.module.css';
 
 type DevelopmentBeat = Extract<OffseasonBeat, { key: 'development' }>;
 
@@ -50,16 +51,16 @@ export function DevelopmentResults({
                 }
             />
 
-            <div className="dm-panel" style={{ padding: '0', overflow: 'hidden' }}>
+            <div className={`dm-panel ${styles.panel}`}>
                 {players.length === 0 ? (
-                    <p style={{ padding: '1rem', color: '#64748b', textAlign: 'center' }}>
+                    <p className={styles.empty}>
                         No development data available for your roster.
                     </p>
                 ) : (
                     players.map((player, i) => {
                         const improved = player.delta > 0;
                         const declined = player.delta < 0;
-                        const deltaColor = improved ? '#10b981' : declined ? '#ef4444' : '#64748b';
+                        const deltaClass = improved ? styles.deltaUp : declined ? styles.deltaDown : styles.deltaFlat;
                         const deltaLabel = player.delta > 0 ? `+${player.delta}` : `${player.delta}`;
 
                         const ovrDisplay = `${Math.round(player.ovr_before)} → ${Math.round(player.ovr_after)}`;
@@ -69,79 +70,51 @@ export function DevelopmentResults({
                             : [];
 
                         return (
-                            <div
-                                key={i}
-                                style={{
-                                    padding: '0.65rem 1rem',
-                                    borderBottom: '1px solid #0f172a',
-                                }}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '0.25rem' }}>
-                                        <span style={{ color: '#e2e8f0', fontSize: '0.9rem', fontWeight: 500 }}>
+                            <div key={i} className={styles.row}>
+                                <div className={styles.rowHead}>
+                                    <div className={styles.rowName}>
+                                        <span className={styles.name}>
                                             {player.name}
                                         </span>
                                         {player.potential_ceiling != null && (
-                                            <span style={{ color: '#64748b', fontSize: '0.7rem' }}>
+                                            <span className={styles.ceiling}>
                                                 <TermTip term="growth.ceiling">Ceiling</TermTip>{' '}{player.potential_ceiling}
                                             </span>
                                         )}
                                         {player.notes && player.notes.length > 0 && (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                            <div className={styles.notes}>
                                                 {player.notes.map((note: string, idx: number) => (
-                                                    <span key={idx} style={{ color: '#fbbf24', fontSize: '0.75rem', fontStyle: 'italic' }}>
+                                                    <span key={idx} className={styles.note}>
                                                         ✨ {note}
                                                     </span>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
-                                    <span style={{ color: '#64748b', fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums' }}>
+                                    <span className={styles.ovr}>
                                         {ovrDisplay}
                                     </span>
-                                    <span
-                                        style={{
-                                            minWidth: '2.5rem',
-                                            textAlign: 'right',
-                                            fontWeight: 700,
-                                            fontSize: '0.85rem',
-                                            color: deltaColor,
-                                            fontVariantNumeric: 'tabular-nums',
-                                        }}
-                                    >
+                                    <span className={`${styles.delta} ${deltaClass}`}>
                                         {deltaLabel}
                                     </span>
                                 </div>
                                 {movedAttrs.length > 0 && (
-                                    <div style={{
-                                        display: 'flex',
-                                        flexWrap: 'wrap',
-                                        gap: '0.3rem 0.6rem',
-                                        marginTop: '0.4rem',
-                                        paddingLeft: '0',
-                                    }}>
+                                    <div className={styles.attrs}>
                                         {movedAttrs.map(([attr, val]) => {
-                                            const attrColor = val > 0 ? '#10b981' : '#ef4444';
+                                            const attrClass = val > 0 ? styles.attrUp : styles.attrDown;
                                             const label = _ATTR_LABEL[attr] ?? attr;
                                             const termId =
                                                 attr === 'throw_selection_iq' ? 'attr.throw_selection_iq' as const
                                                 : attr === 'catch_courage' ? 'attr.catch_courage' as const
                                                 : null;
                                             return (
-                                                <span
-                                                    key={attr}
-                                                    style={{
-                                                        fontSize: '0.7rem',
-                                                        color: '#94a3b8',
-                                                        fontVariantNumeric: 'tabular-nums',
-                                                    }}
-                                                >
+                                                <span key={attr} className={styles.attr}>
                                                     {termId ? (
                                                         <TermTip term={termId}>{label}</TermTip>
                                                     ) : (
                                                         label
                                                     )}{' '}
-                                                    <span style={{ color: attrColor, fontWeight: 600 }}>
+                                                    <span className={attrClass}>
                                                         {val > 0 ? `+${val}` : `${val}`}
                                                     </span>
                                                 </span>
@@ -159,48 +132,27 @@ export function DevelopmentResults({
                 Program Settings, so the beat that spends it must show the
                 receipt — weeks run, credit banked, and the headroom caveat. */}
             {trainingCredit && trainingCredit.weeks > 0 && (
-                <div
-                    style={{
-                        background: 'rgba(16, 185, 129, 0.05)',
-                        border: '1px solid rgba(16, 185, 129, 0.2)',
-                        borderRadius: '8px',
-                        padding: '0.85rem 1rem',
-                        margin: '1rem 0 0 0',
-                        fontSize: '0.8rem',
-                        color: '#94a3b8',
-                        lineHeight: 1.5,
-                    }}
-                    data-testid="training-credit-receipt"
-                >
-                    <strong style={{ color: '#10b981' }}>
+                <div className={styles.receipt} data-testid="training-credit-receipt">
+                    <strong className={styles.receiptStrong}>
                         Training focus receipt:
                     </strong>{' '}
                     {trainingCredit.weeks} week{trainingCredit.weeks !== 1 ? 's' : ''} run
                     {trainingCredit.weeks > trainingCredit.week_cap
                         ? ` (${trainingCredit.credited_weeks} credited — cap ${trainingCredit.week_cap})`
                         : ''}{' '}
-                    × +{trainingCredit.per_week_ovr} OVR = <strong style={{ color: '#e2e8f0' }}>
+                    × +{trainingCredit.per_week_ovr} OVR = <strong className={styles.receiptValue}>
                     +{trainingCredit.credit_ovr.toFixed(1)} OVR</strong> of practice growth folded
                     into each player&apos;s development above (never past their ceiling).
                 </div>
             )}
 
-            <div style={{
-                background: 'rgba(34, 211, 238, 0.05)',
-                border: '1px solid rgba(34, 211, 238, 0.15)',
-                borderRadius: '8px',
-                padding: '1.25rem',
-                margin: '1.5rem 0 0 0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1rem',
-            }}>
-                <div style={{ fontSize: '2rem' }} aria-hidden="true">⏳</div>
+            <div className={styles.checklist}>
+                <div className={styles.checklistIcon} aria-hidden="true">⏳</div>
                 <div>
-                  <h4 style={{ margin: '0 0 0.25rem 0', fontSize: '0.9rem', fontWeight: 700, color: '#f8fafc' }}>
+                  <h4 className={styles.checklistTitle}>
                     League Transition Checklist Completed
                   </h4>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                  <p className={styles.checklistBody}>
                     • <strong>Aging:</strong> All active players aged by 1 year. <br />
                     • <strong>Conditioning:</strong> Match fatigue has been fully reset. <br />
                     • <strong>Roster Stabilization:</strong> Offseason development and skill regression applied.
