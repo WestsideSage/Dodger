@@ -12,5 +12,6 @@
 .t :global(td.num), .t :global(th.num) {
   text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text);
 }
+.comfortable :global(td) { padding: var(--space-5) var(--space-4); }
 .compact :global(th) { padding: var(--space-2) var(--space-4); }
 .compact :global(td) { padding: var(--space-2) var(--space-4); font-size: .79rem; }

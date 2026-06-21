@@ -82,3 +82,31 @@ describe('Roster response-field tolerance (audit #92) + Sparkline gate (#36)', (
     expect(screen.getByTestId('roster-ovr-nodata')).toBeInTheDocument();
   });
 });
+
+describe('Roster role badge (audit #58 — TermTip only for the 8 known archetypes)', () => {
+  it('wraps a known archetype role in a TermTip', () => {
+    mockRoster([PLAYER({ id: 'k', name: 'Known', role: 'Sharpshooter' })]);
+    render(<Roster />);
+    // the legibility TermTip renders its term as a button labelled "What is <label>?"
+    expect(screen.getByText('SHARPSHOOTER')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'What is Sharpshooter?' })).toBeInTheDocument();
+  });
+  it('renders an unknown role as a plain badge (no TermTip button)', () => {
+    mockRoster([PLAYER({ id: 'u', name: 'Unknown', role: 'Freelancer' })]);
+    render(<Roster />);
+    expect(screen.getByText('FREELANCER')).toBeInTheDocument();
+    // no TermTip "What is …?" button is generated for an unknown archetype
+    expect(screen.queryByRole('button', { name: /^What is /i })).not.toBeInTheDocument();
+  });
+});
+
+describe('Roster density toggle (design §4 Comfortable/Compact)', () => {
+  it('switches the table density class via the existing view toggle', async () => {
+    mockRoster([PLAYER({ id: 'd', name: 'Dense' })]);
+    render(<Roster />);
+    const table = screen.getByTestId('roster-table');
+    expect(table.className).toMatch(/comfortable/);
+    await userEvent.click(screen.getByRole('button', { name: 'Compact' }));
+    expect(screen.getByTestId('roster-table').className).toMatch(/compact/);
+  });
+});

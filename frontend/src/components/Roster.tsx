@@ -1,14 +1,17 @@
 import { useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import type { Player, RosterResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
 import { rosterApi } from '../api/client';
-import { StatusMessage } from './ui';
+import { StatusMessage, Table, StatBar, CeilingBadge } from '../ui';
+import type { CeilingGradeLetter } from '../ui';
 import { PlayerDetailModal } from './PlayerDetailModal';
 import { LineupEditor } from './lineup/LineupEditor';
 import { Sparkline } from './roster/Sparkline';
 import { TermTip } from '../legibility';
 import type { TermId } from '../legibility';
 import { potentialRank } from '../domain/tiers';
+import styles from './Roster.module.css';
 
 // Maps player.role strings to their TermId. Exhaustive over all 8 archetypes
 // that archetype_for_player() can emit (see recruitment._RECRUITMENT_DISPLAY_NAMES).
@@ -28,30 +31,29 @@ type RosterEntry = {
   starter: boolean;
 };
 
-const archetypeBadge = (label: string) => {
-  const tone = roleBucket(label);
-  const badgeTone =
-    tone === 'Power'
-      ? 'dm-badge-orange'
-      : tone === 'Tactical'
-      ? 'dm-badge-violet'
-      : 'dm-badge-cyan';
-  return <span className={`dm-badge ${badgeTone}`}>{label.toUpperCase()}</span>;
-};
+const archetypeBadge = (label: string) => (
+  <span className={styles.roleBadge}>{label.toUpperCase()}</span>
+);
 
-const potentialColor = (tier: string) => {
-  if (tier === 'Elite') return '#facc15';
-  if (tier === 'High') return 'var(--dm-cyan)';
-  if (tier === 'Solid') return '#84cc16';
-  return '#94a3b8';
-};
+/** §3.5 ceiling ladder: derive the gold letter grade from a numeric ceiling.
+ *  Returns null when no ceiling is known, so no badge is rendered. */
+function ceilingGradeFromCeiling(ceiling: number | null | undefined): CeilingGradeLetter | null {
+  if (ceiling == null) return null;
+  if (ceiling >= 92) return 'A+';
+  if (ceiling >= 88) return 'A';
+  if (ceiling >= 84) return 'A-';
+  if (ceiling >= 80) return 'B+';
+  if (ceiling >= 76) return 'B';
+  if (ceiling >= 72) return 'B-';
+  return 'C';
+}
 
 const potentialGlyph = (tier: string) => {
-  if (tier === 'Elite') return '\u2605';
-  if (tier === 'High') return '\u25C6';
-  if (tier === 'Mid') return '\u00BB';
-  if (tier === 'Low') return '\u2B21';
-  return '\u26AC';
+  if (tier === 'Elite') return '★';
+  if (tier === 'High') return '◆';
+  if (tier === 'Mid') return '»';
+  if (tier === 'Low') return '⬡';
+  return '⚬';
 };
 
 function roleBucket(label: string): 'Power' | 'Balanced' | 'Tactical' {
@@ -77,6 +79,10 @@ function styleBucket(player: Player): 'Power' | 'Balanced' | 'Tactical' {
   return roleBucket(player.role);
 }
 
+// Mix segment colors are token-driven custom properties supplied at the call
+// site (a CSS variable assignment, not a literal in the module CSS).
+const segVar = (token: string): CSSProperties => ({ '--seg': `var(${token})` } as CSSProperties);
+
 const LineupSummary = ({ roster }: { roster: RosterEntry[] }) => {
   const starters = roster.filter(entry => entry.starter).length;
   const reservePool = Math.max(0, roster.length - starters);
@@ -87,14 +93,14 @@ const LineupSummary = ({ roster }: { roster: RosterEntry[] }) => {
     : 0;
 
   return (
-    <div className="rl-glance-cell">
-      <span className="dm-kicker">Lineup · OVR {avgOvr}</span>
-      <div className="rl-line-row">
-        <span className="rl-line-pill starter"><span>{starters}</span> STARTERS</span>
-        <span className="rl-line-pill rotation"><span>{rotation}</span> ROTATION</span>
-        <span className="rl-line-pill bench"><span>{bench}</span> BENCH</span>
+    <div className={styles.glanceCell}>
+      <span className={styles.kicker}>Lineup · OVR {avgOvr}</span>
+      <div className={styles.lineRow}>
+        <span className={styles.linePill}><span>{starters}</span> STARTERS</span>
+        <span className={styles.linePill}><span>{rotation}</span> ROTATION</span>
+        <span className={styles.linePill}><span>{bench}</span> BENCH</span>
       </div>
-      <p className="rl-line-helper">
+      <p className={styles.lineHelper}>
         {bench + rotation === 0
           ? 'Roster is bare — recruit or sign reserves before fatigue catches you.'
           : 'Starting core is set. Balance the rotation and manage fatigue.'}
@@ -113,29 +119,29 @@ const ArchetypeMix = ({ roster }: { roster: RosterEntry[] }) => {
   );
 
   const segments = [
-    { key: 'Power', value: counts.Power, color: 'var(--dm-orange)' },
-    { key: 'Balanced', value: counts.Balanced, color: 'var(--dm-cyan)' },
-    { key: 'Tactical', value: counts.Tactical, color: 'var(--dm-violet)' },
+    { key: 'Power', value: counts.Power, token: '--volt' },
+    { key: 'Balanced', value: counts.Balanced, token: '--ok' },
+    { key: 'Tactical', value: counts.Tactical, token: '--gold' },
   ];
 
   return (
-    <div className="rl-glance-cell">
-      <span className="dm-kicker">Archetype Mix</span>
-      <div className="rl-mix-bar">
+    <div className={styles.glanceCell}>
+      <span className={styles.kicker}>Archetype Mix</span>
+      <div className={styles.mixBar}>
         {segments.map((segment) => (
           <div
             key={segment.key}
-            className="seg"
-            style={{ flex: Math.max(segment.value, 1), background: segment.color }}
+            className={styles.mixSeg}
+            style={{ flex: Math.max(segment.value, 1), ...segVar(segment.token) }}
           />
         ))}
       </div>
-      <div className="rl-mix-legend">
+      <div className={styles.mixLegend}>
         {segments.map((segment) => (
-          <div key={segment.key} className="item">
-            <span className="dot" style={{ background: segment.color }} />
-            <span className="k">{segment.key}</span>
-            <span className="v mono">{segment.value}</span>
+          <div key={segment.key} className={styles.mixItem}>
+            <span className={styles.mixDot} style={segVar(segment.token)} />
+            <span>{segment.key}</span>
+            <span className={styles.mixVal}>{segment.value}</span>
           </div>
         ))}
       </div>
@@ -145,12 +151,14 @@ const ArchetypeMix = ({ roster }: { roster: RosterEntry[] }) => {
 
 const PotentialBlock = ({ roster }: { roster: RosterEntry[] }) => {
   const tiers = ['Elite', 'High', 'Mid', 'Low', 'Raw'];
+  const pipClass = (tier: string) =>
+    tier === 'Elite' ? styles.potPipElite : tier === 'High' ? styles.potPipHigh : '';
   return (
-    <div className="rl-glance-cell">
-      <span className="dm-kicker">Potential Tiers</span>
-      <div className="rl-pot-row">
+    <div className={styles.glanceCell}>
+      <span className={styles.kicker}>Potential Tiers</span>
+      <div className={styles.potRow}>
         {tiers.map((tier) => (
-          <div key={tier} className={`rl-pot-pip tier-${tier.toLowerCase()}`}>
+          <div key={tier} className={`${styles.potPip} ${pipClass(tier)}`.trim()}>
             <span className="glyph">{potentialGlyph(tier)}</span>
             <span className="num">{roster.filter((entry) => entry.player.potential_tier === tier).length}</span>
             <span className="name">{tier}</span>
@@ -176,19 +184,19 @@ const AgeCurve = ({ roster }: { roster: RosterEntry[] }) => {
   const maxCount = Math.max(...counts, 1);
 
   return (
-    <div className="rl-glance-cell">
-      <span className="dm-kicker">Age Curve</span>
-      <div className="rl-age-row">
-        <div className="rl-age-stat">
-          <span className="big mono">{avg}</span>
+    <div className={styles.glanceCell}>
+      <span className={styles.kicker}>Age Curve</span>
+      <div className={styles.ageRow}>
+        <div className={styles.ageStat}>
+          <span className="big">{avg}</span>
           <span className="dim">avg · {min}-{max}</span>
         </div>
-        <div className="rl-age-bars">
+        <div className={styles.ageBars}>
           {buckets.map((bucket, index) => (
-            <div key={bucket.label} className="rl-age-col">
+            <div key={bucket.label} className={styles.ageCol}>
               <div className="bar" style={{ height: `${(counts[index] / maxCount) * 100}%` }} />
-              <span className="lbl-mini">{bucket.label}</span>
-              <span className="ct mono">{counts[index]}</span>
+              <span className="lblMini">{bucket.label}</span>
+              <span className="ct">{counts[index]}</span>
             </div>
           ))}
         </div>
@@ -204,19 +212,6 @@ const RATING_TOOLTIPS: Record<string, string> = {
   CAT: 'Catch — ability to snag incoming throws cleanly.',
   STA: 'Stamina — staying power across a long match.',
   IQ: 'IQ — court awareness, timing, and play reading.',
-};
-
-const RatingMini = ({ label, value }: { label: string; value: number }) => {
-  const tier = value >= 85 ? 'elite' : value >= 70 ? 'good' : value >= 55 ? 'avg' : 'poor';
-  return (
-    <div className={`rl-rmini tier-${tier}`} title={RATING_TOOLTIPS[label] ?? label}>
-      <span className="rl-rmini-lbl">{label}</span>
-      <span className="rl-rmini-val mono">{Math.round(value)}</span>
-      <div className="rl-rmini-bar">
-        <div className="fill" style={{ width: `${value}%` }} />
-      </div>
-    </div>
-  );
 };
 
 export function Roster() {
@@ -258,58 +253,37 @@ export function Roster() {
   if (error) return <StatusMessage title="Roster unavailable" tone="danger">{error}</StatusMessage>;
   if (!data) return <StatusMessage title="No roster">No roster data returned.</StatusMessage>;
 
+  const sortIndicators: Record<string, { label: string; dir: string }> = {
+    lineup:    { label: 'Lineup',    dir: '→ OVR ↓' },
+    potential: { label: 'Potential', dir: 'Elite first' },
+    overall:   { label: 'OVR',       dir: '↓ highest' },
+    age:       { label: 'Age',       dir: '↑ youngest' },
+  };
+  const ind = sortIndicators[sortKey];
+
   return (
-    <div className="max-content rl-shell" data-screen-label="02 Roster">
-      <div className="rl-head">
+    <div className={`max-content ${styles.shell}`} data-screen-label="02 Roster">
+      <div className={styles.head}>
         <div>
-          {/* The broadcast header above already says "ROSTER LAB / ROSTER" —
-              don't repeat the kicker a second time 40px below it. */}
-          <h2 className="rl-title">Team Roster</h2>
-          <p className="rl-sub">Player condition, role fit, and match readiness. {data.roster.length} contracted.</p>
+          <h2 className={styles.title}>Team Roster</h2>
+          <p className={styles.sub}>Player condition, role fit, and match readiness. {data.roster.length} contracted.</p>
         </div>
-        <div className="rl-head-actions">
-          <div className="rl-segment">
-            <button className={`rl-seg-btn ${view === 'detailed' ? 'is-active' : ''}`} onClick={() => setView('detailed')}>Detailed</button>
-            <button className={`rl-seg-btn ${view === 'compact' ? 'is-active' : ''}`} onClick={() => setView('compact')}>Compact</button>
+        <div className={styles.headActions}>
+          <div className={styles.segment}>
+            <button className={`${styles.segBtn} ${view === 'detailed' ? styles.segBtnActive : ''}`} onClick={() => setView('detailed')}>Detailed</button>
+            <button className={`${styles.segBtn} ${view === 'compact' ? styles.segBtnActive : ''}`} onClick={() => setView('compact')}>Compact</button>
           </div>
-          <select data-testid="roster-sort" className="rl-sort" value={sortKey} onChange={(event) => setSortKey(event.target.value as typeof sortKey)}>
+          <select data-testid="roster-sort" className={styles.sort} value={sortKey} onChange={(event) => setSortKey(event.target.value as typeof sortKey)}>
             <option value="lineup">Lineup order (starters first, then OVR ↓)</option>
             <option value="potential">Potential tier (Elite → Low)</option>
             <option value="overall">OVR highest first ↓</option>
             <option value="age">Age youngest first ↑</option>
           </select>
-          {(() => {
-            const indicators: Record<string, { label: string; dir: string }> = {
-              lineup:   { label: 'Lineup',    dir: '→ OVR ↓' },
-              potential:{ label: 'Potential', dir: 'Elite first' },
-              overall:  { label: 'OVR',      dir: '↓ highest' },
-              age:      { label: 'Age',      dir: '↑ youngest' },
-            };
-            const ind = indicators[sortKey];
-            return (
-              <span
-                aria-label={`Sorted by ${ind.label}, ${ind.dir}`}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.25rem',
-                  fontSize: '0.65rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.04em',
-                  color: '#22d3ee',
-                  background: 'rgba(34,211,238,0.08)',
-                  border: '1px solid rgba(34,211,238,0.25)',
-                  borderRadius: '3px',
-                  padding: '0.15rem 0.4rem',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {ind.label} {ind.dir}
-              </span>
-            );
-          })()}
+          <span aria-label={`Sorted by ${ind.label}, ${ind.dir}`} className={styles.sortIndicator}>
+            {ind.label} {ind.dir}
+          </span>
           <button
-            className="dm-btn"
+            className={styles.editorBtn}
             type="button"
             onClick={() => setLineupEditorOpen(true)}
           >
@@ -318,169 +292,171 @@ export function Roster() {
         </div>
       </div>
 
-      <div className="rl-glance">
+      <div className={styles.glance}>
         <LineupSummary roster={roster} />
         <ArchetypeMix roster={roster} />
         <PotentialBlock roster={roster} />
         <AgeCurve roster={roster} />
       </div>
 
-      <div className="rl-table-card">
-        <div className="rl-table-scroll">
-          <table className={`rl-table ${view}`}>
-            <thead>
-              {view === 'compact' ? (
-                <tr>
-                  <th className="num">#</th>
-                  <th>Player</th>
-                  <th className="num" title="Accuracy — how often throws hit their target.">ACC</th>
-                  <th className="num" title="Power — throw speed and difficulty to dodge or catch.">POW</th>
-                  <th className="num" title="Dodge — ability to evade incoming throws.">DOD</th>
-                  <th className="num" title="Catch — ability to snag incoming throws cleanly.">CAT</th>
-                  <th className="num" title="Stamina — staying power across a long match.">STA</th>
-                  <th className="num" title="IQ — court awareness, timing, and play reading.">IQ</th>
-                  <th className="num" title="Overall — weighted blend of every rating.">OVR</th>
-                  <th>Potential</th>
-                  <th>Role</th>
-                </tr>
-              ) : (
-                <tr>
-                  <th className="num">#</th>
-                  <th>Player</th>
-                  <th>Ratings</th>
-                  <th>Potential</th>
-                  <th>OVR</th>
-                  <th>Role</th>
-                </tr>
-              )}
-            </thead>
-            <tbody>
-              {roster.map(({ player, starter }, index) => {
-                const isElite = player.potential_tier === 'Elite';
-                return (
-                  <tr
-                    key={player.id}
-                    data-testid="roster-row"
-                    className={`${isElite ? 'rl-row-elite' : ''} ${starter ? 'rl-row-starter' : ''}`.trim()}
-                    style={{ cursor: 'pointer' }}
-                    // WT-21: keep the row a PLAIN table row so the per-column
-                    // rating <td>s stay in the accessibility tree and the
-                    // role-cell TermTip <button> is not nested inside an
-                    // interactive role (an ARIA violation). Mouse users can click
-                    // anywhere on the row; the keyboard/SR activator is the real
-                    // player-name <button> in the name cell below.
-                    onClick={() => setSelectedPlayer(player)}
+      <div className={styles.tableCard}>
+        <Table
+          density={view === 'detailed' ? 'comfortable' : 'compact'}
+          data-testid="roster-table"
+          className={styles.rosterTable}
+        >
+          <thead>
+            {view === 'compact' ? (
+              <tr>
+                <th className="num">#</th>
+                <th>Player</th>
+                <th className="num" title="Accuracy — how often throws hit their target.">ACC</th>
+                <th className="num" title="Power — throw speed and difficulty to dodge or catch.">POW</th>
+                <th className="num" title="Dodge — ability to evade incoming throws.">DOD</th>
+                <th className="num" title="Catch — ability to snag incoming throws cleanly.">CAT</th>
+                <th className="num" title="Stamina — staying power across a long match.">STA</th>
+                <th className="num" title="IQ — court awareness, timing, and play reading.">IQ</th>
+                <th className="num" title="Overall — weighted blend of every rating.">OVR</th>
+                <th>Potential</th>
+                <th>Role</th>
+              </tr>
+            ) : (
+              <tr>
+                <th className="num">#</th>
+                <th>Player</th>
+                <th>Ratings</th>
+                <th>Potential</th>
+                <th>OVR</th>
+                <th>Role</th>
+              </tr>
+            )}
+          </thead>
+          <tbody>
+            {roster.map(({ player, starter }, index) => {
+              const isElite = player.potential_tier === 'Elite';
+              const ceilingGrade = ceilingGradeFromCeiling(player.potential_ceiling);
+              const tierClass =
+                player.potential_tier === 'Elite' ? styles.potTierElite
+                : player.potential_tier === 'High' ? styles.potTierHigh : '';
+              return (
+                <tr
+                  key={player.id}
+                  data-testid="roster-row"
+                  className={`${isElite ? styles.rowElite : ''} ${starter ? styles.rowStarter : ''}`.trim()}
+                  style={{ cursor: 'pointer' }}
+                  // WT-21: keep the row a PLAIN table row so the per-column
+                  // rating <td>s stay in the accessibility tree and the
+                  // role-cell TermTip <button> is not nested inside an
+                  // interactive role. Mouse users can click anywhere on the
+                  // row; the keyboard/SR activator is the player-name <button>.
+                  onClick={() => setSelectedPlayer(player)}
+                >
+                  <td className={`num ${styles.rank}`}>{String(index + 1).padStart(2, '0')}</td>
+                  <td>
+                    <div className={styles.player}>
+                      <button
+                        type="button"
+                        className={styles.playerNameBtn}
+                        aria-label={`${player.name}, OVR ${player.overall}, ${player.role} — open player card`}
+                        onClick={(e) => { e.stopPropagation(); setSelectedPlayer(player); }}
+                      >
+                        <span data-testid="roster-row-name" className={styles.playerName}>{player.name}</span>
+                      </button>
+                      <div className={styles.playerMeta}>
+                        <span>Age {player.age}</span>
+                        {starter && <span data-testid="roster-row-starter-pin" className={styles.pin}>●</span>}
+                      </div>
+                    </div>
+                  </td>
+                  {view === 'compact' ? (
+                    ([
+                      ['ACC', player.ratings.accuracy],
+                      ['POW', player.ratings.power],
+                      ['DOD', player.ratings.dodge],
+                      ['CAT', player.ratings.catch],
+                      ['STA', player.ratings.stamina],
+                      ['IQ', player.ratings.tactical_iq],
+                    ] as Array<[string, number]>).map(([label, value]) => {
+                      const numericValue = Number(value);
+                      const tierClassName =
+                        numericValue >= 85 ? styles.tierElite
+                        : numericValue >= 70 ? styles.tierGood
+                        : numericValue >= 55 ? styles.tierAvg : styles.tierPoor;
+                      return <td key={label} className={`num ${styles.numCell} ${tierClassName}`}>{Math.round(numericValue)}</td>;
+                    })
+                  ) : (
+                    <td>
+                      <div className={styles.ratings}>
+                        {([
+                          ['ACC', player.ratings.accuracy],
+                          ['POW', player.ratings.power],
+                          ['DOD', player.ratings.dodge],
+                          ['CAT', player.ratings.catch],
+                          ['STA', player.ratings.stamina],
+                          ['IQ', player.ratings.tactical_iq],
+                        ] as Array<[string, number]>).map(([label, value]) => (
+                          <StatBar key={label} label={label} value={Number(value)} title={RATING_TOOLTIPS[label] ?? label} />
+                        ))}
+                      </div>
+                    </td>
+                  )}
+                  <td>
+                    <div className={styles.potential}>
+                      {ceilingGrade && <CeilingBadge grade={ceilingGrade} aria-label={`Ceiling grade ${ceilingGrade}`} />}
+                      <div className={styles.potInfo}>
+                        <span className={`${styles.potTier} ${tierClass}`.trim()}>{player.potential_tier}</span>
+                        <span className={styles.potConf}>{'●'.repeat(player.scouting_confidence)}{'○'.repeat(Math.max(0, 4 - player.scouting_confidence))}</span>
+                      </div>
+                    </div>
+                  </td>
+                  {view === 'compact' ? (
+                    <td className={`num ${styles.numCell}`}>{player.overall}</td>
+                  ) : (
+                    <td>
+                      <div className={styles.ovr}>
+                        <span className={styles.ovrVal}>{player.overall}</span>
+                        {player.ovr_season_trend != null && player.ovr_season_trend.length >= 2 ? (
+                          <Sparkline data={player.ovr_season_trend} />
+                        ) : (
+                          <div
+                            data-testid="roster-ovr-nodata"
+                            title="Last-offseason OVR change shown here after first offseason completes"
+                            className={styles.ovrSpark}
+                          >
+                            <div className={styles.ovrFill} style={{ width: `${player.overall}%` }} />
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  )}
+                  <td
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ cursor: 'default' }}
                   >
-                    <td className="num rl-rank">{String(index + 1).padStart(2, '0')}</td>
-                    <td>
-                      <div className="rl-player">
-                        <button
-                          type="button"
-                          className="rl-player-name-btn"
-                          aria-label={`${player.name}, OVR ${player.overall}, ${player.role} — open player card`}
-                          style={{ background: 'none', border: 'none', padding: 0, margin: 0, font: 'inherit', textAlign: 'left', cursor: 'pointer' }}
-                          onClick={(e) => { e.stopPropagation(); setSelectedPlayer(player); }}
-                        >
-                          <span data-testid="roster-row-name" className="rl-player-name">{player.name}</span>
-                        </button>
-                        <div className="rl-player-meta">
-                          <span>Age {player.age}</span>
-                          {starter && <span data-testid="roster-row-starter-pin" className="rl-pin">●</span>}
-                        </div>
-                      </div>
-                    </td>
-                    {view === 'compact' ? (
-                      ([
-                        ['ACC', player.ratings.accuracy],
-                        ['POW', player.ratings.power],
-                        ['DOD', player.ratings.dodge],
-                        ['CAT', player.ratings.catch],
-                        ['STA', player.ratings.stamina],
-                        ['IQ', player.ratings.tactical_iq],
-                      ] as Array<[string, number]>).map(([label, value]) => {
-                        const numericValue = Number(value);
-                        const tier = numericValue >= 85 ? 'elite' : numericValue >= 70 ? 'good' : numericValue >= 55 ? 'avg' : 'poor';
-                        return <td key={label} className={`num rl-num tier-${tier}`}>{Math.round(numericValue)}</td>;
-                      })
-                    ) : (
-                      <td>
-                        <div className="rl-ratings">
-                          {([
-                            ['ACC', player.ratings.accuracy],
-                            ['POW', player.ratings.power],
-                            ['DOD', player.ratings.dodge],
-                            ['CAT', player.ratings.catch],
-                            ['STA', player.ratings.stamina],
-                            ['IQ', player.ratings.tactical_iq],
-                          ] as Array<[string, number]>).map(([label, value]) => (
-                            <RatingMini key={label} label={label} value={Number(value)} />
-                          ))}
-                        </div>
-                      </td>
-                    )}
-                    <td>
-                      <div className="rl-potential">
-                        <span className={`rl-gem tier-${player.potential_tier.toLowerCase()}`}>{potentialGlyph(player.potential_tier)}</span>
-                        <div className="rl-pot-info">
-                          <span className="rl-pot-tier" style={{ color: potentialColor(player.potential_tier) }}>{player.potential_tier}</span>
-                          <span className="rl-pot-conf">{'●'.repeat(player.scouting_confidence)}{'○'.repeat(Math.max(0, 4 - player.scouting_confidence))}</span>
-                          {player.potential_ceiling != null && (
-                            <span style={{ fontSize: '0.65rem', color: '#475569' }}>
-                              Ceil {player.potential_ceiling}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    {view === 'compact' ? (
-                      <td className="num rl-num">{player.overall}</td>
-                    ) : (
-                      <td>
-                        <div className="rl-ovr">
-                          <span className="rl-ovr-val">{player.overall}</span>
-                          {player.ovr_season_trend != null && player.ovr_season_trend.length >= 2 ? (
-                            <Sparkline data={player.ovr_season_trend} />
-                          ) : (
-                            <div
-                              data-testid="roster-ovr-nodata"
-                              title="Last-offseason OVR change shown here after first offseason completes"
-                              className="rl-ovr-spark"
-                            >
-                              <div className="rl-ovr-fill" style={{ width: `${player.overall}%` }} />
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                    <td
-                      onClick={(e) => e.stopPropagation()}
-                      style={{ cursor: 'default' }}
-                    >
-                      {ROLE_TERM_ID[player.role]
-                        ? (
-                          <TermTip term={ROLE_TERM_ID[player.role] as TermId}>
-                            {archetypeBadge(player.role)}
-                          </TermTip>
-                        )
-                        : archetypeBadge(player.role)
-                      }
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <div className="rl-table-foot">
-          <span className="rl-foot-item"><span className="rl-gem tier-elite">{potentialGlyph('Elite')}</span> Elite ceiling</span>
-          <span className="rl-foot-sep">·</span>
-          <span className="rl-foot-item"><span className="rl-gem tier-high">{potentialGlyph('High')}</span> Strong projection</span>
-          <span className="rl-foot-sep">·</span>
-          <span className="rl-foot-item"><span className="rl-gem tier-solid">{potentialGlyph('Solid')}</span> Rotation upside</span>
-          <span className="rl-foot-note">Live roster data sorted from the active club sheet.</span>
+                    {ROLE_TERM_ID[player.role]
+                      ? (
+                        <TermTip term={ROLE_TERM_ID[player.role] as TermId}>
+                          {archetypeBadge(player.role)}
+                        </TermTip>
+                      )
+                      : archetypeBadge(player.role)
+                    }
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </Table>
+        <div className={styles.foot}>
+          <span className={styles.footItem}><span className="gem">{potentialGlyph('Elite')}</span> Elite ceiling</span>
+          <span className={styles.footSep}>·</span>
+          <span className={styles.footItem}><span className="gem">{potentialGlyph('High')}</span> Strong projection</span>
+          <span className={styles.footSep}>·</span>
+          <span className={styles.footItem}><span className="gem">{potentialGlyph('Mid')}</span> Rotation upside</span>
+          <span className={styles.footNote}>Live roster data sorted from the active club sheet.</span>
         </div>
       </div>
-      
+
       {selectedPlayer && (
         <PlayerDetailModal
           player={selectedPlayer}
@@ -519,11 +495,11 @@ export function Roster() {
           autoReorder={data.lineup_auto_reorder ?? true}
           onClose={() => setLineupEditorOpen(false)}
           onSaved={(orderedPlayerIds) => {
-            // Splice the server-returned order into the cached roster
-            // payload so the Roster screen reflects the resolved starting
-            // six immediately — both for manual saves and Auto-Assign.
-            // Functional update: a manual save fires onAutoReorderChange in
-            // the same tick, so a captured `data` would clobber its field.
+            // Splice the server-returned order into the cached roster payload so
+            // the Roster screen reflects the resolved starting six immediately —
+            // both for manual saves and Auto-Assign. Functional update: a manual
+            // save fires onAutoReorderChange in the same tick, so a captured
+            // `data` would clobber its field.
             setData((prev) => (prev ? { ...prev, default_lineup: orderedPlayerIds } : prev));
           }}
           onAutoReorderChange={(enabled) =>
