@@ -1,64 +1,33 @@
 :root {
+  /* Legacy warm palette — only the tokens still consumed by surviving global
+     rules remain (Phase 8 swept zero-usage --color-orange/teal/sage/gym/danger,
+     --font-sans, the entire --color-dm-* shell palette, and --shadow-glow-*). */
   --color-cream: #F3EEE2;
   --color-paper: #FFF9EC;
   --color-charcoal: #232126;
   --color-muted: #5B5660;
   --color-brick: #B44E35;
-  --color-orange: #CF6D36;
   --color-mustard: #D8A232;
-  --color-teal: #438F86;
-  --color-sage: #728F5B;
-  --color-gym: #496F9A;
-  --color-danger: #C94E3F;
   --color-line: #E7D8C2;
   --color-border: #2D2A31;
 
-  --font-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
   --font-display: 'Oswald', 'Bahnschrift SemiBold', 'Arial Narrow', sans-serif;
-
-  /* DM v2 — Dark shell palette */
-  --color-dm-bg: #020617;
-  --color-dm-surface-primary: #0f172a;
-  --color-dm-surface-elevated: #1e293b;
-  --color-dm-border: #1e293b;
-  --color-dm-border-strong: #334155;
-
-  /* DM v2 — Text */
-  --color-dm-text: #ffffff;
-  --color-dm-text-secondary: #cbd5e1;
-  --color-dm-text-muted: #94a3b8;
-  --color-dm-text-dead: #64748b;
-
-  /* DM v2 — Accents */
-  --color-dm-cyan: #22d3ee;
-  --color-dm-orange: #f97316;
-  --color-dm-rose: #f43f5e;
-  --color-dm-emerald: #10b981;
-  --color-dm-amber: #f59e0b;
-  --color-dm-violet: #a78bfa;
 
   /* DM v2 — Font families */
   --font-body: 'Inter', ui-sans-serif, system-ui;
   --font-mono-data: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
-
-  /* DM v2 — Glow shadows */
-  --shadow-glow-cyan: 0 0 18px rgba(6,182,212,0.28);
-  --shadow-glow-orange: 0 0 18px rgba(249,115,22,0.28);
-  --shadow-glow-rose: 0 0 18px rgba(244,63,94,0.28);
 }
 
 :root {
-  --shadow-panel: 0 10px 0 rgba(35, 33, 38, 0.08);
   --shadow-button: 0 4px 0 rgba(35, 33, 38, 0.12);
 
-  /* --dm-* aliases consumed by the design-kit cc-* rules */
-  --dm-bg: #020617;
-  --dm-surface-primary: #0f172a;
+  /* --dm-* aliases consumed by the surviving design-kit globals (cc-*, dm-hub-*,
+     command-*, etc.). Phase 8 swept the zero-usage --shadow-panel, --dm-bg,
+     --dm-surface-primary, --dm-text, --dm-orange-soft, and --dm-violet. */
   --dm-surface-elevated: #1e293b;
   --dm-surface-translucent: rgba(15, 23, 42, 0.65);
   --dm-border: #1e293b;
   --dm-border-strong: #334155;
-  --dm-text: #ffffff;
   --dm-text-secondary: #cbd5e1;
   --dm-text-muted: #94a3b8;
   --dm-text-dead: #64748b;
@@ -66,26 +35,16 @@
   --dm-cyan-bright: #67e8f9;
   --dm-orange: #f97316;
   --dm-orange-hover: #fb923c;
-  --dm-orange-soft: rgba(249, 115, 22, 0.15);
   --dm-rose: #f43f5e;
   --dm-emerald: #10b981;
   --dm-emerald-bright: #34d399;
   --dm-amber: #f59e0b;
   --dm-amber-bright: #fbbf24;
-  --dm-violet: #a78bfa;
 }
 
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: #020617;
-  color: #ffffff;
-  font-family: var(--font-body);
-  -webkit-font-smoothing: antialiased;
-}
+/* box-sizing reset + the body canvas (background/color/font/margin) now come
+   from tokens.css; the legacy dark #020617/#ffffff/--font-body body rule here
+   was deleted in Phase 8 so the canvas falls through to --court. */
 
 button,
 input {
