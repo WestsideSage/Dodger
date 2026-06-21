@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { LineupPlayer } from '../../../types';
+import styles from './MatchCard.module.css';
 
 interface MatchCardProps {
   yourPlayers: LineupPlayer[];
@@ -65,45 +66,35 @@ export function MatchCard({
   const visibleRows = showAll || !compact ? sorted : sorted.slice(0, maxVisibleRows);
 
   return (
-    <div className={compact ? 'command-match-card is-compact' : 'command-match-card'}>
-      {/* Header — hidden in compact mode (squad context has its own heading) */}
+    <div className={`command-match-card${compact ? ' is-compact' : ''} ${styles.card}`}>
+      {/* Header — hidden in compact mode */}
       {!compact && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-          <span
-            title={yourTeamName}
-            style={{ fontSize: '10px', fontWeight: 700, color: '#22d3ee', letterSpacing: '0.08em' }}
-          >
+        <div className={styles.header}>
+          <span className={styles.teamYou} title={yourTeamName}>
             {yourTeamName.toUpperCase()}
           </span>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
-            <span style={{ fontSize: '10px', color: '#334155', letterSpacing: '0.1em' }}>VS</span>
-            <div style={{ display: 'flex', gap: '4px' }}>
+
+          <div className={styles.headerCenter}>
+            <span className={styles.vsLabel}>VS</span>
+            <div className={styles.modeRow}>
               <button
                 type="button"
+                className={`${styles.modeBtn}${mode === 'ovr' ? ` ${styles.active}` : ''}`}
                 onClick={() => setMode('ovr')}
-                style={{
-                  fontSize: '8px', fontWeight: 700, padding: '2px 6px', borderRadius: '3px', border: 'none', cursor: 'pointer',
-                  background: mode === 'ovr' ? '#22d3ee' : '#1e293b',
-                  color: mode === 'ovr' ? '#0a1220' : '#334155',
-                  letterSpacing: '0.06em',
-                }}
-              >OVR</button>
+              >
+                OVR
+              </button>
               <button
                 type="button"
+                className={`${styles.modeBtn}${mode === 'sta' ? ` ${styles.active}` : ''}`}
                 onClick={() => setMode('sta')}
-                style={{
-                  fontSize: '8px', fontWeight: 700, padding: '2px 6px', borderRadius: '3px', border: 'none', cursor: 'pointer',
-                  background: mode === 'sta' ? '#22d3ee' : '#1e293b',
-                  color: mode === 'sta' ? '#0a1220' : '#334155',
-                  letterSpacing: '0.06em',
-                }}
-              >STA</button>
+              >
+                STA
+              </button>
             </div>
           </div>
-          <span
-            title={oppTeamName}
-            style={{ fontSize: '10px', fontWeight: 700, color: '#f43f5e', letterSpacing: '0.08em', textAlign: 'right' }}
-          >
+
+          <span className={styles.teamOpp} title={oppTeamName}>
             {oppTeamName.toUpperCase()}
           </span>
         </div>
@@ -111,13 +102,9 @@ export function MatchCard({
 
       {/* Net summary strip — hidden in compact mode */}
       {hasOpp && !compact && (
-        <div style={{
-          background: 'rgba(34,211,238,0.07)', border: '1px solid rgba(34,211,238,0.15)',
-          borderRadius: '5px', padding: '6px 12px', marginBottom: '10px',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}>
-          <span style={{ fontSize: '9px', color: '#334155', letterSpacing: '0.1em', fontWeight: 700 }}>{edgeLabel}</span>
-          <span style={{ fontSize: '13px', fontWeight: 800, color: net >= 0 ? '#22d3ee' : '#f43f5e' }}>
+        <div className={styles.netStrip}>
+          <span className={styles.netLabel}>{edgeLabel}</span>
+          <span className={`${styles.netValue}${net >= 0 ? ` ${styles.netYou}` : ` ${styles.netOpp}`}`}>
             {netLeader} {net >= 0 ? `+${net}` : `+${Math.abs(net)}`} net {mode.toUpperCase()}
           </span>
         </div>
@@ -125,14 +112,10 @@ export function MatchCard({
 
       {/* Legend */}
       {hasOpp && !compact && (
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          fontSize: '9px', letterSpacing: '0.05em',
-          paddingBottom: '8px', borderBottom: '1px solid #1e2d3d', marginBottom: '2px',
-        }}>
-          <span style={{ color: '#164e63' }}>◀ {youAbbr} ADVANTAGE</span>
-          <span style={{ color: '#1e293b' }}>Longer bar = larger {mode.toUpperCase()} edge</span>
-          <span style={{ color: '#4c0519' }}>{oppAbbr} ADVANTAGE ▶</span>
+        <div className={styles.legend}>
+          <span className={styles.legendYou}>◀ {youAbbr} ADVANTAGE</span>
+          <span className={styles.legendMid}>Longer bar = larger {mode.toUpperCase()} edge</span>
+          <span className={styles.legendOpp}>{oppAbbr} ADVANTAGE ▶</span>
         </div>
       )}
 
@@ -141,82 +124,88 @@ export function MatchCard({
         const gap = mode === 'ovr' ? slot.ovrGap : slot.staGap;
         const barWidth = (Math.abs(gap) / maxGap) * 50;
         const youWin = gap > 0;
-        const youVal = mode === 'ovr' ? Math.round(slot.you.overall) : (slot.you.stamina !== undefined ? Math.round(slot.you.stamina) : '—');
-        const oppVal = slot.opp ? (mode === 'ovr' ? Math.round(slot.opp.overall) : (slot.opp.stamina !== undefined ? Math.round(slot.opp.stamina) : '—')) : '—';
+        const youVal = mode === 'ovr'
+          ? Math.round(slot.you.overall)
+          : (slot.you.stamina !== undefined ? Math.round(slot.you.stamina) : '—');
+        const oppVal = slot.opp
+          ? (mode === 'ovr'
+            ? Math.round(slot.opp.overall)
+            : (slot.opp.stamina !== undefined ? Math.round(slot.opp.stamina) : '—'))
+          : '—';
+
+        const statValClass = !hasOpp
+          ? styles.statValNoOpp
+          : gap === 0
+            ? styles.statValEven
+            : youWin
+              ? styles.statValYouWin
+              : styles.statValOppWin;
+
+        const oppStatValClass = !hasOpp
+          ? styles.statValNoOpp
+          : gap === 0
+            ? styles.statValEven
+            : youWin
+              ? styles.statValOppWin
+              : styles.statValYouWin;
+
+        const nameClass = `${styles.playerName} ${compact ? styles.playerNameSm : styles.playerNameMd}`;
+
+        const isLast = i === visibleRows.length - 1;
 
         return (
           <div
             key={slot.you.id}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 36% 1fr',
-              alignItems: 'center',
-              padding: compact ? '5px 0' : '6px 0',
-              borderBottom: i < visibleRows.length - 1 ? '1px solid #0d1a26' : 'none',
-            }}
+            className={styles.matchupRow}
+            style={isLast ? { borderBottom: 'none' } : undefined}
           >
             {/* Your side */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span style={{ fontSize: '8px', color: '#1e3a4a', letterSpacing: '0.06em', lineHeight: 1 }}>
-                  {mode === 'ovr' ? 'OVR' : 'STA'}
-                </span>
-                <span style={{ fontSize: '11px', fontWeight: 700, lineHeight: 1.2, color: !hasOpp ? '#e2e8f0' : gap === 0 ? '#e2e8f0' : youWin ? '#22d3ee' : '#f43f5e' }}>
-                  {youVal}
-                </span>
+            <div className={styles.yourSide}>
+              <div className={styles.statBadge}>
+                <span className={styles.statKey}>{mode === 'ovr' ? 'OVR' : 'STA'}</span>
+                <span className={statValClass}>{youVal}</span>
               </div>
-              <span title={slot.you.name} style={{ fontSize: compact ? '11px' : '12px', fontWeight: 600, color: '#e2e8f0' }}>
+              <span title={slot.you.name} className={nameClass}>
                 {slot.you.name}
               </span>
             </div>
 
             {/* Center: gap label + bar */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', padding: '0 8px' }}>
+            <div className={styles.center}>
               {hasOpp ? (
                 <>
-                  <span style={{
-                    fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1,
-                    color: gap === 0 ? '#475569' : youWin ? '#22d3ee' : '#f43f5e',
-                  }}>
+                  <span className={`${styles.gapLabel} ${gap === 0 ? styles.gapLabelEven : youWin ? styles.gapLabelYou : styles.gapLabelOpp}`}>
                     {gap === 0 ? 'EVEN' : youWin ? `◀ ${youAbbr} +${Math.abs(gap)}` : `−${Math.abs(gap)} ▶`}
                   </span>
-                  <div style={{ position: 'relative', width: '100%', height: '6px', background: '#1e293b', borderRadius: '3px', overflow: 'hidden' }}>
-                    {/* Center divider */}
-                    <div style={{ position: 'absolute', left: '50%', top: 0, width: '2px', height: '100%', background: '#0a1220', transform: 'translateX(-50%)', zIndex: 2 }} />
-                    {/* Bar fill */}
+                  <div className={styles.barTrack}>
+                    <div className={styles.barDivider} />
                     {gap !== 0 && (
-                      <div style={{
-                        position: 'absolute', top: 0, height: '100%',
-                        width: `${barWidth}%`,
-                        background: youWin ? '#22d3ee' : '#f43f5e',
-                        ...(youWin ? { right: '50%', left: 'auto' } : { left: '50%', right: 'auto' }),
-                      }} />
+                      <div
+                        className={youWin ? styles.barFillYou : styles.barFillOpp}
+                        style={{ width: `${barWidth}%` }}
+                      />
                     )}
                   </div>
                 </>
               ) : (
-                <span style={{ fontSize: '9px', color: '#334155' }}>—</span>
+                <span className={styles.noDash}>—</span>
               )}
             </div>
 
             {/* Opponent side */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '4px' }}>
+            <div className={styles.oppSide}>
               {slot.opp ? (
                 <>
-                  <span title={slot.opp.name} style={{ fontSize: compact ? '11px' : '12px', fontWeight: 600, color: '#e2e8f0' }}>
+                  <span title={slot.opp.name} className={nameClass}>
                     {slot.opp.name}
                   </span>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <span style={{ fontSize: '8px', color: '#2d1a1a', letterSpacing: '0.06em', lineHeight: 1 }}>
-                      {mode === 'ovr' ? 'OVR' : 'STA'}
-                    </span>
-                    <span style={{ fontSize: '11px', fontWeight: 700, lineHeight: 1.2, color: gap === 0 ? '#e2e8f0' : youWin ? '#f43f5e' : '#22d3ee' }}>
-                      {oppVal}
-                    </span>
+                  <div className={styles.statBadge}>
+                    <span className={styles.statKey}>{mode === 'ovr' ? 'OVR' : 'STA'}</span>
+                    <span className={oppStatValClass}>{oppVal}</span>
                   </div>
                 </>
               ) : (
-                <span style={{ fontSize: '11px', color: '#334155', fontStyle: 'italic' }}>Unavailable</span>
+                <span className={styles.unavailable}>Unavailable</span>
               )}
             </div>
           </div>
@@ -225,23 +214,21 @@ export function MatchCard({
 
       {/* Fallback message if no opp data */}
       {!hasOpp && (
-        <p style={{ fontSize: '10px', color: '#334155', textAlign: 'center', padding: '8px 0', fontStyle: 'italic' }}>
-          Opponent lineup unavailable
-        </p>
+        <p className={styles.noOpp}>Opponent lineup unavailable</p>
       )}
 
       {/* Tally */}
       {hasOpp && !compact && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#334155', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #1e2d3d' }}>
-          <span><span style={{ color: '#22d3ee', fontWeight: 700 }}>{advantages}</span> slot advantages</span>
-          <span><span style={{ color: '#f43f5e', fontWeight: 700 }}>{disadvantages}</span> slot disadvantages</span>
+        <div className={styles.tally}>
+          <span><span className={styles.tallyAdv}>{advantages}</span> slot advantages</span>
+          <span><span className={styles.tallyDisadv}>{disadvantages}</span> slot disadvantages</span>
         </div>
       )}
 
       {compact && sorted.length > maxVisibleRows && (
         <button
           type="button"
-          className="command-inline-toggle"
+          className={`command-inline-toggle ${styles.expandBtn}`}
           onClick={() => setShowAll(prev => !prev)}
         >
           {showAll ? 'Collapse details' : `Expand all ${sorted.length} matchups`}

@@ -1,0 +1,308 @@
+/* MatchCard — Floodlight reskin.
+   5-color contract:
+     Volt  (--volt / --volt2 / --volt-soft)  → YOUR side win / primary active
+     --out                                   → dim label, "even" neutral
+     --danger / --danger2 / --danger-soft    → NOT used here (no destructive action)
+     --ok                                    → NOT used here (no confirmed-positive)
+     Warm neutrals                           → everything else
+   No raw #hex / rgba() / hsl() literals.
+   No legacy dm-* class names.
+   SVG geometry (coordinates, widths) is layout, not color — those stay in TSX. */
+
+/* ---- Card shell ---- */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ---- Header row (team names + mode toggle) ---- */
+.header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.teamYou {
+  font: 700 0.625rem var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--volt2);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.teamOpp {
+  font: 700 0.625rem var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--text2);
+  text-transform: uppercase;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.headerCenter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.vsLabel {
+  font: 500 0.6rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.modeRow {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.modeBtn {
+  font: 700 0.5rem var(--font-mono);
+  letter-spacing: 0.06em;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: var(--raise2);
+  color: var(--muted);
+  border-color: var(--line2);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.modeBtn.active {
+  background: var(--volt);
+  color: var(--court);
+  border-color: var(--volt);
+}
+
+.modeBtn:not(.active):hover {
+  background: var(--raise);
+  color: var(--text2);
+  border-color: var(--lit);
+}
+
+/* ---- Net summary strip ---- */
+.netStrip {
+  background: var(--volt-soft);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-4);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.netLabel {
+  font: 700 0.56rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.netValue {
+  font: 800 0.82rem var(--font-disp);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+.netValue.netYou  { color: var(--volt2); }
+.netValue.netOpp  { color: var(--text); }
+
+/* ---- Legend row ---- */
+.legend {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font: 500 0.56rem var(--font-mono);
+  letter-spacing: 0.05em;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--space-1);
+}
+
+.legendYou  { color: var(--volt2);  }
+.legendMid  { color: var(--out); }
+.legendOpp  { color: var(--text2); }
+
+/* ---- Matchup rows ---- */
+.matchupRow {
+  display: grid;
+  grid-template-columns: 1fr 36% 1fr;
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.matchupRow:last-of-type {
+  border-bottom: none;
+}
+
+/* Your side */
+.yourSide {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.statBadge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.statKey {
+  font: 500 0.5rem var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.statValYouWin  { font: 700 0.69rem var(--font-mono); color: var(--volt2);  line-height: 1.2; font-variant-numeric: tabular-nums; }
+.statValOppWin  { font: 700 0.69rem var(--font-mono); color: var(--text2);  line-height: 1.2; font-variant-numeric: tabular-nums; }
+.statValEven    { font: 700 0.69rem var(--font-mono); color: var(--text);   line-height: 1.2; font-variant-numeric: tabular-nums; }
+.statValNoOpp   { font: 700 0.69rem var(--font-mono); color: var(--text);   line-height: 1.2; font-variant-numeric: tabular-nums; }
+
+.playerName {
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playerNameSm { font-size: 0.69rem; }
+.playerNameMd { font-size: 0.75rem; }
+
+/* Center gap bar */
+.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+}
+
+.gapLabel {
+  font: 700 0.625rem var(--font-mono);
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.gapLabelYou   { color: var(--volt2); }
+.gapLabelOpp   { color: var(--text2); }
+.gapLabelEven  { color: var(--out); }
+.gapLabelNone  { color: var(--out); }
+
+.barTrack {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  background: var(--raise2);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.barDivider {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: var(--court);
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.barFillYou {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  right: 50%;
+  background: var(--volt);
+}
+
+.barFillOpp {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  left: 50%;
+  background: var(--text2);
+}
+
+/* Opponent side */
+.oppSide {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+}
+
+.unavailable {
+  font: italic 500 0.69rem var(--font-ui);
+  color: var(--muted);
+}
+
+.noDash {
+  font: 500 0.56rem var(--font-mono);
+  color: var(--out);
+}
+
+/* ---- No-opp fallback ---- */
+.noOpp {
+  font: italic 500 0.625rem var(--font-ui);
+  color: var(--muted);
+  text-align: center;
+  padding: var(--space-3) 0;
+}
+
+/* ---- Tally footer ---- */
+.tally {
+  display: flex;
+  justify-content: space-between;
+  font: 500 0.625rem var(--font-mono);
+  color: var(--muted);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.tallyAdv  { color: var(--volt2);  font-weight: 700; }
+.tallyDisadv { color: var(--text2); font-weight: 700; }
+
+/* ---- Compact expand toggle ---- */
+.expandBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text2);
+  font: 700 0.6rem var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+
+.expandBtn:hover {
+  border-color: var(--volt);
+  color: var(--volt2);
+  background: var(--volt-soft);
+}
