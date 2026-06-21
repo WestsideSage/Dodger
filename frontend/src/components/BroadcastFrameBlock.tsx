@@ -1,12 +1,12 @@
 import type { BroadcastFrame, BroadcastTag } from '../types';
+import styles from './BroadcastFrameBlock.module.css';
 
-function toneAccent(tone: string): string {
-  if (tone === 'title') return '#fbbf24';
-  if (tone === 'playoff') return '#f97316';
-  if (tone === 'rivalry') return '#ef4444';
-  if (tone === 'trajectory') return '#22d3ee';
-  if (tone === 'opening') return '#38bdf8';
-  return '#94a3b8';
+// Live / high-stakes tones get the single Volt "on air" accent; every other tone
+// reads as a calm warm-neutral pill. Presentation only — tone never changes which
+// proof-source a tag carries.
+const LIVE_TONES = new Set(['title', 'playoff', 'rivalry']);
+function isLiveTone(tone: string): boolean {
+  return LIVE_TONES.has(tone);
 }
 
 function formatProofSource(source: string): string {
@@ -23,18 +23,9 @@ function formatProofSource(source: string): string {
 
 function ProofRow({ label, source }: { label: string; source: string }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        gap: '0.75rem',
-        padding: '0.3rem 0',
-        borderBottom: '1px solid #0f172a',
-        fontSize: '0.72rem',
-      }}
-    >
-      <span style={{ color: '#cbd5e1' }}>{label}</span>
-      <code style={{ color: '#64748b', fontSize: '0.7rem' }}>{formatProofSource(source)}</code>
+    <div className={styles.proofRow}>
+      <span className={styles.proofLabel}>{label}</span>
+      <code className={styles.proofSource}>{formatProofSource(source)}</code>
     </div>
   );
 }
@@ -43,17 +34,8 @@ function FrameTag({ tag }: { tag: BroadcastTag }) {
   return (
     <span
       data-broadcast-proof-source={tag.proof_source}
-      style={{
-        borderRadius: '999px',
-        border: `1px solid ${toneAccent(tag.tone)}55`,
-        background: `${toneAccent(tag.tone)}18`,
-        color: toneAccent(tag.tone),
-        padding: '0.22rem 0.6rem',
-        fontSize: '0.68rem',
-        fontWeight: 700,
-        letterSpacing: '0.06em',
-        textTransform: 'uppercase',
-      }}
+      data-broadcast-tone={tag.tone}
+      className={`${styles.tag} ${isLiveTone(tag.tone) ? styles.tagLive : styles.tagNeutral}`}
     >
       {tag.label}
     </span>
@@ -93,7 +75,7 @@ export function BroadcastFrameBlock({
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center' }}>
         <p className="dm-kicker" style={{ margin: 0 }}>{title}</p>
-        <span style={{ color: '#475569', fontSize: '0.68rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <span className={styles.voiceSlot}>
           {frame.voice_slot.replace('broadcast.', '').replaceAll('_', ' ')}
         </span>
       </div>
@@ -109,7 +91,7 @@ export function BroadcastFrameBlock({
       {frame.historical_hook && (
         <p
           data-broadcast-proof-source={frame.historical_hook.proof_source}
-          style={{ margin: 0, color: '#cbd5e1', fontSize: '0.82rem', lineHeight: 1.5 }}
+          className={styles.hook}
         >
           {frame.historical_hook.text}
         </p>
@@ -119,7 +101,7 @@ export function BroadcastFrameBlock({
         <details>
           <summary
             data-testid="broadcast-proof-toggle"
-            style={{ cursor: 'pointer', color: '#94a3b8', fontSize: '0.76rem' }}
+            className={styles.evidenceToggle}
           >
             View evidence ⌄
           </summary>

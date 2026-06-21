@@ -1,0 +1,35 @@
+/* WorldsCrowning.module.css — Floodlight reskin of the Worlds crowning ceremony.
+   5-color contract:
+     --gold (--gold / --gold2 / --gold-soft) → THE one legit gold use: genuine
+        elite/championship. The Worlds crown is the summit of the pyramid, so the
+        kicker + champion name carry gold here (and ONLY here).
+     Warm neutrals (--text / --text2 / --out) → every supporting line.
+     Volt / --ok / --danger → NOT used here (no live action, no destructive action).
+   No raw #hex / rgba() / hsl() literals. No legacy dm-* / --color-* vars.
+   These classes layer onto the global .champion-* stage classes (index.css);
+   they only override the per-stage text color the component used to inline. */
+
+/* Gold treatment: the championship kicker + the crowned club name. */
+.gold {
+  color: var(--gold);
+}
+
+/* Supporting copy that builds toward the reveal — primary warm text. */
+.lede {
+  color: var(--text);
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Quiet teaser / muted supporting line. */
+.muted {
+  color: var(--text2);
+  margin: 0;
+}
+
+/* The season stamp under the final crown — the dimmest neutral. */
+.season {
+  color: var(--out);
+  font-size: 0.78rem;
+  margin: 0.4rem 0 0;
+}

@@ -1,5 +1,6 @@
 import type { OffseasonBeat } from '../../types';
 import { CeremonyShell } from './CeremonyShell';
+import styles from './WorldsCrowning.module.css';
 
 type WorldsChampionBeat = Extract<OffseasonBeat, { key: 'worlds_champion' }>;
 
@@ -76,16 +77,16 @@ function FirstCrownStage({
     if (stage <= 0) {
         return (
             <div className="champion-stage" data-testid="worlds-crown-stage-0">
-                <p className="champion-kicker" style={{ color: '#fbbf24' }}>The World Stage</p>
-                <p style={{ color: '#94a3b8', margin: 0 }}>One club stands above every tier…</p>
+                <p className={`champion-kicker ${styles.gold}`}>The World Stage</p>
+                <p className={styles.muted}>One club stands above every tier…</p>
             </div>
         );
     }
     if (stage === 1) {
         return (
             <div className="champion-stage" data-testid="worlds-crown-stage-1">
-                <p className="champion-kicker" style={{ color: '#fbbf24' }}>The World Stage</p>
-                <p style={{ color: '#e2e8f0', margin: 0, fontWeight: 600 }}>
+                <p className={`champion-kicker ${styles.gold}`}>The World Stage</p>
+                <p className={styles.lede}>
                     The summit of the pyramid is decided.
                 </p>
             </div>
@@ -94,17 +95,17 @@ function FirstCrownStage({
     if (stage === 2) {
         return (
             <div className="champion-stage" data-testid="worlds-crown-stage-2">
-                <p className="champion-kicker" style={{ color: '#fbbf24' }}>Worlds Champions</p>
-                <h2 className="champion-name" style={{ color: '#fbbf24' }}>{championName}</h2>
+                <p className={`champion-kicker ${styles.gold}`}>Worlds Champions</p>
+                <h2 className={`champion-name ${styles.gold}`}>{championName}</h2>
             </div>
         );
     }
     return (
         <div className="champion-stage" data-testid="worlds-crown-stage-3">
-            <p className="champion-kicker" style={{ color: '#fbbf24' }}>Worlds Champions</p>
-            <h2 className="champion-name" style={{ color: '#fbbf24' }}>{championName}</h2>
+            <p className={`champion-kicker ${styles.gold}`}>Worlds Champions</p>
+            <h2 className={`champion-name ${styles.gold}`}>{championName}</h2>
             <p className="champion-sub">The first Worlds title. The banner goes up tonight.</p>
-            <p style={{ color: '#64748b', fontSize: '0.78rem', margin: '0.4rem 0 0' }}>{seasonId}</p>
+            <p className={styles.season}>{seasonId}</p>
         </div>
     );
 }

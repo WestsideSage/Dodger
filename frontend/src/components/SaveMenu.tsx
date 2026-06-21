@@ -25,11 +25,11 @@ function freshCreationSeed(): number {
 // Deterministic club monogram for save rows — initials + a stable accent
 // drawn from the club name so each career reads as a distinct program.
 // Presentation only; no payload fields are invented.
-const MONOGRAM_PALETTE = ['#22d3ee', '#f97316', '#10b981', '#f59e0b', '#a78bfa', '#f43f5e', '#38bdf8', '#fb923c'];
+const MONOGRAM_PALETTE = ['#22d3ee', '#f97316', '#10b981', '#f59e0b', '#a78bfa', '#f43f5e', '#38bdf8', '#fb923c']; // token-gate-allow: club-identity monogram DATA, not theme
 
 function clubMonogram(name?: string | null): { initials: string; hue: string } {
   const clean = (name ?? '').trim();
-  if (!clean) return { initials: '?', hue: '#475569' };
+  if (!clean) return { initials: '?', hue: '#475569' }; // token-gate-allow: monogram fallback hue (identity DATA)
   const words = clean.split(/\s+/).filter(Boolean);
   const initials = (
     words.length >= 2 ? `${words[0][0]}${words[words.length - 1][0]}` : clean.slice(0, 2)
@@ -151,7 +151,7 @@ export function SaveMenu({ onSaveLoaded }: SaveMenuProps) {
   const [createError, setCreateError] = useState<string | null>(null);
   
   // Build from scratch state
-  const [buildIdentity, setBuildIdentity] = useState({ save_name: '', club_name: '', city: '', colors: '#22d3ee,#1e293b' });
+  const [buildIdentity, setBuildIdentity] = useState({ save_name: '', club_name: '', city: '', colors: '#22d3ee,#1e293b' }); // token-gate-allow: default club kit colors (identity DATA)
   const [buildCoach, setBuildCoach] = useState({ coach_name: '', coach_backstory: 'Tactical Mastermind' });
   // V22 Phase 1: per-creation seed. It drives the founding prospect pool the
   // wizard SHOWS (?seed= on starting-prospects) and the career the build POST

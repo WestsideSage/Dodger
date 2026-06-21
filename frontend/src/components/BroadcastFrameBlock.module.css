@@ -1,0 +1,68 @@
+/* BroadcastFrameBlock.module.css — Floodlight reskin of the broadcast frame.
+   This block is TRUTH-BEARING: every tag/hook carries a data-broadcast-proof-source
+   hook and the colors are presentation only. The reskin moves all inline #hex to
+   tokens WITHOUT touching the data-* hooks or behavior.
+   5-color contract for a broadcast surface:
+     --volt (--volt / --volt2 / --volt-soft) → LIVE / high-stakes tones (title,
+        playoff, rivalry) — the "on air" accent.
+     Warm neutrals (--text / --text2 / --out / --line) → every other tone and all
+        chrome (proof rows, labels, voice slot, hooks).
+   No raw #hex / rgba() / hsl() literals. No legacy dm-* / --color-* vars. */
+
+/* ---- Proof row (label : source) ---- */
+.proofRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.72rem;
+}
+.proofLabel {
+  color: var(--text2);
+}
+.proofSource {
+  color: var(--out);
+  font-size: 0.7rem;
+}
+
+/* ---- Frame tag pill ---- */
+/* Live / high-stakes tone → the single Volt accent (on air). */
+.tagLive {
+  border: 1px solid var(--volt-soft);
+  background: var(--volt-soft);
+  color: var(--volt);
+}
+/* Every other tone → calm warm-neutral pill. */
+.tagNeutral {
+  border: 1px solid var(--line2);
+  background: var(--tint-neutral);
+  color: var(--text2);
+}
+.tag {
+  border-radius: var(--radius-pill);
+  padding: 0.22rem 0.6rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ---- Panel chrome ---- */
+.voiceSlot {
+  color: var(--out);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.hook {
+  margin: 0;
+  color: var(--text2);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.evidenceToggle {
+  cursor: pointer;
+  color: var(--text2);
+  font-size: 0.76rem;
+}
