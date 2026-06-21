@@ -1,10 +1,13 @@
 import React, { useMemo, useState } from 'react';
-import type { DivisionStandingsBlock, NewsItem, PlayoffBracketResponse, RecentMatchSummary, StandingRow, StandingsResponse } from '../types';
+import type { NewsItem, PlayoffBracketResponse, RecentMatchSummary, StandingRow, StandingsResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
-import { StatusMessage } from './ui';
+import { StatusMessage, Truncate, Tag } from '../ui';
+import type { TagTone } from '../ui';
 import { PlayoffBracket } from './standings/PlayoffBracket';
+import { PyramidPanel } from './standings/PyramidPanel';
 import { ProgramModal } from './dynasty/history/ProgramModal';
 import { TermTip, EmptyState, CLUB_ARCHETYPE_TERM } from '../legibility';
+import styles from './LeagueContext.module.css';
 
 type RankedStanding = StandingRow & {
   rank: number;
@@ -36,15 +39,15 @@ const normalizeApproach = (value: string | null | undefined) => {
 // The "Plan" badge shows a club's program intent using the command-center
 // display vocabulary the backend now emits (bug #7): Balanced, Aggressive,
 // Control, Defensive, plus the AI-only raw "Develop Youth". Tone the badge to
-// that exact vocabulary. (Substring checks keep this resilient if the backend
-// passthrough ever surfaces another raw intent.)
-const approachToneClass = (value: string | null | undefined) => {
+// that exact vocabulary, mapped onto the Floodlight 5-color Tag tones.
+// (Substring checks keep this resilient if the backend passthrough ever
+// surfaces another raw intent.)
+const approachTone = (value: string | null | undefined): TagTone => {
   const normalized = normalizeApproach(value).toLowerCase();
-  if (normalized.includes('aggressive')) return 'dm-badge-amber';
-  if (normalized.includes('defensive') || normalized.includes('control')) return 'dm-badge-violet';
-  if (normalized.includes('develop')) return 'dm-badge-emerald';
-  if (normalized.includes('balanced')) return 'dm-badge-cyan';
-  return 'dm-badge-slate';
+  if (normalized.includes('aggressive')) return 'live';
+  if (normalized.includes('defensive') || normalized.includes('control')) return 'out';
+  if (normalized.includes('develop')) return 'verified';
+  return 'neutral'; // Balanced + any unknown intent
 };
 
 const NeedState = ({
@@ -57,19 +60,19 @@ const NeedState = ({
   outcome: string;
 }) => (
   <>
-    <div className="need-row">
-      <span className="need-action">{action}</span>
-      <span className="need-arrow">-&gt;</span>
-      <span className="need-outcome">{outcome}</span>
+    <div className={styles.needRow}>
+      <span className={styles.needAction}>{action}</span>
+      <span className={styles.needArrow}>-&gt;</span>
+      <span className={styles.needOutcome}>{outcome}</span>
     </div>
-    <p className="need-helper">{helper}</p>
+    <p className={styles.needHelper}>{helper}</p>
   </>
 );
 
 const FormStub = ({ label }: { label: string | null | undefined }) => (
-  <div className="ls-form-with-label">
-    <span className="lbl-mini">Plan</span>
-    <span className={`dm-badge ${approachToneClass(label)}`}>{normalizeApproach(label)}</span>
+  <div className={styles.formWithLabel}>
+    <span className={styles.lblMini}>Plan</span>
+    <Tag tone={approachTone(label)}>{normalizeApproach(label)}</Tag>
   </div>
 );
 
@@ -78,18 +81,18 @@ const DiffBar = ({ diff, max }: { diff: number; max: number }) => {
   const isPositive = diff >= 0;
 
   return (
-    <div className="ls-diff-cell">
-      <div className="ls-diff-bar">
-        <span className="axis" />
+    <div className={styles.diffCell}>
+      <div className={styles.diffBar}>
+        <span className={styles.diffAxis} />
         <span
-          className={`fill ${isPositive ? 'pos' : 'neg'}`}
+          className={`${styles.diffFill} ${isPositive ? styles.diffFillPos : styles.diffFillNeg}`}
           style={{
             left: isPositive ? '50%' : `calc(50% - ${pct / 2}%)`,
             width: `${pct / 2}%`,
           }}
         />
       </div>
-      <span className={`ls-diff-val ${isPositive ? 'pos' : 'neg'}`}>{formatDiff(diff)}</span>
+      <span className={`${styles.diffVal} ${isPositive ? styles.diffValPos : styles.diffValNeg}`}>{formatDiff(diff)}</span>
     </div>
   );
 };
@@ -175,7 +178,7 @@ const buildWireRows = (
     const parsed = parseMatchSummary(match.summary);
     if (!parsed) {
       return (
-        <span key={match.match_id} className="ls-wire-item">
+        <span key={match.match_id} className={styles.wireItem}>
           <b>W{String(match.week).padStart(2, '0')}</b> {match.summary}
         </span>
       );
@@ -187,12 +190,12 @@ const buildWireRows = (
     return (
       <span
         key={match.match_id}
-        className={`ls-wire-item${involvesUser ? ' is-us' : ''}`}
+        className={`${styles.wireItem} ${involvesUser ? styles.wireItemIsUs : ''}`.trim()}
         aria-label={`Week ${match.week}: ${resultTag}`}
       >
-        <span className="ls-wire-item-wk">W{String(match.week).padStart(2, '0')}</span>
-        <span className="ls-wire-item-score">{resultTag}</span>
-        {involvesUser && <span className="ls-wire-item-you" aria-label="your match">★</span>}
+        <span className={styles.wireWk}>W{String(match.week).padStart(2, '0')}</span>
+        <span className={styles.wireScore}>{resultTag}</span>
+        {involvesUser && <span className={styles.wireYou} aria-label="your match">★</span>}
       </span>
     );
   });
@@ -210,104 +213,13 @@ const buildHeadlineRows = (
   return headlines.map((headline, index) => (
     <span
       key={`wire-headline-${index}`}
-      className="ls-wire-item is-headline"
+      className={`${styles.wireItem} ${styles.wireItemIsHeadline}`}
       aria-label={`${headline.tag}: ${headline.text}`}
     >
-      <span className="ls-wire-item-wk">{headline.tag}</span>
-      <span className="ls-wire-item-score">{headline.text}</span>
+      <span className={styles.wireWk}>{headline.tag}</span>
+      <span className={styles.wireScore}>{headline.text}</span>
     </span>
   ));
-};
-
-// V23: the world beyond your table. One compact card per division — the
-// player's division is the main table above, so this panel is for watching
-// the rest of the pyramid (and the Circuit) live their own seasons.
-const PyramidPanel = ({
-  divisions,
-  isOfficial,
-  onClubClick,
-}: {
-  divisions: DivisionStandingsBlock[];
-  isOfficial: boolean;
-  onClubClick: (clubId: string, clubName: string) => void;
-}) => {
-  const userDivision = divisions.find((division) => division.is_user_division);
-  const [activeId, setActiveId] = useState<string>(userDivision?.division_id ?? divisions[0]?.division_id ?? '');
-  const active = divisions.find((division) => division.division_id === activeId) ?? divisions[0];
-  if (!active) return null;
-  const relegationCount = active.movement?.relegation_count ?? 0;
-
-  return (
-    <div className="ls-panel">
-      <div className="ls-panel-head">
-        <span className="dm-kicker">The Pyramid</span>
-        <h3>World Standings</h3>
-      </div>
-      <div role="tablist" aria-label="Divisions" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', padding: '0 0.75rem 0.5rem' }}>
-        {divisions.map((division) => (
-          <button
-            key={division.division_id}
-            type="button"
-            role="tab"
-            aria-selected={division.division_id === active.division_id}
-            className={`dm-badge ${division.division_id === active.division_id ? 'dm-badge-cyan' : 'dm-badge-slate'}`}
-            style={{ cursor: 'pointer', border: 'none' }}
-            onClick={() => setActiveId(division.division_id)}
-          >
-            {division.short_name}
-            {division.is_user_division ? ' ★' : ''}
-          </button>
-        ))}
-      </div>
-      <div style={{ padding: '0 0.75rem 0.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.35rem' }}>
-          <strong>{active.name}</strong>
-          {active.is_user_division && <span className="dm-badge dm-badge-cyan">YOUR DIVISION</span>}
-        </div>
-        <div className="ls-tb-list">
-          {active.standings.map((standing, index) => {
-            const inRelegation = relegationCount > 0 && index >= active.standings.length - relegationCount;
-            return (
-              <div
-                key={standing.club_id}
-                className="ls-tb-row"
-                onClick={() => onClubClick(standing.club_id, standing.club_name)}
-                style={{ cursor: 'pointer' }}
-                role="button"
-                tabIndex={0}
-                // Worded so the main table's "Open X program history" is NOT
-                // a substring (Playwright role-name matching is substring
-                // based — the duplicate label was a strict-mode ambiguity).
-                aria-label={`${standing.club_name} program history — ${active.name} table`}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    onClubClick(standing.club_id, standing.club_name);
-                  }
-                }}
-              >
-                <span className="ls-tb-from">#{index + 1}</span>
-                <div className="ls-tb-body">
-                  <span className="ls-tb-who">
-                    {standing.club_name}
-                    {standing.is_user_club ? ' ★' : ''}
-                  </span>
-                  <span className="ls-tb-note">
-                    {standing.wins}-{standing.losses}-{standing.draws} · {standing.points} pts ·{' '}
-                    {formatDiff(isOfficial ? (standing.game_point_differential ?? 0) : standing.elimination_differential)} diff
-                  </span>
-                </div>
-                {inRelegation && <span className="ls-tb-risk risk-high">DROP</span>}
-              </div>
-            );
-          })}
-        </div>
-        {active.movement?.summary && (
-          <p className="ls-subtle" style={{ marginTop: '0.5rem' }}>{active.movement.summary}</p>
-        )}
-      </div>
-    </div>
-  );
 };
 
 export function Standings() {
@@ -391,16 +303,16 @@ export function Standings() {
     <>
       {bracket?.active && <PlayoffBracket data={bracket} />}
 
-      <div className="max-content ls-shell" data-screen-label="04 Standings">
-        <div className="ls-glance">
-          <div className="ls-glance-cell ls-glance-rank">
-            <span className="lbl">Our Rank</span>
-            <div className="rank-row">
-              <span className="num">{us.rank}</span>
-              <span className="suffix">OF {standings.length}</span>
+      <div className={styles.shell} data-screen-label="04 Standings">
+        <div className={styles.glance}>
+          <div className={styles.glanceCell}>
+            <span className={styles.lbl}>Our Rank</span>
+            <div className={styles.rankRow}>
+              <span className={styles.num}>{us.rank}</span>
+              <span className={styles.suffix}>OF {standings.length}</span>
             </div>
-            <div className={`trend ${us.rank <= playoffLine ? 'up' : 'down'}`}>
-              <span className="arrow">{us.rank <= playoffLine ? '^' : 'v'}</span>
+            <div className={`${styles.trend} ${us.rank <= playoffLine ? styles.trendUp : styles.trendDown}`}>
+              <span className={styles.arrow}>{us.rank <= playoffLine ? '^' : 'v'}</span>
               {isOffseason
                 ? `FINAL · SEASON CONCLUDED`
                 : playoffsActive
@@ -411,69 +323,66 @@ export function Standings() {
             </div>
           </div>
 
-          <div className="ls-glance-cell ls-glance-record">
-            <span className="lbl">Season Record</span>
-            <div className="record-row">
-              <span className="rec">{us.wins}-{us.losses}-{us.draws}</span>
-              <span
-                className="diff"
-                style={diffOf(us) < 0 ? { color: 'var(--dm-rose)' } : undefined}
-              >
+          <div className={styles.glanceCell}>
+            <span className={styles.lbl}>Season Record</span>
+            <div className={styles.recordRow}>
+              <span className={styles.rec}>{us.wins}-{us.losses}-{us.draws}</span>
+              <span className={`${styles.diff} ${diffOf(us) < 0 ? styles.diffNeg : ''}`.trim()}>
                 {formatDiff(diffOf(us))}
               </span>
             </div>
             <FormStub label={us.latest_approach} />
           </div>
 
-          <div className="ls-glance-cell ls-glance-race">
-            <span className="lbl">Playoff Race</span>
-            <div className="race">
+          <div className={styles.glanceCell}>
+            <span className={styles.lbl}>Playoff Race</span>
+            <div className={styles.race}>
               {standings.slice(0, Math.min(standings.length, playoffLine + 1)).map((standing) => (
                 <span
                   key={standing.rank}
-                  className={`race-pip ${standing.rank <= playoffLine ? 'in' : 'out'} ${standing.is_user_club ? 'us' : ''}`}
+                  className={`${styles.racePip} ${standing.rank <= playoffLine ? styles.racePipIn : styles.racePipOut} ${standing.is_user_club ? styles.racePipUs : ''}`.trim()}
                 >
-                  <span className="rk">{standing.rank}</span>
+                  <span className={styles.rk}>{standing.rank}</span>
                 </span>
               ))}
             </div>
-            <div className="cushion">
-              <span className="cushion-pos">{raceSummary.left}</span>
-              <span className="cushion-sep">-</span>
-              <span className="cushion-back">{raceSummary.right}</span>
+            <div className={styles.cushion}>
+              <span className={styles.cushionPos}>{raceSummary.left}</span>
+              <span className={styles.cushionSep}>-</span>
+              <span className={styles.cushionBack}>{raceSummary.right}</span>
             </div>
           </div>
 
-          <div className="ls-glance-cell ls-glance-next">
-            <span className="lbl">This Week's Target</span>
+          <div className={styles.glanceCell}>
+            <span className={styles.lbl}>This Week's Target</span>
             <NeedState action={needCopy.action} outcome={needCopy.outcome} helper={needCopy.helper} />
           </div>
         </div>
 
-        <div className="ls-table-card">
-          <div className="ls-table-head">
+        <div className={styles.tableCard}>
+          <div className={styles.tableHead}>
             <div>
-              <span className="dm-kicker">{data.division ? data.division.name : 'League Office'}</span>
-              <h2 className="ls-table-title">
+              <span className={styles.kicker}>{data.division ? data.division.name : 'League Office'}</span>
+              <h2 className={styles.tableTitle}>
                 {playoffsActive ? 'Final Regular-Season Table' : 'Season Standings'}
-                {playoffsActive && <>{' '}<span className="ls-subtle">Playoffs live above</span></>}
+                {playoffsActive && <>{' '}<span className={styles.subtle}>Playoffs live above</span></>}
               </h2>
               {data.division?.movement?.summary && (
-                <span className="ls-subtle" style={{ display: 'block' }}>{data.division.movement.summary}</span>
+                <span className={styles.subtle} style={{ display: 'block' }}>{data.division.movement.summary}</span>
               )}
             </div>
-            <div className="ls-table-meta">
+            <div className={styles.tableMeta}>
               {data.division && (
-                <span className="dm-badge dm-badge-violet">{data.division.short_name}</span>
+                <Tag tone="neutral">{data.division.short_name}</Tag>
               )}
-              <span className="dm-badge dm-badge-cyan">WEEK {String(data.current_week).padStart(2, '0')}</span>
-              <span className="dm-badge dm-badge-emerald">TOP {playoffLine}</span>
-              <span className="dm-badge dm-badge-slate">{standings.length} CLUBS</span>
+              <Tag tone="live">WEEK {String(data.current_week).padStart(2, '0')}</Tag>
+              <Tag tone="verified">TOP {playoffLine}</Tag>
+              <Tag tone="neutral">{standings.length} CLUBS</Tag>
             </div>
           </div>
 
-          <div className="ls-table-scroll">
-            <table className="ls-table">
+          <div className={styles.tableScroll}>
+            <table className={styles.table}>
               <thead>
                 <tr>
                   <th className="num">#</th>
@@ -494,20 +403,19 @@ export function Standings() {
                   return (
                     <React.Fragment key={standing.club_id}>
                       {isCutLine && (
-                        <tr className="ls-playoff-line">
+                        <tr className={styles.cutLine}>
                           <td colSpan={8}>
-                            <div className="cut-row">
-                              <span className="line-bar" />
-                              <span className="line-label">Playoff Cut</span>
-                              <span className="line-bar" />
+                            <div className={styles.cutRow}>
+                              <span className={styles.cutBar} />
+                              <span className={styles.cutLabel}>Playoff Cut</span>
+                              <span className={styles.cutBar} />
                             </div>
                           </td>
                         </tr>
                       )}
                       <tr
-                        className={standing.is_user_club ? 'ls-user' : ''}
+                        className={standing.is_user_club ? styles.userRow : ''}
                         onClick={() => handleClubModal(standing.club_id, standing.club_name)}
-                        style={{ cursor: 'pointer' }}
                         role="button"
                         tabIndex={0}
                         aria-haspopup="dialog"
@@ -520,12 +428,12 @@ export function Standings() {
                         }}
                       >
                         <td className="num">
-                          <span className={`ls-rank ${standing.rank <= playoffLine ? 'in' : 'out'}`}>{standing.rank}</span>
+                          <span className={`${styles.rank} ${standing.rank <= playoffLine ? styles.rankIn : styles.rankOut}`}>{standing.rank}</span>
                         </td>
                         <td>
-                          <div className="ls-club">
-                            <span className="club-name">{standing.club_name}</span>
-                            <div className="ls-subtle" style={{ display: 'block', marginLeft: 0 }}>
+                          <div className={styles.club}>
+                            <Truncate className={styles.clubName}>{standing.club_name}</Truncate>
+                            <div className={styles.clubArchetype}>
                               {(() => {
                                 const raw = standing.program_trajectory_label ?? standing.program_archetype ?? '';
                                 const archetype = raw.includes(' · ') ? raw.split(' · ').slice(1).join(' · ') : raw;
@@ -538,14 +446,14 @@ export function Standings() {
                             </div>
                           </div>
                         </td>
-                        <td className="num"><span className="ls-cell-num">{standing.wins}</span></td>
-                        <td className="num"><span className="ls-cell-num muted">{standing.losses}</span></td>
-                        <td className="num"><span className="ls-cell-num muted">{standing.draws}</span></td>
-                        <td className="num"><span className="ls-cell-num pts">{standing.points}</span></td>
+                        <td className="num"><span className={styles.cellNum}>{standing.wins}</span></td>
+                        <td className="num"><span className={`${styles.cellNum} ${styles.cellNumMuted}`}>{standing.losses}</span></td>
+                        <td className="num"><span className={`${styles.cellNum} ${styles.cellNumMuted}`}>{standing.draws}</span></td>
+                        <td className="num"><span className={`${styles.cellNum} ${styles.cellNumPts}`}>{standing.points}</span></td>
                         <td>
-                          <span className={`dm-badge ${approachToneClass(standing.latest_approach)}`}>
+                          <Tag tone={approachTone(standing.latest_approach)}>
                             {normalizeApproach(standing.latest_approach)}
-                          </span>
+                          </Tag>
                         </td>
                         <td><DiffBar diff={diffOf(standing)} max={maxDiff} /></td>
                       </tr>
@@ -556,24 +464,24 @@ export function Standings() {
             </table>
           </div>
 
-          <div className="ls-table-foot">
-            <span className="ls-legend-item"><span className="dm-badge dm-badge-cyan">YOU</span> User club row</span>
-            <span className="ls-legend-sep">-</span>
-            <span className="ls-legend-item"><span className="dm-badge dm-badge-amber">CUT</span> Playoff line</span>
-            <span className="ls-legend-sep">-</span>
-            <span className="ls-legend-item">
+          <div className={styles.tableFoot}>
+            <span className={styles.legendItem}><Tag tone="live">YOU</Tag> User club row</span>
+            <span className={styles.legendSep}>-</span>
+            <span className={styles.legendItem}><Tag tone="out">CUT</Tag> Playoff line</span>
+            <span className={styles.legendSep}>-</span>
+            <span className={styles.legendItem}>
               <TermTip term="standings.playoff_line">Playoff Line</TermTip>
               {' '}— top {playoffLine} advance
             </span>
-            <span className="ls-legend-sep">-</span>
-            <span className="ls-legend-note">Click any row to open that club's program history.</span>
+            <span className={styles.legendSep}>-</span>
+            <span className={styles.legendNote}>Click any row to open that club's program history.</span>
           </div>
         </div>
 
-        <div className="ls-side">
-          <div className="ls-panel">
-            <div className="ls-panel-head">
-              <span className="dm-kicker">League Wire</span>
+        <div className={styles.side}>
+          <div className={styles.panel}>
+            <div className={styles.panelHead}>
+              <span className={styles.kicker}>League Wire</span>
               <h3>Recent Results</h3>
             </div>
             {wireRows === null ? (
@@ -584,26 +492,18 @@ export function Standings() {
               />
             ) : (
               <div
-                className="ls-wire-ticker"
+                className={styles.wireTicker}
                 role="list"
                 aria-label="Recent league results"
-                style={{
-                  display: 'flex',
-                  flexDirection: 'row',
-                  gap: '0.75rem',
-                  overflowX: 'auto',
-                  padding: '0.5rem 0.75rem',
-                  WebkitOverflowScrolling: 'touch',
-                }}
               >
                 {wireRows}
               </div>
             )}
           </div>
 
-          <div className="ls-panel">
-            <div className="ls-panel-head">
-              <span className="dm-kicker">Tiebreaker Read</span>
+          <div className={styles.panel}>
+            <div className={styles.panelHead}>
+              <span className={styles.kicker}>Tiebreaker Read</span>
               <h3>
                 {tiebreakerState === 'hidden'
                   ? 'Race Concluded'
@@ -627,15 +527,14 @@ export function Standings() {
                 body="No matches have been played. The tiebreaker read will update after Week 1 results are in."
               />
             ) : (
-              <div className="ls-tb-list">
+              <div className={styles.tbList}>
                 {tiebreakRows.map((standing) => {
                   const isSafe = standing.rank <= playoffLine;
                   return (
                     <div
                       key={`tb-${standing.club_id}`}
-                      className="ls-tb-row"
+                      className={styles.tbRow}
                       onClick={() => handleClubModal(standing.club_id, standing.club_name)}
-                      style={{ cursor: 'pointer' }}
                       role="button"
                       tabIndex={0}
                       aria-haspopup="dialog"
@@ -647,14 +546,14 @@ export function Standings() {
                         }
                       }}
                     >
-                      <span className="ls-tb-from">#{standing.rank}</span>
-                      <div className="ls-tb-body">
-                        <span className="ls-tb-who">{standing.club_name}</span>
-                        <span className="ls-tb-note">
+                      <span className={styles.tbFrom}>#{standing.rank}</span>
+                      <div className={styles.tbBody}>
+                        <Truncate className={styles.tbWho}>{standing.club_name}</Truncate>
+                        <span className={styles.tbNote}>
                           {standing.points} pts · {formatDiff(diffOf(standing))} diff
                         </span>
                       </div>
-                      <span className={`ls-tb-risk ${isSafe ? 'risk-low' : 'risk-high'}`}>
+                      <span className={`${styles.tbRisk} ${isSafe ? styles.tbRiskLow : styles.tbRiskHigh}`}>
                         {isSafe ? 'IN' : 'BUBBLE'}
                       </span>
                     </div>
