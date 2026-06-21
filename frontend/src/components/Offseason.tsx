@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { apiPost } from '../api/client';
 import { useApiResource } from '../hooks/useApiResource';
 import type { OffseasonBeat } from '../types';
-import { StatusMessage } from './ui';
+import { StatusMessage } from '../ui';
 import { AwardsNight, Graduation, SigningDay, NewSeasonEve } from './ceremonies/Ceremonies';
 import { ChampionReveal } from './ceremonies/ChampionReveal';
 import { RecapStandings } from './ceremonies/RecapStandings';
