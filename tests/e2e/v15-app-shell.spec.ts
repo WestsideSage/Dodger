@@ -44,12 +44,13 @@ test.describe('V15 Phase 4b — App shell: nav hamburger + Settings hidden', () 
     await hamburger.click();
     await expect(hamburger).toHaveAttribute('aria-expanded', 'false');
 
-    // The <nav> has display:none when collapsed (primary AT safety).
-    // tabIndex=-1 on items is belt-and-suspenders.
-    // toHaveAttribute reads the DOM attribute regardless of display:none,
-    // so this assertion works even though the nav is visually hidden.
+    // Collapsed: the nav now stays mounted as icon-only stubs that remain
+    // keyboard-operable (tabindex 0) — collapsing reclaims width and hides the
+    // text labels, but the icon stubs are still focusable/clickable.
     const firstNavItem = page.locator('#primary-nav button').first();
-    await expect(firstNavItem).toHaveAttribute('tabindex', '-1');
+    await expect(firstNavItem).toBeVisible();
+    const collapsedTabIdx = await firstNavItem.getAttribute('tabindex');
+    expect(collapsedTabIdx === null || collapsedTabIdx === '0').toBe(true);
 
     // Click to expand.
     await hamburger.click();

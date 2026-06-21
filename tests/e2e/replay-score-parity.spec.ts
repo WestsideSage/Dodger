@@ -57,17 +57,17 @@ test('replay header keeps the final survivor score visible from the first frame'
   // The hero's headline numbers count up from 0 over ~1.5s — let the
   // animation settle before reading, or the parity check races it.
   await page.waitForTimeout(2000);
-  const numberTexts = await hero.locator('.command-score-number').allInnerTexts();
+  const numberTexts = await hero.locator('[data-testid="score-number"]').allInnerTexts();
   expect(numberTexts, 'hero must show exactly two headline scores').toHaveLength(2);
   const home = Number(numberTexts[0]);
   const away = Number(numberTexts[1]);
   // The per-side detail caption names the unit: "game points" (official) or
   // "N survivors" (generic/legacy).
-  const detail = (await hero.locator('.command-score-detail').first().innerText()).toLowerCase();
+  const detail = (await hero.locator('[data-testid="score-detail"]').first().innerText()).toLowerCase();
   const marginUnit = detail.includes('game points') ? 'GAME PTS' : 'SURVIVORS';
 
   await page.getByRole('button', { name: /view full replay/i }).click();
-  const replayScoreboard = page.locator('.mr-scoreboard');
+  const replayScoreboard = page.locator('[data-testid="replay-scoreboard"]');
   await expect(replayScoreboard).toBeVisible();
   // Parity: the replay margin badge uses the same unit the hero led with
   // and the same final margin, from the first frame.

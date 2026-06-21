@@ -33,7 +33,8 @@ describe('legacy shell/landing/boot CSS removed (Phase 1)', () => {
   // Guard against over-deletion: the LIVE non-shell dm families that START with
   // `.dm-` but are NOT shell must SURVIVE (they live inside the same mixed @media
   // blocks the dm-shell rules were carved out of). Their owner phases reskin them.
-  for (const liveSel of ['.dm-kicker', '.dm-replay-controls', '.dm-hub-hero', '.dm-command-report-lane']) {
+  // (`.dm-kicker` was migrated to components/chrome.module.css and removed here.)
+  for (const liveSel of ['.dm-replay-controls', '.dm-hub-hero', '.dm-command-report-lane']) {
     it(`keeps the live non-shell ${liveSel}`, () => {
       expect(css).toContain(liveSel);
     });

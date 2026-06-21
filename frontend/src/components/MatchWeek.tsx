@@ -21,6 +21,7 @@ import { useApiResource } from '../hooks/useApiResource';
 import { StatusMessage } from '../ui';
 import { NAV_RAIL_ATTR } from './shell/appContracts';
 import css from './MatchWeek.module.css';
+import chrome from './chrome.module.css';
 
 /**
  * Pure helper: returns true if the click target is inside the nav rail —
@@ -416,13 +417,13 @@ export function MatchWeek({
       : null;
 
     return (
-      <div className="command-post-sim" data-testid="post-week-dashboard">
+      <div className={chrome.postSim} data-testid="post-week-dashboard">
         {aftermath.championship && <ChampionshipHero championship={aftermath.championship} />}
         {aftermath.playoff_resolution && aftermath.playoff_resolution.decided_by !== 'regulation' && (
           <PlayoffResolutionBanner resolution={aftermath.playoff_resolution} />
         )}
         {revealStage >= 0 && (
-          <div className="command-reveal">
+          <div className={chrome.reveal}>
             <Headline
               text={aftermath.headline}
               week={activeResult.dashboard.week}
@@ -447,12 +448,12 @@ export function MatchWeek({
             fatigue/recovery system exists — stamina is a fixed rating — so the
             card must not claim anyone "rested" or "recovered". */}
         {revealStage >= 1 && isBye && aftermath.bye_recovery && (
-          <div className="command-reveal">
+          <div className={chrome.reveal}>
             <section
               aria-labelledby="bye-recovery-heading"
               className={css.byeCard}
             >
-              <p className={`dm-kicker ${css.byeKicker}`}>Bye Week</p>
+              <p className={`${chrome.dmKicker} ${css.byeKicker}`}>Bye Week</p>
               <h3 id="bye-recovery-heading" className={css.byeHeading}>
                 {aftermath.bye_recovery.summary}
               </h3>
@@ -476,7 +477,7 @@ export function MatchWeek({
         )}
 
         {revealStage >= 1 && aftermath.match_card && matchCardNames && (
-          <div className="command-reveal">
+          <div className={chrome.reveal}>
             <MatchScoreHero
               homeTeam={matchCardNames.homeTeam}
               awayTeam={matchCardNames.awayTeam}
@@ -518,8 +519,8 @@ export function MatchWeek({
         )}
 
         {revealStage >= 2 && !isBye && (
-          <div className="command-reveal">
-            <div className="command-analysis-row">
+          <div className={chrome.reveal}>
+            <div className={chrome.analysisRow}>
               <TacticalSummaryCard
                 turningPoint={replayForMatch?.report.turning_point ?? ''}
                 evidenceLanes={replayForMatch?.report.evidence_lanes ?? activeResult.dashboard.lanes}
@@ -533,7 +534,7 @@ export function MatchWeek({
         )}
 
         {revealStage >= 3 && (
-          <div className="command-reveal">
+          <div className={chrome.reveal}>
             <FalloutGrid
               byeRecovery={aftermath.bye_recovery}
               developmentFeedback={aftermath.development_feedback}
@@ -559,7 +560,7 @@ export function MatchWeek({
         )}
 
         {revealStage >= 4 && (
-          <div className="command-reveal">
+          <div className={chrome.reveal}>
             {aftermath.elimination ? (
               <EliminationCeremony
                 elimination={aftermath.elimination}

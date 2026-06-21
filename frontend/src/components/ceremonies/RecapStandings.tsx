@@ -2,6 +2,7 @@ import type { OffseasonBeat } from '../../types';
 import { formatK, formatKSigned } from '../../money';
 import { ActionButton, PageHeader, Truncate } from '../../ui';
 import styles from './RecapStandings.module.css';
+import chrome from '../chrome.module.css';
 
 type RecapBeat = Extract<OffseasonBeat, { key: 'recap' }>;
 
@@ -40,20 +41,20 @@ export function RecapStandings({
     const userMovement = pyramid?.user?.movement;
 
     return (
-        <section className="command-offseason-shell" data-testid="offseason-recap">
+        <section className={chrome.offseasonShell} data-testid="offseason-recap">
             <PageHeader
                 eyebrow={`Offseason Beat ${beat.beat_index + 1}/${beat.total_beats} · Regular Season`}
                 title="Final Regular-Season Table"
                 description="Top four seeds qualify for the playoffs."
                 stats={
-                    <div className="command-offseason-progress" aria-label="Offseason beat progress">
+                    <div className={chrome.offseasonProgress} aria-label="Offseason beat progress">
                         {Array.from({ length: beat.total_beats }).map((_, index) => (
                             <span
                                 key={index}
                                 className={
                                     index <= beat.beat_index
-                                        ? 'command-offseason-progress-step command-offseason-progress-step-active'
-                                        : 'command-offseason-progress-step'
+                                        ? `${chrome.offseasonProgressStep} ${chrome.offseasonProgressStepActive}`
+                                        : chrome.offseasonProgressStep
                                 }
                             />
                         ))}
@@ -63,7 +64,7 @@ export function RecapStandings({
 
             {missed && (
                 <div className={styles.missed} data-testid="recap-missed-playoffs" role="status">
-                    <p className={`dm-kicker ${styles.missedKicker}`}>
+                    <p className={`${chrome.dmKicker} ${styles.missedKicker}`}>
                         Missed The Playoffs
                     </p>
                     <p className={styles.missedFinish}>
@@ -75,7 +76,7 @@ export function RecapStandings({
                 </div>
             )}
 
-            <div className={`dm-panel ${styles.tablePanel}`}>
+            <div className={`${chrome.dmPanel} ${styles.tablePanel}`}>
                 <div className={styles.tableHead}>
                     <span>#</span>
                     <span>Club</span>
@@ -109,8 +110,8 @@ export function RecapStandings({
             </div>
 
             {finances && (
-                <div className={`dm-panel ${styles.financesPanel}`} data-testid="recap-finances">
-                    <p className={`dm-kicker ${styles.kicker}`}>Season Finances</p>
+                <div className={`${chrome.dmPanel} ${styles.financesPanel}`} data-testid="recap-finances">
+                    <p className={`${chrome.dmKicker} ${styles.kicker}`}>Season Finances</p>
                     <div className={styles.financesRow}>
                         <span>
                             League payout <strong className={styles.income}>{formatKSigned(finances.league_payout_k)}</strong>
@@ -157,8 +158,8 @@ export function RecapStandings({
             )}
 
             {pyramid && (
-                <div className={`dm-panel ${styles.pyramidPanel}`} data-testid="recap-pyramid">
-                    <p className={`dm-kicker ${styles.kicker}`}>League Movement</p>
+                <div className={`${chrome.dmPanel} ${styles.pyramidPanel}`} data-testid="recap-pyramid">
+                    <p className={`${chrome.dmKicker} ${styles.kicker}`}>League Movement</p>
                     {userMovement && userMovement !== 'stays' && (
                         <p
                             className={`${styles.movementBanner} ${userMovement === 'promoted' ? styles.promoted : styles.relegated}`}
@@ -208,12 +209,12 @@ export function RecapStandings({
                 </div>
             )}
 
-            <div className="dm-panel command-action-bar">
+            <div className={`${chrome.dmPanel} ${chrome.actionBar}`}>
                 <div>
-                    <p className="dm-kicker">Ceremony Control</p>
+                    <p className={chrome.dmKicker}>Ceremony Control</p>
                     <p>Continue to the next offseason beat.</p>
                 </div>
-                <div className="command-action-buttons">
+                <div className={chrome.actionButtons}>
                     <ActionButton
                         variant="primary"
                         onClick={onComplete}

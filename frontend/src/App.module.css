@@ -103,10 +103,10 @@
 
 .hamburgerIcon {
   display: block;
-  width: 1rem;
+  width: 1.125rem;
   height: var(--space-1);
   background: currentColor;
-  box-shadow: 0 var(--space-2) 0 currentColor, 0 calc(-1 * var(--space-2)) 0 currentColor;
+  box-shadow: 0 var(--space-3) 0 currentColor, 0 calc(-1 * var(--space-3)) 0 currentColor;
   border-radius: 1px;
 }
 
@@ -185,6 +185,30 @@
 .navItemActive .dot {
   background: var(--volt);
 }
+
+/* Nav icons — line icons shown beside the label (expanded) or alone (collapsed). */
+.navIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.navIcon svg { width: 100%; height: 100%; }
+.navItem:hover .navIcon { color: var(--text2); }
+.navItemActive .navIcon { color: var(--volt); }
+.navLabel { white-space: nowrap; overflow: hidden; }
+
+/* Collapsed rail: icon-only stubs (items stay visible + keyboard-operable). */
+.navCollapsed .navItem {
+  justify-content: center;
+  gap: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+.navCollapsed .navLabel { display: none; }
 
 /* ── Workspace (Task 6) ──────────────────────────────────────────────── */
 .workspace {

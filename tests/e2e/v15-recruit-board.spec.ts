@@ -19,11 +19,11 @@ test.describe('recruit board legibility (V15 Phase 2a)', () => {
     // Navigate to Dynasty Office → Recruit tab (default subtab).
     await page.goto(`${baseUrl}/?tab=dynasty`);
     // Wait for either the recruit board or an initial loading state to resolve.
-    await expect(page.locator('.do-board')).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('[data-testid="recruit-board"]')).toBeVisible({ timeout: 10_000 });
   });
 
   test('hometown reads with a "From" prefix, not as a surname', async ({ page }) => {
-    const card = page.locator('.do-recruit').first();
+    const card = page.locator('[data-testid="prospect-card"]').first();
     await expect(card).toBeVisible();
     // The "From" prefix must appear in the sub-row.
     await expect(card.locator('text=From')).toBeVisible();
@@ -32,7 +32,7 @@ test.describe('recruit board legibility (V15 Phase 2a)', () => {
   });
 
   test('archetype badge opens a TermTip tooltip on focus', async ({ page }) => {
-    const card = page.locator('.do-recruit').first();
+    const card = page.locator('[data-testid="prospect-card"]').first();
     // The TermTip renders as a button with aria-label "What is <ArchetypeName>?".
     // Use `.first()` in case multiple TermTips are on the same card.
     const archetypeTip = card
@@ -47,18 +47,18 @@ test.describe('recruit board legibility (V15 Phase 2a)', () => {
   test('OVR range shows KnownValue estimated state for unscouted prospect', async ({ page }) => {
     // Fresh career: all prospects are unscouted — the KnownValue must show estimated state.
     // The KnownValue group's aria-label contains "estimated" for unscouted.
-    const card = page.locator('.do-recruit').first();
+    const card = page.locator('[data-testid="prospect-card"]').first();
     const ovrGroup = card.getByRole('group', { name: /OVR.*estimated/i });
     await expect(ovrGroup).toBeVisible();
     // The "Scout to narrow" hint must be present on the card.
     await expect(card).toContainText(/Scout to narrow/i);
     // The scouting caption moved to a single board-level legend (2026-06-09
     // UX pass) — it must still be visible once on the board.
-    await expect(page.locator('.do-board')).toContainText(/Scout narrows the OVR range/i);
+    await expect(page.locator('[data-testid="recruit-board"]')).toContainText(/Scout narrows the OVR range/i);
   });
 
   test('FIT value shows /100 denominator to distinguish it from a roster OVR', async ({ page }) => {
-    const card = page.locator('.do-recruit').first();
+    const card = page.locator('[data-testid="prospect-card"]').first();
     // The /100 suffix must be visible on the card's FIT number.
     await expect(card).toContainText(/\/100/);
   });
@@ -66,14 +66,14 @@ test.describe('recruit board legibility (V15 Phase 2a)', () => {
   test('fit-tier legend explains card color once at board level', async ({ page }) => {
     // The legend was deduplicated from every card to a single board-level
     // row (2026-06-09 UX pass) — same information, stated once.
-    const board = page.locator('.do-board');
+    const board = page.locator('[data-testid="recruit-board"]');
     await expect(board).toContainText(/Strong Fit ≥80/i);
     await expect(board).toContainText(/Fair Fit 65/i);
     await expect(board).toContainText(/At Risk/i);
   });
 
   test('PipelineEmblem carries an accessible tier label', async ({ page }) => {
-    const card = page.locator('.do-recruit').first();
+    const card = page.locator('[data-testid="prospect-card"]').first();
     // PipelineEmblem renders as role="img" with aria-label "Pipeline Tier N (TierName)".
     const emblem = card.getByRole('img', { name: /Pipeline Tier [1-5]/i });
     await expect(emblem).toBeVisible();
@@ -83,20 +83,20 @@ test.describe('recruit board legibility (V15 Phase 2a)', () => {
     // Click the Interest sort button.
     await page.getByRole('button', { name: /^Sort by Interest/i }).click();
     // Board must still render cards.
-    await expect(page.locator('.do-recruit').first()).toBeVisible();
+    await expect(page.locator('[data-testid="prospect-card"]').first()).toBeVisible();
     // Clicking again toggles direction (↓ becomes ↑ in button text).
     await page.getByRole('button', { name: /^Sort by Interest/i }).click();
-    await expect(page.locator('.do-recruit').first()).toBeVisible();
+    await expect(page.locator('[data-testid="prospect-card"]').first()).toBeVisible();
   });
 
   test('sort by Pipeline changes or preserves order without crashing', async ({ page }) => {
     await page.getByRole('button', { name: /^Sort by Pipeline/i }).click();
-    await expect(page.locator('.do-recruit').first()).toBeVisible();
+    await expect(page.locator('[data-testid="prospect-card"]').first()).toBeVisible();
   });
 
   test('At Risk filter empty-state renders without fabricated data', async ({ page }) => {
     await page.getByRole('button', { name: /At Risk/i }).click();
-    const cardCount = await page.locator('.do-recruit').count();
+    const cardCount = await page.locator('[data-testid="prospect-card"]').count();
     if (cardCount === 0) {
       // EmptyState must be present (role="status") and must say "No prospects match".
       await expect(page.getByRole('status')).toContainText(/No prospects match/i);

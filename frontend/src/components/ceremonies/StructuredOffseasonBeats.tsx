@@ -3,6 +3,8 @@ import { useState } from 'react';
 import type { OffseasonBeat } from '../../types';
 import { ActionButton, PageHeader } from '../../ui';
 import styles from './StructuredOffseasonBeats.module.css';
+import chrome from '../chrome.module.css';
+import cer from './ceremony.module.css';
 
 type RecordsBeat = Extract<OffseasonBeat, { key: 'records_ratified' }>;
 type HofBeat = Extract<OffseasonBeat, { key: 'hof_induction' }>;
@@ -61,20 +63,20 @@ function BeatShell({
   children: ReactNode;
 }) {
   return (
-    <section className="command-offseason-shell" data-testid={testId}>
+    <section className={chrome.offseasonShell} data-testid={testId}>
       <PageHeader
         eyebrow={`Offseason Beat ${beat.beat_index + 1}/${beat.total_beats}`}
         title={beat.title}
         description={description}
         stats={
-          <div className="command-offseason-progress" aria-label="Offseason beat progress">
+          <div className={chrome.offseasonProgress} aria-label="Offseason beat progress">
             {Array.from({ length: beat.total_beats }).map((_, index) => (
               <span
                 key={index}
                 className={
                   index <= beat.beat_index
-                    ? 'command-offseason-progress-step command-offseason-progress-step-active'
-                    : 'command-offseason-progress-step'
+                    ? `${chrome.offseasonProgressStep} ${chrome.offseasonProgressStepActive}`
+                    : chrome.offseasonProgressStep
                 }
               />
             ))}
@@ -83,12 +85,12 @@ function BeatShell({
       />
       {children}
       {beat.can_advance && (
-        <div className="dm-panel command-action-bar">
+        <div className={`${chrome.dmPanel} ${chrome.actionBar}`}>
           <div>
-            <p className="dm-kicker">Ceremony Control</p>
+            <p className={chrome.dmKicker}>Ceremony Control</p>
             <p>Continue to the next offseason beat.</p>
           </div>
-          <div className="command-action-buttons">
+          <div className={chrome.actionButtons}>
             <ActionButton variant="primary" onClick={onComplete} disabled={acting}>
               {acting ? 'Advancing...' : 'Continue'}
             </ActionButton>
@@ -149,8 +151,8 @@ export function RecordsRatified({
       onComplete={onComplete}
       acting={acting}
     >
-      <article className="dm-panel command-offseason-feature">
-        <p className={`dm-kicker ${styles.kicker}`}>Records Ratified</p>
+      <article className={`${chrome.dmPanel} ${chrome.offseasonFeature}`}>
+        <p className={`${chrome.dmKicker} ${styles.kicker}`}>Records Ratified</p>
 
         {/* Scope filter — elevated to a full-width segmented control so it
             reads as the primary navigation choice for the screen, not a
@@ -186,7 +188,7 @@ export function RecordsRatified({
             when given equal drama — those compress into quiet ledger rows. */}
         {records.length === 0 ? (
           <div className={myClubEmptyButLeagueHas ? styles.emptyWrapCentered : styles.emptyWrap}>
-            <p className={`command-offseason-copy ${styles.emptyCopy}`}>{emptyMessage()}</p>
+            <p className={`${chrome.offseasonCopy} ${styles.emptyCopy}`}>{emptyMessage()}</p>
             {myClubEmptyButLeagueHas && (
               <button onClick={() => setScope('league')} className={styles.switchBtn}>
                 Switch to League view ({leagueCount}) →
@@ -221,7 +223,7 @@ export function RecordsRatified({
                   className={`${styles.card} ${mine ? styles.cardMine : ''}`}
                 >
                   <div className={styles.cardTop}>
-                    <p className={`dm-kicker ${styles.cardType} ${mine ? styles.cardTypeMine : ''}`}>
+                    <p className={`${chrome.dmKicker} ${styles.cardType} ${mine ? styles.cardTypeMine : ''}`}>
                       {titleize(record.record_type)}
                     </p>
                     <span className={styles.badges}>
@@ -268,7 +270,7 @@ export function RecordsRatified({
 
             {careerMilestones.length > 0 && (
               <div data-testid="record-career-milestones" className={milestones.length > 0 ? styles.bandGold : undefined}>
-                <p className={`dm-kicker ${styles.bandLabel} ${styles.bandLabelGold}`}>
+                <p className={`${chrome.dmKicker} ${styles.bandLabel} ${styles.bandLabelGold}`}>
                   Career milestones
                 </p>
                 <div className={styles.bandRows}>
@@ -295,7 +297,7 @@ export function RecordsRatified({
 
             {extensions.length > 0 && (
               <div data-testid="record-extensions" className={milestones.length > 0 || careerMilestones.length > 0 ? styles.bandGold : undefined}>
-                <p className={`dm-kicker ${styles.bandLabel} ${styles.bandLabelMuted}`}>
+                <p className={`${chrome.dmKicker} ${styles.bandLabel} ${styles.bandLabelMuted}`}>
                   Extended their own records
                 </p>
                 <div className={styles.bandRows}>
@@ -354,21 +356,21 @@ export function HallOfFameInduction({
       onComplete={onComplete}
       acting={acting}
     >
-      <article className="dm-panel command-offseason-feature">
-        <p className="dm-kicker">Hall of Fame Induction</p>
+      <article className={`${chrome.dmPanel} ${chrome.offseasonFeature}`}>
+        <p className={chrome.dmKicker}>Hall of Fame Induction</p>
         {inductees.length === 0 ? (
-          <p className="command-offseason-copy">No new inductees this off-season.</p>
+          <p className={chrome.offseasonCopy}>No new inductees this off-season.</p>
         ) : (
           <div className={styles.hofGrid}>
             {inductees.map(inductee => (
               <div
                 key={inductee.player_id ?? inductee.player_name}
-                className="hof-plaque"
+                className={cer['hof-plaque']}
                 data-broadcast-proof-source={inductee.proof_source ?? `career:${inductee.player_id ?? inductee.player_name}`}
               >
-                <span className="hof-enshrined" aria-label="Enshrined in the Hall of Fame">Enshrined</span>
-                <p className="hof-name">{inductee.player_name}</p>
-                <div className="hof-career">
+                <span className={cer['hof-enshrined']} aria-label="Enshrined in the Hall of Fame">Enshrined</span>
+                <p className={cer['hof-name']}>{inductee.player_name}</p>
+                <div className={cer['hof-career']}>
                   <span>{inductee.seasons_played} seasons</span>
                   <span>{inductee.championships} titles</span>
                   <span>{inductee.awards_won} awards</span>
@@ -376,11 +378,11 @@ export function HallOfFameInduction({
                 </div>
                 {/* V21 zero-floats (owner: no fractional numbers on any
                     player-facing surface): the legacy line is integerized. */}
-                <p className="hof-legacy">
+                <p className={cer['hof-legacy']}>
                   Legacy {Math.round(inductee.legacy_score)} · clears the {Math.round(inductee.threshold)} induction bar
                 </p>
                 {inductee.reasons.length > 0 && (
-                  <p className="hof-reasons">{inductee.reasons.join(' · ')}</p>
+                  <p className={cer['hof-reasons']}>{inductee.reasons.join(' · ')}</p>
                 )}
                 <ProofDetails source={inductee.proof_source ?? `career:${inductee.player_id ?? inductee.player_name}`} />
               </div>

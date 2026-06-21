@@ -605,7 +605,7 @@ function RecruitBoard({
   }, [prospects, filter, sort, sortDir]);
 
   return (
-    <div className={styles.panel}>
+    <div className={styles.panel} data-testid="recruit-board">
       <div className={styles.boardHead}>
         <div>
           <span className={styles.kicker}>Recruit Board</span>

@@ -80,15 +80,28 @@ test.describe('Dodger Naive Playtester Playthrough', () => {
     await page.waitForTimeout(500);
     await page.screenshot({ path: path.join(outputDir, '05_coach_filled.png') });
 
-    // Move to Step 3
-    await page.locator('button:has-text("Next: Recruit Roster")').click();
-    await page.waitForTimeout(1000);
+    // Advance off the Coach step. NOTE: the wizard is now 4 steps —
+    // Identity → Coach → Staff Hiring (V22) → Recruit Roster. The Coach step's
+    // "Next: Recruit Roster" actually lands on the Staff Hiring step.
+    await page.locator('button:has-text("Next: Recruit Roster")').first().click();
+    await page.waitForTimeout(800);
+
+    // Starting prospects are the role="checkbox" toggles on the final step.
+    const prospectButtons = page.locator('button[role="checkbox"]');
+    if (!(await prospectButtons.first().isVisible().catch(() => false))) {
+      // We are on the Staff Hiring step — its default hires pre-fill, so its
+      // primary button is enabled; click through to the Recruit Roster step.
+      console.log('Staff Hiring step detected — committing default hires...');
+      const staffNext = page.getByRole('button', { name: /Next: Recruit Roster/i });
+      await staffNext.waitFor({ state: 'visible', timeout: 8000 });
+      await staffNext.click();
+      await page.waitForTimeout(800);
+    }
     await page.screenshot({ path: path.join(outputDir, '06_starting_recruits.png') });
 
-    // Step 3: Starting Roster Recruitment
+    // Step 4: Starting Roster Recruitment
     console.log('Recruiting starting roster from prospects...');
-    const prospectButtons = page.locator('button[role="checkbox"]');
-    await prospectButtons.first().waitFor({ state: 'visible', timeout: 5000 });
+    await prospectButtons.first().waitFor({ state: 'visible', timeout: 8000 });
     
     const prospectCount = await prospectButtons.count();
     console.log(`Starting prospects loaded. Total available: ${prospectCount}`);
@@ -143,7 +156,7 @@ test.describe('Dodger Naive Playtester Playthrough', () => {
         await page.waitForTimeout(800);
 
         // Find the continue button or signing button
-        const continueBtn = page.locator('.command-action-buttons button, .command-action-bar button').first();
+        const continueBtn = page.locator('[class*="actionButtons"] button, [class*="actionBar"] button').first();
         
         if (await continueBtn.isVisible()) {
           const btnText = await continueBtn.innerText();
@@ -162,7 +175,7 @@ test.describe('Dodger Naive Playtester Playthrough', () => {
             }
             await page.screenshot({ path: path.join(outputDir, `s${seasonCount}_offseason_signing_choice.png`) });
           } else {
-            const titleLoc = page.locator('.dm-ceremony h1, .command-offseason-shell h2').first();
+            const titleLoc = page.locator('[class*="offseasonShell"] h2, h1').first();
             let stepTitle = 'Offseason Ceremony Step';
             if (await titleLoc.isVisible()) {
               stepTitle = await titleLoc.innerText();
@@ -241,7 +254,7 @@ test.describe('Dodger Naive Playtester Playthrough', () => {
         }
 
         // Advance to next week
-        const advanceBtn = page.getByTestId('after-action-bar').locator('button.command-action-bar-primary');
+        const advanceBtn = page.getByTestId('after-action-bar').getByTestId('aftermath-advance');
         await expect(advanceBtn).toBeVisible({ timeout: 10000 });
         const advanceText = await advanceBtn.innerText();
         console.log(`Clicking aftermath advance button: "${advanceText}"`);

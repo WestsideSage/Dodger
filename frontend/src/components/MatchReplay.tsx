@@ -383,7 +383,7 @@ const TurningPoint = ({ text, onShowCatch }: { text: string, onShowCatch: () => 
   <div className={styles.turning}>
     <div>
       <span className={styles.turningKicker}>BIGGEST SWING</span>
-      <p className={styles.turningText}>{text}</p>
+      <p className={styles.turningText} data-testid="replay-turning-text">{text}</p>
     </div>
     <button className={styles.turningJump} onClick={onShowCatch}>
       Jump to This Play <span className="arrow">▸</span>
@@ -682,7 +682,7 @@ export default function MatchReplay({ data, onContinue }: { data: MatchReplayRes
             {currentGame != null ? `GAME ${currentGame} · ` : ''}TICK {currentEvent?.tick ?? 0}
           </span>
           <span className={styles.readoutSep} />
-          <span className={styles.readoutTitle}>{currentEvent?.summary || 'Match Start'}</span>
+          <span className={styles.readoutTitle} data-testid="replay-active-title">{currentEvent?.summary || 'Match Start'}</span>
         </div>
         {currentMoments.length > 0 && (
           <div className={styles.momentBanner} data-testid="replay-moment-banner">

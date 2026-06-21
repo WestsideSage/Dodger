@@ -62,9 +62,10 @@ describe('WorldsCrowning (Floodlight reskin — gold = the one legit championshi
         onComplete={() => {}}
       />,
     );
-    // The kicker keeps its global champion class and gains a token-driven gold class,
-    // but NO inline style attribute carrying a raw hex.
-    const kicker = container.querySelector('.champion-kicker');
+    // The champion kicker moved from the global `.champion-kicker` class to
+    // ceremonies/ceremony.module.css (CSS-Modules hash keeps the name as a
+    // substring), and carries NO inline style attribute with a raw hex.
+    const kicker = container.querySelector('[class*="champion-kicker"]');
     expect(kicker).not.toBeNull();
     expect(kicker!.getAttribute('style')).toBeNull();
   });

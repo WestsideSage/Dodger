@@ -273,7 +273,7 @@ export function Roster() {
             <button className={`${styles.segBtn} ${view === 'detailed' ? styles.segBtnActive : ''}`} onClick={() => setView('detailed')}>Detailed</button>
             <button className={`${styles.segBtn} ${view === 'compact' ? styles.segBtnActive : ''}`} onClick={() => setView('compact')}>Compact</button>
           </div>
-          <select data-testid="roster-sort" className={styles.sort} value={sortKey} onChange={(event) => setSortKey(event.target.value as typeof sortKey)}>
+          <select data-testid="roster-sort" aria-label="Sort roster" className={styles.sort} value={sortKey} onChange={(event) => setSortKey(event.target.value as typeof sortKey)}>
             <option value="lineup">Lineup order (starters first, then OVR ↓)</option>
             <option value="potential">Potential tier (Elite → Low)</option>
             <option value="overall">OVR highest first ↓</option>

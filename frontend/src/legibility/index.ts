@@ -1,6 +1,7 @@
 export { TERMS, getTerm } from './terms';
 export type { TermId, TermDef, TermKind } from './terms';
 export { TermTip } from './TermTip';
+export { TermLabel } from './TermLabel';
 export { KnownValue } from './KnownValue';
 export type { Knowledge } from './KnownValue';
 export { ProofChip } from './ProofChip';

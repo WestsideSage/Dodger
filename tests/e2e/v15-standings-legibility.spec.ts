@@ -18,20 +18,21 @@ test.describe('v15-p2d standings legibility', () => {
     await page.goto(`${baseUrl}/?tab=standings`);
 
     // Wait for the standings table to be visible.
-    const table = page.locator('.ls-table');
+    const table = page.locator('[data-testid="standings-table"]');
     await expect(table).toBeVisible();
 
     // Click the first non-cut-line row.
-    const firstRow = page.locator('.ls-table tbody tr[role="button"]').first();
+    const firstRow = page.locator('[data-testid="standings-table"] tbody tr[role="button"]').first();
     await firstRow.click();
 
     // ProgramModal should open — it uses the command-policy-overlay class.
-    const modal = page.locator('.command-policy-overlay');
+    const modal = page.getByTestId('program-archive-modal');
     await expect(modal).toBeVisible();
 
-    // The modal should show the League Archive kicker.
-    // Scope to the header element to avoid matching inner kickers rendered by MyProgramView.
-    await expect(modal.locator('.do-hist-modal-header .dm-kicker')).toContainText('League Archive');
+    // The modal should show the League Archive kicker. "League Archive" is unique
+    // to the ProgramModal header (MyProgramView's inner kickers are season labels),
+    // so a modal-scoped text assertion is stable across the CSS-Modules reskin.
+    await expect(modal).toContainText('League Archive');
 
     // Close with Escape.
     await page.keyboard.press('Escape');
@@ -40,22 +41,22 @@ test.describe('v15-p2d standings legibility', () => {
 
   test('standings row click is keyboard operable', async ({ page }) => {
     await page.goto(`${baseUrl}/?tab=standings`);
-    const firstRow = page.locator('.ls-table tbody tr[role="button"]').first();
+    const firstRow = page.locator('[data-testid="standings-table"] tbody tr[role="button"]').first();
     await firstRow.focus();
     await page.keyboard.press('Enter');
-    await expect(page.locator('.command-policy-overlay')).toBeVisible();
+    await expect(page.getByTestId('program-archive-modal')).toBeVisible();
     await page.keyboard.press('Escape');
   });
 
   test('standings row has aria-haspopup dialog', async ({ page }) => {
     await page.goto(`${baseUrl}/?tab=standings`);
-    const firstRow = page.locator('.ls-table tbody tr[role="button"]').first();
+    const firstRow = page.locator('[data-testid="standings-table"] tbody tr[role="button"]').first();
     await expect(firstRow).toHaveAttribute('aria-haspopup', 'dialog');
   });
 
   test('table legend does not reference the > icon', async ({ page }) => {
     await page.goto(`${baseUrl}/?tab=standings`);
-    const legend = page.locator('.ls-table-foot');
+    const legend = page.locator('[data-testid="standings-legend"]');
     await expect(legend).toBeVisible();
     
     // The old legend said "Click any row >" — the new one does not use the > chevron.
@@ -66,10 +67,12 @@ test.describe('v15-p2d standings legibility', () => {
 
   test('Survivor Diff header has TermTip', async ({ page }) => {
     await page.goto(`${baseUrl}/?tab=standings`);
-    // TermTip wraps children in a button with aria-label "What is ${def.label}?".
-    // The term standings.diff has label "Differential" (from terms.ts Phase 1 seed),
-    // so the button's aria-label is "What is Differential?" — NOT "What is Survivor Diff?".
-    const tip = page.getByRole('button', { name: /What is Differential\?/i });
+    // TermTip wraps the diff column header in a button with aria-label
+    // "What is ${def.label}?". The label depends on the career's scoring model:
+    // foam careers show "Differential" (standings.diff); official careers show
+    // "Game-Point Differential" (standings.gp_diff). The intent of this test is
+    // that the diff header IS an explained TermTip either way.
+    const tip = page.getByRole('button', { name: /What is (Game-Point )?Differential\?/i });
     await expect(tip).toBeVisible();
   });
 });

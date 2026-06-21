@@ -1,6 +1,8 @@
 import type { EventBracketRow, EventResultRow } from '../../types';
 import { Truncate } from '../../ui';
 import styles from './EventBracket.module.css';
+import chrome from '../chrome.module.css';
+import cer from './ceremony.module.css';
 
 // A dedicated bracket display for the V27 event-result shape. The
 // `EventBracketRow` the backend records is simpler than `PlayoffBracketMatch`
@@ -45,7 +47,7 @@ function EventMatchCard({
             data-player-outcome={playerAdvanced ? 'advanced' : playerEliminated ? 'eliminated' : undefined}
             className={`${styles.card} ${cardOutcomeClass}`}
         >
-            <p className={`dm-kicker ${styles.cardLabel}`}>
+            <p className={`${chrome.dmKicker} ${styles.cardLabel}`}>
                 <span>{label}</span>
                 {(playerAdvanced || playerEliminated) && (
                     <span className={`${styles.outcomeChip} ${playerAdvanced ? styles.outcomeChipWon : styles.outcomeChipOut}`}>
@@ -96,21 +98,21 @@ export function EventBracket({
     const groups = groupByRound(event.bracket);
     if (groups.length === 0) {
         return (
-            <p className={`playoff-bracket-empty ${styles.empty}`}>
+            <p className={`${cer['playoff-bracket-empty']} ${styles.empty}`}>
                 Bracket details unavailable.
             </p>
         );
     }
     return (
-        <section className="dm-panel playoff-bracket-panel" data-testid="event-bracket">
-            <div className="dm-panel-header">
-                <p className="dm-kicker">{event.event_name}</p>
-                <h2 className="dm-panel-title">Bracket</h2>
+        <section className={`${chrome.dmPanel} ${cer['playoff-bracket-panel']}`} data-testid="event-bracket">
+            <div className={chrome.dmPanelHeader}>
+                <p className={chrome.dmKicker}>{event.event_name}</p>
+                <h2 className={chrome.dmPanelTitle}>Bracket</h2>
             </div>
-            <div className="playoff-bracket-grid">
+            <div className={cer['playoff-bracket-grid']}>
                 {groups.map((group, gi) => (
-                    <div className="playoff-bracket-column" key={group.round}>
-                        <p className="dm-kicker playoff-bracket-round-label">
+                    <div className={cer['playoff-bracket-column']} key={group.round}>
+                        <p className={`${chrome.dmKicker} ${cer['playoff-bracket-round-label']}`}>
                             {roundLabel(group.round, gi)}
                         </p>
                         {group.rows.map((row, ri) => (
@@ -123,14 +125,14 @@ export function EventBracket({
                         ))}
                     </div>
                 ))}
-                <div className="playoff-bracket-column">
-                    <p className="dm-kicker playoff-bracket-round-label">Champion</p>
+                <div className={cer['playoff-bracket-column']}>
+                    <p className={`${chrome.dmKicker} ${cer['playoff-bracket-round-label']}`}>Champion</p>
                     <div
-                        className={`playoff-champion-card ${
-                            event.champion_club_id === playerClubId ? 'is-user' : ''
+                        className={`${cer['playoff-champion-card']} ${
+                            event.champion_club_id === playerClubId ? cer['is-user'] : ''
                         }`}
                     >
-                        <span className="playoff-champion-trophy" aria-hidden="true">🏆</span>
+                        <span className={cer['playoff-champion-trophy']} aria-hidden="true">🏆</span>
                         <strong>{event.champion_club_name || event.champion_club_id}</strong>
                         <span>{event.event_name} Champion</span>
                     </div>

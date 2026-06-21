@@ -10,6 +10,7 @@ import type {
   SigningCard,
 } from '../../types';
 import styles from './Ceremonies.module.css';
+import cer from './ceremony.module.css';
 
 type AwardsBeat = Extract<OffseasonBeat, { key: 'awards' }>;
 type RetirementsBeat = Extract<OffseasonBeat, { key: 'retirements' }>;
@@ -255,11 +256,11 @@ export function Graduation({ beat, onComplete, acting }: { beat: RetirementsBeat
             return (
               <div
                 key={i}
-                className={`fade-in farewell-card${isLatest ? ' is-latest' : ''}`}
+                className={`fade-in ${cer['farewell-card']}${isLatest ? ` ${cer['is-latest']}` : ''}`}
                 style={{ opacity: isLatest ? 1 : 0.6 }}
               >
-                <div className="farewell-name">{r.name}</div>
-                <div className="farewell-line">
+                <div className={cer['farewell-name']}>{r.name}</div>
+                <div className={cer['farewell-line']}>
                   {r.ovr_final ? <span>{Math.round(r.ovr_final)} OVR final</span> : null}
                   <span>{r.career_elims} career elims</span>
                   <span>{r.championships} {r.championships === 1 ? 'title' : 'titles'}</span>
@@ -268,7 +269,7 @@ export function Graduation({ beat, onComplete, acting }: { beat: RetirementsBeat
                       farewell card read as a mislabel. */}
                   <span>{r.career_seasons ?? r.seasons_played} seasons</span>
                 </div>
-                <div className={`farewell-tier ${tierClass}`}>
+                <div className={`${cer['farewell-tier']} ${tierClass}`}>
                   {r.potential_tier} potential
                 </div>
               </div>

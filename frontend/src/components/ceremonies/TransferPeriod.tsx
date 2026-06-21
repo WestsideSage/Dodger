@@ -3,6 +3,7 @@ import type { OffseasonBeat, TransferExpiringRow, TransferBuyoutRow } from '../.
 import { formatK } from '../../money';
 import { ActionButton, PageHeader, Truncate } from '../../ui';
 import styles from './TransferPeriod.module.css';
+import chrome from '../chrome.module.css';
 
 type TransferBeat = Extract<OffseasonBeat, { key: 'transfer_period' }>;
 
@@ -29,7 +30,7 @@ export function TransferPeriod({
     };
 
     return (
-        <section className="command-offseason-shell" data-testid="offseason-transfer">
+        <section className={chrome.offseasonShell} data-testid="offseason-transfer">
             <PageHeader
                 eyebrow={`Offseason Beat ${beat.beat_index + 1}/${beat.total_beats} · The Market`}
                 title="Transfer Period"
@@ -47,8 +48,8 @@ export function TransferPeriod({
             ) : (
                 <>
                     {expiring.length > 0 && (
-                        <div className={`dm-panel ${styles.panel}`} data-testid="transfer-expiring">
-                            <p className={`dm-kicker ${styles.kicker}`}>Expiring Contracts ({expiring.length})</p>
+                        <div className={`${chrome.dmPanel} ${styles.panel}`} data-testid="transfer-expiring">
+                            <p className={`${chrome.dmKicker} ${styles.kicker}`}>Expiring Contracts ({expiring.length})</p>
                             <div className={styles.rows}>
                                 {expiring.map((row) => (
                                     <ExpiringRow
@@ -64,8 +65,8 @@ export function TransferPeriod({
                     )}
 
                     {buyouts.length > 0 && (
-                        <div className={`dm-panel ${styles.panel}`} data-testid="transfer-buyouts">
-                            <p className={`dm-kicker ${styles.kicker}`}>Incoming Buyout Offers ({buyouts.length})</p>
+                        <div className={`${chrome.dmPanel} ${styles.panel}`} data-testid="transfer-buyouts">
+                            <p className={`${chrome.dmKicker} ${styles.kicker}`}>Incoming Buyout Offers ({buyouts.length})</p>
                             <div className={styles.rows}>
                                 {buyouts.map((row) => (
                                     <BuyoutRow
@@ -81,19 +82,19 @@ export function TransferPeriod({
                     )}
 
                     {expiring.length === 0 && buyouts.length === 0 && (
-                        <div className={`dm-panel ${styles.empty}`}>
+                        <div className={`${chrome.dmPanel} ${styles.empty}`}>
                             No contracts to resolve this offseason — your squad is locked in.
                         </div>
                     )}
                 </>
             )}
 
-            <div className="dm-panel command-action-bar">
+            <div className={`${chrome.dmPanel} ${chrome.actionBar}`}>
                 <div>
-                    <p className="dm-kicker">Ceremony Control</p>
+                    <p className={chrome.dmKicker}>Ceremony Control</p>
                     <p>{results ? 'Continue to the next beat.' : 'Confirm your decisions and continue.'}</p>
                 </div>
-                <div className="command-action-buttons">
+                <div className={chrome.actionButtons}>
                     <ActionButton variant="primary" onClick={onComplete} disabled={acting}>
                         {acting ? 'Working…' : results ? 'Continue' : 'Confirm & Continue'}
                     </ActionButton>
@@ -224,8 +225,8 @@ function ResultsView({
     results: NonNullable<TransferBeat['payload']['results']>;
 }) {
     return (
-        <div className={`dm-panel ${styles.panel}`} data-testid="transfer-results">
-            <p className={`dm-kicker ${styles.kicker}`}>Transfer Period Settled</p>
+        <div className={`${chrome.dmPanel} ${styles.panel}`} data-testid="transfer-results">
+            <p className={`${chrome.dmKicker} ${styles.kicker}`}>Transfer Period Settled</p>
             {results.resigned.length > 0 && (
                 <p className={styles.resultLine}>
                     Re-signed{' '}

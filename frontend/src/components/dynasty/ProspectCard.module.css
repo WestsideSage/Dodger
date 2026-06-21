@@ -65,12 +65,35 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Locked-card meta line (From · REACH). */
 .sub {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   margin-top: var(--space-2);
+}
+/* Two-tier header meta: identity (who he is) over funnel status (where he is
+   with you). Splitting the old single dot-separated pile into two grouped rows
+   is what de-clutters the card. */
+.identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-3);
+}
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.from {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
 }
 .rank {
   font: 700 0.7rem var(--font-mono);
@@ -137,8 +160,9 @@
   background: var(--danger-soft);
 }
 .chipMuted {
-  color: var(--muted);
-  opacity: 0.85;
+  /* a11y: --muted at 0.85 opacity on the chip tint fails AA contrast for this
+     small text; --text2 (warm light grey) clears it while still reading quiet. */
+  color: var(--text2);
 }
 
 .fit {
@@ -179,9 +203,15 @@
 }
 .meterFill {
   height: 100%;
-  background: var(--volt);
+  background: var(--out);
   border-radius: var(--radius-pill);
 }
+/* Fit meter encodes the fit tier (same 5-color story as the left border and the
+   fit value), so the board reads as graded mint/gold/dim instead of an all-Volt
+   wall of orange bars. */
+.meterFill.strong { background: var(--ok); }
+.meterFill.neutral { background: var(--gold); }
+.meterFill.risk { background: var(--out); }
 .meterLabels {
   display: flex;
   flex-wrap: wrap;

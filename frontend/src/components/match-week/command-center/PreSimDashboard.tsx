@@ -11,6 +11,7 @@ import { Modal, Truncate } from '../../../ui';
 import { PolicyEditor } from './PolicyEditor';
 import { seasonTitle, stakesLine, playerToWatch } from './presimNarrative';
 import styles from './PreSimDashboard.module.css';
+import chrome from '../../chrome.module.css';
 
 const approaches = [
   { id: 'Balanced', label: 'Balanced', desc: 'Even focus on offense and defense.' },
@@ -188,8 +189,8 @@ function FastForwardDialog({
       labelledBy="fast-forward-title"
       describedBy="fast-forward-desc"
       initialFocusRef={confirmRef}
-      className="command-policy-overlay"
-      panelClassName="command-policy-overlay-body"
+      className={chrome.policyOverlay}
+      panelClassName={chrome.policyOverlayBody}
       data-testid="fast-forward-overlay"
     >
       <div data-testid="fast-forward-dialog">
@@ -697,7 +698,7 @@ export function PreSimDashboard({
               <MiniCourt homePlayers={activePlayers} awayPlayers={opponentPlayers} threatName={threatName} />
             </div>
 
-            <div className={styles.threatCard}>
+            <div className={styles.threatCard} data-testid="key-threat">
               <span className="lbl">Key Threat</span>
               <Truncate className="name" as="div">{threatName || plan.opponent.name}</Truncate>
               <div className="row">
@@ -810,7 +811,10 @@ export function PreSimDashboard({
                       className="row"
                     >
                       <span className="dept">{staff.department}</span>
-                      <Truncate className="who">{staff.name} ({Math.round(staff.rating_primary)})</Truncate>
+                      <span className="who">
+                        <span className="whoName" title={staff.name}>{staff.name}</span>
+                        <span className="whoRating">({Math.round(staff.rating_primary)})</span>
+                      </span>
                       <span className="effect">{staff.effect}</span>
                     </div>
                   ))}
@@ -1024,6 +1028,8 @@ export function PreSimDashboard({
                 return (
                   <div
                     key={check.id}
+                    data-testid="readiness-gate"
+                    data-gate-id={check.id}
                     className={`${styles.gate} ${check.ready ? styles.ok : styles.pend}`}
                     title={check.detail}
                     aria-label={check.detail ? `${check.short_label}: ${check.detail}` : check.short_label}
@@ -1196,13 +1202,13 @@ export function PreSimDashboard({
         <Modal
           label="Edit policy"
           onClose={() => setPolicyEditorOpen(false)}
-          className="command-policy-overlay"
-          panelClassName="command-policy-overlay-body"
+          className={chrome.policyOverlay}
+          panelClassName={chrome.policyOverlayBody}
           data-testid="policy-editor-overlay"
         >
             <button
               type="button"
-              className="command-policy-overlay-close"
+              className={chrome.policyOverlayClose}
               onClick={() => setPolicyEditorOpen(false)}
               aria-label="Close policy editor"
             >
@@ -1225,13 +1231,13 @@ export function PreSimDashboard({
         <Modal
           label={`Full scouting file — ${plan.opponent.name}`}
           onClose={() => setScoutFileOpen(false)}
-          className="command-policy-overlay"
-          panelClassName="command-policy-overlay-body"
+          className={chrome.policyOverlay}
+          panelClassName={chrome.policyOverlayBody}
           data-testid="scouting-file-overlay"
         >
           <button
             type="button"
-            className="command-policy-overlay-close"
+            className={chrome.policyOverlayClose}
             onClick={() => setScoutFileOpen(false)}
             aria-label="Close scouting file"
           >

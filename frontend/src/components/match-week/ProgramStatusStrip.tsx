@@ -1,6 +1,7 @@
 import { useApiResource } from '../../hooks/useApiResource';
 import type { StandingsResponse } from '../../types';
 import styles from './aftermath/aftermathCards.module.css';
+import chrome from '../chrome.module.css';
 
 export function ProgramStatusStrip() {
   const { data } = useApiResource<StandingsResponse>('/api/standings');
@@ -19,7 +20,7 @@ export function ProgramStatusStrip() {
     : styles.neutral;
 
   return (
-    <div className={`command-program-status ${styles.statusStrip}`}>
+    <div className={`${chrome.programStatus} ${styles.statusStrip}`}>
       <div>
         <p className={styles.kicker}>Your Program</p>
         <h3 className={styles.statusTitle}>Season Status</h3>

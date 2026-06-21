@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ActionButton } from '../../ui';
-import { TermTip, CeilingGrade } from '../../legibility';
+import { TermLabel, CeilingGrade } from '../../legibility';
 import type { TermId } from '../../legibility';
 import { formatOverall, formatPlayerName, formatRole } from '../roster/playerDisplay';
 import { saveApi } from '../../api/client';
@@ -217,13 +217,19 @@ export function StartingRecruitmentStep({
                 <div className={styles.prospectMeta}>
                   {displayRole && (
                     // V22 Phase 5: the archetype finally explains itself —
-                    // the journal's "no tooltip" complaint.
+                    // the journal's "no tooltip" complaint. Rendered as a
+                    // non-interactive TermLabel (native `title`), NOT a TermTip:
+                    // the whole card is a `<button role="checkbox">`, so a nested
+                    // <button> would be an axe nested-interactive violation and a
+                    // React validateDOMNesting warning. No stopPropagation wrapper
+                    // is needed now that the label is not itself clickable.
                     ARCHETYPE_TERM_ID[p.public_archetype] ? (
-                      <span onClick={(e) => e.stopPropagation()}>
-                        <TermTip term={ARCHETYPE_TERM_ID[p.public_archetype]}>
-                          <span className={styles.prospectRole}>{displayRole}</span>
-                        </TermTip>
-                      </span>
+                      <TermLabel
+                        term={ARCHETYPE_TERM_ID[p.public_archetype]}
+                        className={styles.prospectRole}
+                      >
+                        {displayRole}
+                      </TermLabel>
                     ) : (
                       <span className={styles.prospectRole}>{displayRole}</span>
                     )

@@ -1,0 +1,248 @@
+/* Shared legacy "chrome" classes, migrated out of the global index.css into a
+   CSS Module so no component depends on global `command-*` / `dm-*` classes.
+   Bodies are the index.css originals, with raw rgba() shadows re-pointed to the
+   tokenized --shadow-2 to satisfy the token-discipline gate (index.css was
+   exempt; src/styles is not). Used across ceremonies, command-center, match-week
+   aftermath, and the dynasty history modal. */
+
+/* ── panels & primitives (was .dm-*) ───────────────────────────────────── */
+.dmPanel {
+  overflow: hidden;
+  border: 1px solid var(--raise2);
+  background: color-mix(in srgb, var(--raise) 80%, transparent);
+  /* hairline top light so stacked dark panels separate without heavy borders */
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--muted) 7%, transparent),
+    var(--shadow-2);
+}
+.dmPanelHeader {
+  border-bottom: 1px solid var(--raise2);
+  padding: 1rem 1.25rem;
+}
+.dmPanelTitle {
+  font-family: var(--font-head);
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text);
+}
+.dmKicker {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--volt);
+}
+.dmData {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── ceremony stage (was .dm-ceremony-stage) ───────────────────────────── */
+.dmCeremonyStage {
+  position: relative;
+  min-height: 16rem;
+  padding: 1.25rem 0;
+}
+.dmCeremonyStage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 70% at 50% 8%, color-mix(in srgb, var(--muted) 6%, transparent), transparent 65%),
+    radial-gradient(circle 240px at 50% 96%, transparent 237px, color-mix(in srgb, var(--muted) 5%, transparent) 238px, color-mix(in srgb, var(--muted) 5%, transparent) 240px, transparent 241px);
+}
+
+/* ── command-center / match-week bits ──────────────────────────────────── */
+.programStatus { min-width: 0; }
+.postSim {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: min(100%, 1280px);
+  margin: -0.5rem auto 0;
+  padding-bottom: 1rem;
+}
+.reveal { animation: reveal 400ms ease-out both; }
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.analysisRow {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+/* ── offseason ceremony shell ──────────────────────────────────────────── */
+.offseasonShell {
+  display: flex;
+  width: min(100%, 1280px);
+  margin: 0 auto;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.offseasonProgress {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.offseasonProgressStep {
+  display: block;
+  width: clamp(1rem, 3vw, 2.25rem);
+  height: 0.25rem;
+  border-radius: 999px;
+  background: var(--raise2);
+}
+.offseasonProgressStepActive {
+  background: var(--volt);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--volt) 22%, transparent);
+}
+.offseasonFeature {
+  min-height: 16rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--volt) 8%, transparent), transparent 38%),
+    linear-gradient(180deg, color-mix(in srgb, var(--raise) 96%, transparent), color-mix(in srgb, var(--court) 92%, transparent)),
+    var(--raise);
+}
+.offseasonFeature h3 {
+  max-width: 42rem;
+  margin: 0.35rem 0 1.25rem;
+  color: var(--text);
+  font-family: var(--font-head);
+  font-size: clamp(1.75rem, 4vw, 3.25rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.offseasonFeature > p,
+.offseasonCopy {
+  max-width: 46rem;
+  color: var(--text2);
+  font-size: 0.98rem;
+  line-height: 1.55;
+}
+.offseasonCopy {
+  display: grid;
+  gap: 0.45rem;
+}
+.offseasonCopy p,
+.offseasonFeature > p {
+  margin: 0;
+}
+
+/* ── action bar (ceremony control + aftermath) ─────────────────────────── */
+.actionBar {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  justify-content: flex-end;
+  padding: 4px 16px 12px;
+}
+.actionBar p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+}
+.actionButtons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+.actionBarSecondary {
+  flex: 0 0 auto;
+  background: var(--raise2);
+  border: 1px solid var(--out);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 10px 20px;
+  font-family: var(--font-head);
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.actionBarSecondary:hover { background: var(--raise2); border-color: var(--out); }
+.actionBarSecondary:focus-visible { outline: 2px solid var(--volt); outline-offset: 2px; }
+.actionBarPrimary {
+  flex: 0 0 auto;
+  min-width: 210px;
+  border: none;
+  border-radius: 8px;
+  background: var(--volt);
+  color: var(--text);
+  padding: 10px 20px;
+  font-family: var(--font-head);
+  font-size: 0.85rem;
+  letter-spacing: 2px;
+  cursor: pointer;
+}
+.actionBarPrimary:focus-visible { outline: 2px solid var(--volt); outline-offset: 2px; }
+
+/* ── modal overlay shell (policy editor / scouting file / program archive) ─ */
+.policyOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--court) 75%, transparent);
+  padding: 1.5rem;
+}
+.policyOverlayBody {
+  position: relative;
+  width: min(100%, 38rem);
+  max-height: calc(100vh - 4rem);
+  overflow-y: auto;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  background: var(--raise);
+  box-shadow: var(--shadow-2);
+  padding: 1.25rem 1.25rem 1rem;
+}
+.policyOverlayClose {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  border: 1px solid var(--line2);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  font-family: var(--font-head);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 0.35rem 0.6rem;
+  text-transform: uppercase;
+  z-index: 1;
+}
+.policyOverlayClose:hover {
+  background: color-mix(in srgb, var(--muted) 10%, transparent);
+  color: var(--text);
+}
+
+/* ── inline toggle (match card show-more) ──────────────────────────────── */
+.inlineToggle {
+  width: 100%;
+  margin-top: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--line2) 74%, transparent);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  padding: 0.38rem 0.45rem;
+  text-transform: uppercase;
+}
+.inlineToggle:hover {
+  border-color: color-mix(in srgb, var(--volt) 38%, transparent);
+  color: var(--text);
+}

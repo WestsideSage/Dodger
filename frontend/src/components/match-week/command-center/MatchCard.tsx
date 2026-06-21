@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { LineupPlayer } from '../../../types';
 import styles from './MatchCard.module.css';
+import chrome from '../../chrome.module.css';
 
 interface MatchCardProps {
   yourPlayers: LineupPlayer[];
@@ -66,7 +67,7 @@ export function MatchCard({
   const visibleRows = showAll || !compact ? sorted : sorted.slice(0, maxVisibleRows);
 
   return (
-    <div className={`command-match-card${compact ? ' is-compact' : ''} ${styles.card}`}>
+    <div className={styles.card}>
       {/* Header — hidden in compact mode */}
       {!compact && (
         <div className={styles.header}>
@@ -228,7 +229,7 @@ export function MatchCard({
       {compact && sorted.length > maxVisibleRows && (
         <button
           type="button"
-          className={`command-inline-toggle ${styles.expandBtn}`}
+          className={`${chrome.inlineToggle} ${styles.expandBtn}`}
           onClick={() => setShowAll(prev => !prev)}
         >
           {showAll ? 'Collapse details' : `Expand all ${sorted.length} matchups`}

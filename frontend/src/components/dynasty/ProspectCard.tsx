@@ -193,7 +193,8 @@ export function ProspectCard({
           <span className={styles.name} title={prospect.name}>
             {prospect.name}
           </span>
-          <div className={styles.sub}>
+          {/* Identity — who he is (rank, archetype, hometown). */}
+          <div className={styles.identity}>
             <span
               className={styles.rank}
               aria-label={`Board rank ${priority}`}
@@ -201,27 +202,23 @@ export function ProspectCard({
             >
               #{String(priority).padStart(2, '0')}
             </span>
-            <span className={styles.dot}>·</span>
-            <span aria-label={`Hometown: ${prospect.hometown}`}>
+            {archetypeBadge(prospect.public_archetype || 'Balanced')}
+            <span className={styles.from} aria-label={`Hometown: ${prospect.hometown}`}>
               <span className={styles.fromLabel}>From</span>
               <span className={styles.fromValue}>{prospect.hometown}</span>
             </span>
-            <span className={styles.dot}>·</span>
-            {archetypeBadge(prospect.public_archetype || 'Balanced')}
-            <span className={styles.dot}>·</span>
+          </div>
+          {/* Funnel status — where he is with you (status, stage, pipeline). */}
+          <div className={styles.status}>
             <RecruitingBadge status={displayStatus} pending={pending} />
             {prospect.funnel_stage != null && (
-              <>
-                <span className={styles.dot}>·</span>
-                <span
-                  className={styles.chip}
-                  title="Your recruiting funnel stage — Open → Shortlist → Top 3 → Verbal"
-                >
-                  {prospect.funnel_stage}
-                </span>
-              </>
+              <span
+                className={styles.chip}
+                title="Your recruiting funnel stage — Open → Shortlist → Top 3 → Verbal"
+              >
+                {prospect.funnel_stage}
+              </span>
             )}
-            <span className={styles.dot}>·</span>
             <span className={styles.pipeline}>
               <TermTip term="recruit.pipeline">
                 <span className={styles.miniLabel}>Pipeline</span>
@@ -243,7 +240,7 @@ export function ProspectCard({
 
       <div className={styles.meter}>
         <div className={styles.meterBg}>
-          <div className={styles.meterFill} style={{ width: `${prospect.fit_score}%` }} />
+          <div className={`${styles.meterFill} ${styles[fitTier]}`} style={{ width: `${prospect.fit_score}%` }} />
         </div>
         <div className={styles.meterLabels}>
           <span>

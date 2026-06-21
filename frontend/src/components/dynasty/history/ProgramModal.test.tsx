@@ -24,10 +24,12 @@ describe('ProgramModal (P5-owned, P4-consumed — frozen contract)', () => {
     expect(screen.getByTestId('stub-myprogram')).toHaveAttribute('data-is-self', 'false');
   });
 
-  it('keeps the SHARED command-policy-overlay global on the overlay (must survive this phase)', () => {
-    const { container } = render(
+  it('exposes the overlay via a stable testid (the command-policy-overlay global was migrated to a CSS Module)', () => {
+    render(
       <ProgramModal clubId="hammers" clubName="Granite City Hammers" onClose={() => {}} />,
     );
-    expect(container.querySelector('.command-policy-overlay')).not.toBeNull();
+    // The shared overlay chrome moved from the global `command-policy-overlay`
+    // class into components/chrome.module.css; the stable hook is now the testid.
+    expect(screen.getByTestId('program-archive-modal')).toBeInTheDocument();
   });
 });

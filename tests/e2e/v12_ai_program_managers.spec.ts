@@ -20,7 +20,7 @@ test('AI Program Managers E2E Standings rendering', async ({ page, request }) =>
   await page.goto(`${baseUrl}/?tab=standings`);
 
   // Wait for the standings table to load
-  await expect(page.locator('table.ls-table')).toBeVisible();
+  await expect(page.locator('table[data-testid="standings-table"]')).toBeVisible();
 
   // Verify standings headers and context callout are visible
   await expect(page.getByRole('heading', { name: 'Standings', level: 1 })).toBeVisible();
@@ -29,7 +29,11 @@ test('AI Program Managers E2E Standings rendering', async ({ page, request }) =>
   const userRow = page.locator('tr').filter({ hasText: 'Aurora' });
   await expect(userRow).toBeVisible();
   
-  // Assert presence of the current program trajectory/plan info on the row
-  await expect(userRow.locator('text=Yr 1')).toBeVisible();
-  await expect(userRow.locator('text=Balanced')).toBeVisible();
+  // Assert presence of the current program trajectory/plan info on the row.
+  // The reskinned row shows the archetype from program_trajectory_label with the
+  // "Yr N · " prefix intentionally stripped (LeagueContext splits on ' · '), so
+  // "Yr 1 · Balanced Rebuild" renders as "Balanced Rebuild".
+  await expect(userRow).toContainText('Balanced Rebuild');
+  // The weekly plan/approach tag (exact, so it is not the archetype substring).
+  await expect(userRow.getByText('Balanced', { exact: true })).toBeVisible();
 });

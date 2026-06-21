@@ -1,6 +1,7 @@
 import type { OffseasonBeat } from '../../types';
 import { CeremonyShell } from './CeremonyShell';
 import styles from './WorldsCrowning.module.css';
+import cer from './ceremony.module.css';
 
 type WorldsChampionBeat = Extract<OffseasonBeat, { key: 'worlds_champion' }>;
 
@@ -50,10 +51,10 @@ export function WorldsCrowning({
             beatIndex={beat.beat_index}
             totalBeats={beat.total_beats}
             renderStage={() => (
-                <div className="champion-stage" data-testid="worlds-defending-stage">
-                    <p className="champion-kicker">Worlds Champions</p>
-                    <h2 className="champion-name">{champion_name}</h2>
-                    <p className="champion-sub">Retained the Worlds title.</p>
+                <div className={cer['champion-stage']} data-testid="worlds-defending-stage">
+                    <p className={cer['champion-kicker']}>Worlds Champions</p>
+                    <h2 className={cer['champion-name']}>{champion_name}</h2>
+                    <p className={cer['champion-sub']}>Retained the Worlds title.</p>
                 </div>
             )}
             onComplete={onComplete}
@@ -76,16 +77,16 @@ function FirstCrownStage({
     // Stages: 0 teaser → 1 the stage is set → 2 the name → 3 the title + season.
     if (stage <= 0) {
         return (
-            <div className="champion-stage" data-testid="worlds-crown-stage-0">
-                <p className={`champion-kicker ${styles.gold}`}>The World Stage</p>
+            <div className={cer['champion-stage']} data-testid="worlds-crown-stage-0">
+                <p className={`${cer['champion-kicker']} ${styles.gold}`}>The World Stage</p>
                 <p className={styles.muted}>One club stands above every tier…</p>
             </div>
         );
     }
     if (stage === 1) {
         return (
-            <div className="champion-stage" data-testid="worlds-crown-stage-1">
-                <p className={`champion-kicker ${styles.gold}`}>The World Stage</p>
+            <div className={cer['champion-stage']} data-testid="worlds-crown-stage-1">
+                <p className={`${cer['champion-kicker']} ${styles.gold}`}>The World Stage</p>
                 <p className={styles.lede}>
                     The summit of the pyramid is decided.
                 </p>
@@ -94,17 +95,17 @@ function FirstCrownStage({
     }
     if (stage === 2) {
         return (
-            <div className="champion-stage" data-testid="worlds-crown-stage-2">
-                <p className={`champion-kicker ${styles.gold}`}>Worlds Champions</p>
-                <h2 className={`champion-name ${styles.gold}`}>{championName}</h2>
+            <div className={cer['champion-stage']} data-testid="worlds-crown-stage-2">
+                <p className={`${cer['champion-kicker']} ${styles.gold}`}>Worlds Champions</p>
+                <h2 className={`${cer['champion-name']} ${styles.gold}`}>{championName}</h2>
             </div>
         );
     }
     return (
-        <div className="champion-stage" data-testid="worlds-crown-stage-3">
-            <p className={`champion-kicker ${styles.gold}`}>Worlds Champions</p>
-            <h2 className={`champion-name ${styles.gold}`}>{championName}</h2>
-            <p className="champion-sub">The first Worlds title. The banner goes up tonight.</p>
+        <div className={cer['champion-stage']} data-testid="worlds-crown-stage-3">
+            <p className={`${cer['champion-kicker']} ${styles.gold}`}>Worlds Champions</p>
+            <h2 className={`${cer['champion-name']} ${styles.gold}`}>{championName}</h2>
+            <p className={cer['champion-sub']}>The first Worlds title. The banner goes up tonight.</p>
             <p className={styles.season}>{seasonId}</p>
         </div>
     );

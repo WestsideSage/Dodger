@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { OffseasonBeat, MediaEventOption } from '../../types';
 import { ActionButton, PageHeader } from '../../ui';
 import styles from './MediaEvent.module.css';
+import chrome from '../chrome.module.css';
 
 type MediaBeat = Extract<OffseasonBeat, { key: 'media_event' }>;
 
@@ -34,7 +35,7 @@ export function MediaEvent({
     };
 
     return (
-        <section className="command-offseason-shell" data-testid="offseason-media">
+        <section className={chrome.offseasonShell} data-testid="offseason-media">
             <PageHeader
                 eyebrow={`Offseason Beat ${beat.beat_index + 1}/${beat.total_beats} · The Crowd`}
                 title="Media Moment"
@@ -42,12 +43,12 @@ export function MediaEvent({
             />
 
             {committed && result ? (
-                <div className={`dm-panel ${styles.resultPanel}`} data-testid="media-result">
-                    <p className={`dm-kicker ${styles.resultKicker}`}>Played</p>
+                <div className={`${chrome.dmPanel} ${styles.resultPanel}`} data-testid="media-result">
+                    <p className={`${chrome.dmKicker} ${styles.resultKicker}`}>Played</p>
                     <p className={styles.resultBody}>{result.receipt}</p>
                 </div>
             ) : event ? (
-                <div className={`dm-panel ${styles.eventPanel}`} data-testid="media-event">
+                <div className={`${chrome.dmPanel} ${styles.eventPanel}`} data-testid="media-event">
                     <p className={styles.prompt}>{event.prompt}</p>
                     <div className={styles.options}>
                         {event.options.map((o) => {
@@ -75,17 +76,17 @@ export function MediaEvent({
                     </div>
                 </div>
             ) : (
-                <div className={`dm-panel ${styles.quiet}`}>
+                <div className={`${chrome.dmPanel} ${styles.quiet}`}>
                     Quiet news cycle — nothing to weigh in on this offseason.
                 </div>
             )}
 
-            <div className="dm-panel command-action-bar">
+            <div className={`${chrome.dmPanel} ${chrome.actionBar}`}>
                 <div>
-                    <p className="dm-kicker">Ceremony Control</p>
+                    <p className={chrome.dmKicker}>Ceremony Control</p>
                     <p>{committed ? 'Continue to the next beat.' : 'Pick a response, then continue.'}</p>
                 </div>
-                <div className="command-action-buttons">
+                <div className={chrome.actionButtons}>
                     <ActionButton variant="primary" onClick={onComplete} disabled={acting}>
                         {acting ? 'Working…' : committed ? 'Continue' : 'Confirm & Continue'}
                     </ActionButton>

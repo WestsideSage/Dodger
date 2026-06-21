@@ -64,14 +64,14 @@ test('official rules replay surfaces rules state and explanation panels', async 
   // sim must jump (the event stream carries per-game metadata).
   const setStrip = page.getByTestId('replay-set-strip');
   await expect(setStrip).toBeVisible();
-  const setChips = setStrip.locator('.mr-set-chip');
+  const setChips = setStrip.locator('[data-set-chip]');
   expect(await setChips.count()).toBeGreaterThan(0);
   await expect(setChips.first()).toBeEnabled();
   await expect(page.getByTestId('replay-set-running')).toContainText('on game points');
 
   // The biggest-swing block jumps to the exact event its headline describes.
   await expect(page.getByText('BIGGEST SWING', { exact: true })).toBeVisible();
-  const swingText = (await page.locator('.mr-turning-text').innerText()).trim();
+  const swingText = (await page.getByTestId('replay-turning-text').innerText()).trim();
   await page.getByRole('button', { name: /jump to this play/i }).click();
-  await expect(page.locator('.mr-active-readout .title')).toHaveText(swingText);
+  await expect(page.getByTestId('replay-active-title')).toHaveText(swingText);
 });

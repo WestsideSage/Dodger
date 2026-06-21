@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActionButton, PageHeader } from '../../ui';
 import styles from './CeremonyShell.module.css';
+import chrome from '../chrome.module.css';
 
 // WT-21 wrap-not-rewrite assessment: CeremonyShell is a healthy surface and is
 // neither a dialog nor a radiogroup. Its only candidate for the shared
@@ -65,35 +66,35 @@ export function CeremonyShell({
   }, [stages]);
 
   return (
-    <div className={`dm-ceremony ${styles.ceremony}`}>
+    <div className={`${styles.ceremony}`}>
       <PageHeader
         eyebrow={showProgress ? `Offseason Beat ${(beatIndex as number) + 1}/${totalBeats} · ${eyebrow}` : eyebrow}
         title={title}
         description={description}
         stats={showProgress ? (
-          <div className="command-offseason-progress" aria-label="Offseason beat progress">
+          <div className={chrome.offseasonProgress} aria-label="Offseason beat progress">
             {Array.from({ length: totalBeats as number }).map((_, index) => (
               <span
                 key={index}
                 className={
                   index <= (beatIndex as number)
-                    ? 'command-offseason-progress-step command-offseason-progress-step-active'
-                    : 'command-offseason-progress-step'
+                    ? `${chrome.offseasonProgressStep} ${chrome.offseasonProgressStepActive}`
+                    : chrome.offseasonProgressStep
                 }
               />
             ))}
           </div>
         ) : undefined}
       />
-      <div className={`dm-ceremony-stage ${styles.stage}`}>
+      <div className={`${chrome.dmCeremonyStage} ${styles.stage}`}>
          {renderStage(stage)}
       </div>
-      <div className="dm-panel command-action-bar" style={{ position: 'sticky', bottom: '1rem', marginTop: 'auto' }}>
+      <div className={`${chrome.dmPanel} ${chrome.actionBar}`} style={{ position: 'sticky', bottom: '1rem', marginTop: 'auto' }}>
         <div>
-          <p className="dm-kicker">Ceremony Control</p>
+          <p className={chrome.dmKicker}>Ceremony Control</p>
           <p role="status">{animating ? 'Press Space or click anywhere to skip animation.' : actionDescription}</p>
         </div>
-        <div className="command-action-buttons">
+        <div className={chrome.actionButtons}>
           <ActionButton
             variant="primary"
             onClick={animating ? () => setStage(stages) : onComplete}

@@ -1,5 +1,6 @@
 import type { BroadcastFrame, BroadcastTag } from '../types';
 import styles from './BroadcastFrameBlock.module.css';
+import chrome from './chrome.module.css';
 
 // Live / high-stakes tones get the single Volt "on air" accent; every other tone
 // reads as a calm warm-neutral pill. Presentation only — tone never changes which
@@ -65,7 +66,7 @@ export function BroadcastFrameBlock({
 
   return (
     <section
-      className="dm-panel"
+      className={chrome.dmPanel}
       style={{
         padding: compact ? '0.75rem 0.9rem' : '0.9rem 1rem',
         display: 'flex',
@@ -74,7 +75,7 @@ export function BroadcastFrameBlock({
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center' }}>
-        <p className="dm-kicker" style={{ margin: 0 }}>{title}</p>
+        <p className={chrome.dmKicker} style={{ margin: 0 }}>{title}</p>
         <span className={styles.voiceSlot}>
           {frame.voice_slot.replace('broadcast.', '').replaceAll('_', ' ')}
         </span>

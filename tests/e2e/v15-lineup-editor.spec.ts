@@ -60,18 +60,19 @@ test('V15 2c: role-label legend shows all six slots', async ({ page, request }) 
   }
 });
 
-test('V15 2c: Auto-Pick button has accessible label and secondary style (not destructive)', async ({ page, request }) => {
+test('V15 2c: Auto-Assign button has accessible label and secondary style (not destructive)', async ({ page, request }) => {
   await openLineupEditor(page, request);
   const dialog = page.getByRole('dialog', { name: /Lineup Editor/i });
 
-  // Button must be findable by its accessible label.
-  const autoPick = dialog.getByRole('button', { name: /Auto-Pick/i });
+  // Button must be findable by its accessible label. (V19 Task 8 renamed the
+  // old "Auto-Pick" one-shot to "Auto-Assign".)
+  const autoPick = dialog.getByRole('button', { name: /Auto-Assign/i });
   await expect(autoPick).toBeVisible();
   await expect(autoPick).toBeEnabled();
 
-  // The button's title must describe the recoverable action.
+  // The button's title must describe the recoverable, non-destructive action.
   const titleAttr = await autoPick.getAttribute('title');
-  expect(titleAttr).toMatch(/lineup resolver/i);
+  expect(titleAttr).toMatch(/optimal six/i);
 
   // Confirm "Reset" no longer appears as the button label (old destructive framing gone).
   await expect(dialog.getByRole('button', { name: /^Reset to Auto$/i })).toHaveCount(0);

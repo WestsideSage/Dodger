@@ -373,9 +373,9 @@
 
 .threatCard {
   border: 1px solid var(--line2);
-  border-left: var(--border-thick) solid var(--danger);
+  border-left: var(--border-thick) solid var(--gold);
   border-radius: var(--radius-sm);
-  background: var(--danger-soft);
+  background: var(--gold-soft);
   padding: var(--space-4) var(--space-5);
   display: grid;
   gap: var(--space-3);
@@ -384,7 +384,7 @@
   font: 500 0.6rem var(--font-mono);
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--danger2);
+  color: var(--gold);
 }
 .threatCard :global(.name) {
   font: 800 1.35rem var(--font-disp);
@@ -404,28 +404,32 @@
   border-top: 1px solid var(--line);
 }
 .threatCard :global(.row) b { color: var(--text); font-weight: 700; }
-.threatCard :global(.ovr) { color: var(--danger2); font-weight: 800; font-size: 1.05rem; font-family: var(--font-mono); }
+.threatCard :global(.ovr) { color: var(--gold); font-weight: 800; font-size: 1.05rem; font-family: var(--font-mono); }
 
 /* ---- MiniCourt SVG ---- */
 .courtSvg { width: 100%; height: auto; display: block; }
 .svgFrame { fill: var(--court); stroke: var(--line2); }
 .svgGridPath { fill: none; stroke: var(--line); }
-.svgWeakStopTop { stop-color: var(--volt-soft); }
+/* Court read color story (5-color contract): HOME is YOU -> --volt (live/primary);
+   AWAY is the opponent -> neutral warm grey; the KEY THREAT is their standout
+   talent to watch -> --gold. Three distinct reads instead of the old all-clay
+   (home + threat both read --danger, which looked like one warm tone). */
+.svgWeakStopTop { stop-color: var(--gold-soft); }
 .svgWeakStopBottom { stop-color: var(--court); }
 .svgMidline { stroke: var(--line2); }
 .svgZoneLabel { fill: var(--out); font-family: var(--font-mono); }
-.svgThreatLabel { fill: var(--danger2); font-family: var(--font-mono); }
-.svgHomeRing { fill: var(--court); stroke: var(--danger); }
-.svgHomeDot { fill: var(--danger); }
+.svgThreatLabel { fill: var(--gold); font-family: var(--font-mono); }
+.svgHomeRing { fill: var(--court); stroke: var(--volt); }
+.svgHomeDot { fill: var(--volt); }
 .svgAwayRing { fill: var(--court); stroke: var(--text2); }
 .svgAwayDot { fill: var(--text2); }
-.svgAwayRingHot { fill: var(--court); stroke: var(--danger2); }
-.svgAwayDotHot { fill: var(--danger2); }
-.svgHotHalo { fill: none; stroke: var(--danger2); }
+.svgAwayRingHot { fill: var(--court); stroke: var(--gold); }
+.svgAwayDotHot { fill: var(--gold); }
+.svgHotHalo { fill: none; stroke: var(--gold); }
 .svgName { fill: var(--muted); font-family: var(--font-mono); }
-.svgNameHot { fill: var(--danger2); font-family: var(--font-mono); }
-.svgArc { fill: none; stroke: var(--volt2); }
-.svgArcDot { fill: var(--volt2); }
+.svgNameHot { fill: var(--gold2); font-family: var(--font-mono); }
+.svgArc { fill: none; stroke: var(--gold); }
+.svgArcDot { fill: var(--gold); }
 
 /* ---- Body grid (Plan / Scout / Lock) ---- */
 .body {
@@ -596,7 +600,8 @@
 .staffStrip :global(.rows) { display: grid; gap: var(--space-2); }
 .staffStrip :global(.row) {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  /* dept | who(name+rating, natural width — never squeezed) | effect(absorbs slack) */
+  grid-template-columns: auto auto minmax(0, 1fr);
   gap: var(--space-3);
   align-items: baseline;
   font: 500 0.78rem var(--font-ui);
@@ -612,7 +617,28 @@
   text-transform: uppercase;
   color: var(--muted);
 }
-.staffStrip :global(.who) { color: var(--text); font-weight: 600; min-width: 0; }
+.staffStrip :global(.who) {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  min-width: 0;
+  color: var(--text);
+  font-weight: 600;
+}
+/* The name may ellipsize on a tight column, but the (rating) is a separate
+   non-shrinking sibling so it is always legible. */
+.staffStrip :global(.whoName) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.staffStrip :global(.whoRating) {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
 .staffStrip :global(.effect) { color: var(--text2); text-align: right; }
 
 /* Scout panel */
@@ -785,7 +811,10 @@
 .gate.ok { border: 1px solid var(--ok-soft); background: var(--ok-soft); }
 .gate.ok :global(.tick), .gate.ok .gateLbl { color: var(--ok); }
 .gate.pend { border: 1px solid var(--out-line); background: var(--tint-neutral); }
-.gate.pend :global(.tick), .gate.pend .gateLbl { color: var(--out); }
+.gate.pend :global(.tick) { color: var(--out); }
+/* a11y: the pending gate NAME must clear AA contrast — --out (dim/extinguished)
+   fails on the tinted gate background, so the label rides --text2. */
+.gate.pend .gateLbl { color: var(--text2); }
 .gate :global(.tick) { font-size: 0.9rem; font-weight: 800; line-height: 1; }
 .gateLbl { font-size: 0.5rem; letter-spacing: 0.1em; text-transform: uppercase; }
 .gateDetail {

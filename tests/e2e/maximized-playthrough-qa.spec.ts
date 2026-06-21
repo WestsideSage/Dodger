@@ -215,7 +215,7 @@ test.describe('Maximized browser playthrough and V11 QA Pass', () => {
       await page.getByRole('button', { name: /Command Center/i }).click();
       
       // Click Advance
-      const advanceBtn = page.getByTestId('after-action-bar').locator('button.command-action-bar-primary');
+      const advanceBtn = page.getByTestId('after-action-bar').getByTestId('aftermath-advance');
       await advanceBtn.click();
 
       await expect(page.getByTestId('weekly-command-center').getByText(/week\s*0?2/i)).toBeVisible();

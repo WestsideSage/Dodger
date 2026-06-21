@@ -1,0 +1,252 @@
+/* Ceremony-specific bespoke classes, migrated verbatim out of global index.css
+   into a CSS Module (px is allowed in components/; these rules are already 100%
+   token-based so colors are unchanged). Generic utility classes (.num/.cap/.gold)
+   stay GLOBAL via :global() because reskinned standings/roster also use them.
+   Kebab class names are preserved and accessed in TSX via cer['kebab-name']. */
+.playoff-bracket-panel {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+}
+.playoff-bracket-seeds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0 1rem 0.85rem;
+}
+.playoff-bracket-grid {
+  display: flex;
+  gap: 1.5rem;
+  padding: 0 1rem;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+.playoff-bracket-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  justify-content: center;
+  min-width: 13rem;
+}
+.playoff-bracket-round-label {
+  margin: 0;
+  font-size: 0.6rem;
+  color: var(--out);
+}
+.playoff-bracket-empty {
+  font-size: 0.75rem;
+  color: var(--out);
+  font-style: italic;
+  margin: 0;
+}
+.playoff-champion-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--gold2) 50%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--gold2) 8%, transparent);
+  text-align: center;
+}
+.playoff-champion-card strong {
+  color: var(--gold2);
+  font-size: 1rem;
+}
+.playoff-champion-card span {
+  color: var(--muted);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.playoff-champion-trophy {
+  font-size: 1.4rem;
+}
+.playoff-champion-card.is-user {
+  border-color: var(--gold2);
+  background: color-mix(in srgb, var(--gold2) 14%, transparent);
+}
+.champion-stage {
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+  padding: 3.25rem 1.5rem 2.75rem;
+  border: 1px solid color-mix(in srgb, var(--gold2) 30%, transparent);
+  border-radius: 6px;
+  background:
+    radial-gradient(ellipse 72% 64% at 50% 0%, color-mix(in srgb, var(--gold2) 16%, transparent), transparent 62%),
+    radial-gradient(circle 300px at 50% 130%, color-mix(in srgb, var(--gold2) 10%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--raise) 0%, var(--court) 100%);
+  box-shadow: 0 0 60px color-mix(in srgb, var(--gold2) 8%, transparent), inset 0 1px 0 color-mix(in srgb, var(--gold2) 18%, transparent);
+}
+.champion-stage .champion-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--gold2);
+  margin: 0 0 0.8rem;
+}
+.champion-stage .champion-kicker::before,
+.champion-stage .champion-kicker::after {
+  content: '';
+  width: 2.6rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--gold2) 70%, transparent));
+}
+.champion-stage .champion-kicker::after {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gold2) 70%, transparent), transparent);
+}
+.champion-stage .champion-name {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-head);
+  font-size: clamp(2.4rem, 5vw, 3.6rem);
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: linear-gradient(180deg, var(--gold2) 18%, var(--gold2) 55%, var(--gold) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+}
+.champion-stage .champion-sub {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0 0 1.4rem;
+}
+.champion-stage .champion-stats {
+  display: flex;
+  gap: 2.25rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.champion-stage .champion-stats :global(.num) {
+  font-family: var(--font-head);
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.champion-stage .champion-stats :global(.num.gold) { color: var(--gold2); }
+.champion-stage .champion-stats :global(.cap) {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--out);
+  margin-top: 0.2rem;
+}
+/* Hall of Fame plaque */
+.hof-plaque {
+  position: relative;
+  padding: 1.1rem 1.2rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--gold2) 30%, transparent);
+  border-radius: 5px;
+  background:
+    radial-gradient(ellipse 80% 90% at 50% -20%, color-mix(in srgb, var(--gold2) 10%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--raise), var(--raise));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gold2) 22%, transparent);
+}
+.hof-plaque .hof-name {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: 1.55rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.05;
+  background: linear-gradient(180deg, var(--gold2) 20%, var(--gold2) 60%, var(--gold) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hof-plaque .hof-enshrined {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.95rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold2);
+  border: 1px solid color-mix(in srgb, var(--gold2) 45%, transparent);
+  border-radius: 3px;
+  padding: 0.18rem 0.45rem;
+  background: color-mix(in srgb, var(--gold2) 8%, transparent);
+}
+.hof-plaque .hof-career {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.6rem 0 0;
+}
+.hof-plaque .hof-career span {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--muted) 22%, transparent);
+  border-radius: 3px;
+  padding: 0.16rem 0.45rem;
+  background: color-mix(in srgb, var(--raise) 70%, transparent);
+}
+.hof-plaque .hof-legacy {
+  margin: 0.55rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.hof-plaque .hof-reasons {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text2);
+}
+/* Retirement farewell card — a banner heading to the rafters */
+.farewell-card {
+  position: relative;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line2);
+  border-top: 3px solid var(--out);
+  border-radius: 5px;
+  background: linear-gradient(180deg, var(--raise), var(--court));
+  transition: opacity 240ms ease;
+}
+.farewell-card.is-latest {
+  border-top-color: var(--gold2);
+  box-shadow: 0 0 28px color-mix(in srgb, var(--gold2) 10%, transparent);
+}
+.farewell-card .farewell-name {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+.farewell-card .farewell-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.55rem 0 0;
+}
+.farewell-card .farewell-line span {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text2);
+  border: 1px solid color-mix(in srgb, var(--muted) 20%, transparent);
+  border-radius: 3px;
+  padding: 0.14rem 0.42rem;
+  background: color-mix(in srgb, var(--raise) 70%, transparent);
+}
+.farewell-card .farewell-tier {
+  margin: 0.55rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}

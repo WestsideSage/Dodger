@@ -46,8 +46,8 @@ function TeamScore({
       <Truncate className={`${styles.name}${isWinner ? ` ${styles.nameWinner}` : ''}`} title={name}>
         {name}
       </Truncate>
-      <span className={`${styles.number}${isWinner ? ` ${styles.numberWinner}` : ''}`}>{displayedSurvivors}</span>
-      <span className={styles.detail}>{survivorDetail(survivors, Boolean(isOfficial))}</span>
+      <span data-testid="score-number" className={`${styles.number}${isWinner ? ` ${styles.numberWinner}` : ''}`}>{displayedSurvivors}</span>
+      <span data-testid="score-detail" className={styles.detail}>{survivorDetail(survivors, Boolean(isOfficial))}</span>
       {isWinner && <span className={styles.winnerBadge}>★ Winner</span>}
     </div>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { MatchWeek } from './components/MatchWeek';
 import { DynastyOffice } from './components/DynastyOffice';
 import { Standings } from './components/LeagueContext';
@@ -31,6 +31,35 @@ const tabs: Array<{ id: Tab; label: string; short: string; icon?: string }> = [
   { id: 'dynasty', label: 'Dynasty Office', short: 'Program', icon: 'briefcase' },
   { id: 'standings', label: 'Standings', short: 'Table', icon: 'list' },
 ];
+
+// Inline line icons (no dependency) for the nav rail — shown beside the label
+// when expanded, and alone (icon-only stubs) when the rail is collapsed.
+const navIcons: Record<Tab, ReactNode> = {
+  command: (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="8" cy="8" r="5.25" />
+      <path d="M8 1v2.2M8 12.8V15M1 8h2.2M12.8 8H15" strokeLinecap="round" />
+      <circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none" />
+    </svg>
+  ),
+  roster: (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="8" cy="5" r="2.5" />
+      <path d="M3 13.4c0-2.5 2.2-4 5-4s5 1.5 5 4" strokeLinecap="round" />
+    </svg>
+  ),
+  dynasty: (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="2" y="5" width="12" height="8.5" rx="1.5" />
+      <path d="M5.5 5V3.6a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V5" />
+    </svg>
+  ),
+  standings: (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M2.5 4h11M2.5 8h11M2.5 12h7" strokeLinecap="round" />
+    </svg>
+  ),
+};
 
 const tabKickers: Record<string, string> = {
   command: 'WAR ROOM',
@@ -115,15 +144,20 @@ function App() {
     <button
       className={styles.navItem}
       aria-label="Back to save menu"
-      tabIndex={navCollapsed ? -1 : 0}
+      tabIndex={0}
       onClick={() => {
         careerApi.unloadSave()
           .finally(() => window.location.reload());
       }}
       title="Back to Save Menu"
     >
-      <span className={styles.dot} />
-      Menu
+      <span className={styles.navIcon} aria-hidden="true">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path d="M6 2.5H3.5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1H6" strokeLinecap="round" />
+          <path d="M9.5 5.5 13 8l-3.5 2.5M13 8H6.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </span>
+      <span className={styles.navLabel}>Menu</span>
     </button>
   );
 
@@ -175,7 +209,6 @@ function App() {
           id="primary-nav"
           className={styles.navItems}
           aria-label="Primary"
-          style={{ display: navCollapsed ? 'none' : undefined }}
         >
           {tabs.map(tab => {
             // During offseason ceremonies let the player peek at read-only
@@ -190,7 +223,7 @@ function App() {
                 className={`${styles.navItem}${isActive ? ` ${styles.navItemActive}` : ''}`}
                 aria-label={tab.label}
                 aria-disabled={!isAvailable}
-                tabIndex={navCollapsed ? -1 : 0}
+                tabIndex={0}
                 title={isAvailable ? tab.label : `${tab.label} — locked during offseason`}
                 onClick={() => {
                   if (isAvailable) {
@@ -200,14 +233,14 @@ function App() {
                 }}
                 style={{ opacity: isAvailable ? 1 : 0.35, cursor: isAvailable ? 'pointer' : 'not-allowed', pointerEvents: 'auto' }}
               >
-                <span className={styles.dot} />
-                {tab.label}
+                <span className={styles.navIcon} aria-hidden="true">{navIcons[tab.id]}</span>
+                <span className={styles.navLabel}>{tab.label}</span>
               </button>
             );
           })}
         </nav>
         <div className={styles.navFooter}>
-          {!navCollapsed && SHOW_SETTINGS_NAV && (
+          {SHOW_SETTINGS_NAV && (
             <button
               className={styles.navItem}
               disabled
@@ -215,11 +248,11 @@ function App() {
               style={{ opacity: 0.35, cursor: 'not-allowed' }}
               onClick={() => {}}
             >
-              <span className={styles.dot} />
-              Settings
+              <span className={styles.navIcon} aria-hidden="true" />
+              <span className={styles.navLabel}>Settings</span>
             </button>
           )}
-          {!navCollapsed && menuButton}
+          {menuButton}
         </div>
       </aside>
 

@@ -2,6 +2,7 @@ import type { OffseasonBeat, EventResultRow } from '../../types';
 import { ActionButton, PageHeader } from '../../ui';
 import { EventBracket } from './EventBracket';
 import styles from './EventsBeat.module.css';
+import chrome from '../chrome.module.css';
 
 type EventsBeat = Extract<OffseasonBeat, { key: 'events' }>;
 
@@ -34,8 +35,8 @@ function EventCard({
     const purseText = event.purse_k > 0 ? ` · +${event.purse_k}k purse` : '';
 
     return (
-        <div className={`dm-panel ${styles.card}`} data-testid="event-result-card">
-            <p className={`dm-kicker ${styles.cardKicker}`}>{label}</p>
+        <div className={`${chrome.dmPanel} ${styles.card}`} data-testid="event-result-card">
+            <p className={`${chrome.dmKicker} ${styles.cardKicker}`}>{label}</p>
             <p className={styles.champion}>
                 🏆 {event.champion_club_name || event.champion_club_id}
                 <span className={styles.purse}>{purseText}</span>
@@ -75,7 +76,7 @@ export function EventsBeat({
     const hasCup = events.some(e => e.event_key === 'domestic_cup');
 
     return (
-        <section className="command-offseason-shell" data-testid="offseason-events">
+        <section className={chrome.offseasonShell} data-testid="offseason-events">
             <PageHeader
                 eyebrow={`Offseason Beat ${beat.beat_index + 1}/${beat.total_beats} · The Calendar`}
                 title="The Season's Events"
@@ -89,21 +90,21 @@ export function EventsBeat({
                     ))}
                 </div>
             ) : (
-                <div className={`dm-panel ${styles.empty}`}>
+                <div className={`${chrome.dmPanel} ${styles.empty}`}>
                     No events resolved this season.
                 </div>
             )}
 
-            <div className="dm-panel command-action-bar">
+            <div className={`${chrome.dmPanel} ${chrome.actionBar}`}>
                 <div>
-                    <p className="dm-kicker">Ceremony Control</p>
+                    <p className={chrome.dmKicker}>Ceremony Control</p>
                     <p>
                         {hasCup
                             ? 'The cup is decided. Continue to the next beat.'
                             : 'Continue to the next offseason beat.'}
                     </p>
                 </div>
-                <div className="command-action-buttons">
+                <div className={chrome.actionButtons}>
                     <ActionButton variant="primary" onClick={onComplete} disabled={acting}>
                         {acting ? 'Working…' : 'Continue'}
                     </ActionButton>

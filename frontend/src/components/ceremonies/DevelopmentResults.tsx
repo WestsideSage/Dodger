@@ -2,6 +2,7 @@ import type { OffseasonBeat } from '../../types';
 import { ActionButton, PageHeader } from '../../ui';
 import { TermTip } from '../../legibility';
 import styles from './DevelopmentResults.module.css';
+import chrome from '../chrome.module.css';
 
 type DevelopmentBeat = Extract<OffseasonBeat, { key: 'development' }>;
 
@@ -30,20 +31,20 @@ export function DevelopmentResults({
     const trainingCredit = beat.payload.training_credit;
 
     return (
-        <section className="command-offseason-shell" data-testid="offseason-development">
+        <section className={chrome.offseasonShell} data-testid="offseason-development">
             <PageHeader
                 eyebrow={`Offseason Beat ${beat.beat_index + 1}/${beat.total_beats} · Development`}
                 title="Your Roster Progress"
                 description={`${players.length} player${players.length !== 1 ? 's' : ''} changed OVR`}
                 stats={
-                    <div className="command-offseason-progress" aria-label="Offseason beat progress">
+                    <div className={chrome.offseasonProgress} aria-label="Offseason beat progress">
                         {Array.from({ length: beat.total_beats }).map((_, index) => (
                             <span
                                 key={index}
                                 className={
                                     index <= beat.beat_index
-                                        ? 'command-offseason-progress-step command-offseason-progress-step-active'
-                                        : 'command-offseason-progress-step'
+                                        ? `${chrome.offseasonProgressStep} ${chrome.offseasonProgressStepActive}`
+                                        : chrome.offseasonProgressStep
                                 }
                             />
                         ))}
@@ -51,7 +52,7 @@ export function DevelopmentResults({
                 }
             />
 
-            <div className={`dm-panel ${styles.panel}`}>
+            <div className={`${chrome.dmPanel} ${styles.panel}`}>
                 {players.length === 0 ? (
                     <p className={styles.empty}>
                         No development data available for your roster.
@@ -160,12 +161,12 @@ export function DevelopmentResults({
                 </div>
             </div>
 
-            <div className="dm-panel command-action-bar">
+            <div className={`${chrome.dmPanel} ${chrome.actionBar}`}>
                 <div>
-                    <p className="dm-kicker">Ceremony Control</p>
+                    <p className={chrome.dmKicker}>Ceremony Control</p>
                     <p>Continue to the next offseason beat.</p>
                 </div>
-                <div className="command-action-buttons">
+                <div className={chrome.actionButtons}>
                     <ActionButton
                         variant="primary"
                         onClick={onComplete}

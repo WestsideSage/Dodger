@@ -40,13 +40,14 @@ test('Command Center pre-sim keeps the core dashboard surfaces visible', async (
     await page.getByTestId('scout-opponent').click();
   }
 
-  const scoutChip = page.getByTestId('readiness-panel').locator('.command-readiness-chips .cc-gate').first();
+  const scoutChip = page.getByTestId('readiness-panel').locator('[data-gate-id="scout"]');
   await expect(scoutChip).toHaveAttribute(
     'title',
     'Opponent lineup reviewed.',
   );
 
-  const rawThreatRows = page.locator('.command-threat-row');
-  await expect(rawThreatRows).toHaveCount(1);
-  await expect(page.locator('.command-threat-card')).toHaveCount(0);
+  // The opponent's key threat surfaces exactly once, in the hero Court Read card.
+  // (Reskin: the old .command-threat-row / .command-threat-card split is gone;
+  // the single source is now the [data-testid="key-threat"] card.)
+  await expect(page.getByTestId('key-threat')).toHaveCount(1);
 });

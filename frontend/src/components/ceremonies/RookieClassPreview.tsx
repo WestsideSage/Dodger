@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import type { OffseasonBeat } from '../../types';
 import { ActionButton, PageHeader, Truncate } from '../../ui';
 import styles from './RookieClassPreview.module.css';
+import chrome from '../chrome.module.css';
 
 type RookieClassPreviewBeat = Extract<OffseasonBeat, { key: 'rookie_class_preview' }>;
 
@@ -26,20 +27,20 @@ export function RookieClassPreview({
     const maxArchetype = archetypes.reduce((m, a) => Math.max(m, a.count), 0);
 
     return (
-        <section className="command-offseason-shell" data-testid="offseason-rookie-preview">
+        <section className={chrome.offseasonShell} data-testid="offseason-rookie-preview">
             <PageHeader
                 eyebrow={`Offseason Beat ${beat.beat_index + 1}/${beat.total_beats} · Incoming Class`}
                 title="Rookie Class Preview"
                 description="Scouting reports are in. Here is the talent entering the league before you set your board."
                 stats={
-                    <div className="command-offseason-progress" aria-label="Offseason beat progress">
+                    <div className={chrome.offseasonProgress} aria-label="Offseason beat progress">
                         {Array.from({ length: beat.total_beats }).map((_, index) => (
                             <span
                                 key={index}
                                 className={
                                     index <= beat.beat_index
-                                        ? 'command-offseason-progress-step command-offseason-progress-step-active'
-                                        : 'command-offseason-progress-step'
+                                        ? `${chrome.offseasonProgressStep} ${chrome.offseasonProgressStepActive}`
+                                        : chrome.offseasonProgressStep
                                 }
                             />
                         ))}
@@ -50,7 +51,7 @@ export function RookieClassPreview({
             {/* Primary signal: class upside. ceiling_prospects is the single
                 number that should drive how aggressively the player spends
                 slots (Brief 4.5, criterion #1; playtest 3 metric fix). */}
-            <div className={`dm-panel ${styles.upsidePanel} ${hasUpside ? styles.upsidePanelHas : ''}`}>
+            <div className={`${chrome.dmPanel} ${styles.upsidePanel} ${hasUpside ? styles.upsidePanelHas : ''}`}>
                 <div className={styles.upsideFigure}>
                     <div className={`${styles.upsideNumber} ${hasUpside ? styles.upsideNumberHas : ''}`}>
                         {ceilingProspects}
@@ -92,7 +93,7 @@ export function RookieClassPreview({
 
             {/* Secondary: class composition. class_size headlines; free_agents
                 demoted to an inline footnote (Brief 4.5, criterion #2). */}
-            <div className={`dm-panel ${styles.compPanel}`}>
+            <div className={`${chrome.dmPanel} ${styles.compPanel}`}>
                 <dl className={styles.compList}>
                     <div>
                         <dd className={styles.compValue}>{class_size}</dd>
@@ -106,7 +107,7 @@ export function RookieClassPreview({
 
                 {archetypes.length > 0 && (
                     <div className={styles.archetypes}>
-                        <p className={`dm-kicker ${styles.archetypeKicker}`}>Archetype Breakdown</p>
+                        <p className={`${chrome.dmKicker} ${styles.archetypeKicker}`}>Archetype Breakdown</p>
                         <div className={styles.archetypeRows}>
                             {archetypes.map((a) => (
                                 <div key={a.name} className={styles.archetypeRow}>
@@ -128,8 +129,8 @@ export function RookieClassPreview({
             {/* Tertiary: narrative flavor — styled as league storyline cards, not
                 a utility bullet list (Brief 4.5, criterion #5). */}
             {storylines.length > 0 && (
-                <div className={`dm-panel ${styles.storyPanel}`}>
-                    <p className={`dm-kicker ${styles.archetypeKicker}`}>Around the League</p>
+                <div className={`${chrome.dmPanel} ${styles.storyPanel}`}>
+                    <p className={`${chrome.dmKicker} ${styles.archetypeKicker}`}>Around the League</p>
                     <div className={styles.storyList}>
                         {storylines.map((s, i) => (
                             <p key={i} className={styles.story}>
@@ -140,12 +141,12 @@ export function RookieClassPreview({
                 </div>
             )}
 
-            <div className="dm-panel command-action-bar">
+            <div className={`${chrome.dmPanel} ${chrome.actionBar}`}>
                 <div>
-                    <p className="dm-kicker">Ceremony Control</p>
+                    <p className={chrome.dmKicker}>Ceremony Control</p>
                     <p>Continue to Signing Day.</p>
                 </div>
-                <div className="command-action-buttons">
+                <div className={chrome.actionButtons}>
                     <ActionButton
                         variant="primary"
                         onClick={onComplete}

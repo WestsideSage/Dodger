@@ -6,7 +6,7 @@ import type { TagTone } from '../ui';
 import { PlayoffBracket } from './standings/PlayoffBracket';
 import { PyramidPanel } from './standings/PyramidPanel';
 import { ProgramModal } from './dynasty/history/ProgramModal';
-import { TermTip, EmptyState, CLUB_ARCHETYPE_TERM } from '../legibility';
+import { TermTip, TermLabel, EmptyState, CLUB_ARCHETYPE_TERM } from '../legibility';
 import styles from './LeagueContext.module.css';
 
 type RankedStanding = StandingRow & {
@@ -382,7 +382,7 @@ export function Standings() {
           </div>
 
           <div className={styles.tableScroll}>
-            <table className={styles.table}>
+            <table className={styles.table} data-testid="standings-table">
               <thead>
                 <tr>
                   <th className="num">#</th>
@@ -439,8 +439,12 @@ export function Standings() {
                                 const archetype = raw.includes(' · ') ? raw.split(' · ').slice(1).join(' · ') : raw;
                                 if (!archetype) return null;
                                 const termId = CLUB_ARCHETYPE_TERM[archetype];
+                                // Non-interactive label, NOT a TermTip: this sits
+                                // inside the `<tr role="button">` modal trigger, and a
+                                // nested <button> is an axe nested-interactive
+                                // violation + a React validateDOMNesting warning.
                                 return termId
-                                  ? <TermTip term={termId}>{archetype}</TermTip>
+                                  ? <TermLabel term={termId}>{archetype}</TermLabel>
                                   : <span>{archetype}</span>;
                               })()}
                             </div>
@@ -464,7 +468,7 @@ export function Standings() {
             </table>
           </div>
 
-          <div className={styles.tableFoot}>
+          <div className={styles.tableFoot} data-testid="standings-legend">
             <span className={styles.legendItem}><Tag tone="live">YOU</Tag> User club row</span>
             <span className={styles.legendSep}>-</span>
             <span className={styles.legendItem}><Tag tone="out">CUT</Tag> Playoff line</span>

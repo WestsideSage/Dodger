@@ -4,6 +4,7 @@ import { KnownValue } from '../../legibility/KnownValue';
 import { CeilingGrade } from '../../legibility/CeilingGrade';
 import { ActionButton, PageHeader, ScrollRegion } from '../../ui';
 import styles from './RecruitmentChoice.module.css';
+import chrome from '../chrome.module.css';
 
 
 type RecruitmentBeat = Extract<OffseasonBeat, { key: 'recruitment' }>;
@@ -52,7 +53,7 @@ export function RecruitmentChoice({
   const skipBlockedReason = beat.payload.skip_blocked_reason ?? null;
 
   return (
-    <section className="command-offseason-shell" data-testid="offseason-recruitment-action">
+    <section className={chrome.offseasonShell} data-testid="offseason-recruitment-action">
       <PageHeader
         eyebrow={`Offseason Beat ${beat.beat_index + 1}/${beat.total_beats}`}
         title="Signing Day"
@@ -72,8 +73,8 @@ export function RecruitmentChoice({
         }
       />
 
-      <article className="dm-panel command-offseason-feature">
-        <p className="dm-kicker">Recruitment Desk</p>
+      <article className={`${chrome.dmPanel} ${chrome.offseasonFeature}`}>
+        <p className={chrome.dmKicker}>Recruitment Desk</p>
         {/* Fog-of-war truth (V16): prospect ratings are SCOUTED RANGES, never
             the hidden true overall. Free agents are league veterans with
             public records, so their OVR is verified. */}
@@ -167,7 +168,7 @@ export function RecruitmentChoice({
           </div>
         )}
         {prospects.length === 0 ? (
-          <p className="command-offseason-copy">
+          <p className={chrome.offseasonCopy}>
             No prospects remain in the pool. Continue when you are ready to lock the class.
           </p>
         ) : (
@@ -247,7 +248,7 @@ export function RecruitmentChoice({
                       </>
                     ) : (
                       <>
-                        <div className={`dm-data ${styles.verifiedOvr}`}>
+                        <div className={`${chrome.dmData} ${styles.verifiedOvr}`}>
                           {prospect.overall}
                         </div>
                         <div className={styles.verifiedLabel}>
@@ -353,9 +354,9 @@ export function RecruitmentChoice({
         </div>
       )}
 
-      <div className="dm-panel command-action-bar">
+      <div className={`${chrome.dmPanel} ${chrome.actionBar}`}>
         <div>
-          <p className="dm-kicker">Next action</p>
+          <p className={chrome.dmKicker}>Next action</p>
           <p>
             {remainingSignings > 0
               ? `${remainingSignings} signing slot${remainingSignings === 1 ? '' : 's'} remaining — select a prospect and sign them.`
@@ -367,7 +368,7 @@ export function RecruitmentChoice({
             </p>
           )}
         </div>
-        <div className="command-action-buttons">
+        <div className={chrome.actionButtons}>
           <ActionButton
             variant="primary"
             onClick={() => {

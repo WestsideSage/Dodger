@@ -39,7 +39,7 @@ test('Command Center aftermath presents score, replay identity, fallout, and nex
   await expect(page.getByTestId('fallout-grid')).toBeVisible();
   await expect(page.getByTestId('after-action-bar')).toBeVisible();
   await expect(page.getByRole('button', { name: /view full replay/i })).toBeVisible();
-  const advanceBtn = page.getByTestId('after-action-bar').locator('button.command-action-bar-primary');
+  const advanceBtn = page.getByTestId('after-action-bar').getByTestId('aftermath-advance');
   await expect(advanceBtn).toBeVisible();
   await expect(advanceBtn).toHaveText(/NEXT WEEK →|BANK THE RESULT →/);
 });
