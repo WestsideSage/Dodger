@@ -83,7 +83,7 @@
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 2px var(--space-2);
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   border: 1px solid var(--volt);
   background: var(--volt-soft);
@@ -96,7 +96,7 @@
 
 .row {
   display: grid;
-  grid-template-columns: 36px 1fr auto;
+  grid-template-columns: 2.25rem 1fr auto;
   gap: var(--space-3);
   align-items: center;
   padding: var(--space-3) 0;
@@ -109,8 +109,8 @@
 }
 
 .row:focus-visible {
-  outline: 2px solid var(--volt);
-  outline-offset: -2px;
+  outline: 0.125rem solid var(--volt);
+  outline-offset: -0.125rem;
 }
 
 .from {
@@ -122,7 +122,7 @@
 
 .rowBody {
   display: grid;
-  gap: 2px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -149,7 +149,7 @@
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  padding: 3px var(--space-2);
+  padding: 0.1875rem var(--space-2);
   border-radius: var(--radius-sm);
   border: 1px solid var(--danger);
   background: var(--danger-soft);

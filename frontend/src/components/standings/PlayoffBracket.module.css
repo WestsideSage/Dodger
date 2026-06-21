@@ -105,12 +105,12 @@
 
 .cardOutcomeAdvanced {
   border-color: var(--ok);
-  border-left: 3px solid var(--ok);
+  border-left: 0.1875rem solid var(--ok);
 }
 
 .cardOutcomeEliminated {
   border-color: var(--volt);
-  border-left: 3px solid var(--volt);
+  border-left: 0.1875rem solid var(--volt);
 }
 
 .matchLabel {
