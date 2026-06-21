@@ -1,0 +1,14 @@
+/* ChampionReveal.module.css — token-driven champion-reveal trims.
+   The champion hero keeps its legacy `champion-*` classes during the window
+   (mixed look accepted until P8); only the null fallback + the frozen-bracket
+   wrapper move to tokens. No raw color literals. */
+
+.fallback { color: var(--text2); font-size: 1rem; margin: 0; }
+
+.bracketWrap {
+  margin-top: var(--space-8);
+  border-top: 1px solid var(--line2);
+  padding-top: var(--space-8);
+  padding-left: var(--space-7);
+  padding-right: var(--space-7);
+}
