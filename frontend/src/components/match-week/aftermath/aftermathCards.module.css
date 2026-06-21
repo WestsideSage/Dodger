@@ -446,6 +446,407 @@
   letter-spacing: 0.04em;
 }
 
+/* ── FalloutGrid ──────────────────────────────────────────── */
+.fallout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.falloutHeader {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.falloutKicker {
+  font: 600 0.62rem var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.7;
+}
+.falloutTitle {
+  font: 700 0.95rem var(--font-head);
+  letter-spacing: 0.03em;
+  color: var(--text);
+}
+.falloutGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+.falloutCard {
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--raise);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.falloutCardKicker {
+  margin: 0;
+  font: 600 0.62rem var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
+}
+.falloutCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.falloutList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.falloutItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.falloutItemName {
+  font: 700 0.78rem var(--font-head);
+  color: var(--text);
+}
+.falloutItemValue {
+  font: 500 0.72rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.falloutValuePos {
+  color: var(--ok);
+}
+.falloutValueNeg {
+  color: var(--text2);
+}
+.falloutValueNeutral {
+  color: var(--muted);
+}
+.falloutStandingsHeader {
+  display: flex;
+  justify-content: space-between;
+  font: 500 0.6rem var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--out);
+  margin-bottom: var(--space-1);
+}
+.falloutListCompact {
+  gap: var(--space-1);
+}
+.falloutListLoose {
+  gap: var(--space-3);
+}
+.falloutItemDetail {
+  font: 400 0.68rem var(--font-ui);
+  color: var(--muted);
+}
+.falloutEmpty {
+  margin: 0;
+  font: 400 0.78rem var(--font-ui);
+  color: var(--muted);
+}
+.trainingImpact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.trainingFocus {
+  font: 700 0.78rem var(--font-head);
+  color: var(--text);
+}
+.trainingProgress {
+  font: 500 0.68rem var(--font-mono);
+  color: var(--muted);
+}
+.trainingBye {
+  font: 400 0.68rem var(--font-ui);
+  color: var(--out);
+}
+
+/* ── ReplayTimeline ───────────────────────────────────────── */
+.timeline {
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--raise);
+}
+.collapseBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: var(--space-4) var(--space-5);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  gap: var(--space-3);
+}
+.collapseLabel {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.collapseTitle {
+  font: 700 0.8rem var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--volt);
+}
+.collapseTitleBye {
+  color: var(--text2);
+}
+.collapseMeta {
+  font: 400 0.72rem var(--font-mono);
+  color: var(--out);
+}
+.collapseIcon {
+  font: 400 0.72rem var(--font-mono);
+  color: var(--muted);
+  flex: none;
+}
+.timelineBody {
+  padding: 0 var(--space-5) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.matchFlowList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.matchFlowEvent {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+.eventBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  flex: none;
+  border-radius: var(--radius-sm);
+  font: 700 0.7rem var(--font-mono);
+  background: var(--raise2);
+  color: var(--text2);
+  border: 1px solid var(--line2);
+}
+.eventContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+}
+.eventPhase {
+  font: 600 0.72rem var(--font-mono);
+  letter-spacing: 0.04em;
+  color: var(--text2);
+}
+.eventDesc {
+  margin: 0;
+  font: 400 0.78rem var(--font-ui);
+  color: var(--text2);
+  line-height: 1.5;
+}
+.eventItems {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.eventItems li {
+  font: 400 0.72rem var(--font-ui);
+  color: var(--muted);
+}
+.beatHighlight {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--court);
+  border-left: var(--border-accent) solid var(--volt);
+  border-radius: var(--radius-sm);
+  font: 400 0.78rem var(--font-ui);
+  color: var(--text2);
+  line-height: 1.45;
+}
+.scrollWrap {
+  position: relative;
+}
+.scrollList {
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: var(--space-2);
+}
+.scrollHint {
+  margin: var(--space-2) 0 0;
+  font: 400 0.65rem var(--font-mono);
+  color: var(--out);
+  letter-spacing: 0.04em;
+}
+
+/* ── EliminationCeremony ──────────────────────────────────── */
+.ceremony {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-9) var(--space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+  text-align: center;
+}
+.ceremonyHead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ceremonyStage {
+  font: 700 0.7rem var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--danger);
+}
+.ceremonyTitle {
+  margin: 0;
+  font: 800 1.6rem var(--font-disp);
+  color: var(--text);
+}
+.scoreRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+  font-variant-numeric: tabular-nums;
+}
+.scoreHome {
+  font: 800 2.4rem var(--font-disp);
+  color: var(--danger);
+}
+.scoreVs {
+  font: 400 1rem var(--font-ui);
+  color: var(--muted);
+}
+.scoreAway {
+  font: 800 2.4rem var(--font-disp);
+  color: var(--text);
+}
+.infoBlock {
+  border: 1px solid var(--line);
+  background: var(--court);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.infoSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.infoLabel {
+  font: 900 0.625rem var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--out);
+}
+.infoText {
+  margin: 0;
+  font: 400 0.82rem var(--font-ui);
+  color: var(--text2);
+  line-height: 1.5;
+}
+.contributorList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.contributorItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font: 400 0.85rem var(--font-ui);
+  color: var(--text2);
+}
+.contributorName {
+  color: var(--text2);
+}
+.contributorScore {
+  font: 500 0.82rem var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.returnText {
+  margin: 0;
+  font: 400 0.85rem var(--font-ui);
+  color: var(--text2);
+  line-height: 1.5;
+}
+.continueBtn {
+  align-self: center;
+  min-width: 180px;
+  padding: var(--space-3) var(--space-7);
+  font: 700 0.8rem var(--font-head);
+  letter-spacing: 0.06em;
+  color: var(--court);
+  background: var(--volt);
+  border: 1px solid var(--volt);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.continueBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ── ChampionshipHero ─────────────────────────────────────── */
+.heroSection {
+  border: 1px solid var(--gold);
+  background: var(--gold-soft);
+  border-radius: var(--radius-md);
+  padding: var(--space-7) var(--space-6);
+  margin: 0 0 var(--space-6) 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.heroKicker {
+  font: 800 0.7rem var(--font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.heroTitle {
+  margin: 0;
+  font: 800 2rem var(--font-disp);
+  color: var(--gold);
+  line-height: 1.15;
+}
+.heroSubtitle {
+  margin: 0;
+  font: 400 0.9rem var(--font-ui);
+  color: var(--text2);
+}
+
 /* ── NextBestImprovementPanel ─────────────────────────────── */
 .improvePanel {
   display: flex;

@@ -1,3 +1,4 @@
+import styles from './aftermathCards.module.css';
 import type { Aftermath } from '../../../types';
 
 /**
@@ -26,33 +27,11 @@ export function ChampionshipHero({
   return (
     <section
       data-testid="championship-hero"
-      style={{
-        border: '1px solid #fbbf24',
-        background: 'linear-gradient(180deg, rgba(251,191,36,0.16), rgba(251,191,36,0.04))',
-        borderRadius: '10px',
-        padding: '1.5rem 1.25rem',
-        margin: '0 0 1.25rem 0',
-        textAlign: 'center',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.5rem',
-      }}
+      className={styles.heroSection}
     >
-      <span
-        style={{
-          fontSize: '0.7rem',
-          fontWeight: 800,
-          letterSpacing: '0.16em',
-          color: '#fbbf24',
-          textTransform: 'uppercase',
-        }}
-      >
-        Champions
-      </span>
-      <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: 800, color: '#fde68a', lineHeight: 1.15 }}>
-        {champion_name}
-      </h2>
-      <p style={{ margin: 0, fontSize: '0.9rem', color: '#e2e8f0' }}>
+      <span className={styles.heroKicker}>Champions</span>
+      <h2 className={styles.heroTitle}>{champion_name}</h2>
+      <p className={styles.heroSubtitle}>
         {player_score}–{opponent_score} over {opponent_name}
         {how} to take the title.
       </p>

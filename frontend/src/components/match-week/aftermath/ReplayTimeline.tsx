@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import styles from './aftermathCards.module.css';
 import type {
   CommandDashboardLane,
   MatchReplayResponse,
@@ -26,19 +27,19 @@ function BeatList({
   beatMoments: Array<MomentEvent | undefined>;
 }) {
   return (
-    <ol className="command-match-flow-list">
+    <ol className={styles.matchFlowList}>
       {beats.map((lane, i) => {
         const moment = beatMoments[i];
         return (
-          <li key={i} className="command-match-flow-event">
-            <span className="command-event-badge" aria-hidden="true">
+          <li key={i} className={styles.matchFlowEvent}>
+            <span className={styles.eventBadge} aria-hidden="true">
               {i + 1}
             </span>
-            <div>
-              <span className="command-event-phase">{lane.title}</span>
-              <p className="command-event-desc">{lane.summary}</p>
+            <div className={styles.eventContent}>
+              <span className={styles.eventPhase}>{lane.title}</span>
+              <p className={styles.eventDesc}>{lane.summary}</p>
               {lane.items.length > 0 && (
-                <ul className="command-event-items">
+                <ul className={styles.eventItems}>
                   {lane.items.map((item, j) => (
                     <li key={j}>{item}</li>
                   ))}
@@ -47,16 +48,7 @@ function BeatList({
               {moment?.display_text && (
                 <p
                   data-testid={`replay-beat-${moment.kind}`}
-                  style={{
-                    marginTop: '0.4rem',
-                    padding: '0.35rem 0.55rem',
-                    background: '#0f172a',
-                    borderLeft: '3px solid #f97316',
-                    borderRadius: '3px',
-                    color: '#fde68a',
-                    fontSize: '0.78rem',
-                    lineHeight: 1.45,
-                  }}
+                  className={styles.beatHighlight}
                 >
                   {moment.display_text}
                 </p>
@@ -110,45 +102,44 @@ export function ReplayTimeline({
 
   return (
     <section
-      className="dm-panel"
+      className={styles.timeline}
       data-testid="replay-timeline"
-      style={{ padding: 0, overflow: 'hidden' }}
     >
       <button
-        className="command-timeline-collapse-bar"
+        className={styles.collapseBar}
         onClick={() => setIsOpen((v) => !v)}
         aria-expanded={isOpen}
       >
-        <span className="command-timeline-collapse-label">
-          <span style={{ color: '#f97316', fontWeight: 700 }}>{isBye ? 'BYE WEEK REPORT' : 'POSTGAME REPORT'}</span>
-          <span style={{ color: '#475569' }}>
+        <span className={styles.collapseLabel}>
+          <span className={isBye ? styles.collapseTitleBye : styles.collapseTitle}>
+            {isBye ? 'BYE WEEK REPORT' : 'POSTGAME REPORT'}
+          </span>
+          <span className={styles.collapseMeta}>
             {' '}
             · {beats.length} moment{beats.length !== 1 ? 's' : ''}
           </span>
         </span>
-        <span className="command-timeline-collapse-icon" aria-hidden="true">
+        <span className={styles.collapseIcon} aria-hidden="true">
           {isOpen ? '▲' : '▼'}
         </span>
       </button>
 
       {isOpen && (
-        <div
-          style={{ padding: '0 1rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}
-        >
+        <div className={styles.timelineBody}>
           {lateGame?.display_text && <LateGameBanner text={lateGame.display_text} />}
           {oneVOne?.display_text && <OneVOneBanner text={oneVOne.display_text} />}
 
           {beats.length > 0 && (
             needsScroll ? (
-              <div className="command-match-flow-scroll-wrap">
+              <div className={styles.scrollWrap}>
                 <div
-                  className="command-match-flow-scroll"
+                  className={styles.scrollList}
                   tabIndex={0}
                   aria-label="Match breakdown — use arrow keys or scroll to read"
                 >
                   <BeatList beats={beats} beatMoments={beatMoments} />
                 </div>
-                <p className="command-match-flow-scroll-hint">Scroll for more ↓</p>
+                <p className={styles.scrollHint}>Scroll for more ↓</p>
               </div>
             ) : (
               <BeatList beats={beats} beatMoments={beatMoments} />

@@ -1,13 +1,12 @@
+import styles from './aftermathCards.module.css';
 import type { Aftermath } from '../../../types';
 import type { ReactNode } from 'react';
 
 function FalloutCard({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <article className="dm-panel command-fallout-card">
-      <p className="dm-kicker" style={{ borderTop: '2px solid #1e293b', paddingTop: '3px' }}>
-        {title}
-      </p>
-      <div className="command-fallout-card-body">{children}</div>
+    <article className={styles.falloutCard}>
+      <p className={styles.falloutCardKicker}>{title}</p>
+      <div className={styles.falloutCardBody}>{children}</div>
     </article>
   );
 }
@@ -26,53 +25,55 @@ export function FalloutGrid({
   recruitReactions: Aftermath['recruit_reactions'];
 }) {
   return (
-    <section className="command-fallout" data-testid="fallout-grid">
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '6px' }}>
-        <span className="dm-kicker" style={{ opacity: 0.7 }}>Aftermath</span>
-        <span style={{ fontFamily: 'Oswald, sans-serif', fontSize: '0.95rem', fontWeight: 700, color: '#fff', letterSpacing: '0.5px' }}>
-          Week Fallout
-        </span>
+    <section className={styles.fallout} data-testid="fallout-grid">
+      <div className={styles.falloutHeader}>
+        <span className={styles.falloutKicker}>Aftermath</span>
+        <span className={styles.falloutTitle}>Week Fallout</span>
       </div>
-      <div className="command-fallout-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+      <div className={styles.falloutGrid}>
         <FalloutCard title={playerGrowth.length > 0 ? 'Who Grew' : 'Training Impact'}>
           {playerGrowth.length > 0 ? (
-            <ul className="command-clean-list">
+            <ul className={styles.falloutList}>
               {playerGrowth.slice(0, 4).map((item) => (
-                <li key={`${item.player_id}-${item.attribute}`}>
-                  <strong>{item.player_name}</strong>
-                  <span style={{ color: item.delta > 0 ? '#10b981' : '#f43f5e' }}>
+                <li key={`${item.player_id}-${item.attribute}`} className={styles.falloutItem}>
+                  <strong className={styles.falloutItemName}>{item.player_name}</strong>
+                  <span
+                    className={`${styles.falloutItemValue} ${item.delta > 0 ? styles.falloutValuePos : styles.falloutValueNeg}`}
+                  >
                     {item.attribute} {item.delta > 0 ? '+' : ''}{item.delta}
                   </span>
                 </li>
               ))}
             </ul>
           ) : developmentFeedback ? (
-            <div className="command-training-impact">
-              <strong>{developmentFeedback.focus_label}</strong>
-              <p>{developmentFeedback.summary}</p>
-              <span>{developmentFeedback.progress}</span>
-              {byeRecovery && <small>{byeRecovery.summary}</small>}
+            <div className={styles.trainingImpact}>
+              <strong className={styles.trainingFocus}>{developmentFeedback.focus_label}</strong>
+              <p className={styles.infoText}>{developmentFeedback.summary}</p>
+              <span className={styles.trainingProgress}>{developmentFeedback.progress}</span>
+              {byeRecovery && <small className={styles.trainingBye}>{byeRecovery.summary}</small>}
             </div>
           ) : (
-            <p className="command-fallout-empty">No growth logged this week.</p>
+            <p className={styles.falloutEmpty}>No growth logged this week.</p>
           )}
         </FalloutCard>
 
         <FalloutCard title="Standings Shift">
           {standingsShift.length > 0 ? (
             <>
-              <div className="command-fallout-standings-header">
+              <div className={styles.falloutStandingsHeader}>
                 <span>Club</span>
                 <span>Prev → New</span>
               </div>
-              <ul className="command-clean-list command-clean-list-compact">
+              <ul className={`${styles.falloutList} ${styles.falloutListCompact}`}>
                 {standingsShift.slice(0, 3).map((item) => {
                   const moved = item.new_rank - item.old_rank;
                   const up = moved < 0;
                   return (
-                    <li key={item.club_id}>
-                      <strong>{item.club_name}</strong>
-                      <span style={{ color: up ? '#10b981' : '#f43f5e', fontFamily: 'JetBrains Mono, monospace', fontSize: '0.75rem' }}>
+                    <li key={item.club_id} className={styles.falloutItem}>
+                      <strong className={styles.falloutItemName}>{item.club_name}</strong>
+                      <span
+                        className={`${styles.falloutItemValue} ${up ? styles.falloutValuePos : styles.falloutValueNeg}`}
+                      >
                         {up ? '↑' : '↓'} #{item.old_rank} → #{item.new_rank}
                       </span>
                     </li>
@@ -81,30 +82,40 @@ export function FalloutGrid({
               </ul>
             </>
           ) : (
-            <p className="command-empty-copy">Records updated — no rank changes this week.</p>
+            <p className={styles.falloutEmpty}>Records updated — no rank changes this week.</p>
           )}
         </FalloutCard>
 
         <FalloutCard title="Prospect Pulse">
           {recruitReactions.length > 0 ? (
-            <ul className="command-clean-list command-clean-list-loose">
+            <ul className={`${styles.falloutList} ${styles.falloutListLoose}`}>
               {recruitReactions.slice(0, 3).map((item) => {
                 const delta = parseInt(item.interest_delta, 10);
                 const isPositive = !isNaN(delta) && delta > 0;
                 const isZero = !isNaN(delta) && delta === 0;
                 return (
                   <li key={item.prospect_id}>
-                    <strong>{item.prospect_name}</strong>
-                    <span style={{ color: isPositive ? '#10b981' : isZero ? '#64748b' : '#f43f5e' }}>
-                      {item.interest_delta}
-                    </span>
-                    <small>{item.evidence}</small>
+                    <div className={styles.falloutItem}>
+                      <strong className={styles.falloutItemName}>{item.prospect_name}</strong>
+                      <span
+                        className={`${styles.falloutItemValue} ${
+                          isPositive
+                            ? styles.falloutValuePos
+                            : isZero
+                              ? styles.falloutValueNeutral
+                              : styles.falloutValueNeg
+                        }`}
+                      >
+                        {item.interest_delta}
+                      </span>
+                    </div>
+                    <small className={styles.falloutItemDetail}>{item.evidence}</small>
                   </li>
                 );
               })}
             </ul>
           ) : (
-            <p className="command-fallout-empty">No prospect movement this week.</p>
+            <p className={styles.falloutEmpty}>No prospect movement this week.</p>
           )}
         </FalloutCard>
       </div>
