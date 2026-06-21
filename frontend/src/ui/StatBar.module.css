@@ -1,0 +1,10 @@
+.row { display: grid; grid-template-columns: var(--space-9) var(--space-8) 1fr; align-items: center; gap: var(--space-3); min-width: 0; }
+.label { font: 700 .58rem var(--font-ui); letter-spacing: .06em; color: var(--muted); text-transform: uppercase; }
+.value { font: 700 .82rem var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; color: var(--text); }
+.track { height: var(--space-2); border-radius: var(--radius-sm); background: var(--line); overflow: hidden; }
+.fill { height: 100%; width: var(--fill, 0%); border-radius: var(--radius-sm); }
+/* brightness = strength (color-dimmed, not opacity-crushed; label/value stay legible) */
+.elite .fill { background: linear-gradient(90deg, var(--gold), var(--gold2)); }
+.good  .fill { background: var(--ok); }
+.avg   .fill { background: var(--text2); }
+.poor  .fill { background: var(--out); }
