@@ -8,6 +8,7 @@ import { LineupEditor } from './lineup/LineupEditor';
 import { Sparkline } from './roster/Sparkline';
 import { TermTip } from '../legibility';
 import type { TermId } from '../legibility';
+import { potentialRank } from '../domain/tiers';
 
 // Maps player.role strings to their TermId. Exhaustive over all 8 archetypes
 // that archetype_for_player() can emit (see recruitment._RECRUITMENT_DISPLAY_NAMES).
@@ -239,10 +240,9 @@ export function Roster() {
     if (sortKey === 'lineup') {
       entries.sort((left, right) => Number(right.starter) - Number(left.starter) || right.player.overall - left.player.overall);
     } else if (sortKey === 'potential') {
-      const order: Record<string, number> = { Elite: 0, High: 1, Solid: 2, Limited: 3 };
       entries.sort(
         (left, right) =>
-          (order[left.player.potential_tier] ?? 4) - (order[right.player.potential_tier] ?? 4)
+          potentialRank(left.player.potential_tier) - potentialRank(right.player.potential_tier)
           || right.player.overall - left.player.overall,
       );
     } else if (sortKey === 'overall') {
@@ -272,7 +272,7 @@ export function Roster() {
             <button className={`rl-seg-btn ${view === 'detailed' ? 'is-active' : ''}`} onClick={() => setView('detailed')}>Detailed</button>
             <button className={`rl-seg-btn ${view === 'compact' ? 'is-active' : ''}`} onClick={() => setView('compact')}>Compact</button>
           </div>
-          <select className="rl-sort" value={sortKey} onChange={(event) => setSortKey(event.target.value as typeof sortKey)}>
+          <select data-testid="roster-sort" className="rl-sort" value={sortKey} onChange={(event) => setSortKey(event.target.value as typeof sortKey)}>
             <option value="lineup">Lineup order (starters first, then OVR ↓)</option>
             <option value="potential">Potential tier (Elite → Low)</option>
             <option value="overall">OVR highest first ↓</option>
@@ -360,6 +360,7 @@ export function Roster() {
                 return (
                   <tr
                     key={player.id}
+                    data-testid="roster-row"
                     className={`${isElite ? 'rl-row-elite' : ''} ${starter ? 'rl-row-starter' : ''}`.trim()}
                     style={{ cursor: 'pointer' }}
                     // WT-21: keep the row a PLAIN table row so the per-column
@@ -380,7 +381,7 @@ export function Roster() {
                           style={{ background: 'none', border: 'none', padding: 0, margin: 0, font: 'inherit', textAlign: 'left', cursor: 'pointer' }}
                           onClick={(e) => { e.stopPropagation(); setSelectedPlayer(player); }}
                         >
-                          <span className="rl-player-name">{player.name}</span>
+                          <span data-testid="roster-row-name" className="rl-player-name">{player.name}</span>
                         </button>
                         <div className="rl-player-meta">
                           <span>Age {player.age}</span>
