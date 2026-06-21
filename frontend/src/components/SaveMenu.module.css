@@ -2,7 +2,9 @@
    Task 7 (Phase 1D): covers landing frame, tab bar, error banner, save rows,
    continue-hero, and debug/incompatible toggles.
    Task 8 adds the new-game frame rules.
-   No raw hex/px beyond 0/1px hairlines — uses var(--…) tokens only. */
+   Floodlight 5-color contract: warm-graphite neutrals everywhere, Volt used
+   sparingly (primary CTA, active tab, continue hero, selected option). No raw
+   color literals (hex or rgba/hsl) — colors come from var(--…) tokens only. */
 
 /* ── Landing shell ─────────────────────────────────────────────────────── */
 .shell {
@@ -12,16 +14,17 @@
   justify-content: center;
   padding: 2.5rem 1rem;
   background-color: var(--court);
+  /* Warm-graphite court under stadium light: markings in --line/--line2,
+     a single faint Volt accent glow from above. No cyan / orange / cool slate. */
   background-image:
-    radial-gradient(ellipse 140% 100% at 50% -10%, transparent 50%, rgba(0,0,0,.5) 100%),
-    radial-gradient(circle at 16% 0%, rgba(34,211,238,.16), transparent 38%),
-    radial-gradient(circle at 86% 4%, rgba(249,115,22,.14), transparent 34%),
-    radial-gradient(circle var(--court-bg-r1) at 50% 52%, transparent var(--court-bg-r1-in), rgba(148,163,184,.09) var(--court-bg-r1-mid-a), rgba(148,163,184,.09) var(--court-bg-r1-mid-b), transparent var(--court-bg-r1-out)),
-    radial-gradient(circle var(--court-bg-r2) at 50% 52%, rgba(148,163,184,.05) var(--court-bg-r2-in), transparent var(--court-bg-r2)),
-    linear-gradient(90deg, transparent calc(50% - 1px), rgba(148,163,184,.08) calc(50% - 1px), rgba(148,163,184,.08) calc(50% + 1px), transparent calc(50% + 1px)),
-    linear-gradient(90deg, transparent calc(50% - var(--court-bg-lane)), rgba(249,115,22,.06) calc(50% - var(--court-bg-lane)), rgba(249,115,22,.06) calc(50% - var(--court-bg-lane-in)), transparent calc(50% - var(--court-bg-lane-in))),
-    linear-gradient(90deg, transparent calc(50% + var(--court-bg-lane-in)), rgba(34,211,238,.06) calc(50% + var(--court-bg-lane-in)), rgba(34,211,238,.06) calc(50% + var(--court-bg-lane)), transparent calc(50% + var(--court-bg-lane))),
-    repeating-linear-gradient(90deg, rgba(148,163,184,.02) 0 1px, transparent 1px 6rem);
+    radial-gradient(ellipse 140% 100% at 50% -10%, transparent 50%, var(--court) 100%),
+    radial-gradient(circle at 50% -6%, var(--volt-glow), transparent 42%),
+    radial-gradient(circle var(--court-bg-r1) at 50% 52%, transparent var(--court-bg-r1-in), var(--line2) var(--court-bg-r1-mid-a), var(--line2) var(--court-bg-r1-mid-b), transparent var(--court-bg-r1-out)),
+    radial-gradient(circle var(--court-bg-r2) at 50% 52%, var(--line) var(--court-bg-r2-in), transparent var(--court-bg-r2)),
+    linear-gradient(90deg, transparent calc(50% - 1px), var(--line2) calc(50% - 1px), var(--line2) calc(50% + 1px), transparent calc(50% + 1px)),
+    linear-gradient(90deg, transparent calc(50% - var(--court-bg-lane)), var(--line) calc(50% - var(--court-bg-lane)), var(--line) calc(50% - var(--court-bg-lane-in)), transparent calc(50% - var(--court-bg-lane-in))),
+    linear-gradient(90deg, transparent calc(50% + var(--court-bg-lane-in)), var(--line) calc(50% + var(--court-bg-lane-in)), var(--line) calc(50% + var(--court-bg-lane)), transparent calc(50% + var(--court-bg-lane))),
+    repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 6rem);
 }
 
 /* ── Landing card ──────────────────────────────────────────────────────── */
@@ -52,7 +55,7 @@
 }
 .brandTitle em {
   font-style: normal;
-  color: var(--gold);
+  color: var(--volt);
 }
 .brandTagline {
   margin: .6rem 0 0;
@@ -85,8 +88,8 @@
   margin-bottom: -1px;
 }
 .tabActive {
-  border-bottom-color: var(--gold);
-  color: var(--gold);
+  border-bottom-color: var(--volt);
+  color: var(--volt);
 }
 
 /* ── Panel body ─────────────────────────────────────────────────────────── */
@@ -128,14 +131,14 @@
 .emptyText { font-size: .875rem; color: var(--muted); margin-bottom: 1rem; }
 .startNewBtn {
   border-radius: var(--radius-sm);
-  background: var(--gold);
-  border: 1px solid var(--gold2);
+  background: var(--volt);
+  border: 1px solid var(--volt2);
   padding: .5rem 1.25rem;
   font-size: .8125rem;
   font-family: var(--font-disp);
   text-transform: uppercase;
   letter-spacing: .075em;
-  color: var(--gold-ink);
+  color: var(--text);
   cursor: pointer;
 }
 
@@ -143,8 +146,9 @@
 .hero {
   margin-bottom: 1.5rem;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(249,115,22,.3);
-  background: linear-gradient(135deg, rgba(249,115,22,.08) 0%, rgba(15,23,42,.6) 100%);
+  border: 1px solid var(--volt);
+  border-top-color: var(--volt2);
+  background: linear-gradient(135deg, var(--volt-soft) 0%, var(--raise2) 100%);
   padding: var(--space-5);
   display: flex;
   align-items: center;
@@ -158,7 +162,7 @@
   text-transform: uppercase;
   letter-spacing: .15em;
   font-size: .625rem;
-  color: var(--gold);
+  color: var(--volt2);
   margin: 0 0 .35rem;
 }
 .heroName {
@@ -184,7 +188,7 @@
   border-radius: var(--radius-sm);
   transition: background-color 130ms ease;
 }
-.row:hover { background: rgba(30,41,59,.45); }
+.row:hover { background: var(--raise2); }
 
 /* Monogram — accent hue driven by --mono-hue inline style on the element */
 .monogram {
@@ -290,10 +294,11 @@
   margin-bottom: .5rem;
   font-weight: 700;
 }
-/* cyan accent — use rgba() to stay out of hex linter; token --border-accent for width */
+/* "How It Plays" info panel — neutral raise with a faint Volt throw-line accent
+   (the only loud color, used sparingly as a left edge); width via --border-accent. */
 .rulesetInner {
-  background: rgba(34,211,238,.04);
-  border-left: var(--border-accent) solid rgba(34,211,238,1);
+  background: var(--raise2);
+  border-left: var(--border-accent) solid var(--volt);
   padding: .75rem 1rem;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
@@ -306,7 +311,7 @@
 .rulesetTagline {
   margin: 0 0 .75rem;
   font-size: .75rem;
-  color: rgba(34,211,238,1);
+  color: var(--text2);
   font-weight: 600;
 }
 .rulesetKeyRules {
@@ -328,7 +333,7 @@
   font-family: var(--font-disp);
   font-weight: 800;
   letter-spacing: .06em;
-  color: rgba(34,211,238,1);
+  color: var(--muted);
   white-space: nowrap;
 }
 .rulesetRuleText {
@@ -389,25 +394,25 @@
   position: relative;
 }
 
-/* Take Over card — orange accent (rgba to avoid hex linter) */
+/* Take Over card — the primary/recommended choice (Faster Start) → Volt accent */
 .choiceCardTakeover {
-  border: var(--space-1) solid rgba(249,115,22,1);
+  border: var(--space-1) solid var(--volt);
 }
 .choiceCardTakeoverTitle {
   margin: .5rem 0 .5rem;
-  color: rgba(249,115,22,1);
+  color: var(--volt2);
   font-size: 1.25rem;
   font-weight: 800;
   font-family: var(--font-disp);
 }
 
-/* Build from Scratch card — subtle border, cyan accent */
+/* Build from Scratch card — secondary choice → neutral surface, no loud color */
 .choiceCardBuild {
   border: 1px solid var(--line2);
 }
 .choiceCardBuildTitle {
   margin: .5rem 0 .5rem;
-  color: rgba(34,211,238,1);
+  color: var(--text);
   font-size: 1.25rem;
   font-weight: 800;
   font-family: var(--font-disp);
@@ -427,7 +432,7 @@
 .fasterBadge {
   position: absolute;
   top: var(--badge-nudge);
-  background: rgba(249,115,22,1);
+  background: var(--volt);
   color: var(--text);
   font-size: .625rem;
   font-weight: 800;
@@ -492,13 +497,12 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
-/* orange accent button — rgba() to avoid #hex linter; submit-btn color stays
-   coherent with the Take Over card's orange brand */
+/* Primary submit — Volt, coherent with the Take Over card's primary accent */
 .formSubmitBtn {
   flex: 1;
   border-radius: var(--radius-sm);
-  background: rgba(249,115,22,1);
-  border: 1px solid rgba(234,108,10,1);
+  background: var(--volt);
+  border: 1px solid var(--volt2);
   padding: .625rem 1.25rem;
   font-size: .8125rem;
   font-family: var(--font-disp);
@@ -543,8 +547,8 @@
   transition: background .1s;
 }
 .clubOptionRow[aria-checked="true"] {
-  border-left: var(--space-1) solid rgba(249,115,22,1);
-  background: rgba(249,115,22,.08);
+  border-left: var(--space-1) solid var(--volt);
+  background: var(--volt-soft);
 }
 .clubOptionRow[aria-checked="false"] {
   border-left: var(--space-1) solid transparent;
@@ -562,7 +566,7 @@
   white-space: nowrap;
 }
 .clubOptionCheck {
-  color: rgba(249,115,22,1);
+  color: var(--volt2);
   font-size: .75rem;
 }
 
