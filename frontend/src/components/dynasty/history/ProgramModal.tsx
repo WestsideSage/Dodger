@@ -1,5 +1,5 @@
 import { MyProgramView } from './MyProgramView';
-import { Dialog } from '../../ui';
+import { Modal } from '../../../ui';
 import styles from './ProgramModal.module.css';
 
 interface ProgramModalProps {
@@ -13,14 +13,12 @@ export function ProgramModal({ clubId, clubName, onClose }: ProgramModalProps) {
   // primitive (WT-21), replacing the prior window-level Escape listener that
   // neither trapped focus nor restored it to the trigger.
   return (
-    <Dialog
+    <Modal
       label={`${clubName} — Program Archive`}
       labelledBy="program-modal-title"
       onClose={onClose}
       className="command-policy-overlay"
       panelClassName={`command-policy-overlay-body ${styles.body}`}
-      overlayStyle={{ backgroundColor: undefined, backdropFilter: undefined, padding: undefined }}
-      panelStyle={{}}
     >
         <button className={styles.close} onClick={onClose} type="button">
           Close
@@ -33,6 +31,6 @@ export function ProgramModal({ clubId, clubName, onClose }: ProgramModalProps) {
           </p>
         </div>
         <MyProgramView clubId={clubId} isSelf={false} />
-    </Dialog>
+    </Modal>
   );
 }

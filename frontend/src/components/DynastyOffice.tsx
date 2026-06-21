@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CommandCenterPlan, CommandCenterResponse, DynastyOfficeResponse } from '../types';
 import { useApiResource } from '../hooks/useApiResource';
-import { Dialog } from './ui';
-import { StatusMessage } from '../ui';
+import { Modal, StatusMessage } from '../ui';
 import { CredibilityStrip } from './dynasty/CredibilityStrip';
 import { ProspectCard } from './dynasty/ProspectCard';
 import { HistorySubTab } from './dynasty/HistorySubTab';
@@ -99,12 +98,11 @@ function SettingsModal({
   const currentFocus = String(plan.department_orders?.focus_department ?? 'tactics');
 
   return (
-    <Dialog
+    <Modal
       labelledBy="program-settings-title"
       label="Staff Focus"
       onClose={onClose}
       panelClassName={styles.settingsPanel}
-      panelStyle={{ width: 'min(92vw, 34rem)', maxHeight: '88vh', overflowY: 'auto' }}
     >
         <div className={styles.settingsHead}>
           <div>
@@ -151,7 +149,7 @@ function SettingsModal({
           tactics live in the Policy Editor — both stay set independently of this week’s
           staff focus. AI clubs run the same staff system with their own weekly picks.
         </p>
-    </Dialog>
+    </Modal>
   );
 }
 

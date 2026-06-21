@@ -566,6 +566,9 @@
 
 /* ---- settings modal (focus radios) ---- */
 .settingsPanel {
+  width: min(92vw, 34rem);
+  max-height: 88vh;
+  overflow-y: auto;
   background: var(--raise);
   border: 1px solid var(--line2);
   border-radius: var(--radius-lg);
