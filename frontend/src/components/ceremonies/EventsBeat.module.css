@@ -1,0 +1,30 @@
+/* EventsBeat.module.css — token-driven season-events beat + event cards.
+   Floodlight 5-color contract: --gold for the worlds-seeding note, --gold2 for
+   giant-killing receipts, warm-graphite neutrals elsewhere. No raw color
+   literals. */
+
+.list { display: grid; gap: var(--space-5); }
+
+.card { padding: var(--space-4) var(--space-5); }
+.cardKicker { margin: 0 0 var(--space-2); }
+.champion {
+  margin: 0 0 var(--space-3);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+.purse { color: var(--muted); font-weight: 400; font-size: 0.78rem; }
+
+.seedingNote { margin: 0 0 var(--space-3); color: var(--gold); font-size: 0.78rem; }
+
+.giantList {
+  margin: 0 0 var(--space-3);
+  padding-left: var(--space-5);
+  color: var(--gold2);
+  font-size: 0.8rem;
+}
+
+.empty {
+  padding: var(--space-4) var(--space-5);
+  color: var(--text2);
+}

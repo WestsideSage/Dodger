@@ -1,0 +1,55 @@
+/* EventBracket.module.css — token-driven event knockout bracket.
+   Floodlight 5-color contract: --ok for advanced, --volt for eliminated,
+   warm-graphite neutrals for the rest. No raw color literals.
+   min-width: min(13rem, 100%) keeps columns from overflowing on phones. */
+
+.empty { color: var(--muted); }
+
+.card {
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+  background: var(--raise);
+  padding: var(--space-2);
+  min-width: min(13rem, 100%);
+}
+.cardAdvanced { border-color: var(--ok); border-left: 3px solid var(--ok); }
+.cardEliminated { border-color: var(--volt); border-left: 3px solid var(--volt); }
+.cardNeutral { border-color: var(--line2); }
+
+.cardLabel {
+  margin: 0 0 var(--space-1) var(--space-2);
+  font-size: 0.55rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.outcomeChip {
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  border-radius: 2px;
+}
+.outcomeChipWon { color: var(--court); background: var(--ok); }
+.outcomeChipOut { color: var(--court); background: var(--volt); }
+
+.team {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 3px;
+  color: var(--text2);
+  font-weight: 500;
+}
+.teamWinner {
+  background: var(--volt-soft);
+  color: var(--text);
+  font-weight: 700;
+}
+.teamName { min-width: 0; }
+.teamMark { color: var(--muted); }
+.teamMarkWinner { color: var(--volt2); }
