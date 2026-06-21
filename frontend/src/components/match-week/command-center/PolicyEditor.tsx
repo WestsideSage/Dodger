@@ -1,7 +1,8 @@
 import type { KeyboardEvent } from 'react';
 import type { CoachPolicy } from '../../../types';
 import { useVoiceRegister } from '../../../hooks/useVoiceRegister';
-import { StatusMessage } from '../../ui';
+import { StatusMessage } from '../../../ui';
+import styles from './PolicyEditor.module.css';
 
 type PolicyKey = keyof CoachPolicy;
 
@@ -61,19 +62,19 @@ export function PolicyEditor({
     const preview = t(`policy.${row.key}.${selectedValue}.preview`);
 
     return (
-      <div key={row.key} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+      <div key={row.key} className={styles.row}>
         <div
           role="radiogroup"
           aria-labelledby={labelId}
           onKeyDown={(event) => handleKeyDown(event, row, selectedValue)}
-          style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}
+          className={styles.rowGroup}
         >
           {/* 4.7: selected state conveyed only by the highlighted pill + the
               preview line; the Phase 6 right-of-box label echo stays removed. */}
-          <span id={labelId} style={{ color: '#e2e8f0', fontWeight: 700, fontSize: '0.84rem' }}>
+          <span id={labelId} className={styles.rowLabel}>
             {row.label}
           </span>
-          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+          <div className={styles.pillRow}>
             {row.values.map((value) => {
               const isSelected = value === selectedValue;
               return (
@@ -86,37 +87,15 @@ export function PolicyEditor({
                   tabIndex={isSelected ? 0 : -1}
                   data-testid={`policy-${row.key}-${value}`}
                   onClick={() => void onChange({ ...policy, [row.key]: value })}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    padding: '0.45rem 0.8rem',
-                    borderRadius: '999px',
-                    border: `1.5px solid ${isSelected ? '#f97316' : '#334155'}`,
-                    background: isSelected ? '#f97316' : '#0f172a',
-                    color: isSelected ? '#0b1220' : '#cbd5e1',
-                    fontWeight: isSelected ? 800 : 600,
-                    fontSize: '0.76rem',
-                    boxShadow: isSelected ? '0 0 0 3px rgba(249,115,22,0.18)' : 'none',
-                    cursor: disabled ? 'default' : 'pointer',
-                    transition: 'background 120ms, color 120ms, box-shadow 120ms',
-                  }}
+                  className={`${styles.pill}${isSelected ? ` ${styles.isSelected}` : ''}`}
                 >
-                  {isSelected && <span aria-hidden="true" style={{ fontSize: '0.7rem', lineHeight: 1 }}>✓</span>}
+                  {isSelected && <span aria-hidden="true" className={styles.pillCheck}>✓</span>}
                   {t(`policy.${row.key}.${value}.label`)}
                 </button>
               );
             })}
           </div>
-          <p
-            aria-live="polite"
-            style={{
-              margin: 0,
-              color: '#94a3b8',
-              fontSize: '0.78rem',
-              lineHeight: 1.45,
-            }}
-          >
+          <p aria-live="polite" className={styles.preview}>
             {preview}
           </p>
           {/* V19a: the rec engine now resolves Target for real — it orders
@@ -128,12 +107,7 @@ export function PolicyEditor({
           {row.key === 'rush_target' && !officialRuleset && (
             <p
               data-testid="rush-target-advisory-note"
-              style={{
-                margin: 0,
-                color: '#64748b',
-                fontSize: '0.7rem',
-                lineHeight: 1.45,
-              }}
+              className={styles.advisory}
             >
               Resolved by the rec engine: Target orders who sprints at the opening whistle
               (slot order / power / overall), and sprinters take the opening throws.
@@ -148,43 +122,17 @@ export function PolicyEditor({
     <section
       data-testid="policy-editor"
       aria-disabled={disabled || undefined}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.85rem',
-        padding: '0.9rem',
-        border: `1px solid ${disabled ? '#1e293b' : '#243044'}`,
-        borderRadius: '8px',
-        background: '#08101f',
-        position: 'relative',
-      }}
+      className={`${styles.editor}${disabled ? ` ${styles.isDisabled}` : ''}`}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '1rem' }}>
-        <div>
-          <p className="dm-kicker" style={{ marginBottom: '0.25rem' }}>Policy Editor</p>
-          <h4 style={{ margin: 0, color: '#e2e8f0', fontSize: '1rem' }}>Today's plan</h4>
-          <p style={{ margin: '0.3rem 0 0', color: '#64748b', fontSize: '0.72rem', maxWidth: '24rem' }}>
-            Fine-tune the plan here. Changing the Weekly Intent resets these to that intent's preset.
+      <div className={styles.header}>
+        <div className={styles.headerMeta}>
+          <p className={styles.kicker}>Policy Editor</p>
+          <h4 className={styles.title}>Today&apos;s plan</h4>
+          <p className={styles.subtitle}>
+            Fine-tune the plan here. Changing the Weekly Intent resets these to that intent&apos;s preset.
           </p>
         </div>
-        <span
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.35rem',
-            fontFamily: 'JetBrains Mono, monospace',
-            fontSize: '0.66rem',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            padding: '0.2rem 0.5rem',
-            borderRadius: '999px',
-            border: `1px solid ${disabled ? '#334155' : 'rgba(34,211,238,0.4)'}`,
-            background: disabled ? '#0f172a' : 'rgba(34,211,238,0.1)',
-            color: disabled ? '#64748b' : '#22d3ee',
-            whiteSpace: 'nowrap',
-          }}
-        >
+        <span className={`${styles.statusBadge}${disabled ? '' : ` ${styles.isLive}`}`}>
           <span aria-hidden="true">{disabled ? '🔒' : '●'}</span>
           {disabled ? 'Locked' : 'Live'}
         </span>
@@ -203,81 +151,30 @@ export function PolicyEditor({
           dimmed/non-interactive body — not just the header badge (Brief 4.7,
           criterion #4). */}
       {disabled && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.5rem 0.75rem',
-            borderRadius: '6px',
-            border: '1px dashed #334155',
-            background: 'rgba(15,23,42,0.6)',
-            color: '#94a3b8',
-            fontSize: '0.76rem',
-          }}
-        >
+        <div className={styles.lockBanner}>
           <span aria-hidden="true">🔒</span>
           <span>Plan locked for this match — edits reopen next week.</span>
         </div>
       )}
 
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '1rem',
-          opacity: disabled ? 0.55 : 1,
-          filter: disabled ? 'grayscale(0.35)' : 'none',
-          transition: 'opacity 120ms',
-        }}
-      >
+      <div className={`${styles.rowBody}${disabled ? ` ${styles.isDisabled}` : ''}`}>
         {/* Core match plan — the three rows that govern the whole match. */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+        <div className={styles.coreRows}>
           {coreRows.map(renderRow)}
         </div>
 
         {/* Opening Rush — contained sub-section so the player sees these two
             rows govern only the match's first moment (Brief 4.7, criterion #2). */}
-        <div
-          style={{
-            borderRadius: '8px',
-            border: '1px solid #1e293b',
-            background: 'rgba(8,16,31,0.6)',
-            padding: '0.75rem 0.8rem',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.85rem',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div className={styles.rushSection}>
+          <div className={styles.rushHead}>
             <span aria-hidden="true" style={{ fontSize: '0.85rem' }}>⚡</span>
-            <span
-              style={{
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: '0.62rem',
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                letterSpacing: '0.12em',
-                color: '#cbd5e1',
-              }}
-            >
-              Opening Rush
-            </span>
-            <span style={{ fontSize: '0.68rem', color: '#64748b' }}>· first moment only</span>
+            <span className={styles.rushLabel}>Opening Rush</span>
+            <span className={styles.rushSub}>· first moment only</span>
           </div>
           {officialRuleset && (
             <p
               data-testid="rush-enforced-sim-design-note"
-              style={{
-                margin: 0,
-                padding: '0.4rem 0.55rem',
-                borderRadius: '6px',
-                border: '1px solid rgba(34,211,238,0.3)',
-                background: 'rgba(34,211,238,0.06)',
-                color: '#67e8f9',
-                fontSize: '0.7rem',
-                lineHeight: 1.45,
-              }}
+              className={styles.enforcedNote}
             >
               Live on official careers: Commit shapes the opening exchange — an all-in
               rush&apos;s early throws are harder to catch, but its rushers catch worse on

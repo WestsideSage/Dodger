@@ -1,0 +1,219 @@
+/* PolicyEditor — Floodlight reskin.
+   5-color contract: --volt marks live/active/primary/selected (pill selected
+   state, the Live status badge). --ok positive. --out dim/muted (locked
+   banner, advisory notes). --danger destructive (StatusMessage danger tone
+   is delegated to the StatusMessage primitive — no raw color here). --gold
+   unused (talent-only). Warm neutrals (--court/--raise/--raise2/--text/
+   --text2/--muted/--line/--line2) carry the rest. No raw #hex/rgba()/hsl()
+   color literals anywhere in this file. */
+
+/* ---- Outer section ---- */
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--court);
+  position: relative;
+}
+.editor.isDisabled {
+  border-color: var(--line);
+}
+
+/* ---- Header row ---- */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-5);
+}
+.headerMeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.kicker {
+  font: 500 0.6rem var(--font-mono);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text2);
+  margin: 0;
+}
+.title {
+  margin: 0;
+  color: var(--text);
+  font: 800 1rem var(--font-disp);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.1;
+}
+.subtitle {
+  margin: 0;
+  color: var(--muted);
+  font: 500 0.72rem var(--font-ui);
+  max-width: 24rem;
+  line-height: 1.45;
+}
+
+/* ---- Live/Locked status badge ---- */
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: 700 0.66rem var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line2);
+  background: var(--tint-neutral);
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.statusBadge.isLive {
+  border-color: var(--volt-soft);
+  background: var(--volt-soft);
+  color: var(--volt2);
+}
+
+/* ---- Lock banner ---- */
+.lockBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--line2);
+  background: var(--tint-neutral);
+  color: var(--out);
+  font: 500 0.76rem var(--font-ui);
+}
+
+/* ---- Row body (opacity/filter when disabled) ---- */
+.rowBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  opacity: 1;
+  filter: none;
+  transition: opacity 120ms;
+}
+.rowBody.isDisabled {
+  opacity: 0.55;
+  filter: grayscale(0.35);
+}
+
+/* ---- Core rows container ---- */
+.coreRows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* ---- Opening Rush sub-section ---- */
+.rushSection {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--raise);
+  padding: var(--space-4) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.rushHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.rushLabel {
+  font: 800 0.62rem var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text2);
+}
+.rushSub {
+  font: 500 0.68rem var(--font-ui);
+  color: var(--muted);
+}
+
+/* ---- Official-ruleset enforced note ---- */
+.enforcedNote {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--volt-soft);
+  background: var(--volt-soft);
+  color: var(--volt2);
+  font: 500 0.7rem var(--font-ui);
+  line-height: 1.45;
+}
+
+/* ---- Individual policy row ---- */
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.rowGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.rowLabel {
+  color: var(--text);
+  font: 700 0.84rem var(--font-ui);
+  margin: 0;
+}
+.pillRow {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* ---- Pill button (radio option) ---- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--line2);
+  background: var(--raise);
+  color: var(--text2);
+  font: 600 0.76rem var(--font-ui);
+  cursor: pointer;
+  transition: background 120ms, color 120ms, border-color 120ms, box-shadow 120ms;
+}
+.pill:disabled {
+  cursor: default;
+}
+.pill.isSelected {
+  border-color: var(--volt);
+  background: var(--volt);
+  color: var(--court);
+  font-weight: 800;
+  box-shadow: 0 0 0 3px var(--volt-glow);
+}
+.pillCheck {
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+/* ---- Row preview text ---- */
+.preview {
+  margin: 0;
+  color: var(--muted);
+  font: 500 0.78rem var(--font-ui);
+  line-height: 1.45;
+}
+
+/* ---- Advisory note (rec engine target note) ---- */
+.advisory {
+  margin: 0;
+  color: var(--out);
+  font: 500 0.7rem var(--font-ui);
+  line-height: 1.45;
+}
