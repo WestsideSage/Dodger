@@ -1,7 +1,7 @@
 /* BannerShelf — Record Room (cream/ink) banner grid. */
 .banners {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
   gap: var(--space-4);
 }
 .banner {

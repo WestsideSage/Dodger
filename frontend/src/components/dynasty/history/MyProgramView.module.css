@@ -9,7 +9,7 @@
 /* glance strip — responsive collapse (was a hard 5-col grid) */
 .glance {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
   gap: var(--space-4);
 }
 .cell {
@@ -103,7 +103,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 48px;
+  min-width: 3rem;
 }
 .wkNum {
   font: 700 0.74rem var(--font-mono);
@@ -166,7 +166,7 @@
 /* program arc grid — responsive collapse */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
   gap: var(--space-5);
 }
 .card {
@@ -198,7 +198,7 @@
 /* hero cards */
 .heroGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
   gap: var(--space-4);
 }
 .heroCard {
