@@ -14,13 +14,14 @@ export function ActionButton({
   variant?: 'primary' | 'accent' | 'secondary' | 'danger' | 'ghost';
   className?: string;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  // Visual treatment lives in the .dm-action / .dm-action-<variant> CSS (index.css).
-  // The module class adds token-driven layout; both class sets coexist until P8.
+  // Self-contained Floodlight: layout + the full 5-color-contract color
+  // treatment for every variant live in ActionButton.module.css. No legacy
+  // .dm-action* class is rendered — color no longer leaks from index.css.
   return (
     <button
       {...props}
       type={type ?? 'button'}
-      className={`dm-action dm-action-${variant} ${styles.btn} ${className}`.trim()}
+      className={`${styles.btn} ${styles[variant]} ${className}`.trim()}
       style={style}
     >
       {children}

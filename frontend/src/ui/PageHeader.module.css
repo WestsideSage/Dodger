@@ -1,8 +1,28 @@
+/* PageHeader — neutral Floodlight header. Self-contained: the typography +
+   color the legacy dm-kicker/dm-panel-title/dm-panel-subtitle classes used to
+   carry now live here (eyebrow = muted instrumentation, title = --text display,
+   description = --text2). No loud color — headers are never Volt. */
 .header { display: flex; flex-direction: column; gap: var(--space-3); }
-.eyebrow { margin: 0; }
+.eyebrow {
+  margin: 0;
+  font: 600 .62rem var(--font-mono);
+  letter-spacing: .24em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
 .row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
 .titleGroup { min-width: 0; }
-.title { margin: 0; }
-.description { margin: var(--space-1) 0 0; }
+.title {
+  margin: 0;
+  font: 600 1.25rem var(--font-disp);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.description {
+  margin: var(--space-1) 0 0;
+  font: 400 .875rem var(--font-ui);
+  color: var(--text2);
+}
 .actions { display: flex; gap: var(--space-3); align-items: center; flex-shrink: 0; }
 .stats { display: flex; gap: var(--space-5); flex-wrap: wrap; margin-top: var(--space-2); }

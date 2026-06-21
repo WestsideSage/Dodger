@@ -69,9 +69,9 @@ export function RatingBar({
       )}
       <div className={styles.barRow}>
         {!label && (
-          <span className={`dm-data ${styles.valueLeft}`}>{displayValue}</span>
+          <span className={styles.valueLeft}>{displayValue}</span>
         )}
-        <div className={`dm-stat-bar-track ${styles.track} ${compact ? styles.compact : ''}`}>
+        <div className={`${styles.track} ${compact ? styles.compact : ''}`}>
           <div className={`${styles.fill} ${barClass}`} style={{ width: `${percentage}%` }} />
         </div>
       </div>

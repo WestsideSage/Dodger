@@ -42,12 +42,29 @@
   box-shadow: var(--shadow-1);
 }
 .barRow { display: flex; align-items: center; gap: var(--space-3); }
-.valueLeft { font-size: .875rem; color: var(--text); min-width: 1.75rem; text-align: right; flex-shrink: 0; }
-.track { flex: 1; height: .5rem; }
+/* value readout — mono tabular (folds the old dm-data font role in). */
+.valueLeft {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: .875rem;
+  color: var(--text);
+  min-width: 1.75rem;
+  text-align: right;
+  flex-shrink: 0;
+}
+/* track — self-contained (folds the old dm-stat-bar-track box in; no slate leak). */
+.track {
+  flex: 1;
+  height: .5rem;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--raise2);
+}
 .compact { height: .375rem; }
 .fill { height: 100%; transition: width .3s; }
-/* fill colors — use CSS vars that approximate the original palette */
-.barPoor  { background: var(--volt); }
-.barAvg   { background: var(--gold); }
+/* grade-driven rating ladder (low→elite): Dim → neutral → Mint → Gold.
+   --ok = verified/good; --gold = elite talent/ceiling. No Volt (live-only). */
+.barPoor  { background: var(--out); }
+.barAvg   { background: var(--muted); }
 .barGood  { background: var(--ok); }
-.barElite { background: var(--ok); filter: brightness(1.3) hue-rotate(-15deg); }
+.barElite { background: var(--gold); }

@@ -1,9 +1,14 @@
+/* StatusMessage — Floodlight 5-color contract.
+   ok/success = Mint (--ok, verified/positive). danger = restrained --danger clay
+   (NOT bright red, NOT Volt). warning = restrained Dim (--out, never gold — gold
+   is talent-only). accent = the one live/active status (faint Volt, used sparingly).
+   info/neutral = neutral text. Role/aria-live behavior lives in the TSX. */
 .box { background: var(--raise); border: 1px solid var(--line); border-radius: var(--radius-md); padding: var(--space-5); }
 .kicker { font: 600 .62rem var(--font-ui); letter-spacing: .08em; text-transform: uppercase; }
 .body { margin-top: var(--space-2); font: 400 .85rem var(--font-ui); color: var(--text2); }
 .tone-neutral { border-color: var(--line); } .tone-neutral .kicker { color: var(--muted); }
-.tone-accent  { border-color: var(--line2); } .tone-accent  .kicker { color: var(--text); }
+.tone-accent  { border-color: var(--volt-soft); } .tone-accent  .kicker { color: var(--volt2); }
 .tone-success { border-color: var(--ok-soft); } .tone-success .kicker { color: var(--ok); }
-.tone-warning { border-color: var(--gold-soft); } .tone-warning .kicker { color: var(--gold); }
-.tone-danger  { border-color: var(--volt-soft); } .tone-danger  .kicker { color: var(--volt2); }
+.tone-warning { border-color: var(--out-line); } .tone-warning .kicker { color: var(--out); }
+.tone-danger  { border-color: var(--danger); } .tone-danger  .kicker { color: var(--danger2); }
 .tone-info    { border-color: var(--line2); } .tone-info    .kicker { color: var(--text2); }

@@ -1,12 +1,85 @@
+/* ActionButton — self-contained Floodlight button.
+   Layout + the full 5-color-contract color treatment for every variant
+   (no legacy .dm-action* class is rendered; dropping it must NOT lose state).
+   Volt is the only loud color and is reserved for primary/accent (the main
+   action). danger is the restrained --danger clay, never bright red, never Volt. */
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
   font: 600 .75rem var(--font-ui);
+  letter-spacing: .04em;
   border-radius: var(--radius-sm);
   cursor: pointer;
   border: 1px solid transparent;
   padding: var(--space-3) var(--space-5);
-  transition: opacity .15s;
+  transition: background-color .15s, border-color .15s, color .15s, box-shadow .15s, opacity .15s;
 }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* primary — solid Volt, dark readable ink. The default loud affordance. */
+.primary {
+  background: var(--volt);
+  color: var(--court);
+  border-color: var(--volt);
+}
+.primary:not(:disabled):hover {
+  background: var(--volt2);
+  border-color: var(--volt2);
+  box-shadow: 0 0 0 1px var(--volt-glow);
+}
+
+/* accent — the loud CTA. Also Volt-family, kept clearly the main action. */
+.accent {
+  background: var(--volt);
+  color: var(--court);
+  border-color: var(--volt2);
+}
+.accent:not(:disabled):hover {
+  background: var(--volt2);
+  border-color: var(--volt2);
+  box-shadow: 0 0 0 1px var(--volt-glow);
+}
+
+/* secondary — neutral surface, hairline border, body text. */
+.secondary {
+  background: var(--raise2);
+  color: var(--text);
+  border-color: var(--line2);
+}
+.secondary:not(:disabled):hover {
+  background: var(--raise);
+  border-color: var(--lit);
+  color: var(--text);
+}
+
+/* danger — RESTRAINED destructive. Clay outline + clay text, not bright red,
+   not Volt; intensifies slightly on hover. */
+.danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.danger:not(:disabled):hover {
+  background: var(--danger-soft);
+  color: var(--danger2);
+  border-color: var(--danger2);
+}
+
+/* ghost — transparent, muted text, faint raise on hover. */
+.ghost {
+  background: transparent;
+  color: var(--text2);
+  border-color: transparent;
+}
+.ghost:not(:disabled):hover {
+  background: var(--raise2);
+  color: var(--text);
+}
+
+.btn:not(:disabled):focus-visible {
+  outline: var(--space-1) solid var(--volt);
+  outline-offset: var(--space-1);
+}
+.btn:not(:disabled):active { transform: translateY(1px); }

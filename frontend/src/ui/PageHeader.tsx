@@ -16,11 +16,11 @@ export function PageHeader({
 }) {
   return (
     <div className={styles.header}>
-      {eyebrow && <p className={`dm-kicker ${styles.eyebrow}`}>{eyebrow}</p>}
+      {eyebrow && <p className={styles.eyebrow}>{eyebrow}</p>}
       <div className={styles.row}>
         <div className={styles.titleGroup}>
-          <h2 className={`dm-panel-title ${styles.title}`}>{title}</h2>
-          {description && <p className={`dm-panel-subtitle ${styles.description}`}>{description}</p>}
+          <h2 className={styles.title}>{title}</h2>
+          {description && <p className={styles.description}>{description}</p>}
         </div>
         {actions && <div className={styles.actions}>{actions}</div>}
       </div>
