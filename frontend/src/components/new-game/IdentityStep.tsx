@@ -1,5 +1,8 @@
+import type { CSSProperties } from 'react';
 import { ActionButton } from '../../ui';
+import styles from './IdentityStep.module.css';
 
+// token-gate: COLOR_PRESETS is kit DATA, not theme
 const COLOR_PRESETS = [
   { label: 'Ocean', primary: '#22d3ee', secondary: '#0f172a' },
   { label: 'Fire',  primary: '#f97316', secondary: '#1e293b' },
@@ -31,27 +34,13 @@ function Field({
 }) {
   return (
     <div>
-      <label
-        htmlFor={htmlFor}
-        style={{ display: 'block', fontSize: '0.6875rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', marginBottom: '0.375rem' }}
-      >
+      <label htmlFor={htmlFor} className={styles.fieldLabel}>
         {label}
       </label>
       {children}
     </div>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  boxSizing: 'border-box',
-  background: '#0f172a',
-  border: '1px solid #334155',
-  borderRadius: '4px',
-  padding: '0.5rem 0.75rem',
-  color: '#e2e8f0',
-  fontSize: '0.875rem',
-};
 
 export function IdentityStep({
   identity,
@@ -67,8 +56,8 @@ export function IdentityStep({
   /** Existing save names; used to block a duplicate up front (2.7). */
   takenNames?: string[];
 }) {
-  const currentPrimary = identity.colors?.split(',')[0] ?? '#22d3ee';
-  const currentSecondary = identity.colors?.split(',')[1] ?? '#0f172a';
+  const currentPrimary = identity.colors?.split(',')[0] ?? COLOR_PRESETS[0].primary;
+  const currentSecondary = identity.colors?.split(',')[1] ?? COLOR_PRESETS[0].secondary;
   const missingFields: string[] = [];
   if (!identity.save_name.trim()) missingFields.push('save name');
   if (!identity.club_name.trim()) missingFields.push('club name');
@@ -84,13 +73,18 @@ export function IdentityStep({
     preset => identity.colors === colorsToValue(preset.primary, preset.secondary)
   );
 
+  // The chosen kit colors are user DATA painted into the chrome — carried as
+  // custom properties (not raw style literals) and consumed by the module CSS.
+  const previewKitVars = {
+    ['--kit-primary' as string]: currentPrimary,
+    ['--kit-secondary' as string]: currentSecondary,
+  } as CSSProperties;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      <div>
-        <p className="dm-kicker" style={{ marginBottom: '0.25rem' }}>Step 1 of 4</p>
-        <h2 style={{ fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', margin: 0, fontSize: '1.25rem' }}>
-          Program Identity
-        </h2>
+    <div className={styles.wrap}>
+      <div className={styles.header}>
+        <p className={styles.kicker}>Step 1 of 4</p>
+        <h2 className={styles.title}>Program Identity</h2>
       </div>
 
       <Field label="Save Name" htmlFor="identity-save-name">
@@ -102,22 +96,14 @@ export function IdentityStep({
           onChange={e => setIdentity({ ...identity, save_name: e.target.value })}
           aria-invalid={nameTaken}
           aria-describedby={nameTaken ? 'identity-save-name-error' : undefined}
-          style={{ ...inputStyle, borderColor: nameTaken ? '#fb7185' : inputStyle.border ? undefined : '#334155' }}
+          className={`${styles.input} ${nameTaken ? styles.inputInvalid : ''}`.trim()}
         />
         {nameTaken && (
           <div
             id="identity-save-name-error"
             role="alert"
             data-testid="save-name-collision-banner"
-            style={{
-              marginTop: '0.5rem',
-              padding: '0.5rem 0.75rem',
-              background: 'rgba(251,113,133,0.12)',
-              border: '1px solid #fb7185',
-              borderRadius: '4px',
-              color: '#fecdd3',
-              fontSize: '0.8125rem',
-            }}
+            className={styles.collisionBanner}
           >
             A save named “{identity.save_name.trim()}” already exists. Choose a different name to continue.
           </div>
@@ -131,7 +117,7 @@ export function IdentityStep({
           placeholder="e.g. Iron Hawks"
           value={identity.club_name}
           onChange={e => setIdentity({ ...identity, club_name: e.target.value })}
-          style={inputStyle}
+          className={styles.input}
         />
       </Field>
 
@@ -142,15 +128,13 @@ export function IdentityStep({
           placeholder="e.g. Northwood"
           value={identity.city}
           onChange={e => setIdentity({ ...identity, city: e.target.value })}
-          style={inputStyle}
+          className={styles.input}
         />
       </Field>
 
-      <fieldset style={{ margin: 0, padding: 0, border: 'none' }}>
-        <legend style={{ padding: 0, fontSize: '0.6875rem', fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', marginBottom: '0.375rem' }}>
-          Club Colors
-        </legend>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+      <fieldset className={styles.fieldset}>
+        <legend className={styles.legend}>Club Colors</legend>
+        <div className={styles.presetRow}>
           {COLOR_PRESETS.map(preset => {
             const isSelected = identity.colors === colorsToValue(preset.primary, preset.secondary);
             return (
@@ -160,23 +144,19 @@ export function IdentityStep({
                 aria-pressed={isSelected}
                 title={preset.label}
                 onClick={() => setIdentity({ ...identity, colors: colorsToValue(preset.primary, preset.secondary) })}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.375rem',
-                  padding: '0.375rem 0.625rem',
-                  background: isSelected ? 'rgba(255,255,255,0.08)' : '#0f172a',
-                  border: isSelected ? '1px solid #fff' : '1px solid #334155',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  transition: 'border-color 0.15s',
-                }}
+                className={`${styles.presetBtn} ${isSelected ? styles.presetBtnSelected : ''}`.trim()}
               >
-                <span style={{ display: 'inline-flex', gap: '2px' }}>
-                  <span style={{ width: '12px', height: '12px', borderRadius: '2px', background: preset.primary, display: 'inline-block' }} />
-                  <span style={{ width: '12px', height: '12px', borderRadius: '2px', background: preset.secondary, display: 'inline-block', border: '1px solid #1e293b' }} />
+                <span className={styles.swatchPair}>
+                  <span
+                    className={`${styles.swatch} ${styles.swatchPrimary}`}
+                    style={{ ['--kit-primary' as string]: preset.primary } as CSSProperties}
+                  />
+                  <span
+                    className={`${styles.swatch} ${styles.swatchSecondary}`}
+                    style={{ ['--kit-secondary' as string]: preset.secondary } as CSSProperties}
+                  />
                 </span>
-                <span style={{ fontSize: '0.6875rem', color: isSelected ? '#fff' : '#94a3b8', fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <span className={`${styles.presetLabel} ${isSelected ? styles.presetLabelSelected : ''}`.trim()}>
                   {preset.label}
                 </span>
               </button>
@@ -184,10 +164,10 @@ export function IdentityStep({
           })}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#94a3b8', fontSize: '0.75rem' }}>
-          <div style={{ display: 'flex', borderRadius: '4px', overflow: 'hidden', width: '48px', height: '24px', flexShrink: 0 }}>
-            <div style={{ flex: 1, background: currentPrimary }} />
-            <div style={{ flex: 1, background: currentSecondary }} />
+        <div className={styles.kitPreview}>
+          <div className={styles.kitChip} style={previewKitVars}>
+            <div className={styles.kitChipPrimary} />
+            <div className={styles.kitChipSecondary} />
           </div>
           <span>
             {selectedPreset
@@ -198,17 +178,17 @@ export function IdentityStep({
       </fieldset>
 
       {(identity.club_name || identity.city) && (
-        <div style={{ background: currentSecondary, border: `1px solid ${currentPrimary}44`, borderLeft: `3px solid ${currentPrimary}`, borderRadius: '4px', padding: '0.75rem 1rem' }}>
-          <p className="dm-kicker" style={{ color: currentPrimary, marginBottom: '0.125rem' }}>Preview</p>
-          <p style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            {identity.city && <span style={{ color: '#94a3b8', fontSize: '0.75rem', display: 'block', marginBottom: '0.125rem' }}>{identity.city}</span>}
+        <div className={styles.previewCard} data-testid="identity-preview" style={previewKitVars}>
+          <p className={styles.previewKicker}>Preview</p>
+          <p className={styles.previewName}>
+            {identity.city && <span className={styles.previewCity}>{identity.city}</span>}
             {identity.club_name || '-'}
           </p>
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+      <div className={styles.actions}>
+        <div className={styles.actionRow}>
           <ActionButton variant="secondary" onClick={onBack}>Back</ActionButton>
           <ActionButton
             variant="primary"
@@ -220,7 +200,7 @@ export function IdentityStep({
           </ActionButton>
         </div>
         {missingFields.length > 0 && (
-          <p id="identity-step-help" className="dm-helper-copy dm-helper-copy-warning" style={{ margin: 0 }}>
+          <p id="identity-step-help" className={styles.helperWarning}>
             Add a {missingFields.join(', ').replace(/, ([^,]*)$/, ' and $1')} to continue.
           </p>
         )}

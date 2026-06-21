@@ -46,4 +46,12 @@ describe('IdentityStep (audit #76 — save-name uniqueness up front)', () => {
     await userEvent.click(fire);
     expect(setIdentity).toHaveBeenCalledWith(expect.objectContaining({ colors: expect.stringContaining(',') }));
   });
+
+  it('paints the chosen kit on the preview via a custom property (no lost club color)', () => {
+    // club_name and city are required in the setup — the preview block only
+    // renders when (identity.club_name || identity.city) is truthy (IdentityStep.tsx:200).
+    setup({ club_name: 'Hawks', city: 'Northwood', colors: '#abcdef,#123456' });
+    const card = screen.getByText('Preview').closest('[data-testid="identity-preview"]')!;
+    expect((card as HTMLElement).style.getPropertyValue('--kit-primary')).toBe('#abcdef');
+  });
 });
