@@ -9,6 +9,7 @@ import { HistorySubTab } from './dynasty/HistorySubTab';
 import { commandApi, dynastyApi } from '../api/client';
 import { formatK } from '../money';
 import { EmptyState, TermTip, ProofChip } from '../legibility';
+import { isAtRisk, lockedSinkKey } from './dynasty/atRisk';
 import styles from './dynasty/DynastyOffice.module.css';
 
 const dynastySubtabFromUrl = (): 'recruit' | 'history' | 'staff' => {
@@ -586,8 +587,8 @@ function RecruitBoard({
     });
     return [...base].sort((a, b) => {
       // Name-only cards always sink to the bottom regardless of sort key.
-      const av0 = a.fully_visible === false ? 1 : 0;
-      const bv0 = b.fully_visible === false ? 1 : 0;
+      const av0 = lockedSinkKey(a);
+      const bv0 = lockedSinkKey(b);
       if (av0 !== bv0) return av0 - bv0;
       let av: number;
       let bv: number;
@@ -623,7 +624,7 @@ function RecruitBoard({
             Fair Fit <span className={styles.filterCount}>{prospects.filter((prospect) => prospect.fit_score >= 65 && prospect.fit_score < 80).length}</span>
           </button>
           <button className={`${styles.filter} ${filter === 'risk' ? styles.filterActive : ''}`} onClick={() => setFilter('risk')} type="button">
-            At Risk <span className={styles.filterCount}>{prospects.filter((prospect) => prospect.fully_visible !== false && (prospect.fit_score ?? 0) < 65).length}</span>
+            At Risk <span className={styles.filterCount}>{prospects.filter(isAtRisk).length}</span>
           </button>
           <span className={styles.boardSep} />
           <div
@@ -938,8 +939,8 @@ export function DynastyOffice() {
     () => [...(data?.recruiting.prospects ?? [])].sort((left, right) => {
       // V24 Phase 6: name-only cards (beyond your Scouting Network) sink to the
       // bottom; their sheet fields are null so guard the fit comparison.
-      const lv = left.fully_visible === false ? 1 : 0;
-      const rv = right.fully_visible === false ? 1 : 0;
+      const lv = lockedSinkKey(left);
+      const rv = lockedSinkKey(right);
       if (lv !== rv) return lv - rv;
       return (right.fit_score ?? 0) - (left.fit_score ?? 0) || left.name.localeCompare(right.name);
     }),
