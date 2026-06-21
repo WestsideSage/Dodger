@@ -1,0 +1,172 @@
+/* StructuredOffseasonBeats.module.css — token-driven Records Ratified + Hall of
+   Fame beats. Floodlight 5-color contract: --gold for my-club / milestones
+   (elite talent), --volt for new-holder + league accent (active/selected), --ok
+   for value growth, warm-graphite neutrals elsewhere. No raw color literals. */
+
+.kicker { margin: 0; }
+
+.proofToggle { cursor: pointer; color: var(--muted); font-size: 0.72rem; }
+.proofDetails { margin-top: var(--space-2); }
+.proofCode { display: block; margin-top: var(--space-1); color: var(--out); font-size: 0.72rem; }
+
+/* Scope segmented control. */
+.scopeGroup {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: var(--space-1);
+  background: var(--raise2);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-md);
+}
+.scopeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  font-size: 0.82rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+.scopeBtnActive { background: var(--raise); color: var(--text); box-shadow: inset 0 0 0 1px var(--line2); }
+.scopeBtnActiveMine { box-shadow: inset 0 0 0 1px var(--gold); }
+.scopeBtnActiveLeague { box-shadow: inset 0 0 0 1px var(--volt); }
+
+.scopeCount {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 800;
+  min-width: 1.3rem;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--raise2);
+  color: var(--text2);
+}
+.scopeCountActiveMine { background: var(--gold); color: var(--gold-ink); }
+.scopeCountActiveLeague { background: var(--volt); color: var(--court); }
+
+/* Empty state + league switch. */
+.emptyWrap { margin-top: var(--space-4); }
+.emptyWrapCentered { margin-top: var(--space-4); text-align: center; }
+.emptyCopy { margin: 0; }
+.switchBtn {
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--volt);
+  background: var(--volt-soft);
+  color: var(--volt2);
+  cursor: pointer;
+}
+
+/* Milestone cards. */
+.cards { display: grid; gap: var(--space-3); margin-top: var(--space-4); }
+.card {
+  padding: var(--space-3) var(--space-4);
+  background: var(--raise2);
+  border: 1px solid var(--line2);
+  border-left: 3px solid var(--out);
+  border-radius: var(--radius-sm);
+}
+.cardMine {
+  background: var(--gold-soft);
+  border-left-color: var(--gold);
+}
+.cardTop { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); }
+.cardType { margin: 0; color: var(--out); font-size: 0.62rem; }
+.cardTypeMine { color: var(--gold); }
+.badges { display: inline-flex; gap: var(--space-2); align-items: center; }
+.badge {
+  font-size: 0.56rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+}
+.badgeNewHolder { background: var(--volt-soft); color: var(--volt2); }
+.badgeMine { background: var(--gold-soft); color: var(--gold); }
+
+.holder { margin: var(--space-2) 0 var(--space-2); color: var(--text); font-weight: 700; }
+.valueRow { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.value { font-family: var(--font-mono); font-size: 0.8rem; color: var(--text2); }
+.valueNew { color: var(--ok); }
+.deltaChip {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.dethrone { font-size: 0.7rem; color: var(--text2); }
+.detail { margin: var(--space-2) 0 0; font-size: 0.76rem; color: var(--text2); }
+
+/* Career-milestone band. */
+.bandGold { margin-top: var(--space-1); }
+.bandLabel { margin: 0 0 var(--space-2); font-size: 0.6rem; }
+.bandLabelGold { color: var(--gold); }
+.bandLabelMuted { color: var(--muted); }
+.bandRows { display: grid; gap: var(--space-2); }
+
+.milestoneRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+  background: var(--gold-soft);
+  border: 1px solid var(--gold-soft);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+}
+.milestoneTag {
+  color: var(--gold);
+  font-weight: 800;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.milestoneName { color: var(--text); font-weight: 700; }
+.milestoneLabel { color: var(--text2); }
+.milestoneNow { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text2); }
+
+/* Extension rows. */
+.extensionRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+  background: var(--raise);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+  font-size: 0.76rem;
+}
+.extName { color: var(--text); font-weight: 600; }
+.extDesc { color: var(--text2); }
+.extValue { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text2); margin-left: auto; }
+.extValueNew { color: var(--ok); }
+.extMine {
+  font-size: 0.54rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--gold-soft);
+  color: var(--gold);
+}
+
+/* Hall of Fame inductee grid. */
+.hofGrid { display: grid; gap: var(--space-3); margin-top: var(--space-3); }

@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import type { OffseasonBeat } from '../../types';
-import { ActionButton, PageHeader } from '../ui';
+import { ActionButton, PageHeader } from '../../ui';
+import styles from './StructuredOffseasonBeats.module.css';
 
 type RecordsBeat = Extract<OffseasonBeat, { key: 'records_ratified' }>;
 type HofBeat = Extract<OffseasonBeat, { key: 'hof_induction' }>;
@@ -32,11 +33,11 @@ function formatProofSource(source: string): string {
 
 function ProofDetails({ source }: { source: string }) {
   return (
-    <details style={{ marginTop: '0.35rem' }}>
-      <summary data-testid="broadcast-proof-toggle" style={{ cursor: 'pointer', color: '#64748b', fontSize: '0.72rem' }}>
+    <details className={styles.proofDetails}>
+      <summary data-testid="broadcast-proof-toggle" className={styles.proofToggle}>
         View evidence ⌄
       </summary>
-      <code style={{ display: 'block', marginTop: '0.25rem', color: '#475569', fontSize: '0.72rem' }}>
+      <code className={styles.proofCode}>
         {formatProofSource(source)}
       </code>
     </details>
@@ -149,66 +150,28 @@ export function RecordsRatified({
       acting={acting}
     >
       <article className="dm-panel command-offseason-feature">
-        <p className="dm-kicker" style={{ margin: 0 }}>Records Ratified</p>
+        <p className={`dm-kicker ${styles.kicker}`}>Records Ratified</p>
 
         {/* Scope filter — elevated to a full-width segmented control so it
             reads as the primary navigation choice for the screen, not a
             top-right afterthought (Brief 4.8, criterion #1). */}
         {!recordsBookEmpty && (
-          <div
-            role="group"
-            aria-label="Records scope filter"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '0.3rem',
-              marginTop: '0.6rem',
-              padding: '0.25rem',
-              background: '#0a1220',
-              border: '1px solid #1e293b',
-              borderRadius: '8px',
-            }}
-          >
+          <div role="group" aria-label="Records scope filter" className={styles.scopeGroup}>
             {([
-              { id: 'my_club', label: 'My Club', count: myClubCount, accent: '#fbbf24' },
-              { id: 'league', label: 'League', count: leagueCount, accent: '#38bdf8' },
+              { id: 'my_club', label: 'My Club', count: myClubCount },
+              { id: 'league', label: 'League', count: leagueCount },
             ] as const).map(opt => {
               const active = scope === opt.id;
+              const isMine = opt.id === 'my_club';
               return (
                 <button
                   key={opt.id}
                   onClick={() => setScope(opt.id)}
                   aria-pressed={active}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.45rem',
-                    padding: '0.5rem 0.5rem',
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                    borderRadius: '6px',
-                    border: 'none',
-                    background: active ? '#162033' : 'transparent',
-                    boxShadow: active ? `inset 0 0 0 1px ${opt.accent}66` : 'none',
-                    color: active ? '#f1f5f9' : '#64748b',
-                    cursor: 'pointer',
-                    transition: 'background 120ms, color 120ms',
-                  }}
+                  className={`${styles.scopeBtn} ${active ? styles.scopeBtnActive : ''} ${active ? (isMine ? styles.scopeBtnActiveMine : styles.scopeBtnActiveLeague) : ''}`}
                 >
                   <span>{opt.label}</span>
-                  <span
-                    style={{
-                      fontFamily: 'JetBrains Mono, monospace',
-                      fontSize: '0.68rem',
-                      fontWeight: 800,
-                      minWidth: '1.3rem',
-                      padding: '0.05rem 0.35rem',
-                      borderRadius: '999px',
-                      background: active ? opt.accent : '#1e293b',
-                      color: active ? '#04111f' : '#94a3b8',
-                    }}
-                  >
+                  <span className={`${styles.scopeCount} ${active ? (isMine ? styles.scopeCountActiveMine : styles.scopeCountActiveLeague) : ''}`}>
                     {opt.count}
                   </span>
                 </button>
@@ -222,23 +185,10 @@ export function RecordsRatified({
             their own counter record happens ~every season and reads as noise
             when given equal drama — those compress into quiet ledger rows. */}
         {records.length === 0 ? (
-          <div style={{ marginTop: '0.85rem', textAlign: myClubEmptyButLeagueHas ? 'center' : 'left' }}>
-            <p className="command-offseason-copy" style={{ margin: 0 }}>{emptyMessage()}</p>
+          <div className={myClubEmptyButLeagueHas ? styles.emptyWrapCentered : styles.emptyWrap}>
+            <p className={`command-offseason-copy ${styles.emptyCopy}`}>{emptyMessage()}</p>
             {myClubEmptyButLeagueHas && (
-              <button
-                onClick={() => setScope('league')}
-                style={{
-                  marginTop: '0.7rem',
-                  padding: '0.5rem 1rem',
-                  fontSize: '0.78rem',
-                  fontWeight: 700,
-                  borderRadius: '6px',
-                  border: '1px solid #38bdf8',
-                  background: 'rgba(56,189,248,0.12)',
-                  color: '#7dd3fc',
-                  cursor: 'pointer',
-                }}
-              >
+              <button onClick={() => setScope('league')} className={styles.switchBtn}>
                 Switch to League view ({leagueCount}) →
               </button>
             )}
@@ -255,11 +205,10 @@ export function RecordsRatified({
             r => r.is_new_holder === false && !r.milestone_label,
           );
           return (
-          <div style={{ display: 'grid', gap: '0.6rem', marginTop: '0.85rem' }}>
+          <div className={styles.cards}>
             {milestones.map(record => {
               const mine = record.is_my_club === true;
               const delta = record.new_value - record.previous_value;
-              const accent = mine ? '#fbbf24' : '#475569';
               const dethroned = Boolean(
                 record.previous_holder_name && record.previous_holder_name !== record.holder_name,
               );
@@ -269,92 +218,46 @@ export function RecordsRatified({
                   data-broadcast-proof-source={record.proof_source ?? `record:${record.record_type}`}
                   data-my-club={mine ? 'true' : 'false'}
                   data-testid="record-milestone-card"
-                  style={{
-                    padding: '0.75rem 0.9rem',
-                    background: mine
-                      ? 'linear-gradient(90deg, rgba(251,191,36,0.07), rgba(10,18,32,0) 60%)'
-                      : '#0a1220',
-                    border: '1px solid #1e293b',
-                    borderLeft: `3px solid ${accent}`,
-                    borderRadius: '4px',
-                  }}
+                  className={`${styles.card} ${mine ? styles.cardMine : ''}`}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-                    <p className="dm-kicker" style={{ margin: 0, color: accent, fontSize: '0.62rem' }}>
+                  <div className={styles.cardTop}>
+                    <p className={`dm-kicker ${styles.cardType} ${mine ? styles.cardTypeMine : ''}`}>
                       {titleize(record.record_type)}
                     </p>
-                    <span style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}>
+                    <span className={styles.badges}>
                       {dethroned && (
-                        <span
-                          style={{
-                            fontSize: '0.56rem',
-                            fontWeight: 900,
-                            letterSpacing: '0.08em',
-                            textTransform: 'uppercase',
-                            padding: '0.12rem 0.4rem',
-                            borderRadius: '999px',
-                            background: 'rgba(56,189,248,0.14)',
-                            color: '#38bdf8',
-                          }}
-                        >
+                        <span className={`${styles.badge} ${styles.badgeNewHolder}`}>
                           New Holder
                         </span>
                       )}
                       {mine && (
-                        <span
-                          style={{
-                            fontSize: '0.56rem',
-                            fontWeight: 900,
-                            letterSpacing: '0.08em',
-                            textTransform: 'uppercase',
-                            padding: '0.12rem 0.4rem',
-                            borderRadius: '999px',
-                            background: 'rgba(251,191,36,0.16)',
-                            color: '#fbbf24',
-                          }}
-                        >
+                        <span className={`${styles.badge} ${styles.badgeMine}`}>
                           Your Club
                         </span>
                       )}
                     </span>
                   </div>
-                  <p style={{ margin: '0.25rem 0 0.3rem', color: '#f1f5f9', fontWeight: 700 }}>
+                  <p className={styles.holder}>
                     {record.holder_name}
                   </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <span
-                      style={{
-                        fontFamily: 'JetBrains Mono, monospace',
-                        fontSize: '0.8rem',
-                        color: '#cbd5e1',
-                      }}
-                    >
+                  <div className={styles.valueRow}>
+                    <span className={styles.value}>
                       {formatValue(record.previous_value)}{' → '}
-                      <strong style={{ color: '#10b981' }}>{formatValue(record.new_value)}</strong>
+                      <strong className={styles.valueNew}>{formatValue(record.new_value)}</strong>
                     </span>
                     {delta > 0 && (
-                      <span
-                        style={{
-                          fontFamily: 'JetBrains Mono, monospace',
-                          fontSize: '0.68rem',
-                          fontWeight: 800,
-                          padding: '0.08rem 0.4rem',
-                          borderRadius: '999px',
-                          background: 'rgba(16,185,129,0.14)',
-                          color: '#34d399',
-                        }}
-                      >
+                      <span className={styles.deltaChip}>
                         +{formatValue(delta)}
                       </span>
                     )}
                     {dethroned && (
-                      <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                      <span className={styles.dethrone}>
                         takes the record from {record.previous_holder_name}
                       </span>
                     )}
                   </div>
                   {record.detail && (
-                    <p style={{ margin: '0.3rem 0 0', fontSize: '0.76rem', color: '#94a3b8' }}>
+                    <p className={styles.detail}>
                       {record.detail}
                     </p>
                   )}
@@ -364,37 +267,24 @@ export function RecordsRatified({
             })}
 
             {careerMilestones.length > 0 && (
-              <div data-testid="record-career-milestones" style={{ marginTop: milestones.length > 0 ? '0.2rem' : 0 }}>
-                <p
-                  className="dm-kicker"
-                  style={{ margin: '0 0 0.4rem', fontSize: '0.6rem', color: '#fbbf24' }}
-                >
+              <div data-testid="record-career-milestones" className={milestones.length > 0 ? styles.bandGold : undefined}>
+                <p className={`dm-kicker ${styles.bandLabel} ${styles.bandLabelGold}`}>
                   Career milestones
                 </p>
-                <div style={{ display: 'grid', gap: '0.3rem' }}>
+                <div className={styles.bandRows}>
                   {careerMilestones.map(record => (
                     <div
                       key={record.record_id ?? record.record_type}
                       data-testid="record-milestone-row"
                       data-my-club={record.is_my_club === true ? 'true' : 'false'}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'baseline',
-                        gap: '0.6rem',
-                        flexWrap: 'wrap',
-                        padding: '0.45rem 0.7rem',
-                        background: 'rgba(251,191,36,0.07)',
-                        border: '1px solid rgba(251,191,36,0.25)',
-                        borderRadius: '4px',
-                        fontSize: '0.78rem',
-                      }}
+                      className={styles.milestoneRow}
                     >
-                      <span style={{ color: '#fbbf24', fontWeight: 800, fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                      <span className={styles.milestoneTag}>
                         Milestone
                       </span>
-                      <span style={{ color: '#f1f5f9', fontWeight: 700 }}>{record.holder_name}</span>
-                      <span style={{ color: '#cbd5e1' }}>{record.milestone_label?.toLowerCase()}</span>
-                      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.72rem', color: '#94a3b8' }}>
+                      <span className={styles.milestoneName}>{record.holder_name}</span>
+                      <span className={styles.milestoneLabel}>{record.milestone_label?.toLowerCase()}</span>
+                      <span className={styles.milestoneNow}>
                         now {formatValue(record.new_value)}
                       </span>
                     </div>
@@ -404,14 +294,11 @@ export function RecordsRatified({
             )}
 
             {extensions.length > 0 && (
-              <div data-testid="record-extensions" style={{ marginTop: milestones.length > 0 || careerMilestones.length > 0 ? '0.2rem' : 0 }}>
-                <p
-                  className="dm-kicker"
-                  style={{ margin: '0 0 0.4rem', fontSize: '0.6rem', color: '#64748b' }}
-                >
+              <div data-testid="record-extensions" className={milestones.length > 0 || careerMilestones.length > 0 ? styles.bandGold : undefined}>
+                <p className={`dm-kicker ${styles.bandLabel} ${styles.bandLabelMuted}`}>
                   Extended their own records
                 </p>
-                <div style={{ display: 'grid', gap: '0.3rem' }}>
+                <div className={styles.bandRows}>
                   {extensions.map(record => {
                     const mine = record.is_my_club === true;
                     return (
@@ -420,46 +307,18 @@ export function RecordsRatified({
                         data-broadcast-proof-source={record.proof_source ?? `record:${record.record_type}`}
                         data-my-club={mine ? 'true' : 'false'}
                         data-testid="record-extension-row"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'baseline',
-                          gap: '0.6rem',
-                          flexWrap: 'wrap',
-                          padding: '0.4rem 0.7rem',
-                          background: 'rgba(10,18,32,0.6)',
-                          border: '1px solid rgba(30,41,59,0.7)',
-                          borderRadius: '4px',
-                          fontSize: '0.76rem',
-                        }}
+                        className={styles.extensionRow}
                       >
-                        <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{record.holder_name}</span>
-                        <span style={{ color: '#94a3b8' }}>
+                        <span className={styles.extName}>{record.holder_name}</span>
+                        <span className={styles.extDesc}>
                           extends their own {titleize(record.record_type).toLowerCase()} mark
                         </span>
-                        <span
-                          style={{
-                            fontFamily: 'JetBrains Mono, monospace',
-                            fontSize: '0.72rem',
-                            color: '#cbd5e1',
-                            marginLeft: 'auto',
-                          }}
-                        >
+                        <span className={styles.extValue}>
                           {formatValue(record.previous_value)}{' → '}
-                          <strong style={{ color: '#34d399' }}>{formatValue(record.new_value)}</strong>
+                          <strong className={styles.extValueNew}>{formatValue(record.new_value)}</strong>
                         </span>
                         {mine && (
-                          <span
-                            style={{
-                              fontSize: '0.54rem',
-                              fontWeight: 900,
-                              letterSpacing: '0.08em',
-                              textTransform: 'uppercase',
-                              padding: '0.1rem 0.35rem',
-                              borderRadius: '999px',
-                              background: 'rgba(251,191,36,0.16)',
-                              color: '#fbbf24',
-                            }}
-                          >
+                          <span className={styles.extMine}>
                             Your Club
                           </span>
                         )}
@@ -500,7 +359,7 @@ export function HallOfFameInduction({
         {inductees.length === 0 ? (
           <p className="command-offseason-copy">No new inductees this off-season.</p>
         ) : (
-          <div style={{ display: 'grid', gap: '0.75rem', marginTop: '0.5rem' }}>
+          <div className={styles.hofGrid}>
             {inductees.map(inductee => (
               <div
                 key={inductee.player_id ?? inductee.player_name}
