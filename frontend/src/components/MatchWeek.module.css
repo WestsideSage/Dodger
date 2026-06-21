@@ -1,0 +1,152 @@
+/* MatchWeek — Floodlight inline-palette extraction.
+   Color discipline: Volt = live/active (YOUR side, winner, live result);
+   --ok = positive; warm neutrals for everything else. No cyan, no orange,
+   no amber, no raw hex/rgba. Loss accent = --out (dim), NOT red. */
+
+/* ── AftermathBody audience sections ────────────────────────────── */
+
+.bodyStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Base section chrome — shared by all three audience lanes */
+.audienceSection {
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.85rem;
+}
+
+/* YOU lane — Volt (your team = live/primary) */
+.audienceSectionYou {
+  border-left: var(--border-accent) solid var(--volt);
+  background: var(--volt-soft);
+}
+
+/* THEM lane — neutral (opponent = no special role color) */
+.audienceSectionThem {
+  border-left: var(--border-accent) solid var(--line2);
+  background: var(--tint-neutral);
+}
+
+/* RESULT lane — ok (positive outcome confirmation) */
+.audienceSectionResult {
+  border-left: var(--border-accent) solid var(--ok);
+  background: var(--ok-soft);
+}
+
+.audienceKicker {
+  margin: 0 0 0.4rem;
+  font: 900 0.6rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Kicker color per lane */
+.audienceKickerYou    { color: var(--volt); }
+.audienceKickerThem   { color: var(--text2); }
+.audienceKickerResult { color: var(--ok); }
+
+.audienceItems {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.audienceParagraph {
+  margin: 0;
+  color: var(--text2);
+  line-height: 1.5;
+  font-size: 0.82rem;
+  font-family: var(--font-ui);
+}
+
+/* ── Bye-recovery card ───────────────────────────────────────────── */
+
+.byeCard {
+  border: 1px solid var(--line2);
+  border-left: var(--border-accent) solid var(--text2);
+  border-radius: var(--radius-md);
+  background: var(--tint-neutral);
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.25rem;
+}
+
+.byeKicker {
+  margin: 0;
+  color: var(--text2);
+}
+
+.byeHeading {
+  margin: 0.25rem 0 0;
+  color: var(--text);
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-family: var(--font-head);
+}
+
+.byeListLabel {
+  margin: 0.7rem 0 0.4rem;
+  font: 700 0.7rem var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--out);
+}
+
+.byePlayerList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.byePlayerChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line2);
+  background: var(--tint-neutral);
+  color: var(--text2);
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: var(--font-ui);
+}
+
+.byePlayerChipDot {
+  color: var(--muted);
+}
+
+/* ── Verdict block ───────────────────────────────────────────────── */
+
+.verdict {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  font-family: var(--font-disp);
+  font-size: 0.95rem;
+  letter-spacing: 0.3px;
+  color: var(--text);
+  background: var(--court);
+  border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+}
+
+/* Win: Volt accent left-border (live/primary) */
+.verdictWin {
+  border-left: var(--border-accent) solid var(--volt);
+}
+
+/* Loss: dim accent (--out = extinguished/darkness) */
+.verdictLoss {
+  border-left: var(--border-accent) solid var(--out);
+}
+
+/* Draw: neutral */
+.verdictDraw {
+  border-left: var(--border-accent) solid var(--line2);
+}

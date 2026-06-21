@@ -20,6 +20,7 @@ import type { Aftermath, CommandCenterResponse, CommandCenterSimResponse, FastFo
 import { useApiResource } from '../hooks/useApiResource';
 import { StatusMessage } from '../ui';
 import { NAV_RAIL_ATTR } from './shell/appContracts';
+import css from './MatchWeek.module.css';
 
 /**
  * Pure helper: returns true if the click target is inside the nav rail —
@@ -97,14 +98,16 @@ type AftermathParagraph = Aftermath['body'][number];
 // distinct lanes instead of one undifferentiated flat list, so the tactical
 // narrative reads as "your story / their story / the result" (Brief 4.4,
 // criterion #4).
+// Color discipline: YOU = Volt (your team = live/primary); THEM = neutral
+// (no special role); RESULT = --ok (positive confirmation). No raw hex/rgba.
 function AftermathBody({ body }: { body: AftermathParagraph[] }) {
   const groups = [
-    { audience: 'you' as const, label: 'YOUR SIDE', color: '#22d3ee', rgb: '34,211,238' },
-    { audience: 'them' as const, label: 'THEIR SIDE', color: '#f59e0b', rgb: '245,158,11' },
-    { audience: 'result' as const, label: 'THE RESULT', color: '#10b981', rgb: '16,185,129' },
+    { audience: 'you' as const, label: 'YOUR SIDE', sectionClass: css.audienceSectionYou, kickerClass: css.audienceKickerYou },
+    { audience: 'them' as const, label: 'THEIR SIDE', sectionClass: css.audienceSectionThem, kickerClass: css.audienceKickerThem },
+    { audience: 'result' as const, label: 'THE RESULT', sectionClass: css.audienceSectionResult, kickerClass: css.audienceKickerResult },
   ];
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginBottom: '1.5rem' }}>
+    <div className={css.bodyStack}>
       {groups.map((group) => {
         const items = body.filter((p) => p.audience === group.audience);
         if (items.length === 0) return null;
@@ -112,38 +115,17 @@ function AftermathBody({ body }: { body: AftermathParagraph[] }) {
           <section
             key={group.audience}
             aria-label={group.label}
-            style={{
-              borderLeft: `3px solid ${group.color}`,
-              background: `linear-gradient(90deg, rgba(${group.rgb},0.06), rgba(8,16,31,0) 70%)`,
-              border: '1px solid #1e293b',
-              borderLeftWidth: '3px',
-              borderRadius: '6px',
-              padding: '0.6rem 0.85rem',
-            }}
+            className={`${css.audienceSection} ${group.sectionClass}`}
           >
-            <p
-              style={{
-                margin: '0 0 0.4rem',
-                fontSize: '0.6rem',
-                fontFamily: 'var(--font-mono-data)',
-                fontWeight: 900,
-                letterSpacing: '0.1em',
-                color: group.color,
-              }}
-            >
+            <p className={`${css.audienceKicker} ${group.kickerClass}`}>
               {group.label}
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+            <div className={css.audienceItems}>
               {items.map((paragraph, index) => (
                 <p
                   key={`${group.audience}-${index}-${paragraph.text.slice(0, 12)}`}
                   data-testid="aftermath-body-paragraph"
-                  style={{
-                    margin: 0,
-                    color: '#cbd5e1',
-                    lineHeight: 1.5,
-                    fontSize: '0.82rem',
-                  }}
+                  className={css.audienceParagraph}
                 >
                   {paragraph.text}
                 </p>
@@ -468,42 +450,21 @@ export function MatchWeek({
           <div className="command-reveal">
             <section
               aria-labelledby="bye-recovery-heading"
-              style={{
-                border: '1px solid #1e293b',
-                borderLeft: '3px solid #22d3ee',
-                borderRadius: '8px',
-                background: 'linear-gradient(90deg, rgba(34,211,238,0.06), rgba(8,16,31,0) 60%)',
-                padding: '1rem 1.1rem',
-                marginBottom: '1.25rem',
-              }}
+              className={css.byeCard}
             >
-              <p className="dm-kicker" style={{ margin: 0, color: '#22d3ee' }}>Bye Week</p>
-              <h3 id="bye-recovery-heading" style={{ margin: '0.25rem 0 0', color: '#f1f5f9', fontSize: '1.15rem', fontWeight: 800 }}>
+              <p className={`dm-kicker ${css.byeKicker}`}>Bye Week</p>
+              <h3 id="bye-recovery-heading" className={css.byeHeading}>
                 {aftermath.bye_recovery.summary}
               </h3>
               {aftermath.bye_recovery.players.length > 0 && (
                 <>
-                  <p style={{ margin: '0.7rem 0 0.4rem', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#64748b' }}>
+                  <p className={css.byeListLabel}>
                     Recovered this week
                   </p>
-                  <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                  <ul className={css.byePlayerList}>
                     {aftermath.bye_recovery.players.map((name) => (
-                      <li
-                        key={name}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.35rem',
-                          padding: '0.3rem 0.6rem',
-                          borderRadius: '999px',
-                          border: '1px solid rgba(34,211,238,0.35)',
-                          background: 'rgba(34,211,238,0.08)',
-                          color: '#cbd5e1',
-                          fontSize: '0.78rem',
-                          fontWeight: 600,
-                        }}
-                      >
-                        <span aria-hidden="true" style={{ color: '#22d3ee' }}>✦</span>
+                      <li key={name} className={css.byePlayerChip}>
+                        <span aria-hidden="true" className={css.byePlayerChipDot}>✦</span>
                         {name}
                       </li>
                     ))}
@@ -531,28 +492,19 @@ export function MatchWeek({
             />
             {/* The verdict is a fallback explanation only — when primary_factor
                 is present it is the canonical "why", so the verdict is not
-                rendered at full weight alongside it (Brief 4.4, criterion #6). */}
+                rendered at full weight alongside it (Brief 4.4, criterion #6).
+                Color discipline: Win = Volt (live/primary); Loss = --out
+                (dim/extinguished, NOT red); Draw = neutral (--line2). */}
             {!aftermath.primary_factor && aftermath.verdict && (
               <p
                 data-testid="match-verdict"
-                style={{
-                  margin: '12px 0 0',
-                  padding: '10px 14px',
-                  fontFamily: 'Oswald, sans-serif',
-                  fontSize: '0.95rem',
-                  letterSpacing: '0.3px',
-                  color: '#e2e8f0',
-                  background: '#0f172a',
-                  border: '1px solid #1e293b',
-                  borderLeft: `3px solid ${
-                    activeResult.dashboard.result === 'Win'
-                      ? '#10b981'
-                      : activeResult.dashboard.result === 'Loss'
-                        ? '#f43f5e'
-                        : '#64748b'
-                  }`,
-                  borderRadius: '4px',
-                }}
+                className={`${css.verdict} ${
+                  activeResult.dashboard.result === 'Win'
+                    ? css.verdictWin
+                    : activeResult.dashboard.result === 'Loss'
+                      ? css.verdictLoss
+                      : css.verdictDraw
+                }`}
               >
                 {aftermath.verdict}
               </p>
