@@ -1,0 +1,91 @@
+/* LiveCourtCanvas — net-new Floodlight live match canvas. Players are lit
+   tokens (Volt = home, warm-neutral = away); extinguished players dim out;
+   throws draw an animated arc. Colors come ONLY from tokens (fills/strokes
+   are set here, never inline hex in the SVG). */
+
+.court {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: var(--court);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.noData {
+  padding: var(--space-7);
+  text-align: center;
+  color: var(--muted);
+  font: 500 0.85rem var(--font-ui);
+  background: var(--raise);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+/* court markings */
+.midline {
+  stroke: var(--line2);
+}
+.centerCircle {
+  fill: none;
+  stroke: var(--line2);
+}
+.zoneLabel {
+  fill: var(--out);
+  font-family: var(--font-mono);
+}
+
+/* player tokens */
+.token {
+  fill: var(--court);
+  stroke-width: 2;
+}
+.tokenHome {
+  stroke: var(--volt);
+}
+.tokenAway {
+  stroke: var(--text2);
+}
+.tokenNum {
+  fill: var(--text);
+  font-family: var(--font-disp);
+}
+.tokenLabel {
+  font-family: var(--font-mono);
+}
+.tokenLabelHome {
+  fill: var(--volt2);
+}
+.tokenLabelAway {
+  fill: var(--muted);
+}
+.extinguished {
+  opacity: 0.35;
+}
+.extinctMark {
+  stroke-width: 2;
+}
+.extinctMarkHome {
+  stroke: var(--volt);
+}
+.extinctMarkAway {
+  stroke: var(--text2);
+}
+
+/* throw arc */
+.arc {
+  fill: none;
+  stroke: var(--volt2);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+.arcCatch {
+  stroke: var(--ok);
+}
+.outcomeLabel {
+  font-family: var(--font-disp);
+  fill: var(--volt2);
+}
+.outcomeLabelCatch {
+  fill: var(--ok);
+}
