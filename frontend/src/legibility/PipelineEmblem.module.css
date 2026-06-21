@@ -1,0 +1,46 @@
+.emblem {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--court);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.sm {
+  width: 1.1rem;
+  height: 1.1rem;
+  font-size: 0.6rem;
+}
+
+.md {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.75rem;
+}
+
+.t5 {
+  background: var(--volt);
+  box-shadow: 0 0 0 var(--ring-w) var(--volt-soft);
+}
+
+.t4 {
+  background: var(--ok);
+  box-shadow: 0 0 0 var(--ring-w) var(--ok-soft);
+}
+
+.t3 {
+  background: var(--gold);
+  box-shadow: 0 0 0 var(--ring-w) var(--gold-soft);
+}
+
+.t2 {
+  background: var(--text2);
+  box-shadow: 0 0 0 var(--ring-w) var(--line2);
+}
+
+.t1 {
+  background: var(--out);
+  box-shadow: 0 0 0 var(--ring-w) var(--line);
+}

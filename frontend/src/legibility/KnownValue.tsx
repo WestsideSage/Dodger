@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import styles from './KnownValue.module.css';
 
 export type Knowledge = 'known' | 'estimated' | 'hidden';
 
@@ -13,20 +14,15 @@ export function KnownValue({
   value?: ReactNode;
   hint?: string;
 }) {
-  const border = state === 'known' ? '1px solid #334155' : state === 'estimated' ? '1px dashed #f59e0b' : '1px dashed #475569';
   return (
     <span
       role="group"
       aria-label={`${label}: ${state === 'hidden' ? 'unknown, scout to reveal' : state}`}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', border, borderRadius: '4px', padding: '0.1rem 0.4rem' }}
+      className={`${styles.box} ${styles[state]}`}
     >
-      <span style={{ fontSize: '0.55rem', letterSpacing: '0.05em', color: '#94a3b8', textTransform: 'uppercase' }}>{label}</span>
-      <span style={{ fontVariantNumeric: 'tabular-nums', color: state === 'hidden' ? '#64748b' : '#e2e8f0', fontWeight: 700 }}>
-        {state === 'hidden' ? '🔒' : value ?? '—'}
-      </span>
-      {hint && state !== 'known' && (
-        <span style={{ fontSize: '0.55rem', color: '#f59e0b' }}>{hint}</span>
-      )}
+      <span className={styles.label}>{label}</span>
+      <span className={styles.value}>{state === 'hidden' ? '🔒' : value ?? '—'}</span>
+      {hint && state !== 'known' && <span className={styles.hint}>{hint}</span>}
     </span>
   );
 }

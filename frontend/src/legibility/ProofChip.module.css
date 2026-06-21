@@ -1,0 +1,20 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--volt-soft);
+  border: 1px solid var(--line2);
+  color: var(--volt2);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  font: 700 0.62rem var(--font-ui);
+  cursor: pointer;
+}
+
+.note {
+  display: block;
+  width: min(15rem, 70vw);
+  color: var(--text2);
+  font: 400 0.66rem var(--font-ui);
+  line-height: 1.4;
+}

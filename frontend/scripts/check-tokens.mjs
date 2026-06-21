@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, extname } from 'node:path';
 
-const SCAN_DIRS = ['src/ui', 'src/styles', 'src/components/shell'];
+const SCAN_DIRS = ['src/ui', 'src/styles', 'src/components/shell', 'src/legibility'];
 // SCAN_FILES may contain explicit files (scanned as-is) that live outside SCAN_DIRS.
 const SCAN_FILES = ['src/App.module.css', 'src/components/SaveMenu.module.css'];
 const HEX = /#[0-9a-fA-F]{3,8}\b/;

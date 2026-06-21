@@ -1,0 +1,61 @@
+.trigger {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: help;
+  border-bottom: 1px dotted var(--muted);
+}
+
+.body {
+  display: block;
+  width: min(16rem, 70vw);
+  text-align: left;
+  white-space: normal;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.label {
+  color: var(--text);
+  font: 700 0.72rem var(--font-head);
+}
+
+.kind {
+  font: 800 0.5rem var(--font-ui);
+  letter-spacing: 0.05em;
+  padding: 1px var(--space-3);
+  border-radius: var(--radius-sm);
+}
+
+.kindMechanical {
+  color: var(--court);
+  background: var(--volt2);
+}
+
+.kindFlavor {
+  color: var(--court);
+  background: var(--gold2);
+}
+
+.plain {
+  display: block;
+  color: var(--text2);
+  font: 400 0.66rem var(--font-ui);
+  line-height: 1.4;
+}
+
+.why {
+  display: block;
+  color: var(--muted);
+  font: 400 0.62rem var(--font-ui);
+  line-height: 1.4;
+  margin-top: var(--space-2);
+}
