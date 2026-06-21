@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type {
   CoachPolicy,
   CommandCenterResponse,
@@ -7,9 +7,10 @@ import type {
   WeekBriefing,
 } from '../../../types';
 import { BroadcastFrameBlock } from '../../BroadcastFrameBlock';
-import { Dialog } from '../../ui';
+import { Modal, Truncate } from '../../../ui';
 import { PolicyEditor } from './PolicyEditor';
 import { seasonTitle, stakesLine, playerToWatch } from './presimNarrative';
+import styles from './PreSimDashboard.module.css';
 
 const approaches = [
   { id: 'Balanced', label: 'Balanced', desc: 'Even focus on offense and defense.' },
@@ -76,32 +77,32 @@ function MiniCourt({
   const [arrowSx, arrowSy] = HOME_POS[5];
 
   return (
-    <svg className="cc-court-svg" viewBox="0 0 360 180" xmlns="http://www.w3.org/2000/svg">
+    <svg className={styles.courtSvg} viewBox="0 0 360 180" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <pattern id="cc-grid" width="12" height="12" patternUnits="userSpaceOnUse">
-          <path d="M 12 0 L 0 0 0 12" fill="none" stroke="rgba(34,211,238,0.07)" strokeWidth="0.5" />
+          <path className={styles.svgGridPath} d="M 12 0 L 0 0 0 12" strokeWidth="0.5" />
         </pattern>
         <linearGradient id="cc-weak" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="rgba(249,115,22,0.18)" />
-          <stop offset="100%" stopColor="rgba(249,115,22,0.04)" />
+          <stop className={styles.svgWeakStopTop} offset="0%" />
+          <stop className={styles.svgWeakStopBottom} offset="100%" />
         </linearGradient>
       </defs>
-      <rect x="6" y="6" width="348" height="168" fill="#020617" stroke="#1e293b" strokeWidth="1" rx="3" />
+      <rect className={styles.svgFrame} x="6" y="6" width="348" height="168" strokeWidth="1" rx="3" />
       <rect x="6" y="6" width="348" height="168" fill="url(#cc-grid)" rx="3" />
       {threatIdx >= 0 && <rect x="200" y="6" width="84" height="168" fill="url(#cc-weak)" />}
-      <line x1="180" y1="10" x2="180" y2="170" stroke="#334155" strokeWidth="1" strokeDasharray="3 4" />
-      <text x="14" y="20" fontFamily="JetBrains Mono, monospace" fontSize="7" letterSpacing="2" fill="#475569">HOME</text>
-      <text x="318" y="20" fontFamily="JetBrains Mono, monospace" fontSize="7" letterSpacing="2" fill="#475569">AWAY</text>
-      {threatIdx >= 0 && <text x="206" y="170" fontFamily="JetBrains Mono, monospace" fontSize="7" letterSpacing="2" fill="#f97316" opacity="0.85">KEY THREAT</text>}
+      <line className={styles.svgMidline} x1="180" y1="10" x2="180" y2="170" strokeWidth="1" strokeDasharray="3 4" />
+      <text className={styles.svgZoneLabel} x="14" y="20" fontSize="7" letterSpacing="2">HOME</text>
+      <text className={styles.svgZoneLabel} x="318" y="20" fontSize="7" letterSpacing="2">AWAY</text>
+      {threatIdx >= 0 && <text className={styles.svgThreatLabel} x="206" y="170" fontSize="7" letterSpacing="2" opacity="0.85">KEY THREAT</text>}
 
       {HOME_POS.map(([cx, cy], i) => {
         const player = homePlayers[i];
         return (
           <g key={`h${i}`}>
-            <circle cx={cx} cy={cy} r="8" fill="#0f172a" stroke="#f43f5e" strokeWidth="1.4" />
-            <circle cx={cx} cy={cy} r="2.2" fill="#f43f5e" />
+            <circle className={styles.svgHomeRing} cx={cx} cy={cy} r="8" strokeWidth="1.4" />
+            <circle className={styles.svgHomeDot} cx={cx} cy={cy} r="2.2" />
             {player && (
-              <text x={cx} y={cy - 12} textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="5.5" fill="#94a3b8">
+              <text className={styles.svgName} x={cx} y={cy - 12} textAnchor="middle" fontSize="5.5">
                 {playerAbbrev(player.name)}
               </text>
             )}
@@ -114,11 +115,14 @@ function MiniCourt({
         const isHighlighted = i === threatIdx;
         return (
           <g key={`a${i}`}>
-            <circle cx={cx} cy={cy} r="8" fill="#0f172a" stroke={isHighlighted ? '#fb7185' : '#3b82f6'} strokeWidth={isHighlighted ? '2' : '1.4'} />
-            <circle cx={cx} cy={cy} r="2.2" fill={isHighlighted ? '#fb7185' : '#3b82f6'} />
-            {isHighlighted && <circle cx={cx} cy={cy} r="14" fill="none" stroke="#fb7185" strokeWidth="1" strokeDasharray="2 3" opacity="0.7" />}
+            <circle
+              className={isHighlighted ? styles.svgAwayRingHot : styles.svgAwayRing}
+              cx={cx} cy={cy} r="8" strokeWidth={isHighlighted ? '2' : '1.4'}
+            />
+            <circle className={isHighlighted ? styles.svgAwayDotHot : styles.svgAwayDot} cx={cx} cy={cy} r="2.2" />
+            {isHighlighted && <circle className={styles.svgHotHalo} cx={cx} cy={cy} r="14" strokeWidth="1" strokeDasharray="2 3" opacity="0.7" />}
             {player && (
-              <text x={cx} y={cy - 12} textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="5.5" fill={isHighlighted ? '#fb7185' : '#94a3b8'}>
+              <text className={isHighlighted ? styles.svgNameHot : styles.svgName} x={cx} y={cy - 12} textAnchor="middle" fontSize="5.5">
                 {playerAbbrev(player.name)}
               </text>
             )}
@@ -129,10 +133,11 @@ function MiniCourt({
       {threatIdx >= 0 && (
         <>
           <path
+            className={styles.svgArc}
             d={`M ${arrowSx} ${arrowSy} Q ${(arrowSx + arrowTx) / 2} ${Math.min(arrowSy, arrowTy) - 20} ${arrowTx} ${arrowTy}`}
-            fill="none" stroke="#f97316" strokeWidth="1.4" strokeDasharray="3 4" opacity="0.9"
+            strokeWidth="1.4" strokeDasharray="3 4" opacity="0.9"
           />
-          <circle cx={arrowSx} cy={arrowSy} r="3" fill="#f97316" />
+          <circle className={styles.svgArcDot} cx={arrowSx} cy={arrowSy} r="3" />
         </>
       )}
     </svg>
@@ -162,8 +167,8 @@ const STOP_POINT_OPTIONS: { id: FastForwardStopPoint; label: string; desc: strin
  * enumerates what will be auto-decided (the weekly decision loop is skipped and
  * each skipped week reuses your persisted plan and the canonical best-six
  * lineup) and (b) lets the player choose a stop point aligned to a real
- * decision boundary. Focus-trapped, Escape-dismissable, focus-restoring — a
- * self-contained accessible dialog until Phase 6 introduces shared primitives.
+ * decision boundary. Focus-trap/restore + Escape come from the shared Modal
+ * primitive; the keep the shared command-policy-overlay globals on the shell.
  */
 function FastForwardDialog({
   onConfirm,
@@ -175,63 +180,21 @@ function FastForwardDialog({
   saving: boolean;
 }) {
   const [stopPoint, setStopPoint] = useState<FastForwardStopPoint>('pre_playoffs');
-  const dialogRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
-  const previouslyFocused = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    previouslyFocused.current = document.activeElement as HTMLElement | null;
-    // Move focus into the dialog on open.
-    confirmRef.current?.focus();
-    return () => {
-      // Restore focus to the trigger when the dialog closes.
-      previouslyFocused.current?.focus?.();
-    };
-  }, []);
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') {
-      event.stopPropagation();
-      onCancel();
-      return;
-    }
-    if (event.key !== 'Tab') return;
-    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    );
-    if (!focusable || focusable.length === 0) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    const active = document.activeElement;
-    if (event.shiftKey && active === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && active === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
 
   return (
-    <div
+    <Modal
+      onClose={onCancel}
+      labelledBy="fast-forward-title"
+      describedBy="fast-forward-desc"
+      initialFocusRef={confirmRef}
       className="command-policy-overlay"
-      role="presentation"
-      onClick={onCancel}
+      panelClassName="command-policy-overlay-body"
       data-testid="fast-forward-overlay"
     >
-      <div
-        ref={dialogRef}
-        className="command-policy-overlay-body"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="fast-forward-title"
-        aria-describedby="fast-forward-desc"
-        data-testid="fast-forward-dialog"
-        onClick={event => event.stopPropagation()}
-        onKeyDown={handleKeyDown}
-      >
-        <h2 id="fast-forward-title" style={{ marginTop: 0 }}>Fast-forward the season?</h2>
-        <p id="fast-forward-desc" style={{ color: 'var(--dm-text-secondary)', fontSize: '0.85rem', lineHeight: 1.5 }}>
+      <div data-testid="fast-forward-dialog">
+        <h2 id="fast-forward-title" className={styles.ffTitle}>Fast-forward the season?</h2>
+        <p id="fast-forward-desc" className={styles.ffDesc}>
           Fast-forward skips the weekly decision loop. For every week you skip, the
           game auto-decides using <b>your last saved weekly plan</b> (intent,
           tactics, and department orders) and fields the <b>canonical best-six
@@ -239,9 +202,9 @@ function FastForwardDialog({
           skipped weeks.
         </p>
 
-        <fieldset style={{ border: 'none', padding: 0, margin: '0.5rem 0' }}>
-          <legend className="lbl" style={{ fontSize: '0.7rem', marginBottom: '0.35rem' }}>Stop point</legend>
-          <div role="radiogroup" aria-label="Fast-forward stop point" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+        <fieldset className={styles.ffFieldset}>
+          <legend className={styles.ffLegend}>Stop point</legend>
+          <div role="radiogroup" aria-label="Fast-forward stop point" className={styles.ffOptions}>
             {STOP_POINT_OPTIONS.map(option => (
               <label
                 key={option.id}
@@ -252,16 +215,7 @@ function FastForwardDialog({
                 // default stop point). Redundant with the radio's onChange —
                 // both set the same value.
                 onClick={() => setStopPoint(option.id)}
-                style={{
-                  display: 'flex',
-                  gap: '0.5rem',
-                  alignItems: 'flex-start',
-                  padding: '0.5rem 0.6rem',
-                  border: `1px solid ${stopPoint === option.id ? 'var(--dm-cyan)' : 'rgba(30,41,59,0.9)'}`,
-                  borderRadius: '5px',
-                  background: stopPoint === option.id ? 'rgba(34,211,238,0.06)' : 'rgba(15,23,42,0.6)',
-                  cursor: 'pointer',
-                }}
+                className={`${styles.ffOption}${stopPoint === option.id ? ` ${styles.selected}` : ''}`}
               >
                 <input
                   type="radio"
@@ -269,21 +223,20 @@ function FastForwardDialog({
                   value={option.id}
                   checked={stopPoint === option.id}
                   onChange={() => setStopPoint(option.id)}
-                  style={{ marginTop: '0.2rem' }}
                 />
-                <span style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                  <span style={{ fontWeight: 600, color: '#e2e8f0', fontSize: '0.82rem' }}>{option.label}</span>
-                  <span style={{ fontSize: '0.72rem', color: '#94a3b8', lineHeight: 1.4 }}>{option.desc}</span>
+                <span className={styles.ffOptionText}>
+                  <span className={styles.ffOptionLabel}>{option.label}</span>
+                  <span className={styles.ffOptionDesc}>{option.desc}</span>
                 </span>
               </label>
             ))}
           </div>
         </fieldset>
 
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
+        <div className={styles.ffActions}>
           <button
             type="button"
-            className="command-secondary-button"
+            className={styles.secondaryBtn}
             onClick={onCancel}
             disabled={saving}
             data-testid="fast-forward-cancel"
@@ -293,17 +246,17 @@ function FastForwardDialog({
           <button
             type="button"
             ref={confirmRef}
-            className="cc-btn-sim"
+            className={styles.btnSim}
             onClick={() => onConfirm(stopPoint)}
             disabled={saving}
             data-testid="fast-forward-confirm"
           >
             <span>{saving ? 'Processing...' : 'Fast-forward'}</span>
-            <span className="arrow">▸</span>
+            <span className={styles.arrow}>▸</span>
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -517,13 +470,13 @@ export function PreSimDashboard({
   const operationalMisaligned = hasPlanConflict || operationalPending > 0;
 
   return (
-    <div className="max-content" data-testid="weekly-command-center">
+    <div className={styles.root} data-testid="weekly-command-center">
 
       {/* League Wire — the broadcast ticker opens the page like a network
           rundown. It scrolls only when there is actual news; a quiet league
           gets one honest static line. */}
       <div
-        className={`cc-proof cc-wire cc-wire-top${wireItems.length > 0 ? ' has-news' : ''}`}
+        className={`${styles.wire}${wireItems.length > 0 ? ` ${styles.hasNews} has-news` : ''}`}
         data-testid="secondary-intel-rail"
       >
         <span className="tag">
@@ -567,14 +520,14 @@ export function PreSimDashboard({
       {/* Identity strip — four facts of standing context. Intent and lock
           status live in the decision rail where they are actually set, not
           here as read-only echoes. */}
-      <div className="cc-id-strip cc-id-strip-4" data-testid="presim-command-strip" aria-label="Week context">
+      <div className={styles.idStrip} data-testid="presim-command-strip" aria-label="Week context">
         <div>
           <span className="lbl">Program</span>
-          <span className="val" title={data.player_club_name}>{data.player_club_name}</span>
+          <Truncate className="val" title={data.player_club_name}>{data.player_club_name}</Truncate>
         </div>
         <div>
           <span className="lbl">Season</span>
-          <span className="val" style={{ fontSize: '0.8rem' }}>{seasonName}</span>
+          <span className="val season">{seasonName}</span>
         </div>
         <div>
           <span className="lbl">Week</span>
@@ -594,7 +547,7 @@ export function PreSimDashboard({
           once everything is green it hands off to the Sim Lock dock. */}
       {!isBye && (
         <div
-          className={`cc-objective${planConfirmed ? ' is-live' : isReadyToLock ? ' is-ready' : ''}`}
+          className={`${styles.objective}${planConfirmed ? ` ${styles.isLive}` : isReadyToLock ? ` ${styles.isReady}` : ''}`}
           data-testid="current-objective"
           role="status"
         >
@@ -651,22 +604,22 @@ export function PreSimDashboard({
       )}
 
       {/* Hero */}
-      <section className={`cc-hero${isBye ? ' is-bye' : ''}`}>
-        <div className="cc-hero-left">
-          <div className="cc-hero-kick">
-            <span className="live-pip" />
+      <section className={`${styles.hero}${isBye ? ` ${styles.isBye}` : ''}`}>
+        <div className={styles.heroLeft}>
+          <div className="heroKick">
+            <span className="livePip" />
             <span>Match Week</span>
             <span className="sep" />
             <span>Week {wk}</span>
             <span className="sep" />
             {isBye ? (
-              <span style={{ color: '#67e8f9' }}>Bye Week</span>
+              <span className="bye">Bye Week</span>
             ) : (
               <span>{match_context.is_home ? 'Home' : 'Away'}</span>
             )}
           </div>
 
-          <h2 className="cc-hero-headline">
+          <h2 className={styles.heroHeadline}>
             {isBye ? (
               <span className="opp">Bye Week</span>
             ) : (
@@ -681,7 +634,7 @@ export function PreSimDashboard({
               read — it sits with the headline, not buried in a stat row. */}
           {!isBye && (
             <div
-              className="cc-hero-band"
+              className={styles.heroBand}
               data-testid="matchup-band"
               data-standing={edge.standing}
               title="Banded from your fielded six vs theirs. Advisory only — it never implies a mechanical edge."
@@ -691,7 +644,7 @@ export function PreSimDashboard({
             </div>
           )}
 
-          <div className="cc-hero-frame">
+          <div className={styles.heroFrame}>
             {isBye ? (
               <div className="line"><b>This Week</b>{' '}No match — rest, recover, and plan ahead.</div>
             ) : (
@@ -712,7 +665,7 @@ export function PreSimDashboard({
           {/* Single source for these three facts — they no longer repeat in
               the Opponent File below. */}
           {!isBye && (
-            <div className="cc-hero-stats cc-hero-stats-3">
+            <div className={styles.heroStats}>
               <div>
                 <span className="lbl">Rank</span>
                 <span className="val">{leagueRank ? `#${leagueRank}` : 'n/a'}</span>
@@ -723,15 +676,15 @@ export function PreSimDashboard({
               </div>
               <div>
                 <span className="lbl">Last Meeting</span>
-                <span className="val" style={{ fontSize: '0.78rem', textTransform: 'none', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{details.last_meeting}</span>
+                <span className="val valMeeting">{details.last_meeting}</span>
               </div>
             </div>
           )}
         </div>
 
         {!isBye && (
-          <div className="cc-hero-right">
-            <div className="cc-court-card">
+          <div className={styles.heroRight}>
+            <div className={styles.courtCard}>
               <div className="head">
                 <span className="lbl">Court Read</span>
                 <span
@@ -744,9 +697,9 @@ export function PreSimDashboard({
               <MiniCourt homePlayers={activePlayers} awayPlayers={opponentPlayers} threatName={threatName} />
             </div>
 
-            <div className={`cc-threat-card-kit command-threat-row${ovrGap !== null && ovrGap > 0 ? ' is-disadvantage' : ''}`}>
+            <div className={styles.threatCard}>
               <span className="lbl">Key Threat</span>
-              <div className="name">{threatName || plan.opponent.name}</div>
+              <Truncate className="name" as="div">{threatName || plan.opponent.name}</Truncate>
               <div className="row">
                 <span><b>{threatArchetype ?? 'Anchor'}</b></span>
                 {threatOvr !== null && <span className="ovr">{threatOvr} OVR</span>}
@@ -757,11 +710,11 @@ export function PreSimDashboard({
       </section>
 
       {/* Body grid — Plan / Scout / Lock */}
-      <div className="cc-body">
+      <div className={styles.body}>
 
         {/* Plan panel */}
-        <div className="cc-panel" data-testid="plan-editor-panel">
-          <div className="cc-panel-head">
+        <div className={styles.panel} data-testid="plan-editor-panel">
+          <div className={styles.panelHead}>
             <span className="kicker">Operational Plan</span>
             <h2>{currentApproach}</h2>
             <p>
@@ -772,10 +725,10 @@ export function PreSimDashboard({
                 : 'Keep the plan balanced across pressure, catches, and tempo.'}
             </p>
           </div>
-          <div className="cc-panel-body">
+          <div className={styles.panelBody}>
             {/* One verdict line. The staff's reasoning lives in the Opponent
                 File's Counter Read — not repeated here. */}
-            <div className={`cc-align-callout${operationalMisaligned ? ' is-warning' : ''}`} data-testid="plan-readout">
+            <div className={`${styles.alignCallout}${operationalMisaligned ? ` ${styles.isWarning} is-warning` : ''}`} data-testid="plan-readout">
               <div className="copy">
                 <b>
                   {operationalPending > 0
@@ -792,12 +745,12 @@ export function PreSimDashboard({
                   ? 'Bye week.'
                   : 'All orders set for this matchup.'}
               </div>
-              <span className={`cc-pill${operationalMisaligned ? ' amber' : ' emer'}`}>
+              <span className={`${styles.pill} ${operationalMisaligned ? styles.pillWarn : styles.pillOk}`}>
                 {operationalMisaligned ? 'Misaligned' : 'Aligned'}
               </span>
             </div>
 
-            <div className="cc-policy">
+            <div className={styles.policy}>
               {deptOrders.map((o, i) => {
                 const opensEditor = o.clickable && !planConfirmed;
                 // Tactics cells are real buttons (keyboard path into the
@@ -808,7 +761,7 @@ export function PreSimDashboard({
                     <button
                       key={i}
                       type="button"
-                      className={`cc-policy-cell is-button ${o.state}`}
+                      className={`${styles.policyCell} ${styles.policyCellButton} ${styles[o.state]}`}
                       onClick={() => setPolicyEditorOpen(true)}
                       aria-label={`${o.dept}: ${o.title} — edit the game plan`}
                       data-testid={o.dept === 'Tactical Approach' ? 'open-policy-editor' : undefined}
@@ -820,7 +773,7 @@ export function PreSimDashboard({
                   );
                 }
                 return (
-                  <div key={i} className={`cc-policy-cell is-static ${o.state}`}>
+                  <div key={i} className={`${styles.policyCell} ${styles[o.state]}`}>
                     <span className="lbl">{o.dept}</span>
                     {o.isDevFocus && !planConfirmed ? (
                       <select
@@ -846,7 +799,7 @@ export function PreSimDashboard({
             {/* Match-day staff are YOUR operation — they live on the plan
                 desk, not in the opponent's file. */}
             {details.staff_impact && details.staff_impact.length > 0 && (
-              <div data-testid="staff-impact" className="cc-staff-strip">
+              <div data-testid="staff-impact" className={styles.staffStrip}>
                 <span className="lbl">Match-Day Staff</span>
                 <div className="rows">
                   {details.staff_impact.map((staff) => (
@@ -857,7 +810,7 @@ export function PreSimDashboard({
                       className="row"
                     >
                       <span className="dept">{staff.department}</span>
-                      <span className="who">{staff.name} ({Math.round(staff.rating_primary)})</span>
+                      <Truncate className="who">{staff.name} ({Math.round(staff.rating_primary)})</Truncate>
                       <span className="effect">{staff.effect}</span>
                     </div>
                   ))}
@@ -865,7 +818,7 @@ export function PreSimDashboard({
               </div>
             )}
 
-            <div className="cc-plan-foot">
+            <div className={styles.planFoot}>
               <span className="note">{deptOrders.length} orders · {operationalPending} pending</span>
               {!planConfirmed && (
                 <span className="note">Click a tactics cell to edit</span>
@@ -875,19 +828,19 @@ export function PreSimDashboard({
         </div>
 
         {/* Scout panel */}
-        <div className="cc-panel" id="command-opponent-file" data-testid="scout-read-panel" tabIndex={-1}>
-          <div className="cc-panel-head">
+        <div className={styles.panel} id="command-opponent-file" data-testid="scout-read-panel" tabIndex={-1}>
+          <div className={styles.panelHead}>
             <span className="kicker">Opponent File</span>
             {/* The hero owns the cinematic matchup name — this desk owns the
                 tactical read, so its title says what it does. */}
             <h2>{isBye ? 'Bye Week' : 'Scouting Report'}</h2>
             <p>{isBye ? 'No opponent this week.' : (scoutGapRead || details.framing_line)}</p>
           </div>
-          <div className="cc-panel-body">
+          <div className={styles.panelBody}>
             {!isBye && (
               <>
                 <div
-                  className={`cc-scout-edge${hasPlanConflict ? ' is-warning' : ''}`}
+                  className={`${styles.scoutEdge}${hasPlanConflict ? ` ${styles.isWarning}` : ''}`}
                   data-testid="counter-read"
                 >
                   <div className="row">
@@ -902,14 +855,14 @@ export function PreSimDashboard({
                   const revealedCount = diffRows.filter(row => row.opponent_known).length;
                   const allRevealed = revealedCount === diffRows.length && diffRows.length > 0;
                   return (
-                  <div data-testid="tactical-diff" data-scouted={details.tactical_diff.scouted ? 'true' : 'false'} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <div data-testid="tactical-diff" data-scouted={details.tactical_diff.scouted ? 'true' : 'false'} className={styles.diff}>
+                    <div className={styles.diffHead}>
                       <span className="lbl">Tactical Diff — Your Plan vs Their Tendencies</span>
-                      <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'baseline' }}>
+                      <span className={styles.diffMeterWrap}>
                         {/* The intel meter makes scouting's payoff explicit:
                             a locked layer with a fill state, not absent data. */}
                         <span
-                          className={`cc-intel-meter${allRevealed ? ' is-open' : revealedCount > 0 ? ' is-partial' : ''}`}
+                          className={`${styles.intelMeter}${allRevealed ? ` ${styles.isOpen}` : revealedCount > 0 ? ` ${styles.isPartial}` : ''}`}
                           data-testid="tactical-diff-intel-meter"
                           title={
                             /* Codex issue 3: when the reads came from the
@@ -933,10 +886,7 @@ export function PreSimDashboard({
                             a contradiction. When no reads exist, say what
                             actually happened instead. */}
                         {details.tactical_diff.intel_revealed && revealedCount > 0 && (
-                          <span
-                            data-testid="tactical-diff-revealed"
-                            style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#34d399', border: '1px solid rgba(52,211,153,0.4)', borderRadius: '3px', padding: '0.05rem 0.35rem' }}
-                          >
+                          <span data-testid="tactical-diff-revealed" className={styles.diffRevealed}>
                             New intel revealed
                           </span>
                         )}
@@ -944,43 +894,33 @@ export function PreSimDashboard({
                           <span
                             data-testid="tactical-diff-revealed"
                             title="Scouting logged the pre-tape file. Tendency reads appear once this opponent has match tape to study."
-                            style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', border: '1px solid rgba(100,116,139,0.4)', borderRadius: '3px', padding: '0.05rem 0.35rem' }}
+                            className={styles.diffRevealedDim}
                           >
                             Scouted · no tape yet
                           </span>
                         )}
                       </span>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <div className={styles.diffRows}>
                       {details.tactical_diff.player_plan.map((row) => (
                         <div
                           key={row.axis}
                           data-testid="tactical-diff-row"
                           data-axis={row.axis}
                           data-opponent-source={row.opponent_source ?? ''}
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: '8rem 1fr 1fr',
-                            gap: '0.5rem',
-                            alignItems: 'baseline',
-                            padding: '0.24rem 0.55rem',
-                            background: 'rgba(15,23,42,0.6)',
-                            border: '1px solid rgba(30,41,59,0.8)',
-                            borderRadius: '4px',
-                            fontSize: '0.74rem',
-                          }}
+                          className={styles.diffRow}
                         >
-                          <span className="lbl" style={{ fontSize: '0.6rem' }}>{row.label}</span>
-                          <span data-testid="tactical-diff-player" style={{ color: 'var(--dm-cyan)', fontWeight: 600 }}>{row.player_value}</span>
+                          <Truncate className={styles.axisLbl}>{row.label}</Truncate>
+                          <Truncate data-testid="tactical-diff-player" className={styles.diffPlayer}>{row.player_value}</Truncate>
                           <span
                             data-testid="tactical-diff-opponent"
-                            style={{ color: row.opponent_known ? '#e2e8f0' : undefined }}
+                            className={`${styles.diffOpponent}${row.opponent_known ? ` ${styles.isKnown}` : ''}`}
                           >
                             {row.opponent_known && row.opponent_value ? (
                               row.opponent_value
                             ) : (
                               <span
-                                className="cc-fog"
+                                className={styles.diffFog}
                                 title="Locked intel — scout the opponent to reveal observed tendencies."
                               >
                                 Unscouted
@@ -990,7 +930,7 @@ export function PreSimDashboard({
                               <span
                                 data-testid="tactical-diff-playbook-meta"
                                 title="Their program identity's playbook default — real intel before any tape exists, but weekly intent can shift it. Tape reads replace this as games are recorded."
-                                style={{ marginLeft: '0.4rem', fontSize: '0.58rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}
+                                className={styles.diffMeta}
                               >
                                 · playbook
                               </span>
@@ -1006,7 +946,7 @@ export function PreSimDashboard({
                                   : row.confidence_label === 'mixed' ? 'a mixed read'
                                   : 'a lean'
                                 }, not their hidden plan.`}
-                                style={{ marginLeft: '0.4rem', fontSize: '0.58rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}
+                                className={styles.diffMeta}
                               >
                                 {typeof row.confidence === 'number' ? `${Math.round(row.confidence * 100)}%` : (row.confidence_label ?? 'tape')}
                                 {typeof row.sample === 'number' ? ` · n${row.sample}` : ''}
@@ -1017,7 +957,7 @@ export function PreSimDashboard({
                       ))}
                     </div>
 
-                    <p style={{ margin: '0.1rem 0 0', fontSize: '0.68rem', color: '#475569', fontStyle: 'italic', lineHeight: 1.4 }}>
+                    <p className={styles.diffNote}>
                       {details.tactical_diff.note}
                     </p>
                   </div>
@@ -1028,10 +968,10 @@ export function PreSimDashboard({
                     folds into the Full File dialog. The trigger pins to the
                     panel foot so the three desks share a crisp bottom edge. */}
                 {details.tactical_diff && (details.tactical_diff.cold_start || details.tactical_diff.opponent_intel.length > 0) && (
-                  <div className="cc-intel-foot">
+                  <div className={styles.intelFoot}>
                     <button
                       type="button"
-                      className="dm-btn"
+                      className={styles.ghostBtn}
                       onClick={() => setScoutFileOpen(true)}
                       data-testid="open-scouting-file"
                     >
@@ -1043,10 +983,10 @@ export function PreSimDashboard({
             )}
 
             {isBye && (
-              <div className="cc-scout-edge" style={{ borderLeftColor: 'var(--dm-cyan)', borderColor: 'rgba(34,211,238,0.25)', background: 'rgba(34,211,238,0.05)' }}>
+              <div className={`${styles.scoutEdge} ${styles.isBye}`}>
                 <div className="row">
                   <span className="lbl">This Week</span>
-                  <span className="val" style={{ color: 'var(--dm-cyan-bright)' }}>Rest & Recover</span>
+                  <span className="val valBye">Rest & Recover</span>
                 </div>
                 <span className="sub">No match this week. Review your roster health and plan development focus before advancing.</span>
               </div>
@@ -1055,12 +995,12 @@ export function PreSimDashboard({
         </div>
 
         {/* Lock panel */}
-        <div className="cc-panel cc-lock" data-testid="readiness-panel">
-          <div className="cc-panel-head">
+        <div className={`${styles.panel} ${styles.lock}`} data-testid="readiness-panel">
+          <div className={styles.panelHead}>
             <span className="kicker">Sim Lock</span>
             <h2>{planConfirmed ? 'Locked' : 'Ready to Lock?'}</h2>
-            <div className="cc-ready-row">
-              <span className="pulse-em" />
+            <div className={styles.readyRow}>
+              <span className="pulse" />
               <span className="lbl">
                 {isReadyToLock
                   ? `All gates green · ${readyCount}/${readiness.total}`
@@ -1068,8 +1008,8 @@ export function PreSimDashboard({
               </span>
             </div>
           </div>
-          <div className="cc-panel-body">
-            <div className="cc-gates command-readiness-chips">
+          <div className={styles.panelBody}>
+            <div className={styles.gates}>
               {readinessChecks.map(check => {
                 // P3: the blocker carries its own resolving action — the
                 // current step visually dominates the (disabled) lock button.
@@ -1084,26 +1024,23 @@ export function PreSimDashboard({
                 return (
                   <div
                     key={check.id}
-                    className={`cc-gate ${check.ready ? 'ok' : 'pend'}`}
+                    className={`${styles.gate} ${check.ready ? styles.ok : styles.pend}`}
                     title={check.detail}
                     aria-label={check.detail ? `${check.short_label}: ${check.detail}` : check.short_label}
                   >
                     <span className="tick" aria-hidden="true">{check.ready ? '✓' : '!'}</span>
-                    <span className="lbl">{check.short_label}</span>
+                    <span className={styles.gateLbl}>{check.short_label}</span>
                     {/* WT-4: blocking detail must be visible + accessible, not
                         title-only. Show it inline for pending gates. */}
                     {!check.ready && check.detail && (
-                      <span
-                        className="cc-gate-detail"
-                        style={{ display: 'block', fontSize: '0.75rem', opacity: 0.85, marginTop: '0.15rem' }}
-                      >
+                      <span className={styles.gateDetail}>
                         {check.detail}
                       </span>
                     )}
                     {gateAction && (
                       <button
                         type="button"
-                        className="cc-gate-action"
+                        className={styles.gateAction}
                         data-testid={gateAction.testid}
                         disabled={gateAction.disabled}
                         onClick={gateAction.onClick}
@@ -1125,32 +1062,31 @@ export function PreSimDashboard({
                 read-only preview just makes the confirm deliberate. */}
             {!planConfirmed && !isBye && onConfirmLineup && !confirmLineupGateReady && (
               <div
-                className="cc-confirm-lineup-preview"
+                className={styles.confirmPreview}
                 data-testid="confirm-lineup-preview"
-                style={{ marginTop: '0.5rem', padding: '0.5rem 0.6rem', background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(30,41,59,0.9)', borderRadius: '5px' }}
               >
-                <span className="lbl" style={{ fontSize: '0.7rem', color: '#475569' }}>
+                <span className="lbl">
                   The six you are confirming
                 </span>
                 {activePlayers.length > 0 ? (
                   <ol
                     data-testid="confirm-lineup-list"
-                    style={{ listStyle: 'none', padding: 0, margin: '0.35rem 0 0', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}
+                    className={styles.confirmList}
                   >
                     {activePlayers.map((player, index) => (
                       <li
                         key={player.id}
                         data-testid="confirm-lineup-player"
-                        style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.6rem', fontSize: '0.8rem' }}
+                        className={styles.confirmRow}
                       >
-                        <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.45rem' }}>
-                          <span className="lbl" style={{ fontSize: '0.66rem', color: '#475569' }}>{index + 1}</span>
-                          <span style={{ fontWeight: 600, color: '#e2e8f0' }}>{player.name}</span>
+                        <span className="seat">
+                          <span className="seatNum">{index + 1}</span>
+                          <Truncate className="seatName">{player.name}</Truncate>
                         </span>
-                        <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.55rem' }}>
-                          <span className="val mono" style={{ color: 'var(--dm-cyan)' }}>{player.overall} OVR</span>
+                        <span className="stats">
+                          <span className="ovr">{player.overall} OVR</span>
                           {typeof player.stamina === 'number' && (
-                            <span className="val mono" style={{ fontSize: '0.72rem', color: player.stamina < 60 ? '#f59e0b' : '#94a3b8' }}>
+                            <span className={`sta${player.stamina < 60 ? ' staLow' : ''}`}>
                               {player.stamina} STA
                             </span>
                           )}
@@ -1159,7 +1095,7 @@ export function PreSimDashboard({
                     ))}
                   </ol>
                 ) : (
-                  <p data-testid="confirm-lineup-empty" style={{ margin: '0.35rem 0 0', color: '#f59e0b', fontSize: '0.78rem' }}>
+                  <p data-testid="confirm-lineup-empty" className={styles.confirmEmpty}>
                     No lineup is available yet. Build the game plan first.
                   </p>
                 )}
@@ -1167,7 +1103,7 @@ export function PreSimDashboard({
             )}
 
             {!planConfirmed && (
-              <div className="cc-intent-field">
+              <div className={styles.intentField}>
                 <span className="lbl">This Week's Intent</span>
                 <select
                   value={selectedIntent}
@@ -1184,7 +1120,7 @@ export function PreSimDashboard({
             {/* Three facts the lock decision actually turns on. Decision
                 (= the intent above) and Recommendation (= the Counter Read)
                 are not repeated here. */}
-            <div className="cc-lock-readout">
+            <div className={styles.lockReadout}>
               <div className="lr">
                 <span className="lbl">Risk</span>
                 <span className={`val${isAggressive ? ' rose' : isDefensive ? ' em' : ' am'}`}>
@@ -1202,11 +1138,11 @@ export function PreSimDashboard({
             </div>
 
             {/* Launch dock — the one action this whole page builds toward. */}
-            <div className={`cc-launch${planConfirmed ? ' is-live' : isReadyToLock ? ' is-armed' : ''}`}>
+            <div className={styles.launch}>
               <div className="ctx">{primaryActionHint}</div>
               <button
                 type="button"
-                className="cc-btn-sim"
+                className={styles.btnSim}
                 data-testid={planConfirmed ? 'simulate-command-week' : 'lock-weekly-plan'}
                 aria-label={planConfirmed ? 'Simulate Week' : 'Lock Plan'}
                 onClick={() => {
@@ -1216,15 +1152,15 @@ export function PreSimDashboard({
                 disabled={(!planConfirmed && !isReadyToLock) || saving}
               >
                 <span>{saving ? 'Processing...' : primaryActionLabel}</span>
-                <span className="arrow">▸</span>
+                <span className={styles.arrow}>▸</span>
               </button>
-              <div className="cc-launch-secondary">
+              <div className={styles.launchSecondary}>
                 {planConfirmed && (
                   <button
                     type="button"
                     disabled={saving}
                     onClick={() => onSavePlan(selectedIntent, false)}
-                    className="command-secondary-button"
+                    className={styles.secondaryBtn}
                   >
                     Unlock Plan
                   </button>
@@ -1235,14 +1171,14 @@ export function PreSimDashboard({
                     data-testid="fast-forward-season"
                     disabled={saving}
                     onClick={() => setFastForwardOpen(true)}
-                    className="command-secondary-button"
+                    className={styles.secondaryBtn}
                     title="Auto-pilot ahead with the persisted plan and best lineup. Pick a stop point first."
                   >
                     Fast-forward Season ⏭
                   </button>
                 )}
               </div>
-              <div className="cc-lock-meta">
+              <div className={styles.lockMeta}>
                 <span>{planConfirmed ? 'Locked in' : `${readyCount} of ${readiness.total} gates green`}</span>
                 <span>Auto-saved</span>
               </div>
@@ -1252,17 +1188,16 @@ export function PreSimDashboard({
 
       </div>
 
-      {/* Policy editor overlay — WT-21: the raw overlay shell is now the shared
-          Dialog primitive (focus-trap/restore + Escape). The PolicyEditor
-          inside is left exactly as-is (wrap, not rewrite). */}
+      {/* Policy editor overlay — WT-21: the raw overlay shell is the shared
+          Modal primitive (focus-trap/restore + Escape). The PolicyEditor
+          inside is left exactly as-is (wrap, not rewrite). The shared
+          command-policy-overlay globals stay on the shell (P8-only deletion). */}
       {policyEditorOpen && (
-        <Dialog
+        <Modal
           label="Edit policy"
           onClose={() => setPolicyEditorOpen(false)}
           className="command-policy-overlay"
           panelClassName="command-policy-overlay-body"
-          overlayStyle={{ backgroundColor: undefined, backdropFilter: undefined, padding: undefined }}
-          panelStyle={{}}
           data-testid="policy-editor-overlay"
         >
             <button
@@ -1280,20 +1215,18 @@ export function PreSimDashboard({
               error={null}
               officialRuleset={Boolean(data.ruleset_selection?.startsWith('official'))}
             />
-        </Dialog>
+        </Modal>
       )}
 
       {/* Full Scouting File — depth intel folded out of the card so the
           three desks stay uniform. Same overlay pattern as the policy
           editor; all payload-backed facts, nothing re-derived. */}
       {scoutFileOpen && details.tactical_diff && (
-        <Dialog
+        <Modal
           label={`Full scouting file — ${plan.opponent.name}`}
           onClose={() => setScoutFileOpen(false)}
           className="command-policy-overlay"
           panelClassName="command-policy-overlay-body"
-          overlayStyle={{ backgroundColor: undefined, backdropFilter: undefined, padding: undefined }}
-          panelStyle={{}}
           data-testid="scouting-file-overlay"
         >
           <button
@@ -1304,67 +1237,54 @@ export function PreSimDashboard({
           >
             Close
           </button>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+          <div className={styles.fileWrap}>
             <div>
-              <span className="dm-kicker">Full Scouting File</span>
-              <h2 style={{ margin: '0.25rem 0 0', fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 800, textTransform: 'uppercase', color: '#fff' }}>
+              <span className={styles.fileKicker}>Full Scouting File</span>
+              <h2 className={styles.fileTitle}>
                 {plan.opponent.name}
               </h2>
             </div>
 
             {details.tactical_diff.cold_start && (
-              <div
-                data-testid="tactical-diff-cold-start"
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.3rem',
-                  padding: '0.6rem 0.7rem',
-                  // Fog-of-war framing: the pre-tape intel layer, styled as
-                  // locked intelligence rather than missing data.
-                  background: 'repeating-linear-gradient(45deg, rgba(34,211,238,0.03) 0 5px, rgba(15,23,42,0.6) 5px 10px)',
-                  border: '1px dashed rgba(34,211,238,0.28)',
-                  borderRadius: '4px',
-                }}
-              >
-                <span className="lbl" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--dm-cyan)' }}>
+              <div data-testid="tactical-diff-cold-start" className={styles.coldStart}>
+                <span className="lbl">
                   Pre-tape intel — what the league already knows
                 </span>
                 {details.tactical_diff.cold_start.program_archetype && (
-                  <span data-testid="cold-start-archetype" style={{ fontSize: '0.78rem', color: '#e2e8f0' }}>
+                  <span data-testid="cold-start-archetype" className="factLine">
                     Program identity: <b>{details.tactical_diff.cold_start.program_archetype}</b>
                   </span>
                 )}
                 {details.tactical_diff.cold_start.roster_shape && (
-                  <span data-testid="cold-start-roster-shape" style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                  <span data-testid="cold-start-roster-shape" className="factLine">
                     Roster shape: {details.tactical_diff.cold_start.roster_shape.throwers} throwing-oriented · {details.tactical_diff.cold_start.roster_shape.defenders} defense-oriented
                   </span>
                 )}
                 {details.tactical_diff.cold_start.position_groups && (
-                  <span data-testid="cold-start-position-groups" style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                  <span data-testid="cold-start-position-groups" className="factLine">
                     {details.tactical_diff.cold_start.position_groups.single_family ? (
-                      <>Group depth: only a <b style={{ color: '#e2e8f0' }}>{details.tactical_diff.cold_start.position_groups.strongest.label}</b> core ({details.tactical_diff.cold_start.position_groups.strongest.avg_ovr} avg OVR)</>
+                      <>Group depth: only a <b>{details.tactical_diff.cold_start.position_groups.strongest.label}</b> core ({details.tactical_diff.cold_start.position_groups.strongest.avg_ovr} avg OVR)</>
                     ) : (
-                      <>Strongest group: <b style={{ color: '#e2e8f0' }}>{details.tactical_diff.cold_start.position_groups.strongest.label}</b> ({details.tactical_diff.cold_start.position_groups.strongest.avg_ovr} avg OVR) · Weakest: {details.tactical_diff.cold_start.position_groups.weakest.label} ({details.tactical_diff.cold_start.position_groups.weakest.avg_ovr} avg OVR)</>
+                      <>Strongest group: <b>{details.tactical_diff.cold_start.position_groups.strongest.label}</b> ({details.tactical_diff.cold_start.position_groups.strongest.avg_ovr} avg OVR) · Weakest: {details.tactical_diff.cold_start.position_groups.weakest.label} ({details.tactical_diff.cold_start.position_groups.weakest.avg_ovr} avg OVR)</>
                     )}
                   </span>
                 )}
                 {details.tactical_diff.cold_start.recent_form && (
-                  <span data-testid="cold-start-recent-form" style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
-                    Recent form: <b style={{ color: '#e2e8f0' }}>{details.tactical_diff.cold_start.recent_form}</b> this season ({details.tactical_diff.cold_start.recent_form.split('-').length === 3 ? 'W-L-D' : 'W-L'})
+                  <span data-testid="cold-start-recent-form" className="factLine">
+                    Recent form: <b>{details.tactical_diff.cold_start.recent_form}</b> this season ({details.tactical_diff.cold_start.recent_form.split('-').length === 3 ? 'W-L-D' : 'W-L'})
                   </span>
                 )}
                 {details.tactical_diff.cold_start.threat && (
-                  <span data-testid="cold-start-threat" style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
-                    Top threat: <b style={{ color: '#e2e8f0' }}>{details.tactical_diff.cold_start.threat.name}</b> · {details.tactical_diff.cold_start.threat.archetype} · {details.tactical_diff.cold_start.threat.ovr} OVR
+                  <span data-testid="cold-start-threat" className="factLine">
+                    Top threat: <b>{details.tactical_diff.cold_start.threat.name}</b> · {details.tactical_diff.cold_start.threat.archetype} · {details.tactical_diff.cold_start.threat.ovr} OVR
                   </span>
                 )}
               </div>
             )}
 
             {details.tactical_diff.opponent_intel.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                <span className="lbl" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--dm-cyan)' }}>
+              <div className={styles.intelNotes}>
+                <span className={styles.fileKicker}>
                   Intel Notes
                 </span>
                 {details.tactical_diff.opponent_intel.map((item, index) => (
@@ -1372,9 +1292,9 @@ export function PreSimDashboard({
                     key={`${item.source}-${index}`}
                     data-testid="tactical-diff-intel"
                     data-source={item.source}
-                    style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.45 }}
+                    className={styles.intelNote}
                   >
-                    <span style={{ color: '#475569', textTransform: 'uppercase', fontSize: '0.62rem', marginRight: '0.4rem' }}>
+                    <span className="src">
                       {item.source === 'adaptation' ? 'Observed' : 'Prior'}
                     </span>
                     {item.text}
@@ -1383,11 +1303,11 @@ export function PreSimDashboard({
               </div>
             )}
 
-            <p style={{ margin: 0, fontSize: '0.7rem', color: '#475569', fontStyle: 'italic', lineHeight: 1.4 }}>
+            <p className={styles.fileNote}>
               {details.tactical_diff.note}
             </p>
           </div>
-        </Dialog>
+        </Modal>
       )}
 
       {/* Fast-forward disclosure dialog (WT-29) */}
