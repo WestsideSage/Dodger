@@ -96,9 +96,6 @@ opencode.json
 scratch/
 playtest_output/
 
-# Playtest journals & notes (findings live in commit history + docs/)
-PLAYTEST_JOURNAL_*.md
-
 # Repo-pack / LLM context dumps (generated, large)
 *repomix-output.*
 
