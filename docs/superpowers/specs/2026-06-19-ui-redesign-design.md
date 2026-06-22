@@ -58,7 +58,7 @@ Single token source (`tokens.css`, CSS custom properties).
 | **Mint** | `--ok #54B98E` | verified, positive, trust/up. Never selection, never live. |
 | **Gold** | `--gold #F2B23C` / `--gold2 #FFD27A` | elite talent / ceiling, **intensity scales with grade** (§3.5). |
 | **Dim / Extinguished** | `--out #8E8678` | resolved, out, injured, eliminated. De-emphasized **but readable**. |
-| **Cream / Legacy** | `#F3EBD8` paper / `#211C16` ink | archive & history screens ONLY (§3.8). Never leaks into live UI. |
+| **Record Room** | dark surfaces (`--raise`/`--raise2`) + `--gold` honors + `--serif` headings | history/archive screens ONLY (§3.8). Recolored off the retired `--legacy-*` cream/ink paper 2026-06-21. |
 
 Losses get **darkness, not red** — coral is reserved for live/primary.
 
@@ -68,7 +68,7 @@ Self-hosted (no FOUT/offline/no external dep). No Inter/Roboto/Oswald/Anton.
 - `--head: 'Archivo'` — titles & section headers
 - `--ui: 'Geist'` — body, UI, and **labels** (the everyday voice)
 - `--mono: 'Geist Mono'` (tabular-nums) — **data/instrumentation only**
-- `--serif: 'Fraunces'` — legacy/Record Room only
+- `--serif: 'Fraunces'` — Record Room / history headings only
 
 **Voice rule:** all-caps letterspaced = instrumentation only (labels titling a number, live readouts). Everyday labels = Geist sentence case. **Legibility floor ~0.7rem** for any meaning-bearing label (retire all 0.5–0.68rem load-bearing labels, audit Pattern 7).
 
@@ -86,8 +86,8 @@ Panels lift on hover/press; exactly one ambient "breathing" pulse on **truly-liv
 ### 3.7 Traceability woven in
 Re-skin the existing legibility system (ProofChip/KnownValue/TermTip/receipts) into Floodlight: a quiet trace affordance reveals the backend's **verbatim** receipt in a portal popover with edge-flip. A hover, not a war-room grid. Mechanical-vs-flavor badges + receipt-verbatim rendering preserved exactly (audit §2.C).
 
-### 3.8 Legacy / Record Room mode
-History/records/trophies/franchise/HoF get cream + ink + Fraunces "Record Room" framing — a clearly different room. **Strictly quarantined** to archive/history; live UI never warms.
+### 3.8 Record Room mode (history / archive)
+History/records/trophies/franchise/HoF get a **Record Room** framing on the standard dark Floodlight surfaces — Fraunces serif headings + **gold** honors accents (titles / banners / tiers), with volt reserved for active controls — a distinct archival feel that stays on the dark canvas. **Quarantined** to `history/*.module.css`. (Recolored off the original cream + ink + paper treatment on 2026-06-21 — owner call that the light "record book" read too out of place; the `--legacy-paper/ink/brick` tokens were retired.)
 
 ### 3.9 Content & formatting rules
 - **"Week 9", not "Week 09"** — remove the `padStart(2,'0')` in `App.tsx`; **scheduled into Phase 1** (app shell), not a late sweep. No zero-padding on week/season counters.

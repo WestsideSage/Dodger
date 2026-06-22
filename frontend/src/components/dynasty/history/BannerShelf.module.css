@@ -1,4 +1,4 @@
-/* BannerShelf — Record Room (cream/ink) banner grid. */
+/* BannerShelf — Record Room (dark Floodlight) banner grid. */
 .banners {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
@@ -10,11 +10,11 @@
   gap: var(--space-2);
   padding: var(--space-4);
   border-radius: var(--radius-md);
-  border: 1px solid var(--legacy-ink);
-  background: var(--legacy-paper);
+  border: 1px solid var(--line2);
+  background: var(--raise2);
 }
 .bannerTitle {
-  border-color: var(--legacy-brick);
+  border-color: var(--gold);
 }
 .bannerEmpty {
   border-style: dashed;
@@ -24,14 +24,14 @@
   font: 700 0.68rem var(--font-ui);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--legacy-brick);
+  color: var(--gold);
 }
 .bannerLabel {
   font: 700 0.92rem var(--font-serif);
-  color: var(--legacy-ink);
+  color: var(--text);
 }
 .bannerSeason {
   font: 400 0.74rem var(--font-ui);
-  color: var(--legacy-ink);
+  color: var(--text);
   opacity: 0.8;
 }

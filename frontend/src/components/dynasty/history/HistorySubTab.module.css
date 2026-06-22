@@ -1,4 +1,4 @@
-/* HistorySubTab — Record Room (cream/ink) filter bar. */
+/* HistorySubTab — Record Room (dark Floodlight) filter bar. */
 .content {
   display: flex;
   flex-direction: column;
@@ -22,16 +22,17 @@
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-pill);
   font: 700 0.74rem var(--font-ui);
-  color: var(--legacy-ink);
+  color: var(--text);
   background: transparent;
-  border: 1px solid var(--legacy-ink);
+  border: 1px solid var(--line2);
 }
 .filterActive {
-  color: var(--legacy-paper);
-  background: var(--legacy-ink);
+  color: var(--volt);
+  background: var(--volt-soft);
+  border-color: var(--volt);
 }
 .meta {
   font: 400 0.74rem var(--font-ui);
-  color: var(--legacy-ink);
+  color: var(--text);
   opacity: 0.8;
 }

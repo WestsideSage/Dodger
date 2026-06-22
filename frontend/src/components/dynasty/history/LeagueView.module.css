@@ -1,9 +1,9 @@
-/* LeagueView — Record Room (cream/ink/Fraunces) §3.8. */
+/* LeagueView — Record Room (dark Floodlight + serif + gold honors) §3.8. */
 .content {
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
-  color: var(--legacy-ink);
+  color: var(--text);
 }
 
 .glance {
@@ -12,8 +12,8 @@
   gap: var(--space-4);
 }
 .cell {
-  background: var(--legacy-paper);
-  border: 1px solid var(--legacy-ink);
+  background: var(--raise2);
+  border: 1px solid var(--line2);
   border-radius: var(--radius-md);
   padding: var(--space-4);
 }
@@ -22,13 +22,13 @@
   font: 700 0.7rem var(--font-ui);
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--legacy-brick);
+  color: var(--gold);
 }
 .cellVal {
   display: block;
   margin-top: var(--space-1);
   font: 700 1rem var(--font-serif);
-  color: var(--legacy-ink);
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -37,17 +37,17 @@
   display: block;
   margin-top: var(--space-1);
   font: 400 0.72rem var(--font-ui);
-  color: var(--legacy-ink);
+  color: var(--text);
   opacity: 0.8;
 }
 .cellTrendOk {
   opacity: 1;
-  color: var(--legacy-brick);
+  color: var(--gold);
 }
 
 .card {
-  background: var(--legacy-paper);
-  border: 1px solid var(--legacy-ink);
+  background: var(--raise2);
+  border: 1px solid var(--line2);
   border-radius: var(--radius-md);
   padding: var(--space-5);
 }
@@ -59,12 +59,12 @@
   font: 600 0.72rem var(--font-ui);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--legacy-brick);
+  color: var(--gold);
 }
 .cardTitle {
   margin: var(--space-2) 0 0;
   font: 600 1rem var(--font-serif);
-  color: var(--legacy-ink);
+  color: var(--text);
 }
 
 .directory {
@@ -78,13 +78,13 @@
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-sm);
   font: 600 0.82rem var(--font-serif);
-  color: var(--legacy-ink);
+  color: var(--text);
   background: transparent;
-  border: 1px solid var(--legacy-ink);
+  border: 1px solid var(--line2);
 }
 .directoryBtn:hover {
-  color: var(--legacy-paper);
-  background: var(--legacy-ink);
+  background: var(--raise2);
+  border-color: var(--lit);
 }
 
 .grid {
@@ -104,7 +104,7 @@
   align-items: flex-start;
   gap: var(--space-4);
   padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--legacy-ink);
+  border-bottom: 1px solid var(--line2);
 }
 .main {
   min-width: 0;
@@ -112,7 +112,7 @@
 .rowName {
   display: block;
   font: 700 0.9rem var(--font-serif);
-  color: var(--legacy-ink);
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -120,7 +120,7 @@
 .meta {
   display: block;
   font: 400 0.74rem var(--font-ui);
-  color: var(--legacy-ink);
+  color: var(--text);
   opacity: 0.8;
 }
 .side {
@@ -132,7 +132,7 @@
 }
 .note {
   font: 400 0.72rem var(--font-ui);
-  color: var(--legacy-ink);
+  color: var(--text);
   opacity: 0.75;
   text-align: right;
 }
@@ -145,15 +145,16 @@
   font: 700 0.68rem var(--font-ui);
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--legacy-paper);
-  background: var(--legacy-ink);
+  color: var(--text);
+  background: var(--line2);
   white-space: nowrap;
 }
 .badgeBrick {
-  background: var(--legacy-brick);
+  color: var(--gold-ink);
+  background: var(--gold);
 }
 .badgeOutline {
-  color: var(--legacy-ink);
+  color: var(--text);
   background: transparent;
-  border: 1px solid var(--legacy-ink);
+  border: 1px solid var(--line2);
 }

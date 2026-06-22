@@ -1,9 +1,12 @@
 /* frontend/src/components/dynasty/history/recordRoom.module.css */
-/* §3.8 Record Room: cream paper + ink + Fraunces. Quarantined to history/*.
-   This is the ONE place the --legacy-* tokens are allowed. */
+/* §3.8 Record Room: dark Floodlight surfaces + Fraunces serif + GOLD honors.
+   Recolored off the cream/ink "--legacy-*" paper theme to the 5-color contract
+   2026-06-21 (owner call: the light record-book read too out of place). Dark
+   canvas-consistent surfaces, serif headings kept, gold reserved for honors
+   (titles/awards/tiers). */
 .room {
-  background: var(--legacy-paper);
-  color: var(--legacy-ink);
+  background: var(--raise);
+  color: var(--text);
   font-family: var(--font-serif);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
@@ -13,34 +16,34 @@
   font: 600 0.72rem var(--font-ui);   /* instrumentation label, ≥0.7rem floor */
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--legacy-brick);
+  color: var(--gold);
 }
 .heading {
   margin: var(--space-2) 0 0;
   font: 600 1.05rem var(--font-serif);
-  color: var(--legacy-ink);
+  color: var(--text);
 }
 .subheading {
   margin: var(--space-2) 0 0;
   font: 600 0.95rem var(--font-serif);
-  color: var(--legacy-ink);
+  color: var(--text);
 }
 .panel {
-  background: var(--legacy-paper);
-  color: var(--legacy-ink);
-  border: 1px solid var(--legacy-ink);
+  background: var(--raise2);
+  color: var(--text);
+  border: 1px solid var(--line2);
   border-radius: var(--radius-md);
   padding: var(--space-5);
 }
 .note {
   font: 400 0.8rem var(--font-ui);
-  color: var(--legacy-ink);
+  color: var(--text);
   opacity: 0.8;
 }
 .cardHead {
   margin-bottom: var(--space-4);
 }
-/* Ink-on-paper badge used across the Record Room (titles/awards/tiers). */
+/* Honor chip used across the Record Room (titles/awards/tiers). */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -49,18 +52,18 @@
   font: 700 0.7rem var(--font-ui);
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--legacy-paper);
-  background: var(--legacy-ink);
-  border: 1px solid var(--legacy-ink);
+  color: var(--text);
+  background: var(--line2);
+  border: 1px solid transparent;
   white-space: nowrap;
 }
 .badgeBrick {
-  color: var(--legacy-paper);
-  background: var(--legacy-brick);
-  border-color: var(--legacy-brick);
+  color: var(--gold-ink);
+  background: var(--gold);
+  border-color: var(--gold);
 }
 .badgeOutline {
-  color: var(--legacy-ink);
+  color: var(--text);
   background: transparent;
-  border: 1px solid var(--legacy-ink);
+  border: 1px solid var(--line2);
 }
