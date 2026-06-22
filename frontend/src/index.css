@@ -2913,3 +2913,4 @@ textarea:focus-visible {
   .cc-hero-stats { grid-template-columns: 1fr 1fr; }
   .cc-policy { grid-template-columns: 1fr; }
   .cc-scout-grid { grid-template-columns: 1fr; }
+}

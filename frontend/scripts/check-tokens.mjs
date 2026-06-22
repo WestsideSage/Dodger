@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, extname } from 'node:path';
+import { countBraces } from './css-braces.mjs';
 
 // Phase 8: the gate now scans the WHOLE component tree. SCAN_DIRS is the design
 // surface; SCAN_FILES pins explicit files outside those dirs.
@@ -133,8 +134,36 @@ for (const file of SCAN_FILES) {
   checkFile(file, violations);
 }
 
+// CSS brace-balance gate. Scans EVERY src/**/*.css (incl. *.module.css) — a WIDER
+// net than the token scope above — because Vite/Rolldown concatenate index.css +
+// all module CSS into ONE prod bundle, so a single unclosed @media/rule block
+// silently swallows every later rule (2026-06-21: the whole app rendered unstyled
+// on desktop from one missing `}` at the end of index.css). CSS parsers auto-close
+// at EOF, so this is invisible to `vite build`/`eslint`/`vitest` — counting `{` vs
+// `}` per file is the only static catch. No file is exempt (tokens.css included):
+// an unclosed brace ANYWHERE in the concatenated bundle is fatal.
+const cssFiles = walk('src').filter(f => extname(f) === '.css');
+const braceViolations = [];
+for (const file of cssFiles) {
+  const { open, close } = countBraces(readFileSync(file, 'utf8'));
+  if (open !== close) {
+    braceViolations.push(
+      `${normalize(file)}: ${open} '{' vs ${close} '}' (off by ${open - close})`,
+    );
+  }
+}
+
+let failed = false;
 if (violations.length) {
   console.error('Token-discipline violations (use tokens, not literals):\n' + violations.join('\n'));
-  process.exit(1);
+  failed = true;
+} else {
+  console.log(`token-discipline OK (${[...SCAN_DIRS, ...SCAN_FILES].join(', ')})`);
 }
-console.log(`token-discipline OK (${[...SCAN_DIRS, ...SCAN_FILES].join(', ')})`);
+if (braceViolations.length) {
+  console.error('CSS brace-balance violations (unclosed @media/rule block?):\n' + braceViolations.join('\n'));
+  failed = true;
+} else {
+  console.log(`css-brace-balance OK (${cssFiles.length} css files)`);
+}
+if (failed) process.exit(1);
