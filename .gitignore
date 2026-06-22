@@ -82,3 +82,33 @@ playtest_screenshots*/
 playtest_full_ss/
 playtest_ss*/
 dodgeball-playtest-*.png
+
+# === .gitignore blitz 2026-06-22 ===
+# AI / dev tool local state (not project source). Keep intentional configs;
+# ignore the rest of each tool dir.
+.superpowers/
+.codex/
+.gemini/*
+!.gemini/settings.json
+opencode.json
+
+# Scratch / throwaway working dirs
+scratch/
+playtest_output/
+
+# Playtest journals & notes (findings live in commit history + docs/)
+PLAYTEST_JOURNAL_*.md
+
+# Repo-pack / LLM context dumps (generated, large)
+*repomix-output.*
+
+# Root-level screenshots & QA image dumps (real images belong in docs/ or frontend/)
+/*.png
+/*.jpg
+/*.jpeg
+/*.gif
+/*.webp
+
+# Misc generated build/runtime artifacts
+*.tsbuildinfo
+*.pid
